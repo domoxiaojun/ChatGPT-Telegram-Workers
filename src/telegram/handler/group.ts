@@ -42,10 +42,37 @@ function checkMention(content: string, entities: Telegram.MessageEntity[], botNa
     };
 }
 
+/**
+ * 处理替换词
+ *
+ * @param {Telegram.Message} message
+ * @returns {boolean} 如果找到触发词，返回 true；否则 false
+ */
+function SubstituteWords(message: Telegram.Message): boolean {
+    if (Object.keys(ENV.CHAT_MESSAGE_TRIGGER).length === 0) {
+        return false;
+    }
+    // 检查替换词
+    const triggerKeyValue = Object.entries(ENV.CHAT_MESSAGE_TRIGGER).find(([key]) =>
+        (message?.text || message?.caption || '').startsWith(key),
+    ) as [string, string] | undefined;
+    if (triggerKeyValue) {
+        if (message.text) {
+            message.text = message.text.replace(...triggerKeyValue);
+        } else if (message.caption) {
+            message.caption = message.caption.replace(...triggerKeyValue);
+        }
+    }
+    return !!triggerKeyValue;
+}
+
 export class GroupMention implements MessageHandler {
     handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | null> => {
+        const substituteMention = SubstituteWords(message);
         // 非群组消息不作判断，交给下一个中间件处理
         if (!isTelegramChatTypeGroup(message.chat.type)) {
+            // 缓存修整后的消息
+            context.MIDDEL_CONTEXT.originalMessage.text = message.text || message.caption || '';
             return null;
         }
 
@@ -78,15 +105,22 @@ export class GroupMention implements MessageHandler {
             isMention = res.isMention || isMention;
             message.caption = res.content.trim();
         }
+        // substituteMention 强制触发
+        if (substituteMention && !isMention) {
+            isMention = true;
+        }
         if (!isMention) {
             throw new Error('Not mention');
         }
 
-        if (ENV.EXTRA_MESSAGE_CONTEXT && !replyMe && message.reply_to_message && message.reply_to_message.text) {
-            if (message.text) {
-                message.text = `${message.reply_to_message.text}\n${message.text}`;
+        if (ENV.EXTRA_MESSAGE_CONTEXT && !replyMe && message.reply_to_message?.text) {
+            if (message.text || message.caption) {
+                message.text = `${message.reply_to_message.text}\n${message.text || message.caption}`;
             }
         }
+        // 缓存修整后的消息
+        context.MIDDEL_CONTEXT.originalMessage.text = message.text;
+
         return null;
     };
 }

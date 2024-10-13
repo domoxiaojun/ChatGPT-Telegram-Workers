@@ -57,7 +57,7 @@ switch (BUILD_MODE) {
 export default defineConfig({
     plugins,
     build: {
-        target: 'esnext',
+        target: 'es2022',
         lib: {
             entry: path.resolve(__dirname, entry),
             fileName,

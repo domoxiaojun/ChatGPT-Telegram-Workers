@@ -13,3 +13,20 @@ export interface CommandConfig {
     description?: string | null;
     scope?: string[] | null;
 }
+
+type FlowType = 'text' | 'image' | 'audio';
+
+export type FlowStruct = {
+    [key in FlowType]?: {
+        // isParallel?: boolean;
+        disableHistory?: boolean;
+        disableTool?: boolean;
+        workflow?: {
+            agent?: string;
+            prompt?: string;
+            model?: string;
+            type?: FlowType;
+            text?: string;
+        }[];
+    };
+};

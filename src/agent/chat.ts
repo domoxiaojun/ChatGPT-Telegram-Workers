@@ -1,6 +1,6 @@
 import type { WorkerContext } from '../config/context';
 import { ENV } from '../config/env';
-import type { ChatAgent, HistoryItem, HistoryModifier, LLMChatRequestParams } from './types';
+import type { ChatAgent, ChatStreamTextHandler, CompletionData, HistoryItem, HistoryModifier, ImageResult, LLMChatRequestParams } from './types';
 
 /**
  * @returns {(function(string): number)}
@@ -11,7 +11,7 @@ function tokensCounter(): (text: string) => number {
     };
 }
 
-async function loadHistory(key: string): Promise<HistoryItem[]> {
+export async function loadHistory(key: string): Promise<HistoryItem[]> {
     // 加载历史记录
     let history = [];
     try {
@@ -62,33 +62,49 @@ async function loadHistory(key: string): Promise<HistoryItem[]> {
 
 export type StreamResultHandler = (text: string) => Promise<any>;
 
-export async function requestCompletionsFromLLM(params: LLMChatRequestParams, context: WorkerContext, agent: ChatAgent, modifier: HistoryModifier | null, onStream: StreamResultHandler | null): Promise<string> {
-    const historyDisable = ENV.AUTO_TRIM_HISTORY && ENV.MAX_HISTORY_LENGTH <= 0;
-    const historyKey = context.SHARE_CONTEXT.chatHistoryKey;
-    if (!historyKey) {
-        throw new Error('History key not found');
-    }
-    let history = await loadHistory(historyKey);
+export async function requestCompletionsFromLLM(params: LLMChatRequestParams, context: WorkerContext, agent: ChatAgent, modifier: HistoryModifier | null, onStream: ChatStreamTextHandler | null): Promise<CompletionData> {
+    let history = context.MIDDEL_CONTEXT.history;
     if (modifier) {
         const modifierData = modifier(history, params.message || null);
         history = modifierData.history;
-        params.message = modifierData.message;
+        params.message = modifierData.message || '';
     }
+
+    const extra_params = params.extra_params || {};
+    let prompt = context.USER_CONFIG.SYSTEM_INIT_MESSAGE;
+    if (extra_params.prompt) {
+        prompt = context.USER_CONFIG.PROMPT[extra_params.prompt] || extra_params.prompt;
+    }
+
     const llmParams = {
-        ...params,
+        message: params.message,
+        images: params.images,
+        prompt,
+        model: extra_params.model,
         history,
-        prompt: context.USER_CONFIG.SYSTEM_INIT_MESSAGE,
     };
     const answer = await agent.request(llmParams, context.USER_CONFIG, onStream);
-    if (!historyDisable) {
-        const userMessage = { role: 'user', content: params.message || '', images: params.images };
-        if (ENV.HISTORY_IMAGE_PLACEHOLDER && userMessage.images && userMessage.images.length > 0) {
-            delete userMessage.images;
-            userMessage.content = `${ENV.HISTORY_IMAGE_PLACEHOLDER}\n${userMessage.content}`;
-        }
-        history.push(userMessage);
-        history.push({ role: 'assistant', content: answer });
-        await ENV.DATABASE.put(historyKey, JSON.stringify(history)).catch(console.error);
-    }
+    context.MIDDEL_CONTEXT.history.push({ role: 'assistant', ...answer });
     return answer;
 }
+
+export async function requestText2Image(url: string, headers: Record<string, any>, body: any, render: (arg: Response) => Promise<ImageResult>) {
+    console.log('start generate image.');
+    const resp = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+    });
+    const result = await render(resp);
+    if (result.message) {
+        throw new Error(result.message);
+    }
+    return result;
+}
+
+// function renderPic2PicResult(context: { USER_CONFIG: { AI_IMAGE_PROVIDER: any } }, resp: { images: any[]; message: any }) {
+//     switch (context.USER_CONFIG.AI_IMAGE_PROVIDER) {
+//         case 'silicon':
+//             return { type: 'image', url: resp?.images?.map((i: { url: any }) => i?.url), message: resp.message };
+//     }
+// }

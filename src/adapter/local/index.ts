@@ -3,11 +3,13 @@ import { defaultRequestBuilder, initEnv, startServerV2 } from 'cloudflare-worker
 import type { GetUpdatesResponse } from 'telegram-bot-api-types';
 import { installFetchProxy } from 'cloudflare-worker-adapter/proxy';
 import { createCache } from 'cloudflare-worker-adapter/cache';
+import { schedule } from 'node-cron';
 import { ENV } from '../../config/env';
 import type { TelegramBotAPI } from '../../telegram/api';
 import { createTelegramBotAPI } from '../../telegram/api';
 import { handleUpdate } from '../../telegram/handler';
 import { createRouter } from '../../route';
+import worker from '../../';
 
 const {
     CONFIG_PATH = '/app/config.json',
@@ -61,7 +63,10 @@ async function runPolling() {
     while (true) {
         for (const token of ENV.TELEGRAM_AVAILABLE_TOKENS) {
             try {
-                const resp = await clients[token].getUpdates({ offset: offset[token] });
+                const resp = await clients[token].getUpdates({
+                    offset: offset[token],
+                    timeout: 30,
+                });
                 if (resp.status === 429) {
                     const retryAfter = Number.parseInt(resp.headers.get('Retry-After') || '');
                     if (retryAfter) {
@@ -86,6 +91,19 @@ async function runPolling() {
     }
 }
 
+try {
+    // 定时任务
+    if (env.EXPIRED_TIME > 0 && env.CRON_CHECK_TIME) {
+        try {
+            schedule(env.CRON_CHECK_TIME, async () => await worker.scheduled({} as Event, env, null));
+        } catch (e) {
+            console.error('Failed to schedule cron job:', e);
+        }
+    }
+} catch (e) {
+    console.log(e);
+}
+
 // 启动服务
 if (config.mode === 'webhook' && config.server !== undefined) {
     const router = createRouter();
@@ -95,7 +113,7 @@ if (config.mode === 'webhook' && config.server !== undefined) {
         env,
         { baseURL: config.server.baseURL },
         defaultRequestBuilder,
-        router.fetch,
+        router.fetch.bind(router),
     );
 } else {
     runPolling().catch(console.error);

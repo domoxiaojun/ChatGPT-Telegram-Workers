@@ -1,5 +1,6 @@
 import type { AgentUserConfig } from '../config/env';
-import type { ChatAgent, ChatStreamTextHandler, HistoryItem, LLMChatParams } from './types';
+import { Log } from '../extra/log/logDecortor';
+import type { ChatAgent, ChatStreamTextHandler, CompletionData, HistoryItem, LLMChatParams } from './types';
 import type { SSEMessage, SSEParserResult } from './stream';
 import { Stream } from './stream';
 import type { SseChatCompatibleOptions } from './request';
@@ -53,7 +54,8 @@ export class Cohere implements ChatAgent {
         }
     }
 
-    readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<string> => {
+    @Log
+    readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<CompletionData> => {
         const { message, prompt, history } = params;
         const url = `${context.COHERE_API_BASE}/chat`;
         const header = {

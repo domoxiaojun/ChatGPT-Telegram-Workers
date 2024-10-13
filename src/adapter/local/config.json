@@ -1,0 +1,10 @@
+{
+    "database": {
+        "type": "sqlite",
+        "path": "./data.db"
+    },
+    "server": {
+        "port": 8787,
+        "baseURL": "https://6214-167-172-85-120.ngrok-free.app"
+    }
+}

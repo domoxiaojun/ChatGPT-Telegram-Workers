@@ -33,8 +33,7 @@ export async function loadChatRoleWithContext(message: Telegram.Message, context
             { expiration: (Date.now() / 1000) + 120 },
         );
     }
-    for (let i = 0; i < groupAdmin.length; i++) {
-        const user = groupAdmin[i];
+    for (const user of groupAdmin) {
         if (`${user.user?.id}` === `${speakerId}`) {
             return user.status;
         }

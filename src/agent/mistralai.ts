@@ -1,5 +1,6 @@
 import type { AgentUserConfig } from '../config/env';
-import type { ChatAgent, ChatStreamTextHandler, HistoryItem, LLMChatParams } from './types';
+import { Log } from '../extra/log/logDecortor';
+import type { ChatAgent, ChatStreamTextHandler, CompletionData, HistoryItem, LLMChatParams } from './types';
 import { requestChatCompletions } from './request';
 
 export class Mistral implements ChatAgent {
@@ -21,15 +22,16 @@ export class Mistral implements ChatAgent {
         };
     };
 
-    readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<string> => {
-        const { message, prompt, history } = params;
+    @Log
+    readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<CompletionData> => {
+        const { prompt, history } = params;
         const url = `${context.MISTRAL_API_BASE}/chat/completions`;
         const header = {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${context.MISTRAL_API_KEY}`,
         };
 
-        const messages = [...(history || []), { role: 'user', content: message }];
+        const messages = [...(history || [])];
         if (prompt) {
             messages.unshift({ role: context.SYSTEM_INIT_MESSAGE_ROLE, content: prompt });
         }

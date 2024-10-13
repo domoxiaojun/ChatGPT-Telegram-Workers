@@ -1,4 +1,7 @@
 import type * as Telegram from 'telegram-bot-api-types';
+import type { HistoryItem } from '../agent/types';
+import type { UnionData } from '../telegram/utils/utils';
+import type { MessageSender } from '../telegram/utils/send';
 import { ConfigMerger } from './merger';
 import type { AgentUserConfig } from './env';
 import { ENV } from './env';
@@ -13,6 +16,10 @@ export class ShareContext {
     lastMessageKey: string;
     configStoreKey: string;
     groupAdminsKey?: string;
+    telegraphAccessTokenKey?: string;
+    readonly scheduleDeteleKey: string = 'schedule_detele_message';
+    storeMessageKey?: string;
+    sentMessageIds?: Set<number>; // 已发送的消息id
 
     constructor(token: string, message: Telegram.Message) {
         const botId = Number.parseInt(token.split(':')[0]);
@@ -73,28 +80,76 @@ export class ShareContext {
         this.chatHistoryKey = historyKey;
         this.lastMessageKey = `last_message_id:${historyKey}`;
         this.configStoreKey = configStoreKey;
+
+        if (message?.from?.id && ENV.STORE_MESSAGE_WHITELIST.includes(message.from.id) && ENV.STORE_MESSAGE_NUM > 0) {
+            this.storeMessageKey = `store_message:${message.chat.id}:${message?.from?.id || message.chat.id}`;
+        }
+
+        if (ENV.TELEGRAPH_NUM_LIMIT > 0) {
+            this.telegraphAccessTokenKey = `telegraph_access_token:${id}`;
+        }
+
+        if (ENV.EXPIRED_TIME > 0)
+            this.sentMessageIds = new Set();
+    };
+}
+interface Llmlogs {
+    type: 'chat' | 'function';
+    model: string;
+    token: string;
+    time: string;
+    error?: string;
+}
+
+interface Toollogs {
+    name: string;
+    type: string;
+    internal?: boolean;
+    params: string;
+    result?: string;
+    time: string;
+    error?: string;
+}
+
+type Logs = (Llmlogs | Toollogs)[] | null;
+
+export class MiddleContext {
+    originalMessage: UnionData = { type: 'text' };
+    history: HistoryItem[] = [];
+    logs: Logs = null;
+    middleResult: UnionData[] = [];
+    sender: MessageSender | null = null;
+}
+
+export class WorkerContextBase {
+    SHARE_CONTEXT: ShareContext;
+    MIDDEL_CONTEXT: MiddleContext = new MiddleContext();
+
+    constructor(token: string, message: Telegram.Message) {
+        this.SHARE_CONTEXT = new ShareContext(token, message);
     }
 }
 
-export class WorkerContext {
+export class WorkerContext implements WorkerContextBase {
     // 用户配置
     USER_CONFIG: AgentUserConfig;
     SHARE_CONTEXT: ShareContext;
+    MIDDEL_CONTEXT: MiddleContext;
 
-    constructor(USER_CONFIG: AgentUserConfig, SHARE_CONTEXT: ShareContext) {
+    constructor(USER_CONFIG: AgentUserConfig, SHARE_CONTEXT: ShareContext, MIDDEL_CONTEXT: MiddleContext) {
         this.USER_CONFIG = USER_CONFIG;
         this.SHARE_CONTEXT = SHARE_CONTEXT;
+        this.MIDDEL_CONTEXT = MIDDEL_CONTEXT;
     }
 
-    static async from(token: string, message: Telegram.Message): Promise<WorkerContext> {
-        const SHARE_CONTEXT = new ShareContext(token, message);
-        const USER_CONFIG = Object.assign({}, ENV.USER_CONFIG);
+    static async from(SHARE_CONTEXT: ShareContext, MIDDLE_CONTEXT: MiddleContext): Promise<WorkerContext> {
+        const USER_CONFIG = { ...ENV.USER_CONFIG };
         try {
             const userConfig: AgentUserConfig = JSON.parse(await ENV.DATABASE.get(SHARE_CONTEXT.configStoreKey));
             ConfigMerger.merge(USER_CONFIG, ConfigMerger.trim(userConfig, ENV.LOCK_USER_CONFIG_KEYS) || {});
         } catch (e) {
             console.warn(e);
         }
-        return new WorkerContext(USER_CONFIG, SHARE_CONTEXT);
+        return new WorkerContext(USER_CONFIG, SHARE_CONTEXT, MIDDLE_CONTEXT);
     }
 }

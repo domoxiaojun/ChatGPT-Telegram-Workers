@@ -1,14 +1,19 @@
+/* eslint-disable no-cond-assign */
 import type * as Telegram from 'telegram-bot-api-types';
 import type { WorkerContext } from '../../config/context';
-import { isTelegramChatTypeGroup } from '../utils/utils';
+import type { UnionData } from '../utils/utils';
+import { UUIDv4, isTelegramChatTypeGroup } from '../utils/utils';
 import type { HistoryItem, HistoryModifierResult } from '../../agent/types';
-import { chatWithLLM } from '../handler/chat';
-import { loadChatLLM, loadImageGen } from '../../agent';
+import { OnStreamHander, chatWithLLM, sendImages } from '../handler/chat';
+import { customInfo, loadChatLLM, loadImageGen } from '../../agent';
 import { createTelegramBotAPI } from '../api';
-import { MessageSender } from '../utils/send';
+import { type MessageSender, sendAction } from '../utils/send';
 import { ConfigMerger } from '../../config/merger';
 import { ENV, ENV_KEY_MAPPER } from '../../config/env';
-import type { CommandHandler } from './types';
+import { loadHistory } from '../../agent/chat';
+import { WssRequest } from '../../agent/wsrequest';
+import { getLogSingleton } from '../../extra/log/logDecortor';
+import type { CommandHandler, ScopeType } from './types';
 
 export const COMMAND_AUTH_CHECKER = {
     default(chatType: string): string[] | null {
@@ -31,24 +36,20 @@ export const COMMAND_AUTH_CHECKER = {
 
 export class ImgCommandHandler implements CommandHandler {
     command = '/img';
-    scopes = ['all_private_chats', 'all_chat_administrators'];
-    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext): Promise<Response> => {
-        const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
+    scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
+    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
         if (subcommand === '') {
             return sender.sendPlainText(ENV.I18N.command.help.img);
         }
         try {
-            const api = createTelegramBotAPI(context.SHARE_CONTEXT.botToken);
             const agent = loadImageGen(context.USER_CONFIG);
             if (!agent) {
                 return sender.sendPlainText('ERROR: Image generator not found');
             }
-            setTimeout(() => api.sendChatAction({
-                chat_id: message.chat.id,
-                action: 'upload_photo',
-            }).catch(console.error), 0);
+            sendAction(context.SHARE_CONTEXT.botToken, message.chat.id, 'upload_photo');
             const img = await agent.request(subcommand, context.USER_CONFIG);
-            const resp = await sender.sendPhoto(img);
+            const resp = await sendImages(img, ENV.SEND_IMAGE_FILE, sender, context.USER_CONFIG);
+
             if (!resp.ok) {
                 return sender.sendPlainText(`ERROR: ${resp.statusText} ${await resp.text()}`);
             }
@@ -61,9 +62,8 @@ export class ImgCommandHandler implements CommandHandler {
 
 export class HelpCommandHandler implements CommandHandler {
     command = '/help';
-    scopes = ['all_private_chats', 'all_chat_administrators'];
-    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext): Promise<Response> => {
-        const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
+    scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
+    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
         let helpMsg = `${ENV.I18N.command.help.summary}\n`;
         for (const [k, v] of Object.entries(ENV.I18N.command.help)) {
             if (k === 'summary') {
@@ -81,7 +81,8 @@ export class HelpCommandHandler implements CommandHandler {
                 helpMsg += `${k}：${v.description}\n`;
             }
         }
-        return sender.sendPlainText(helpMsg);
+        helpMsg = helpMsg.split('\n').map(line => `> ${line}`).join('\n');
+        return sender.sendRichText(helpMsg, 'MarkdownV2', 'tip');
     };
 }
 
@@ -112,7 +113,7 @@ class BaseNewCommandHandler {
 
 export class NewCommandHandler extends BaseNewCommandHandler implements CommandHandler {
     command = '/new';
-    scopes = ['all_private_chats', 'all_group_chats', 'all_chat_administrators'];
+    scopes: ScopeType[] = ['all_private_chats', 'all_group_chats', 'all_chat_administrators'];
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext): Promise<Response> => {
         return BaseNewCommandHandler.handle(false, message, subcommand, context);
     };
@@ -128,8 +129,8 @@ export class StartCommandHandler extends BaseNewCommandHandler implements Comman
 export class SetEnvCommandHandler implements CommandHandler {
     command = '/setenv';
     needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
-    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext): Promise<Response> => {
-        const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
+    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
+        // const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
         const kv = subcommand.indexOf('=');
         if (kv === -1) {
             return sender.sendPlainText(ENV.I18N.command.help.setenv);
@@ -164,8 +165,8 @@ export class SetEnvCommandHandler implements CommandHandler {
 export class SetEnvsCommandHandler implements CommandHandler {
     command = '/setenvs';
     needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
-    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext): Promise<Response> => {
-        const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
+    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
+        // const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
         try {
             const values = JSON.parse(subcommand);
             const configKeys = Object.keys(context.USER_CONFIG);
@@ -199,8 +200,8 @@ export class SetEnvsCommandHandler implements CommandHandler {
 export class DelEnvCommandHandler implements CommandHandler {
     command = '/delenv';
     needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
-    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext): Promise<Response> => {
-        const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
+    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
+        // const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
         if (ENV.LOCK_USER_CONFIG_KEYS.includes(subcommand)) {
             const msg = `Key ${subcommand} is locked`;
             return sender.sendPlainText(msg);
@@ -222,8 +223,8 @@ export class DelEnvCommandHandler implements CommandHandler {
 export class ClearEnvCommandHandler implements CommandHandler {
     command = '/clearenv';
     needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
-    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext): Promise<Response> => {
-        const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
+    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
+        // const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
         try {
             await ENV.DATABASE.put(
                 context.SHARE_CONTEXT.configStoreKey,
@@ -239,9 +240,9 @@ export class ClearEnvCommandHandler implements CommandHandler {
 
 export class VersionCommandHandler implements CommandHandler {
     command = '/version';
-    scopes = ['all_private_chats', 'all_chat_administrators'];
-    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext): Promise<Response> => {
-        const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
+    scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
+    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
+        // const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
         const current = {
             ts: ENV.BUILD_TIMESTAMP,
             sha: ENV.BUILD_VERSION,
@@ -267,9 +268,9 @@ export class VersionCommandHandler implements CommandHandler {
 
 export class SystemCommandHandler implements CommandHandler {
     command = '/system';
-    scopes = ['all_private_chats', 'all_chat_administrators'];
-    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext): Promise<Response> => {
-        const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
+    scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
+    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
+        // const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
         const chatAgent = loadChatLLM(context.USER_CONFIG);
         const imageAgent = loadImageGen(context.USER_CONFIG);
         const agent = {
@@ -277,8 +278,13 @@ export class SystemCommandHandler implements CommandHandler {
             [chatAgent?.modelKey || 'AI_PROVIDER_NOT_FOUND']: chatAgent?.model(context.USER_CONFIG),
             AI_IMAGE_PROVIDER: imageAgent?.name,
             [imageAgent?.modelKey || 'AI_IMAGE_PROVIDER_NOT_FOUND']: imageAgent?.model(context.USER_CONFIG),
+            STT_MODEL: context.USER_CONFIG.OPENAI_STT_MODEL,
+            VISION_MODEL: context.USER_CONFIG.OPENAI_VISION_MODEL,
+            IMAGE_MODEL: context.USER_CONFIG.IMAGE_MODEL,
+
         };
-        let msg = `AGENT: ${JSON.stringify(agent, null, 2)}\n`;
+        let msg = `<pre>AGENT: ${JSON.stringify(agent, null, 2)}\nOTHERS: ${customInfo(context.USER_CONFIG)
+        }\n</pre>`;
         if (ENV.DEV_MODE) {
             const shareCtx = { ...context.SHARE_CONTEXT };
             shareCtx.botToken = '******';
@@ -299,14 +305,14 @@ export class SystemCommandHandler implements CommandHandler {
             msg += `SHARE_CONTEXT: ${JSON.stringify(shareCtx, null, 2)}\n`;
             msg += '</pre>';
         }
-        return sender.sendRichText(msg, 'HTML');
+        return sender.sendRichText(msg, 'HTML', 'tip');
     };
 }
 
 export class RedoCommandHandler implements CommandHandler {
     command = '/redo';
-    scopes = ['all_private_chats', 'all_group_chats', 'all_chat_administrators'];
-    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext): Promise<Response> => {
+    scopes: ScopeType[] = ['all_private_chats', 'all_group_chats', 'all_chat_administrators'];
+    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext): Promise<Response | UnionData> => {
         const mf = (history: HistoryItem[], text: string | null): HistoryModifierResult => {
             let nextText = text;
             if (!(history && Array.isArray(history) && history.length > 0)) {
@@ -329,16 +335,268 @@ export class RedoCommandHandler implements CommandHandler {
             }
             return { history: historyCopy, message: nextText };
         };
-        return chatWithLLM(message, { message: null }, context, mf);
+
+        if (context.MIDDEL_CONTEXT.history.length === 0) {
+            context.MIDDEL_CONTEXT.history = await loadHistory(context.SHARE_CONTEXT.chatHistoryKey);
+        }
+
+        return chatWithLLM(message, { message: '' }, context, mf);
     };
 }
 
 export class EchoCommandHandler implements CommandHandler {
     command = '/echo';
-    handle = (message: Telegram.Message, subcommand: string, context: WorkerContext): Promise<Response> => {
+    handle = (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
         let msg = '<pre>';
         msg += JSON.stringify({ message }, null, 2);
         msg += '</pre>';
-        return MessageSender.from(context.SHARE_CONTEXT.botToken, message).sendRichText(msg, 'HTML');
+        return sender.sendRichText(msg, 'HTML');
+    };
+}
+
+export class SetCommandHandler implements CommandHandler {
+    command = '/set';
+    needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
+    scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
+    handle = async (
+        message: Telegram.Message,
+        subcommand: string,
+        context: WorkerContext,
+        sender: MessageSender,
+    ): Promise<Response | null> => {
+        // const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
+        try {
+            if (!subcommand) {
+                const detailSet = ENV.I18N.command?.detail?.set || '默认详细信息';
+                return sender.sendRichText(`\`\`\`plaintext\n${detailSet}\n\`\`\``, 'MarkdownV2');
+            }
+
+            const { keys, values } = this.parseMappings(context);
+
+            const { flags, remainingText } = this.tokenizeSubcommand(subcommand);
+            const needUpdate = !remainingText;
+            let msg = '';
+            let hasKey = false;
+
+            if (context.USER_CONFIG.AI_PROVIDER === 'auto') {
+                context.USER_CONFIG.AI_PROVIDER = 'openai';
+            }
+
+            for (const { flag, value } of flags) {
+                const result = await this.processSubcommand(flag, value, keys, values, context, sender);
+                if (result instanceof Response) {
+                    return result;
+                }
+                if (result.msg) {
+                    msg += result.msg;
+                }
+                if (!hasKey && result.hasKey) {
+                    hasKey = true;
+                }
+            }
+
+            if (needUpdate && hasKey) {
+                context.USER_CONFIG.DEFINE_KEYS = Array.from(new Set(context.USER_CONFIG.DEFINE_KEYS));
+                await ENV.DATABASE.put(
+                    context.SHARE_CONTEXT.configStoreKey,
+                    JSON.stringify(ConfigMerger.trim(context.USER_CONFIG, ENV.LOCK_USER_CONFIG_KEYS)),
+                );
+                msg += 'Update user config successful';
+            }
+
+            if (msg) {
+                await sender.sendPlainText(msg);
+            }
+
+            if (remainingText) {
+                message.text = remainingText;
+                context.MIDDEL_CONTEXT.originalMessage.text = remainingText;
+                return null;
+            }
+
+            return new Response('success');
+        } catch (e) {
+            return sender.sendPlainText(`ERROR: ${(e as Error).message}`);
+        }
+    };
+
+    private parseMappings(context: WorkerContext): { keys: Record<string, string>; values: Record<string, string> } {
+        const parseMapping = (mapping: string): Record<string, string> => {
+            const entries: [string, string][] = [];
+            const pairs = mapping.split('|');
+            for (const k of pairs) {
+                const [key, ...rest] = k.split(':');
+                if (!key) {
+                    console.warn(`Invalid key in mapping: "${k}"`);
+                    continue;
+                }
+                // 防止映射值中同样包含:
+                const value = rest.length > 0 ? rest.join(':') : '';
+                entries.push([key, value]);
+            }
+            return Object.fromEntries(entries);
+        };
+
+        const keys = parseMapping(context.USER_CONFIG.MAPPING_KEY);
+        const values = parseMapping(context.USER_CONFIG.MAPPING_VALUE);
+        return { keys, values };
+    }
+
+    private tokenizeSubcommand(subcommand: string): { flags: { flag: string; value: string }[]; remainingText: string } {
+        const regex = /(-\w+)\s+(".*?"|\S+)/g;
+        const flags: { flag: string; value: string }[] = [];
+        let lastIndex = 0;
+        let match: RegExpExecArray | null;
+
+        while ((match = regex.exec(subcommand)) !== null) {
+            const flag = match[1];
+            let value = match[2];
+            // 去除引号
+            if (value.startsWith('"') && value.endsWith('"')) {
+                value = value.slice(1, -1);
+            }
+            flags.push({ flag, value });
+            lastIndex = regex.lastIndex;
+        }
+
+        const remainingText = subcommand.slice(lastIndex).trim();
+
+        return { flags, remainingText };
+    }
+
+    private async processSubcommand(
+        flag: string,
+        value: string,
+        keys: Record<string, string>,
+        values: Record<string, any>,
+        context: WorkerContext,
+        sender: MessageSender,
+    ): Promise<{ msg: string; hasKey: boolean } | Response> {
+        let msg = '';
+        let hasKey = false;
+
+        let key = keys[flag];
+        let mappedValue = values[value] ?? value;
+
+        if (!key) {
+            return sender.sendPlainText(`Mapping Key ${flag} 不存在`);
+        }
+
+        if (ENV.LOCK_USER_CONFIG_KEYS.includes(key)) {
+            return sender.sendPlainText(`Key ${key} 是锁定的`);
+        }
+
+        const role_prefix = '~';
+        switch (key) {
+            case 'SYSTEM_INIT_MESSAGE':
+                if (value.startsWith(role_prefix)) {
+                    const promptKey = value.substring(1);
+                    mappedValue = context.USER_CONFIG.PROMPT[promptKey] || ENV.I18N?.env?.system_init_message || 'You are a helpful assistant';
+                    if (!context.USER_CONFIG.PROMPT[promptKey]) {
+                        msg += `>\`${value} 不存在，将使用默认提示\`\n`;
+                    }
+                }
+                break;
+            case 'CHAT_MODEL':
+            case 'VISION_MODEL':
+            case 'STT_MODEL':
+                key = context.USER_CONFIG.AI_PROVIDER
+                    ? `${context.USER_CONFIG.AI_PROVIDER.toUpperCase()}_${key}`
+                    : key;
+                break;
+            // case 'CURRENT_MODE':
+            //     if (!Object.keys(context.USER_CONFIG.MODES).includes(value)) {
+            //         return sender.sendPlainText(`模式 ${value} 不存在`);
+            //     }
+            //     break;
+            case 'USE_TOOLS':
+                if (value === 'on') {
+                    mappedValue = Object.keys(ENV.TOOLS);
+                } else if (value === 'off') {
+                    mappedValue = [];
+                }
+                break;
+            default:
+                break;
+        }
+
+        if (!(key in context.USER_CONFIG)) {
+            return sender.sendPlainText(`Key ${key} 未找到`);
+        }
+
+        context.USER_CONFIG[key] = mappedValue;
+        if (!context.USER_CONFIG.DEFINE_KEYS.includes(key)) {
+            context.USER_CONFIG.DEFINE_KEYS.push(key);
+        }
+        console.log(`/set ${key} ${(JSON.stringify(mappedValue) || value).substring(0, 100)}`);
+        hasKey = true;
+        return { msg, hasKey };
+    }
+}
+
+export class PerplexityCommandHandler implements CommandHandler {
+    command = '/pplx';
+    needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
+    scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
+    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
+        if (!ENV.PPLX_COOKIE) {
+            return sender.sendPlainText('Perplexity cookie is not set');
+        }
+        const supportedModes = ['internet', 'scholar', 'writing', 'wolfram', 'youtube', 'reddit'];
+        const match = subcommand.split(' ')[0];
+        const mode = supportedModes.find(m => match === m) || 'internet';
+        if (mode === match) {
+            subcommand = subcommand.slice(match.length).trim();
+        }
+        if (!subcommand) {
+            return sender.sendPlainText('Please input your query');
+        }
+        const perplexityMessageData = {
+            version: '2.9',
+            source: 'default',
+            attachments: [],
+            language: 'en-GB',
+            timezone: 'Europe/London',
+            search_focus: mode,
+            frontend_uuid: UUIDv4(),
+            mode: 'concise',
+            is_related_query: false,
+            is_default_related_query: false,
+            visitor_id: UUIDv4(),
+            frontend_context_uuid: UUIDv4(),
+            prompt_source: 'user',
+            query_source: 'home',
+        };
+
+        const perplexityMessage = [`42["perplexity_ask", "${subcommand}", ${JSON.stringify(perplexityMessageData)}]`];
+
+        const perplexityWsUrl = 'wss://www.perplexity.ai/socket.io/?EIO=4&transport=websocket';
+        const perplexityWsOptions = {
+            headers: {
+                'Cookie': ENV.PPLX_COOKIE,
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+                'Accept': '*/*',
+                'priority': 'u=1, i',
+                'Referer': 'https://www.perplexity.ai/',
+            },
+            rejectUnauthorized: false,
+        };
+        const resp = await (await sender.sendRichText('Perplexity is asking...')).json();
+        sender.update({
+            message_id: resp.result.message_id,
+        });
+
+        const onStream = OnStreamHander(sender, context);
+        const logs = getLogSingleton(context.USER_CONFIG);
+        logs.chat.model.push(`Perplexity ${mode}`);
+        const startTime = Date.now();
+        const result = await WssRequest(perplexityWsUrl, null, perplexityWsOptions, perplexityMessage, { onStream }).catch(console.error);
+        logs.chat.time.push(`${((Date.now() - startTime) / 1000).toFixed(1)}s`);
+        const nextTime = onStream.nextEnableTime?.() ?? 0;
+        if (nextTime > Date.now()) {
+            await new Promise(resolve => setTimeout(resolve, nextTime - Date.now()));
+        }
+        await onStream(result, true);
+        return new Response('success');
     };
 }

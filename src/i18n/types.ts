@@ -11,6 +11,7 @@ interface HelpI18n {
     system: string;
     redo: string;
     echo: string;
+    set: string;
 }
 
 export interface I18n {
@@ -21,6 +22,9 @@ export interface I18n {
         help: HelpI18n & Record<string, string>;
         new: {
             new_chat_start: string;
+        };
+        detail?: {
+            set: string;
         };
     };
 }

@@ -1,25 +1,34 @@
 import { imageToBase64String, renderBase64DataURI } from '../utils/image';
 import type { AgentUserConfig } from '../config/env';
 import { ENV } from '../config/env';
-import type { ChatAgent, ChatStreamTextHandler, HistoryItem, ImageAgent, LLMChatParams } from './types';
+import { Log } from '../extra/log/logDecortor';
+import type { UnionData } from '../telegram/utils/utils';
+import type { AudioAgent, ChatAgent, ChatStreamTextHandler, CompletionData, HistoryItem, ImageAgent, ImageResult, LLMChatParams } from './types';
 import { requestChatCompletions } from './request';
+import { requestText2Image } from './chat';
 
 export async function renderOpenAIMessage(item: HistoryItem): Promise<any> {
     const res: any = {
-        role: item.role,
-        content: item.content,
+        ...item,
+        content: item.content || [],
     };
     if (item.images && item.images.length > 0) {
         res.content = [];
         if (item.content) {
             res.content.push({ type: 'text', text: item.content });
+        } else {
+            // 兼容claude模型必须附带文字进行图像识别
+            res.content.push({ type: 'text', text: '请帮我解读这张图片' });
         }
         for (const image of item.images) {
             switch (ENV.TELEGRAM_IMAGE_TRANSFER_MODE) {
                 case 'base64':
-                    res.content.push({ type: 'image_url', image_url: {
-                        url: renderBase64DataURI(await imageToBase64String(image)),
-                    } });
+                    res.content.push({
+                        type: 'image_url',
+                        image_url: {
+                            url: renderBase64DataURI(await imageToBase64String(image)),
+                        },
+                    });
                     break;
                 case 'url':
                 default:
@@ -33,7 +42,11 @@ export async function renderOpenAIMessage(item: HistoryItem): Promise<any> {
 
 class OpenAIBase {
     readonly name = 'openai';
+    type = 'chat';
     apikey = (context: AgentUserConfig): string => {
+        if (this.type === 'tool' && context.FUNCTION_CALL_API_KEY) {
+            return context.FUNCTION_CALL_API_KEY;
+        }
         const length = context.OPENAI_API_KEY.length;
         return context.OPENAI_API_KEY[Math.floor(Math.random() * length)];
     };
@@ -47,39 +60,78 @@ export class OpenAI extends OpenAIBase implements ChatAgent {
     };
 
     readonly model = (ctx: AgentUserConfig): string => {
+        if (this.type === 'tool' && ctx.FUNCTION_CALL_MODEL) {
+            return ctx.FUNCTION_CALL_MODEL;
+        }
         return ctx.OPENAI_CHAT_MODEL;
+    };
+
+    constructor(type: string = 'chat') {
+        super();
+        this.type = type;
+    }
+
+    // 仅文本对话使用该地址
+    readonly base_url = (context: AgentUserConfig): string => {
+        if (this.type === 'tool' && context.FUNCTION_CALL_BASE) {
+            return context.FUNCTION_CALL_BASE;
+        }
+        return context.OPENAI_API_BASE;
     };
 
     private render = async (item: HistoryItem): Promise<any> => {
         return renderOpenAIMessage(item);
     };
 
-    readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<string> => {
-        const { message, images, prompt, history } = params;
-        const url = `${context.OPENAI_API_BASE}/chat/completions`;
+    @Log
+    readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<CompletionData> => {
+        const { prompt, history, extra_params } = params;
+        const url = `${this.base_url(context)}/chat/completions`;
         const header = {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${this.apikey(context)}`,
         };
 
-        const messages = [...(history || []), { role: 'user', content: message, images }];
+        const messages = [...(history || [])];
+
         if (prompt) {
+            if (messages[0]?.role === 'tool') {
+                messages.shift();
+            }
             messages.unshift({ role: context.SYSTEM_INIT_MESSAGE_ROLE, content: prompt });
         }
 
-        const body = {
+        const body: Record<string, any> = {
             model: context.OPENAI_CHAT_MODEL,
             ...context.OPENAI_API_EXTRA_PARAMS,
             messages: await Promise.all(messages.map(this.render)),
-            stream: onStream != null,
+            ...(context.ENABLE_SHOWTOKEN && { stream_options: { include_usage: true } }),
+            stream: !!onStream,
+            ...extra_params,
         };
+        delete body.agent;
+        delete body.type;
+        // 过滤掉不支持的参数
+        if (Object.keys(ENV.DROPS_OPENAI_PARAMS).length > 0) {
+            for (const [models, params] of Object.entries(ENV.DROPS_OPENAI_PARAMS)) {
+                if (models.includes(body.model)) {
+                    params.split(',').forEach(p => delete body[p]);
+                    break;
+                }
+            }
+            if (!body.stream && onStream) {
+                body.stream = false;
+                onStream = null;
+            }
+        }
 
+        // console.log(JSON.stringify(messages, null, 2));
         return requestChatCompletions(url, header, body, onStream);
     };
 }
 
 export class Dalle extends OpenAIBase implements ImageAgent {
-    readonly modelKey = 'OPENAI_DALLE_API';
+    readonly modelKey = 'DALL_E_MODEL';
 
     enable = (context: AgentUserConfig): boolean => {
         return context.OPENAI_API_KEY.length > 0;
@@ -89,7 +141,8 @@ export class Dalle extends OpenAIBase implements ImageAgent {
         return ctx.DALL_E_MODEL;
     };
 
-    request = async (prompt: string, context: AgentUserConfig): Promise<string> => {
+    @Log
+    request = async (prompt: string, context: AgentUserConfig): Promise<ImageResult> => {
         const url = `${context.OPENAI_API_BASE}/images/generations`;
         const header = {
             'Content-Type': 'application/json',
@@ -105,15 +158,67 @@ export class Dalle extends OpenAIBase implements ImageAgent {
             body.quality = context.DALL_E_IMAGE_QUALITY;
             body.style = context.DALL_E_IMAGE_STYLE;
         }
+        return requestText2Image(url, header, body, this.render);
+    };
+
+    render = async (response: Response): Promise<ImageResult> => {
+        const resp = await response.json();
+        if (resp.error?.message) {
+            throw new Error(resp.error.message);
+        }
+        return {
+            type: 'image',
+            url: resp?.data?.map((i: { url: any }) => i?.url),
+            text: resp?.data?.[0]?.revised_prompt || '',
+        };
+    };
+}
+
+export class Transcription extends OpenAIBase implements AudioAgent {
+    readonly modelKey = 'OPENAI_STT_MODEL';
+
+    enable = (context: AgentUserConfig): boolean => {
+        return context.OPENAI_API_KEY.length > 0;
+    };
+
+    model = (ctx: AgentUserConfig): string => {
+        return ctx.OPENAI_STT_MODEL;
+    };
+
+    @Log
+    request = async (audio: Blob, context: AgentUserConfig, file_name: string): Promise<UnionData> => {
+        const url = `${context.OPENAI_API_BASE}/audio/transcriptions`;
+        const header = {
+            Authorization: `Bearer ${this.apikey(context)}`,
+            Accept: 'application/json',
+        };
+        const formData = new FormData();
+        formData.append('file', audio, file_name);
+        formData.append('model', this.model(context));
+        if (context.OPENAI_STT_EXTRA_PARAMS) {
+            Object.entries(context.OPENAI_STT_EXTRA_PARAMS as string).forEach(([k, v]) => {
+                formData.append(k, v);
+            });
+        }
+        formData.append('response_format', 'json');
         const resp = await fetch(url, {
             method: 'POST',
             headers: header,
-            body: JSON.stringify(body),
-        }).then(res => res.json()) as any;
+            body: formData,
+            redirect: 'follow',
+        }).then(res => res.json());
 
         if (resp.error?.message) {
             throw new Error(resp.error.message);
         }
-        return resp?.data?.[0]?.url;
+        if (resp.text === undefined) {
+            console.error(resp);
+            throw new Error(resp);
+        }
+        console.log(`Transcription: ${resp.text}`);
+        return {
+            type: 'text',
+            text: resp.text,
+        };
     };
 }

@@ -1,7 +1,8 @@
 import { imageToBase64String } from '../utils/image';
 import type { AgentUserConfig } from '../config/env';
 import { ENV } from '../config/env';
-import type { ChatAgent, ChatStreamTextHandler, HistoryItem, LLMChatParams } from './types';
+import { Log } from '../extra/log/logDecortor';
+import type { ChatAgent, ChatStreamTextHandler, CompletionData, HistoryItem, LLMChatParams } from './types';
 import type { SSEMessage, SSEParserResult } from './stream';
 import { Stream } from './stream';
 import type { SseChatCompatibleOptions } from './request';
@@ -64,8 +65,9 @@ export class Anthropic implements ChatAgent {
         }
     }
 
-    readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<string> => {
-        const { message, images, prompt, history } = params;
+    @Log
+    readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<CompletionData> => {
+        const { prompt, history } = params;
         const url = `${context.ANTHROPIC_API_BASE}/messages`;
         const header = {
             'x-api-key': context.ANTHROPIC_API_KEY || '',
@@ -73,7 +75,7 @@ export class Anthropic implements ChatAgent {
             'content-type': 'application/json',
         };
 
-        const messages: HistoryItem[] = (history || []).concat({ role: 'user', content: message, images });
+        const messages: HistoryItem[] = history || []; // .concat({ role: 'user', content: message, images });
 
         if (messages.length > 0 && messages[0].role === 'assistant') {
             messages.shift();

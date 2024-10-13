@@ -1,5 +1,4 @@
 /* eslint-disable regexp/no-super-linear-backtracking */
-
 const escapeChars = /([_*[\]()\\~`>#+\-=|{}.!])/g;
 
 export function escape(text: string): string {

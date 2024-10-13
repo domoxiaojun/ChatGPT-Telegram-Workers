@@ -1,0 +1,29 @@
+{
+    "url": "https://api.siliconflow.cn/v1/image/generations",
+    "method": "POST",
+    "headers": {
+        "Authorization": "Bearer {{ENV.SILICON_KEY}}",
+        "Content-Type": "application/json"
+    },
+    "body": {
+        "type": "json",
+        "content": {
+            "model": "FLUX.1-dev",
+            "prompt": "{{DATA}}",
+            "image_size": "1024x1024",
+            "num_inference_steps": 10
+        }
+    },
+    "response": {
+        "content": {
+            "input_type": "json",
+            "output_type": "image",
+            "output": "{{images[0].url}}"
+        },
+        "error": {
+            "input_type": "text",
+            "output_type": "text",
+            "output": "Error: {{.}}"
+        }
+    }
+}

@@ -1,7 +1,9 @@
 import type { AgentUserConfig } from '../config/env';
-import type { ChatAgent, ChatStreamTextHandler, ImageAgent, LLMChatParams } from './types';
+import { Log } from '../extra/log/logDecortor';
+import type { ChatAgent, ChatStreamTextHandler, CompletionData, ImageAgent, ImageResult, LLMChatParams } from './types';
 import { requestChatCompletions } from './request';
 import { renderOpenAIMessage } from './openai';
+import { requestText2Image } from './chat';
 
 class AzureBase {
     readonly name = 'azure';
@@ -29,8 +31,9 @@ export class AzureChatAI extends AzureBase implements ChatAgent {
         return this.modelFromURI(ctx.AZURE_COMPLETIONS_API);
     };
 
-    readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<string> => {
-        const { message, images, prompt, history } = params;
+    @Log
+    readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<CompletionData> => {
+        const { prompt, history } = params;
         const url = context.AZURE_COMPLETIONS_API;
         if (!url || !context.AZURE_API_KEY) {
             throw new Error('Azure Completions API is not set');
@@ -40,7 +43,7 @@ export class AzureChatAI extends AzureBase implements ChatAgent {
             'api-key': context.AZURE_API_KEY,
         };
 
-        const messages = [...(history || []), { role: 'user', content: message, images }];
+        const messages = [...(history || [])];
         if (prompt) {
             messages.unshift({ role: context.SYSTEM_INIT_MESSAGE_ROLE, content: prompt });
         }
@@ -66,7 +69,7 @@ export class AzureImageAI extends AzureBase implements ImageAgent {
         return this.modelFromURI(ctx.AZURE_DALLE_API);
     };
 
-    readonly request = async (prompt: string, context: AgentUserConfig): Promise<string> => {
+    readonly request = async (prompt: string, context: AgentUserConfig): Promise<ImageResult> => {
         const url = context.AZURE_DALLE_API;
         if (!url || !context.AZURE_API_KEY) {
             throw new Error('Azure DALL-E API is not set');
@@ -86,15 +89,18 @@ export class AzureImageAI extends AzureBase implements ImageAgent {
         if (!validSize.includes(body.size)) {
             body.size = '1024x1024';
         }
-        const resp = await fetch(url, {
-            method: 'POST',
-            headers: header,
-            body: JSON.stringify(body),
-        }).then(res => res.json()) as any;
+        return requestText2Image(url, header, body, this.render);
+    };
 
+    render = async (response: Response): Promise<ImageResult> => {
+        const resp = await response.json();
         if (resp.error?.message) {
             throw new Error(resp.error.message);
         }
-        return resp?.data?.[0]?.url;
+        return {
+            type: 'image',
+            url: resp?.data?.map((i: { url: any }) => i?.url),
+            text: resp?.data?.[0]?.revised_prompt || '',
+        };
     };
 }

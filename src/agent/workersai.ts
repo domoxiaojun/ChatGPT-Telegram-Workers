@@ -1,5 +1,6 @@
 import type { AgentUserConfig } from '../config/env';
-import type { ChatAgent, ChatStreamTextHandler, HistoryItem, ImageAgent, LLMChatParams } from './types';
+import { Log } from '../extra/log/logDecortor';
+import type { ChatAgent, ChatStreamTextHandler, CompletionData, HistoryItem, ImageAgent, ImageResult, LLMChatParams } from './types';
 import type { SseChatCompatibleOptions } from './request';
 import { requestChatCompletions } from './request';
 
@@ -35,8 +36,9 @@ export class WorkersChat extends WorkerBase implements ChatAgent {
         };
     };
 
-    readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<string> => {
-        const { message, prompt, history } = params;
+    @Log
+    readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<CompletionData> => {
+        const { prompt, history } = params;
         const id = context.CLOUDFLARE_ACCOUNT_ID;
         const token = context.CLOUDFLARE_TOKEN;
         const model = context.WORKERS_CHAT_MODEL;
@@ -45,7 +47,7 @@ export class WorkersChat extends WorkerBase implements ChatAgent {
             Authorization: `Bearer ${token}`,
         };
 
-        const messages = [...(history || []), { role: 'user', content: message }];
+        const messages = [...(history || [])];
         if (prompt) {
             messages.unshift({ role: context.SYSTEM_INIT_MESSAGE_ROLE, content: prompt });
         }
@@ -76,13 +78,14 @@ export class WorkersImage extends WorkerBase implements ImageAgent {
         return ctx.WORKERS_IMAGE_MODEL;
     };
 
-    readonly request = async (prompt: string, context: AgentUserConfig): Promise<Blob> => {
+    @Log
+    readonly request = async (prompt: string, context: AgentUserConfig): Promise<ImageResult> => {
         const id = context.CLOUDFLARE_ACCOUNT_ID;
         const token = context.CLOUDFLARE_TOKEN;
         if (!id || !token) {
             throw new Error('Cloudflare account ID or token is not set');
         }
         const raw = await this.run(context.WORKERS_IMAGE_MODEL, { prompt }, id, token);
-        return await raw.blob();
+        return { type: 'image', raw: [await raw.blob()] };
     };
 }

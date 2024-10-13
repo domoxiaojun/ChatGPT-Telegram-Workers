@@ -31,7 +31,7 @@ export type TemplateResponseType = 'json' | 'text';
  * html: HTML格式, 将渲染结果作为HTML格式发送到telegram
  * markdown: Markdown格式, 将渲染结果作为Markdown格式发送到telegram
  */
-export type TemplateOutputType = 'text' | 'image' | 'html' | 'markdown';
+export type TemplateOutputType = 'text' | 'image' | 'html' | 'markdown' | 'markdownV2';
 
 export interface RequestTemplate {
     url: string; // 必选, 支持插值
@@ -57,6 +57,7 @@ export interface RequestTemplate {
             output_type: TemplateOutputType;
             output: string;
         };
+        render?: string; // 可选, 允许增加额外信息
     };
 }
 
@@ -138,7 +139,10 @@ export async function executeRequest(template: RequestTemplate, data: any): Prom
             content,
         };
     }
-    const content = await renderOutput(template.response.content?.input_type, template.response.content?.output, response);
+    let content = await renderOutput(template.response.content?.input_type, template.response.content?.output, response);
+    if (template.response?.render) {
+        content = template.response.render.replace('{{input}}', data.DATA).replace('{{output}}', content);
+    }
     return {
         type: template.response.content.output_type,
         content,

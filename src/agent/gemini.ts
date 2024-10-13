@@ -1,11 +1,12 @@
 import type { AgentUserConfig } from '../config/env';
-import type { ChatAgent, ChatStreamTextHandler, HistoryItem, LLMChatParams } from './types';
+import { Log } from '../extra/log/logDecortor';
+import type { ChatAgent, ChatStreamTextHandler, CompletionData, HistoryItem, LLMChatParams } from './types';
 
 export class Gemini implements ChatAgent {
     readonly name = 'gemini';
     readonly modelKey = 'GOOGLE_COMPLETIONS_MODEL';
 
-    static GEMINI_ROLE_MAP: Record<string, string> = {
+    static readonly GEMINI_ROLE_MAP: Record<string, string> = {
         assistant: 'model',
         system: 'user',
         user: 'user',
@@ -30,8 +31,9 @@ export class Gemini implements ChatAgent {
         };
     };
 
-    readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<string> => {
-        const { message, prompt, history } = params;
+    @Log
+    readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<CompletionData> => {
+        const { prompt, history } = params;
         if (onStream !== null) {
             console.warn('Stream mode is not supported');
         }
@@ -41,7 +43,7 @@ export class Gemini implements ChatAgent {
             'generateContent'
         }?key=${context.GOOGLE_API_KEY}`;
 
-        const contentsTemp = [...history || [], { role: 'user', content: message }];
+        const contentsTemp = [...history || []];
         if (prompt) {
             contentsTemp.unshift({ role: 'assistant', content: prompt });
         }
@@ -65,7 +67,7 @@ export class Gemini implements ChatAgent {
             },
             body: JSON.stringify({ contents }),
         });
-        const data = await resp.json() as any;
+        const data = await resp.json();
         try {
             return data.candidates[0].content.parts[0].text;
         } catch (e) {

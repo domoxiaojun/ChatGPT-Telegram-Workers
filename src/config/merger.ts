@@ -1,7 +1,7 @@
 import type { AgentUserConfig } from './env';
 
 export class ConfigMerger {
-    private static parseArray(raw: string): string[] {
+    static parseArray(raw: string): string[] {
         raw = raw.trim();
         if (raw === '') {
             return [];
@@ -42,7 +42,7 @@ export class ConfigMerger {
                 continue;
             }
             // 默认为字符串类型
-            const t = target[key] ? typeof target[key] : 'string';
+            const t = (target[key] !== null && target[key] !== undefined) ? typeof target[key] : 'string';
             // 不是字符串直接赋值
             if (typeof source[key] !== 'string') {
                 target[key] = source[key];
@@ -63,7 +63,7 @@ export class ConfigMerger {
                         target[key] = ConfigMerger.parseArray(source[key]);
                     } else {
                         try {
-                            target[key] = JSON.parse(source[key]);
+                            target[key] = { ...target[key], ...JSON.parse(source[key]) };
                         } catch (e) {
                             console.error(e);
                         }
@@ -76,3 +76,5 @@ export class ConfigMerger {
         }
     }
 }
+
+export const parseArray = ConfigMerger.parseArray;

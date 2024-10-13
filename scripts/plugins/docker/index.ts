@@ -6,8 +6,9 @@ FROM node:alpine as PROD
 
 WORKDIR /app
 COPY index.js package.json /app/
-RUN npm install --only=production --omit=dev
-RUN apk add --no-cache sqlite
+RUN npm install --only=production --omit=dev && \
+apk add --no-cache sqlite && \
+npm cache clean --force
 EXPOSE 8787
 CMD ["npm", "run", "start"]
 `;
@@ -24,7 +25,9 @@ const packageJson = `
     "start": "node index.js"
   },
   "dependencies": {
-    "cloudflare-worker-adapter": "^1.2.3"
+    "cloudflare-worker-adapter": "^1.2.3",
+    "node-cron": "^3.0.2",
+    "ws": "^8.13.0"
   },
   "devDependencies": {}
 }

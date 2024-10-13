@@ -1,5 +1,7 @@
+/* eslint-disable unused-imports/no-unused-vars */
 import { createRouter } from './route';
 import { ENV } from './config/env';
+import tasks from './extra/tools/scheduleTask';
 
 export default {
     async fetch(request: Request, env: any): Promise<Response> {
@@ -12,6 +14,18 @@ export default {
                 message: (e as Error).message,
                 stack: (e as Error).stack,
             }), { status: 500 });
+        }
+    },
+    async scheduled(event: Event, env: any, ctx: any) {
+        try {
+            const promises = [];
+            for (const task of Object.values(tasks)) {
+                promises.push(task(env));
+            }
+            await Promise.all(promises);
+            console.log('All tasks done.');
+        } catch (e) {
+            console.error('Error in scheduled tasks:', e);
         }
     },
 };

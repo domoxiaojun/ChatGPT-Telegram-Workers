@@ -2,8 +2,9 @@ import type * as Telegram from 'telegram-bot-api-types';
 import type { WorkerContext } from '../../config/context';
 import type { RequestTemplate } from '../../plugins/template';
 import { executeRequest, formatInput } from '../../plugins/template';
-import { MessageSender } from '../utils/send';
+import { MessageSender, sendAction } from '../utils/send';
 import { ENV } from '../../config/env';
+import type { UnionData } from '../utils/utils';
 import type { CommandHandler } from './types';
 import {
     ClearEnvCommandHandler,
@@ -12,7 +13,9 @@ import {
     HelpCommandHandler,
     ImgCommandHandler,
     NewCommandHandler,
+    PerplexityCommandHandler,
     RedoCommandHandler,
+    SetCommandHandler,
     SetEnvCommandHandler,
     SetEnvsCommandHandler,
     StartCommandHandler,
@@ -33,9 +36,32 @@ const SYSTEM_COMMANDS: CommandHandler[] = [
     new VersionCommandHandler(),
     new SystemCommandHandler(),
     new HelpCommandHandler(),
+    new SetCommandHandler(),
+    new PerplexityCommandHandler(),
 ];
 
-async function handleSystemCommand(message: Telegram.Message, raw: string, command: CommandHandler, context: WorkerContext): Promise<Response> {
+// const commandHanders: any[] = [
+//     StartCommandHandler,
+//     NewCommandHandler,
+//     RedoCommandHandler,
+//     ImgCommandHandler,
+//     SetEnvCommandHandler,
+//     SetEnvsCommandHandler,
+//     DelEnvCommandHandler,
+//     ClearEnvCommandHandler,
+//     VersionCommandHandler,
+//     SystemCommandHandler,
+//     HelpCommandHandler,
+//     SetCommandHandler,
+// ];
+
+// function* SystemCommandGen(): Generator<CommandHandler, void, unknown> {
+//     for (const Command of commandHanders) {
+//         yield new Command();
+//     }
+// };
+
+async function handleSystemCommand(message: Telegram.Message, raw: string, command: CommandHandler, context: WorkerContext): Promise<Response | UnionData | null> {
     const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
     try {
         // 如果存在权限条件
@@ -57,7 +83,7 @@ async function handleSystemCommand(message: Telegram.Message, raw: string, comma
     }
     const subcommand = raw.substring(command.command.length).trim();
     try {
-        return await command.handle(message, subcommand, context);
+        return await command.handle(message, subcommand, context, sender);
     } catch (e) {
         return sender.sendPlainText(`ERROR: ${(e as Error).message}`);
     }
@@ -76,13 +102,17 @@ async function handlePluginCommand(message: Telegram.Message, command: string, r
             ENV: ENV.PLUGINS_ENV,
         });
         if (type === 'image') {
+            sendAction(context.SHARE_CONTEXT.botToken, message.chat.id, 'upload_photo');
             return sender.sendPhoto(content);
         }
+        sendAction(context.SHARE_CONTEXT.botToken, message.chat.id, 'typing');
         switch (type) {
             case 'html':
                 return sender.sendRichText(content, 'HTML');
             case 'markdown':
                 return sender.sendRichText(content, 'Markdown');
+            case 'markdownV2':
+                return sender.sendRichText(content, 'MarkdownV2');
             case 'text':
             default:
                 return sender.sendPlainText(content);
@@ -93,7 +123,7 @@ async function handlePluginCommand(message: Telegram.Message, command: string, r
     }
 }
 
-export async function handleCommandMessage(message: Telegram.Message, context: WorkerContext): Promise<Response | null> {
+export async function handleCommandMessage(message: Telegram.Message, context: WorkerContext): Promise<Response | UnionData | null> {
     let text = (message.text || message.caption || '').trim();
 
     if (ENV.CUSTOM_COMMAND[text]) {
@@ -106,12 +136,19 @@ export async function handleCommandMessage(message: Telegram.Message, context: W
         SYSTEM_COMMANDS.push(new EchoCommandHandler());
     }
 
+    // const SYSTEM_COMMANDS = SystemCommandGen();
+
     // 查找插件命令
     for (const key in ENV.PLUGINS_COMMAND) {
         if (text === key || text.startsWith(`${key} `)) {
             let template = ENV.PLUGINS_COMMAND[key].value.trim();
             if (template.startsWith('http')) {
                 template = await fetch(template).then(r => r.text());
+            }
+            // 由于插值位置较多，直接检索整个模板是否包含占位符
+            if (key.trim() === text.trim() && (template.includes('{{DATA}}'))) {
+                const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
+                return sender.sendPlainText(`Tip: ${ENV.PLUGINS_COMMAND[key].description || 'Please input something'}`, 'tip');
             }
             return await handlePluginCommand(message, key, text, JSON.parse(template), context);
         }
@@ -127,6 +164,7 @@ export async function handleCommandMessage(message: Telegram.Message, context: W
 }
 
 export function commandsBindScope(): Record<string, Telegram.SetMyCommandsParams> {
+    // const SYSTEM_COMMANDS = SystemCommandGen();
     const scopeCommandMap: Record<string, Telegram.BotCommand[]> = {
         all_private_chats: [],
         all_group_chats: [],
