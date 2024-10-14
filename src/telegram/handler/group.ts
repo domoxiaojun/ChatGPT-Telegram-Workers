@@ -115,9 +115,7 @@ export class GroupMention implements MessageHandler {
         }
         // 开启引用消息，并且不是回复bot，则将引用消息和当前消息合并
         if (ENV.EXTRA_MESSAGE_CONTEXT && !replyMe && message.reply_to_message?.text) {
-            if (message.text || message.caption) {
-                message.text = `${message.reply_to_message.text}\n${message.text || message.caption}`;
-            }
+            message.text = `> ${message.reply_to_message.text}\n${message.text || message.caption || ''}`;
         }
         // 缓存修整后的消息
         context.MIDDEL_CONTEXT.originalMessage.text = message.text;

@@ -824,8 +824,8 @@ const ENV_KEY_MAPPER = {
   WORKERS_AI_MODEL: "WORKERS_CHAT_MODEL"
 };
 class Environment extends EnvironmentConfig {
-  BUILD_TIMESTAMP = 1728889868;
-  BUILD_VERSION = "f403937";
+  BUILD_TIMESTAMP = 1728891396;
+  BUILD_VERSION = "9fd7f38";
   I18N = loadI18n();
   PLUGINS_ENV = {};
   USER_CONFIG = createAgentUserConfig();
@@ -3569,10 +3569,8 @@ class GroupMention {
       throw new Error("Not mention");
     }
     if (ENV.EXTRA_MESSAGE_CONTEXT && !replyMe && message.reply_to_message?.text) {
-      if (message.text || message.caption) {
-        message.text = `${message.reply_to_message.text}
-${message.text || message.caption}`;
-      }
+      message.text = `> ${message.reply_to_message.text}
+${message.text || message.caption || ""}`;
     }
     context.MIDDEL_CONTEXT.originalMessage.text = message.text;
     return null;
