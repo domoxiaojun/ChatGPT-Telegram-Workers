@@ -2,7 +2,7 @@
 import type * as Telegram from 'telegram-bot-api-types';
 import type { WorkerContext } from '../../config/context';
 import type { UnionData } from '../utils/utils';
-import { UUIDv4, isTelegramChatTypeGroup } from '../utils/utils';
+import { UUIDv4, isCfWorker, isTelegramChatTypeGroup } from '../utils/utils';
 import type { HistoryItem, HistoryModifierResult } from '../../agent/types';
 import { OnStreamHander, chatWithLLM, sendImages } from '../handler/chat';
 import { customInfo, loadChatLLM, loadImageGen } from '../../agent';
@@ -539,6 +539,9 @@ export class PerplexityCommandHandler implements CommandHandler {
     needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
     scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
+        if (isCfWorker) {
+            return sender.sendPlainText('Due to the limitation of browser, Perplexity is not supported in worker / browser');
+        }
         if (!ENV.PPLX_COOKIE) {
             return sender.sendPlainText('Perplexity cookie is not set');
         }

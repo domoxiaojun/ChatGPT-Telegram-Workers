@@ -32,7 +32,7 @@
         "deploy:vercel": "vercel deploy --prod",
         "deploy:plugin": "BUILD_MODE=plugins-page vite build && wrangler pages deploy plugins --project-name=interpolate-test --branch=main",
         "start:dist": "node dist/index.js",
-        "start:local": "CONFIG_PATH=./src/adapter/local/config.json TOML_PATH=./wrangler.toml tsx src/adapter/local/index.ts",
+        "start:local": "CONFIG_PATH=./config.json TOML_PATH=./wrangler.toml tsx src/adapter/local/index.ts",
         "start:debug": "wrangler dev --local",
         "prepare:vercel": "tsx ./scripts/plugins/vercel/setenv.ts",
         "wrangler": "wrangler"

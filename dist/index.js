@@ -47,7 +47,6 @@ var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read fr
 var __privateSet = (obj, member, value, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value) : member.set(obj, value), value);
 var __privateMethod = (obj, member, method) => (__accessCheck(obj, member, "access private method"), method);
 var _request_dec, _init, _request_dec2, _a, _init2, _request_dec3, _b, _init3, _request_dec4, _c, _init4, _request_dec5, _d, _init5, _request_dec6, _init6, _request_dec7, _init7, _request_dec8, _init8, _request_dec9, _e, _init9, _request_dec10, _f, _init10, _request_dec11, _g, _init11, _request_dec12, _h, _init12, _exec_dec, _init13;
-import WebSocket from "ws";
 class ConfigMerger {
   static parseArray(raw) {
     raw = raw.trim();
@@ -824,8 +823,8 @@ const ENV_KEY_MAPPER = {
   WORKERS_AI_MODEL: "WORKERS_CHAT_MODEL"
 };
 class Environment extends EnvironmentConfig {
-  BUILD_TIMESTAMP = 1728817933;
-  BUILD_VERSION = "bb11947";
+  BUILD_TIMESTAMP = 1728838053;
+  BUILD_VERSION = "fce547e";
   I18N = loadI18n();
   PLUGINS_ENV = {};
   USER_CONFIG = createAgentUserConfig();
@@ -1101,10 +1100,7 @@ function getLog(context, returnModel = false) {
   if (!logObj)
     return "";
   if (returnModel) {
-    return {
-      chat: logObj.chat.model.at(-1) || "UNKNOWN",
-      tool: logObj.tool.model || "UNKNOWN"
-    };
+    return logObj.chat.model?.at(-1) || logObj.tool.model || "UNKNOWN";
   }
   if (logObj.tool.model) {
     let toolsLog = `${logObj.tool.model}`;
@@ -2698,7 +2694,7 @@ class MessageContext {
     this.chatType = message.chat.type;
     this.message = message;
     if (message.chat.type === "group" || message.chat.type === "supergroup") {
-      if (message?.reply_to_message && ENV.EXTRA_MESSAGE_CONTEXT && ENV.ENABLE_REPLY_TO_MENTION) {
+      if (message?.reply_to_message && ENV.EXTRA_MESSAGE_CONTEXT && ENV.ENABLE_REPLY_TO_MENTION && !message.reply_to_message.from?.is_bot) {
         this.reply_to_message_id = message.reply_to_message.message_id;
       } else {
         this.reply_to_message_id = message.message_id;
@@ -3266,7 +3262,7 @@ ${question.length > 400 ? `${question.slice(0, 200)}...${question.slice(-200)}` 
           const botName = context2.SHARE_CONTEXT.botName;
           const telegraph_prefix = `${prefix}
 #Answer
-🤖 **${getLog(context2.USER_CONFIG, true).chat}**
+🤖 **${getLog(context2.USER_CONFIG, true)}**
 `;
           const debug_info = `debug info:
 ${getLog(context2.USER_CONFIG)}`;
@@ -3481,6 +3477,7 @@ function UUIDv4() {
     return v.toString(16);
   });
 }
+const isCfWorker = typeof globalThis !== "undefined" && typeof globalThis.ServiceWorkerGlobalScope !== "undefined" && globalThis instanceof globalThis.ServiceWorkerGlobalScope;
 function checkMention(content, entities, botName, botId) {
   let isMention = false;
   for (const entity of entities) {
@@ -3793,7 +3790,7 @@ ${perplexityExtractor.finalAdd(data)}`;
   },
   finalAdd: (data) => {
     if (data.web_results && data.web_results.length > 0) {
-      return `${data.web_results.map((r, i) => `${i + 1}.[${r.name}](${r.url})`).join("\n")}`;
+      return `${data.web_results.map((r, i) => `${i + 1}. [${r.name}](${r.url})`).join("\n")}`;
     }
     return "";
   }
@@ -3825,7 +3822,8 @@ function perplexityFormatter(message) {
       };
   }
 }
-function WssRequest(url, protocols, options, messages, handlers) {
+async function WssRequest(url, protocols, options, messages, handlers) {
+  const { WebSocket } = await import("ws");
   let { extractor, formatter, onStream } = handlers;
   return new Promise((resolve) => {
     const ws = new WebSocket(url, options);
@@ -4361,6 +4359,9 @@ class PerplexityCommandHandler {
   needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
   scopes = ["all_private_chats", "all_chat_administrators"];
   handle = async (message, subcommand, context, sender) => {
+    if (isCfWorker) {
+      return sender.sendPlainText("Due to the limitation of browser, Perplexity is not supported in worker / browser");
+    }
     if (!ENV.PPLX_COOKIE) {
       return sender.sendPlainText("Perplexity cookie is not set");
     }
@@ -4976,6 +4977,7 @@ async function bindWebHookAction(request) {
   for (const token of ENV.TELEGRAM_AVAILABLE_TOKENS) {
     const api = createTelegramBotAPI(token);
     const url = `https://${domain}/telegram/${token.trim()}/${hookMode}`;
+    console.log("webhook url: ", url);
     const id = token.split(":")[0];
     result[id] = {};
     result[id].webhook = await api.setWebhook({ url }).then((res) => res.json()).catch((e) => errorToString(e));

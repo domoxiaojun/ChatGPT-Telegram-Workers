@@ -91,4 +91,6 @@ export function UUIDv4() {
     });
 }
 
-export const isBrowser = typeof window !== 'undefined' && typeof window.document !== 'undefined';
+export const isCfWorker = typeof globalThis !== 'undefined'
+    && typeof (globalThis as any).ServiceWorkerGlobalScope !== 'undefined'
+    && globalThis instanceof ((globalThis as any).ServiceWorkerGlobalScope);

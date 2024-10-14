@@ -1,4 +1,3 @@
-import WebSocket from 'ws';
 import type { CompletionData } from './types';
 import { AsyncIter } from './readable';
 import { iterStream } from './request';
@@ -16,7 +15,7 @@ const perplexityExtractor = {
     },
     finalAdd: (data: any): string => {
         if (data.web_results && data.web_results.length > 0) {
-            return `${data.web_results.map((r: Record<string, string>, i: number) => `${i + 1}.[${r.name}](${r.url})`).join('\n')}`;
+            return `${data.web_results.map((r: Record<string, string>, i: number) => `${i + 1}. [${r.name}](${r.url})`).join('\n')}`;
         }
         return '';
     },
@@ -50,7 +49,8 @@ function perplexityFormatter(message: any[]): { done: boolean; content: any } {
     }
 }
 
-export function WssRequest(url: string, protocols: string | string[] | null, options: Record<string, any>, messages: string[], handlers: Record<string, any>): Promise<any> {
+export async function WssRequest(url: string, protocols: string | string[] | null, options: Record<string, any>, messages: string[], handlers: Record<string, any>): Promise<any> {
+    const { WebSocket } = await import('ws');
     let { extractor, formatter, onStream } = handlers;
     return new Promise((resolve) => {
         const ws = protocols ? new WebSocket(url, protocols, options) : new WebSocket(url, options);

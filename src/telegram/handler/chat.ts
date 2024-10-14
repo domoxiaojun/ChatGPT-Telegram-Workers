@@ -165,83 +165,6 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
     }
 }
 
-// class StreamHandler {
-//     private sender: MessageSender;
-//     private context?: WorkerContext;
-//     private _nextEnableTime: number | null = null;
-
-//     constructor(sender: MessageSender, context?: WorkerContext) {
-//         this.sender = sender;
-//         this.context = context;
-//     }
-
-//     get nextEnableTime(): number | null {
-//         return this._nextEnableTime;
-//     }
-
-//     set nextEnableTime(value: number | null) {
-//         this._nextEnableTime = value;
-//     }
-
-//     public async onStream(text: string, isEnd: boolean = false): Promise<void> {
-//         try {
-//             if (isEnd && this.context && ENV.TELEGRAPH_NUM_LIMIT > 0
-//                 && text.length > ENV.TELEGRAPH_NUM_LIMIT
-//                 && ['group', 'supergroup'].includes(this.sender.context.chatType)) {
-//                 await this.sendTelegraph(this.context.MIDDEL_CONTEXT.originalMessage.text || 'Redo', text);
-//                 return;
-//             }
-
-//             if (this.nextEnableTime && this.nextEnableTime > Date.now()) {
-//                 return;
-//             }
-
-//             const data = this.context ? `${getLog(this.context.USER_CONFIG)}\n${text}` : text;
-//             const resp = await this.sender.sendRichText(
-//                 data,
-//                 ENV.DEFAULT_PARSE_MODE as Telegram.ParseMode,
-//                 'chat',
-//             );
-
-//             if (resp.status === 429) {
-//                 const retryAfter = Number.parseInt(resp.headers.get('Retry-After') || '', 10);
-//                 if (retryAfter) {
-//                     this.nextEnableTime = Date.now() + retryAfter * 1000;
-//                 }
-//                 return;
-//             }
-
-//             this.nextEnableTime = null;
-//             if (resp.ok) {
-//                 const respJson = await resp.json() as Telegram.ResponseWithMessage;
-//                 this.sender.update({
-//                     message_id: respJson.result.message_id,
-//                 });
-//             }
-//         } catch (e) {
-//             console.error(e);
-//         }
-//     }
-
-//     private async sendTelegraph(question: string, text: string): Promise<void> {
-//         const prefix = `#Question\n\`\`\`\n${question.length > 400 ? `${question.slice(0, 200)}...${question.slice(-200)}` : question}\n\`\`\`\n---`;
-//         const botName = this.context!.SHARE_CONTEXT.botName;
-
-//         const telegraphPrefix = `${prefix}\n#Answer\n🤖 **${this.context?.USER_CONFIG.MODEL}**\n`;
-//         const debugInfo = `debug info:${getLog(this.context!.USER_CONFIG)}`;
-//         const telegraphSuffix = `\n---\n\`\`\`\n${debugInfo}\n\`\`\``;
-//         const telegraphSender = new TelegraphSender(
-//             this.sender.context,
-//             botName,
-//             this.context!.SHARE_CONTEXT.telegraphAccessTokenKey!,
-//         );
-//         await telegraphSender.send('Daily Q&A', telegraphPrefix + text + telegraphSuffix);
-//         const url = `https://telegra.ph/${telegraphSender.teleph_path}`;
-//         const msg = `回答已经转换成完整文章~\n[🔗点击进行查看](${url})`;
-//         await this.sender.sendRichText(msg);
-//     }
-// }
-
 export function OnStreamHander(sender: MessageSender, context?: WorkerContext): ChatStreamTextHandler {
     let nextEnableTime: number | null = null;
     async function onStream(text: string, isEnd: boolean = false): Promise<any> {
@@ -255,7 +178,7 @@ export function OnStreamHander(sender: MessageSender, context?: WorkerContext): 
                     const prefix = `#Question\n\`\`\`\n${question.length > 400 ? `${question.slice(0, 200)}...${question.slice(-200)}` : question}\n\`\`\`\n---`;
                     const botName = context.SHARE_CONTEXT.botName;
 
-                    const telegraph_prefix = `${prefix}\n#Answer\n🤖 **${getLog(context.USER_CONFIG, true).chat}**\n`;
+                    const telegraph_prefix = `${prefix}\n#Answer\n🤖 **${getLog(context.USER_CONFIG, true)}**\n`;
                     const debug_info = `debug info:\n${getLog(context.USER_CONFIG) as string}`;
                     const telegraph_suffix = `\n---\n\`\`\`\n${debug_info}\n\`\`\``;
                     const telegraphSender = new TelegraphSender(sender.context, botName, context.SHARE_CONTEXT.telegraphAccessTokenKey!);
@@ -369,10 +292,6 @@ async function workflow(
         if (i < flows.length - 1 && ['image', 'text'].includes(result?.type)) {
             injectHistory(context, result, flows[i + 1].type);
         }
-        // if (result.type === 'audio') {
-        //     params.audio = [result.raw as unknown as Blob];
-        //     params.message = result.text!;
-        // }
 
         MiddleResult.push(result);
         clearMessageContext(context);
@@ -424,72 +343,6 @@ async function handleAudioToText(
     await sender.sendRichText(`${getLog(context.USER_CONFIG)}\n> \`${result.text}\``, 'MarkdownV2', 'chat');
     return result;
 }
-
-// async function workflow(context: WorkerContext, flows: Record<string, any>[], message: Telegram.Message, params: LLMChatRequestParams): Promise<Response | void> {
-//     const MiddleResult = context.MIDDEL_CONTEXT.middleResult;
-//     let eMsg;
-//     let result: UnionData | Response;
-
-//     for (let i = 0; i < flows.length; i++) {
-//         eMsg = (i === 0) ? context.MIDDEL_CONTEXT.originalMessage : MiddleResult[i - 1];
-//         if (params.extra_params) {
-//             delete params.extra_params;
-//         }
-//         if (Object.keys(flows[i]).filter(k => k !== 'type').length > 0) {
-//             params.extra_params = { ...flows[i] };
-//             delete params.extra_params?.type;
-//         }
-//         switch (`${eMsg?.type || 'text'}:${flows[i]?.type || 'text'}`) {
-//             case 'text:text':
-//             case 'image:text':
-//                 result = await chatWithLLM(message, params, context, null);
-//                 break;
-//             case 'text:image':
-//             {
-//                 const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
-//                 const agent = loadImageGen(context.USER_CONFIG);
-//                 if (!agent) {
-//                     return sender.sendPlainText('ERROR: Image generator not found');
-//                 }
-//                 sendAction(context.SHARE_CONTEXT.botToken, message.chat.id);
-//                 const msg = await sender.sendPlainText('Please wait a moment...').then(r => r.json());
-//                 result = await agent.request(eMsg.text!, context.USER_CONFIG);
-//                 await sendImages(result as ImageResult, ENV.SEND_IMAGE_FILE, sender, context.USER_CONFIG);
-//                 const api = createTelegramBotAPI(context.SHARE_CONTEXT.botToken);
-//                 api.deleteMessage({ chat_id: sender.context.chat_id, message_id: msg.result.message_id }).catch(console.error);
-//                 break;
-//             }
-//             case 'audio:text':
-//             {
-//                 const agent = loadAudioLLM(context.USER_CONFIG);
-//                 const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
-//                 if (!agent) {
-//                     return sender.sendPlainText('ERROR: Audio agent not found');
-//                 }
-//                 result = await agent.request(params.audio![0], context.USER_CONFIG, params.message);
-//                 context.MIDDEL_CONTEXT.history.push({ role: 'user', content: result.text || '' });
-//                 await sender.sendRichText(`${getLog(context.USER_CONFIG)}\n> \`${result.text}\``, 'MarkdownV2', 'chat');
-//                 break;
-//             }
-//             case 'image:image':
-//             default:
-//                 throw new Error('Unsupported type');
-//         }
-//         if (result instanceof Response) {
-//             return result;
-//         }
-//         if (i < flows.length - 1 && ['image', 'text'].includes(result.type)) {
-//             // Blob类型暂不支持
-//             injectHistory(context, result, flows[i + 1].type);
-//         }
-//         // if (result.type === 'audio') {
-//         //     params.audio = [result.raw as unknown as Blob];
-//         //     params.message = result.text!;
-//         // }
-//         MiddleResult.push(result);
-//         clearMessageContext(context);
-//     }
-// }
 
 export async function sendImages(img: ImageResult, SEND_IMAGE_FILE: boolean, sender: MessageSender, config: AgentUserConfig) {
     const caption = img.text ? `${getLog(config)}\n> \`${img.text}\`` : getLog(config);

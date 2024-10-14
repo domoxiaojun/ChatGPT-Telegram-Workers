@@ -134,10 +134,7 @@ export function getLog(context: AgentUserConfig, returnModel: boolean = false): 
     if (!logObj)
         return '';
     if (returnModel) {
-        return {
-            chat: logObj.chat.model.at(-1) || 'UNKNOWN',
-            tool: logObj.tool.model || 'UNKNOWN',
-        };
+        return logObj.chat.model?.at(-1) || logObj.tool.model || 'UNKNOWN';
     }
 
     // console.log('logObj:\n', JSON.stringify(logObj, null, 2));

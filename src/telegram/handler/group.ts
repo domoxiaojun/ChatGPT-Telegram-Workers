@@ -112,7 +112,7 @@ export class GroupMention implements MessageHandler {
         if (!isMention) {
             throw new Error('Not mention');
         }
-
+        // 开启引用消息，并且不是回复bot，则将引用消息和当前消息合并
         if (ENV.EXTRA_MESSAGE_CONTEXT && !replyMe && message.reply_to_message?.text) {
             if (message.text || message.caption) {
                 message.text = `${message.reply_to_message.text}\n${message.text || message.caption}`;

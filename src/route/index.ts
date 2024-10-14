@@ -24,6 +24,7 @@ async function bindWebHookAction(request: RouterRequest): Promise<Response> {
     for (const token of ENV.TELEGRAM_AVAILABLE_TOKENS) {
         const api = createTelegramBotAPI(token);
         const url = `https://${domain}/telegram/${token.trim()}/${hookMode}`;
+        console.log('webhook url: ', url);
         const id = token.split(':')[0];
         result[id] = {};
         result[id].webhook = await api.setWebhook({ url }).then(res => res.json()).catch(e => errorToString(e));
