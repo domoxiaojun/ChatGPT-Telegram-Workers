@@ -13,11 +13,17 @@ import { clearLog, getLog } from '../../extra/log/logDecortor';
 import type { UnionData } from '../utils/utils';
 import type { MessageHandler } from './types';
 
-async function ensureMessageInitialized(sender: MessageSender): Promise<void> {
+async function messageInitialize(sender: MessageSender): Promise<void> {
     if (!sender.context.message_id) {
         try {
+            setTimeout(() => sendAction(sender.api.token, sender.context.chat_id, 'typing'), 0);
+            if (!ENV.SEND_INIT_MESSAGE) {
+                return;
+            }
+            console.log(`[${new Date().toISOString()}]: send ...`);
             const response = await sender.sendPlainText('...', 'chat');
             const msg = await response.json() as Telegram.ResponseWithMessage;
+            console.log(`[${new Date().toISOString()}]: send done`);
             sender.update({
                 message_id: msg.result.message_id,
             });
@@ -35,8 +41,7 @@ export async function chatWithLLM(
 ): Promise<UnionData | Response> {
     const sender = context.MIDDEL_CONTEXT.sender ?? MessageSender.from(context.SHARE_CONTEXT.botToken, message);
 
-    await ensureMessageInitialized(sender);
-    sendAction(context.SHARE_CONTEXT.botToken, message.chat.id);
+    await messageInitialize(sender);
 
     let onStream: ChatStreamTextHandler | null = null;
 
@@ -88,6 +93,7 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
         try {
             const mode = context.USER_CONFIG.CURRENT_MODE;
             const originalType = context.MIDDEL_CONTEXT.originalMessage.type;
+            console.log(`[${new Date().toISOString()}]: message type: ${originalType}`);
             const flowDetail = context.USER_CONFIG?.MODES?.[mode]?.[originalType] || {};
 
             if (!flowDetail?.disableHistory) {
@@ -97,8 +103,8 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
             // 处理原始消息
             const params = await this.processOriginalMessage(message, context);
 
-            // 如果原始消息类型为文本或图像，且没有禁用工具，则使用functioncall
-            if (['text', 'image'].includes(originalType) && !flowDetail?.disableTool) {
+            // 如果原始消息类型为文本，且没有禁用工具，则使用functioncall
+            if (originalType === 'text' && !flowDetail?.disableTool) {
                 context.MIDDEL_CONTEXT.sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
                 const toolResult = await useTools(context, context.MIDDEL_CONTEXT.history, context.MIDDEL_CONTEXT.sender);
                 // 如果已经给出了回复，且开启了 ASAP，则不再继续处理
@@ -197,8 +203,15 @@ export function OnStreamHander(sender: MessageSender, context?: WorkerContext): 
             if (nextEnableTime && nextEnableTime > Date.now()) {
                 return;
             }
+
+            // 设置最小流间隔
+            if (ENV.TELEGRAM_MIN_STREAM_INTERVAL > 0) {
+                nextEnableTime = Date.now() + ENV.TELEGRAM_MIN_STREAM_INTERVAL;
+                console.log(`[${new Date().toISOString()}]: Next enable time: ${new Date(nextEnableTime).toISOString()}`);
+            }
             // console.log(`LOG:\n${context ? getLog(context.USER_CONFIG) : ''}`);
             const data = context ? `${getLog(context.USER_CONFIG)}\n${text}` : text;
+            console.log(`[${new Date().toISOString()}]: send stream message`);
             const resp = await sender.sendRichText(data, ENV.DEFAULT_PARSE_MODE as Telegram.ParseMode, 'chat');
             // 判断429
             if (resp.status === 429) {
@@ -209,8 +222,7 @@ export function OnStreamHander(sender: MessageSender, context?: WorkerContext): 
                     return;
                 }
             }
-            nextEnableTime = null;
-            if (resp.ok) {
+            if (resp.ok /* && text.length > 4000 */) {
                 const respJson = await resp.json() as Telegram.ResponseWithMessage;
                 sender.update({
                     message_id: respJson.result.message_id,
@@ -238,7 +250,7 @@ async function useTools(context: WorkerContext, history: HistoryItem[], sender: 
 
     const ASAP = context.USER_CONFIG.FUNCTION_REPLY_ASAP;
     if (ASAP) {
-        await ensureMessageInitialized(sender);
+        await messageInitialize(sender);
     }
     return new FunctionCall(context, validTools, history, ASAP ? sender : null).run();
 }

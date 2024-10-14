@@ -75,6 +75,7 @@ export async function requestChatCompletions(url: string, header: Record<string,
         timeoutID = setTimeout(() => controller.abort(), ENV.CHAT_COMPLETE_API_TIMEOUT * 1e3);
     }
 
+    console.log(`[${new Date().toISOString()}]: start request llm`);
     const resp = await fetch(url, {
         method: 'POST',
         headers: header,
@@ -128,14 +129,11 @@ function clearTimeoutID(timeoutID: any) {
 }
 
 export async function iterStream(body: any, stream: AsyncIterable<any>, options: SseChatCompatibleOptions, onStream: ChatStreamTextHandler): Promise<CompletionData> {
-    let lastUpdateTime = Date.now();
-    // const stream = options.streamBuilder?.(resp, controller);
-    // if (!stream) {
-    //     throw new Error('Stream builder error');
-    // }
+    console.log(`[${new Date().toISOString()}]: start handle stream`);
+
     let contentFull = '';
     let lengthDelta = 0;
-    let updateStep = 5;
+    let updateStep = 0;
     let needSendCallMsg = true;
     const tool_calls: string | any[] = [];
     let msgPromise = null;
@@ -168,12 +166,6 @@ export async function iterStream(body: any, stream: AsyncIterable<any>, options:
             lastChunk = c;
 
             if (lastChunk && lengthDelta > updateStep) {
-                if (ENV.TELEGRAM_MIN_STREAM_INTERVAL > 0) {
-                    const delta = Date.now() - lastUpdateTime;
-                    if (delta < ENV.TELEGRAM_MIN_STREAM_INTERVAL) {
-                        continue;
-                    }
-                }
                 // 已发送过消息且消息未发送完成
                 if (msgPromise && (await Promise.race([msgPromise, immediatePromise]) === '[PROMISE DONE]')) {
                     continue;
@@ -181,7 +173,6 @@ export async function iterStream(body: any, stream: AsyncIterable<any>, options:
 
                 lengthDelta = 0;
                 updateStep += 20;
-                lastUpdateTime = Date.now();
                 msgPromise = onStream(`${contentFull}●`);
                 // console.log(`____chunck send: ${contentFull}●`);
             }

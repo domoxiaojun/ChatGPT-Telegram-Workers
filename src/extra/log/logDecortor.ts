@@ -31,7 +31,7 @@ export function Log(
 
                     let model: string;
                     try {
-                        model = args[0]?.model || this.model(config);
+                        model = args[0]?.model || this.model(config, args[0]);
                         if (this.type === 'tool') {
                             logs.tool.model = model;
                         } else {

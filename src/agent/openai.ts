@@ -59,11 +59,11 @@ export class OpenAI extends OpenAIBase implements ChatAgent {
         return context.OPENAI_API_KEY.length > 0;
     };
 
-    readonly model = (ctx: AgentUserConfig): string => {
+    readonly model = (ctx: AgentUserConfig, params?: LLMChatParams): string => {
         if (this.type === 'tool' && ctx.FUNCTION_CALL_MODEL) {
             return ctx.FUNCTION_CALL_MODEL;
         }
-        return ctx.OPENAI_CHAT_MODEL;
+        return params?.images ? ctx.OPENAI_VISION_MODEL : ctx.OPENAI_CHAT_MODEL;
     };
 
     constructor(type: string = 'chat') {
@@ -102,7 +102,7 @@ export class OpenAI extends OpenAIBase implements ChatAgent {
         }
 
         const body: Record<string, any> = {
-            model: context.OPENAI_CHAT_MODEL,
+            model: this.model(context, params),
             ...context.OPENAI_API_EXTRA_PARAMS,
             messages: await Promise.all(messages.map(this.render)),
             ...(context.ENABLE_SHOWTOKEN && { stream_options: { include_usage: true } }),

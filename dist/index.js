@@ -705,6 +705,7 @@ class EnvironmentConfig {
   SAFE_MODE = true;
   DEBUG_MODE = false;
   DEV_MODE = false;
+  SEND_INIT_MESSAGE = false;
 }
 class AgentShareConfig {
   AI_PROVIDER = "auto";
@@ -823,8 +824,8 @@ const ENV_KEY_MAPPER = {
   WORKERS_AI_MODEL: "WORKERS_CHAT_MODEL"
 };
 class Environment extends EnvironmentConfig {
-  BUILD_TIMESTAMP = 1728838053;
-  BUILD_VERSION = "fce547e";
+  BUILD_TIMESTAMP = 1728886330;
+  BUILD_VERSION = "ee8e86b";
   I18N = loadI18n();
   PLUGINS_ENV = {};
   USER_CONFIG = createAgentUserConfig();
@@ -1022,7 +1023,7 @@ function Log(value, context) {
           });
           let model;
           try {
-            model = args[0]?.model || this.model(config);
+            model = args[0]?.model || this.model(config, args[0]);
             if (this.type === "tool") {
               logs.tool.model = model;
             } else {
@@ -1483,6 +1484,7 @@ async function requestChatCompletions(url, header, body, onStream, onResult = nu
   if (ENV.CHAT_COMPLETE_API_TIMEOUT > 0) {
     timeoutID = setTimeout(() => controller.abort(), ENV.CHAT_COMPLETE_API_TIMEOUT * 1e3);
   }
+  console.log(`[${(/* @__PURE__ */ new Date()).toISOString()}]: start request llm`);
   const resp = await fetch(url, {
     method: "POST",
     headers: header,
@@ -1526,10 +1528,10 @@ function clearTimeoutID(timeoutID) {
     clearTimeout(timeoutID);
 }
 async function iterStream(body, stream, options, onStream) {
-  let lastUpdateTime = Date.now();
+  console.log(`[${(/* @__PURE__ */ new Date()).toISOString()}]: start handle stream`);
   let contentFull = "";
   let lengthDelta = 0;
-  let updateStep = 5;
+  let updateStep = 0;
   let needSendCallMsg = true;
   const tool_calls = [];
   let msgPromise = null;
@@ -1554,18 +1556,11 @@ async function iterStream(body, stream, options, onStream) {
       contentFull += lastChunk;
       lastChunk = c;
       if (lastChunk && lengthDelta > updateStep) {
-        if (ENV.TELEGRAM_MIN_STREAM_INTERVAL > 0) {
-          const delta = Date.now() - lastUpdateTime;
-          if (delta < ENV.TELEGRAM_MIN_STREAM_INTERVAL) {
-            continue;
-          }
-        }
         if (msgPromise && await Promise.race([msgPromise, immediatePromise]) === "[PROMISE DONE]") {
           continue;
         }
         lengthDelta = 0;
         updateStep += 20;
-        lastUpdateTime = Date.now();
         msgPromise = onStream(`${contentFull}●`);
       }
     }
@@ -1801,11 +1796,11 @@ class OpenAI extends (_a = OpenAIBase, _request_dec2 = [Log], _a) {
     __publicField(this, "enable", (context) => {
       return context.OPENAI_API_KEY.length > 0;
     });
-    __publicField(this, "model", (ctx) => {
+    __publicField(this, "model", (ctx, params) => {
       if (this.type === "tool" && ctx.FUNCTION_CALL_MODEL) {
         return ctx.FUNCTION_CALL_MODEL;
       }
-      return ctx.OPENAI_CHAT_MODEL;
+      return params?.images ? ctx.OPENAI_VISION_MODEL : ctx.OPENAI_CHAT_MODEL;
     });
     __publicField(this, "base_url", (context) => {
       if (this.type === "tool" && context.FUNCTION_CALL_BASE) {
@@ -1831,7 +1826,7 @@ class OpenAI extends (_a = OpenAIBase, _request_dec2 = [Log], _a) {
         messages.unshift({ role: context.SYSTEM_INIT_MESSAGE_ROLE, content: prompt });
       }
       const body = {
-        model: context.OPENAI_CHAT_MODEL,
+        model: this.model(context, params),
         ...context.OPENAI_API_EXTRA_PARAMS,
         messages: await Promise.all(messages.map(this.render)),
         ...context.ENABLE_SHOWTOKEN && { stream_options: { include_usage: true } },
@@ -3132,11 +3127,17 @@ function trimMessage(llm_content, func_result) {
     tool_call_id: llm_content.tool_calls[index2].id
   }));
 }
-async function ensureMessageInitialized(sender) {
+async function messageInitialize(sender) {
   if (!sender.context.message_id) {
     try {
+      setTimeout(() => sendAction(sender.api.token, sender.context.chat_id, "typing"), 0);
+      if (!ENV.SEND_INIT_MESSAGE) {
+        return;
+      }
+      console.log(`[${(/* @__PURE__ */ new Date()).toISOString()}]: send ...`);
       const response = await sender.sendPlainText("...", "chat");
       const msg = await response.json();
+      console.log(`[${(/* @__PURE__ */ new Date()).toISOString()}]: send done`);
       sender.update({
         message_id: msg.result.message_id
       });
@@ -3147,8 +3148,7 @@ async function ensureMessageInitialized(sender) {
 }
 async function chatWithLLM(message, params, context, modifier) {
   const sender = context.MIDDEL_CONTEXT.sender ?? MessageSender.from(context.SHARE_CONTEXT.botToken, message);
-  await ensureMessageInitialized(sender);
-  sendAction(context.SHARE_CONTEXT.botToken, message.chat.id);
+  await messageInitialize(sender);
   let onStream = null;
   if (ENV.STREAM_MODE) {
     onStream = OnStreamHander(sender, context);
@@ -3192,12 +3192,13 @@ class ChatHandler {
     try {
       const mode = context.USER_CONFIG.CURRENT_MODE;
       const originalType = context.MIDDEL_CONTEXT.originalMessage.type;
+      console.log(`[${(/* @__PURE__ */ new Date()).toISOString()}]: message type: ${originalType}`);
       const flowDetail = context.USER_CONFIG?.MODES?.[mode]?.[originalType] || {};
       if (!flowDetail?.disableHistory) {
         await this.initializeHistory(context);
       }
       const params = await this.processOriginalMessage(message, context);
-      if (["text", "image"].includes(originalType) && !flowDetail?.disableTool) {
+      if (originalType === "text" && !flowDetail?.disableTool) {
         context.MIDDEL_CONTEXT.sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
         const toolResult = await useTools(context, context.MIDDEL_CONTEXT.history, context.MIDDEL_CONTEXT.sender);
         if (toolResult && context.USER_CONFIG.FUNCTION_REPLY_ASAP) {
@@ -3287,8 +3288,13 @@ ${debug_info}
       if (nextEnableTime && nextEnableTime > Date.now()) {
         return;
       }
+      if (ENV.TELEGRAM_MIN_STREAM_INTERVAL > 0) {
+        nextEnableTime = Date.now() + ENV.TELEGRAM_MIN_STREAM_INTERVAL;
+        console.log(`[${(/* @__PURE__ */ new Date()).toISOString()}]: Next enable time: ${new Date(nextEnableTime).toISOString()}`);
+      }
       const data = context ? `${getLog(context.USER_CONFIG)}
 ${text}` : text;
+      console.log(`[${(/* @__PURE__ */ new Date()).toISOString()}]: send stream message`);
       const resp = await sender.sendRichText(data, ENV.DEFAULT_PARSE_MODE, "chat");
       if (resp.status === 429) {
         const retryAfter = Number.parseInt(resp.headers.get("Retry-After") || "");
@@ -3297,7 +3303,6 @@ ${text}` : text;
           return;
         }
       }
-      nextEnableTime = null;
       if (resp.ok) {
         const respJson = await resp.json();
         sender.update({
@@ -3322,7 +3327,7 @@ async function useTools(context, history, sender) {
   }
   const ASAP = context.USER_CONFIG.FUNCTION_REPLY_ASAP;
   if (ASAP) {
-    await ensureMessageInitialized(sender);
+    await messageInitialize(sender);
   }
   return new FunctionCall(context, validTools, history, ASAP ? sender : null).run();
 }
