@@ -79,6 +79,7 @@ export class GroupMention implements MessageHandler {
         // 处理回复消息, 如果回复的是当前机器人的消息交给下一个中间件处理
         const replyMe = `${message.reply_to_message?.from?.id}` === `${context.SHARE_CONTEXT.botId}`;
         if (replyMe) {
+            context.MIDDEL_CONTEXT.originalMessage.text = message.text || message.caption || '';
             return null;
         }
 

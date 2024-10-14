@@ -138,7 +138,7 @@ export class EnvironmentConfig {
     // 开发模式
     DEV_MODE = false;
     // 是否发送初始化消息
-    SEND_INIT_MESSAGE = false;
+    SEND_INIT_MESSAGE = true;
 }
 
 // -- 通用配置 --

@@ -705,7 +705,7 @@ class EnvironmentConfig {
   SAFE_MODE = true;
   DEBUG_MODE = false;
   DEV_MODE = false;
-  SEND_INIT_MESSAGE = false;
+  SEND_INIT_MESSAGE = true;
 }
 class AgentShareConfig {
   AI_PROVIDER = "auto";
@@ -824,8 +824,8 @@ const ENV_KEY_MAPPER = {
   WORKERS_AI_MODEL: "WORKERS_CHAT_MODEL"
 };
 class Environment extends EnvironmentConfig {
-  BUILD_TIMESTAMP = 1728886330;
-  BUILD_VERSION = "ee8e86b";
+  BUILD_TIMESTAMP = 1728889868;
+  BUILD_VERSION = "f403937";
   I18N = loadI18n();
   PLUGINS_ENV = {};
   USER_CONFIG = createAgentUserConfig();
@@ -3539,6 +3539,7 @@ class GroupMention {
     }
     const replyMe = `${message.reply_to_message?.from?.id}` === `${context.SHARE_CONTEXT.botId}`;
     if (replyMe) {
+      context.MIDDEL_CONTEXT.originalMessage.text = message.text || message.caption || "";
       return null;
     }
     let botName = context.SHARE_CONTEXT.botName;
