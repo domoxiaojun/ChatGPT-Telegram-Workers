@@ -1,6 +1,6 @@
 import type { AgentUserConfig } from '../config/env';
-import { Log } from '../extra/log/logDecortor';
 import type { ChatAgent, ChatStreamTextHandler, CompletionData, HistoryItem, LLMChatParams } from './types';
+import { Log } from '../extra/log/logDecortor';
 
 export class Gemini implements ChatAgent {
     readonly name = 'gemini';

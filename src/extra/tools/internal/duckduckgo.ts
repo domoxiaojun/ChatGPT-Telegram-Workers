@@ -199,9 +199,9 @@ export async function search(query: any, options: { safeSearch: any; offset: any
                 title: decode(video.title),
                 description: decode(video.description),
                 image: video.images.large
-                || video.images.medium
-                || video.images.small
-                || video.images.motion,
+                    || video.images.medium
+                    || video.images.small
+                    || video.images.motion,
                 duration: video.duration,
                 publishedOn: video.publisher,
                 published: video.published,

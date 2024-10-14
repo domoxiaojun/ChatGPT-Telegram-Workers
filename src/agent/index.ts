@@ -1,13 +1,13 @@
-import { type AgentUserConfig, ENV } from '../config/env';
 import type { AudioAgent, ChatAgent, ImageAgent } from './types';
+import { type AgentUserConfig, ENV } from '../config/env';
 import { Anthropic } from './anthropic';
 import { AzureChatAI, AzureImageAI } from './azure';
 import { Cohere } from './cohere';
 import { Gemini } from './gemini';
 import { Mistral } from './mistralai';
 import { Dalle, OpenAI, Transcription } from './openai';
-import { WorkersChat, WorkersImage } from './workersai';
 import { Silicon, SiliconImage } from './silicon';
+import { WorkersChat, WorkersImage } from './workersai';
 
 const CHAT_AGENTS: ChatAgent[] = [
     new Anthropic(),

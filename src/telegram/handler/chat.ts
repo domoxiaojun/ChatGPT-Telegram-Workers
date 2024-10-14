@@ -1,17 +1,17 @@
 /* eslint-disable antfu/if-newline */
 import type * as Telegram from 'telegram-bot-api-types';
-import { loadAudioLLM, loadChatLLM, loadImageGen } from '../../agent';
-import { loadHistory, requestCompletionsFromLLM } from '../../agent/chat';
 import type { ChatStreamTextHandler, HistoryItem, HistoryModifier, ImageResult, LLMChatRequestParams } from '../../agent/types';
 import type { WorkerContext } from '../../config/context';
-import { MessageSender, TelegraphSender, sendAction } from '../utils/send';
-import { createTelegramBotAPI } from '../api';
 import type { AgentUserConfig } from '../../config/env';
-import { ENV } from '../../config/env';
-import { FunctionCall, getValidToolStructs } from '../../extra/tools/functioncall';
-import { clearLog, getLog } from '../../extra/log/logDecortor';
 import type { UnionData } from '../utils/utils';
 import type { MessageHandler } from './types';
+import { loadAudioLLM, loadChatLLM, loadImageGen } from '../../agent';
+import { loadHistory, requestCompletionsFromLLM } from '../../agent/chat';
+import { ENV } from '../../config/env';
+import { clearLog, getLog } from '../../extra/log/logDecortor';
+import { FunctionCall, getValidToolStructs } from '../../extra/tools/functioncall';
+import { createTelegramBotAPI } from '../api';
+import { MessageSender, sendAction, TelegraphSender } from '../utils/send';
 
 async function messageInitialize(sender: MessageSender): Promise<void> {
     if (!sender.context.message_id) {

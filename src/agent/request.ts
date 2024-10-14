@@ -1,6 +1,6 @@
+import type { ChatStreamTextHandler, CompletionData, OpenAIFuncCallData } from './types';
 /* eslint-disable antfu/if-newline */
 import { ENV } from '../config/env';
-import type { ChatStreamTextHandler, CompletionData, OpenAIFuncCallData } from './types';
 import { Stream } from './stream';
 
 export interface SseChatCompatibleOptions {

@@ -1,8 +1,8 @@
 /* eslint-disable no-useless-catch */
 import type { Message } from 'telegram-bot-api-types';
 import type { CompletionData } from '../../agent/types';
-import type { AgentUserConfig } from '../../config/env';
 import type { WorkerContext } from '../../config/context';
+import type { AgentUserConfig } from '../../config/env';
 
 // 使用 WeakMap 来存储每个 AgentUserConfig 对应的 Logs 实例
 export const logSingleton: WeakMap<AgentUserConfig, Logs> = new WeakMap();

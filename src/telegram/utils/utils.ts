@@ -1,6 +1,6 @@
 import type * as Telegram from 'telegram-bot-api-types';
-import { findPhotoFileID } from '../handler/chat';
 import { ENV } from '../../config/env';
+import { findPhotoFileID } from '../handler/chat';
 
 export function isTelegramChatTypeGroup(type: string): boolean {
     return type === 'group' || type === 'supergroup';

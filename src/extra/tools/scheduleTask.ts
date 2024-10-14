@@ -1,5 +1,5 @@
-import { createTelegramBotAPI } from '../../telegram/api';
 import { parseArray } from '../../config/merger';
+import { createTelegramBotAPI } from '../../telegram/api';
 
 interface ScheduledData {
     // [bot_name: string]: Record<string, Message[]>;

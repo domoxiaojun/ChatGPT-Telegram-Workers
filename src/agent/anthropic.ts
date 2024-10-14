@@ -1,12 +1,12 @@
-import { imageToBase64String } from '../utils/image';
 import type { AgentUserConfig } from '../config/env';
+import type { SseChatCompatibleOptions } from './request';
+import type { SSEMessage, SSEParserResult } from './stream';
+import type { ChatAgent, ChatStreamTextHandler, CompletionData, HistoryItem, LLMChatParams } from './types';
 import { ENV } from '../config/env';
 import { Log } from '../extra/log/logDecortor';
-import type { ChatAgent, ChatStreamTextHandler, CompletionData, HistoryItem, LLMChatParams } from './types';
-import type { SSEMessage, SSEParserResult } from './stream';
-import { Stream } from './stream';
-import type { SseChatCompatibleOptions } from './request';
+import { imageToBase64String } from '../utils/image';
 import { requestChatCompletions } from './request';
+import { Stream } from './stream';
 
 export class Anthropic implements ChatAgent {
     readonly name = 'anthropic';

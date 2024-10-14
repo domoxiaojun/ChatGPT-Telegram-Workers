@@ -1,10 +1,10 @@
 import type * as Telegram from 'telegram-bot-api-types';
 import type { WorkerContext } from '../../config/context';
+import type { MessageHandler } from './types';
 import { WorkerContextBase } from '../../config/context';
 import { clearLog, sentMessageIds } from '../../extra/log/logDecortor';
 import { ChatHandler } from './chat';
 import { GroupMention } from './group';
-import type { MessageHandler } from './types';
 import {
     CommandHandler,
     EnvChecker,

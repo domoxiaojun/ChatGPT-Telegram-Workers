@@ -1,10 +1,10 @@
 import type { AgentUserConfig } from '../config/env';
-import { Log } from '../extra/log/logDecortor';
-import type { ChatAgent, ChatStreamTextHandler, CompletionData, HistoryItem, LLMChatParams } from './types';
-import type { SSEMessage, SSEParserResult } from './stream';
-import { Stream } from './stream';
 import type { SseChatCompatibleOptions } from './request';
+import type { SSEMessage, SSEParserResult } from './stream';
+import type { ChatAgent, ChatStreamTextHandler, CompletionData, HistoryItem, LLMChatParams } from './types';
+import { Log } from '../extra/log/logDecortor';
 import { requestChatCompletions } from './request';
+import { Stream } from './stream';
 
 export class Cohere implements ChatAgent {
     readonly name = 'cohere';

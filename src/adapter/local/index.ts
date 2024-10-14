@@ -1,15 +1,15 @@
-import * as fs from 'node:fs';
-import { defaultRequestBuilder, initEnv, startServerV2 } from 'cloudflare-worker-adapter/serve';
 import type { GetUpdatesResponse } from 'telegram-bot-api-types';
-import { installFetchProxy } from 'cloudflare-worker-adapter/proxy';
-import { createCache } from 'cloudflare-worker-adapter/cache';
-import { schedule } from 'node-cron';
-import { ENV } from '../../config/env';
 import type { TelegramBotAPI } from '../../telegram/api';
+import * as fs from 'node:fs';
+import { createCache } from 'cloudflare-worker-adapter/cache';
+import { installFetchProxy } from 'cloudflare-worker-adapter/proxy';
+import { defaultRequestBuilder, initEnv, startServerV2 } from 'cloudflare-worker-adapter/serve';
+import { schedule } from 'node-cron';
+import worker from '../../';
+import { ENV } from '../../config/env';
+import { createRouter } from '../../route';
 import { createTelegramBotAPI } from '../../telegram/api';
 import { handleUpdate } from '../../telegram/handler';
-import { createRouter } from '../../route';
-import worker from '../../';
 
 const {
     CONFIG_PATH = '/app/config.json',

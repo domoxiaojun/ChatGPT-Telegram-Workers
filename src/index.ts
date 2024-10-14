@@ -1,7 +1,7 @@
-/* eslint-disable unused-imports/no-unused-vars */
-import { createRouter } from './route';
 import { ENV } from './config/env';
 import tasks from './extra/tools/scheduleTask';
+/* eslint-disable unused-imports/no-unused-vars */
+import { createRouter } from './route';
 
 export default {
     async fetch(request: Request, env: any): Promise<Response> {

@@ -1,19 +1,19 @@
 /* eslint-disable no-cond-assign */
 import type * as Telegram from 'telegram-bot-api-types';
+import type { HistoryItem, HistoryModifierResult } from '../../agent/types';
 import type { WorkerContext } from '../../config/context';
 import type { UnionData } from '../utils/utils';
-import { UUIDv4, isCfWorker, isTelegramChatTypeGroup } from '../utils/utils';
-import type { HistoryItem, HistoryModifierResult } from '../../agent/types';
-import { OnStreamHander, chatWithLLM, sendImages } from '../handler/chat';
+import type { CommandHandler, ScopeType } from './types';
 import { customInfo, loadChatLLM, loadImageGen } from '../../agent';
-import { createTelegramBotAPI } from '../api';
-import { type MessageSender, sendAction } from '../utils/send';
-import { ConfigMerger } from '../../config/merger';
-import { ENV, ENV_KEY_MAPPER } from '../../config/env';
 import { loadHistory } from '../../agent/chat';
 import { WssRequest } from '../../agent/wsrequest';
+import { ENV, ENV_KEY_MAPPER } from '../../config/env';
+import { ConfigMerger } from '../../config/merger';
 import { getLogSingleton } from '../../extra/log/logDecortor';
-import type { CommandHandler, ScopeType } from './types';
+import { createTelegramBotAPI } from '../api';
+import { chatWithLLM, OnStreamHander, sendImages } from '../handler/chat';
+import { type MessageSender, sendAction } from '../utils/send';
+import { isCfWorker, isTelegramChatTypeGroup, UUIDv4 } from '../utils/utils';
 
 export const COMMAND_AUTH_CHECKER = {
     default(chatType: string): string[] | null {

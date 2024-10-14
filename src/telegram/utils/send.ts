@@ -1,11 +1,11 @@
 /* eslint-disable antfu/if-newline */
 import type * as Telegram from 'telegram-bot-api-types';
 import type { TelegramBotAPI } from '../api';
-import { createTelegramBotAPI } from '../api';
 import { ENV } from '../../config/env';
 import { sentMessageIds } from '../../extra/log/logDecortor';
-import { escape } from './md2tgmd';
+import { createTelegramBotAPI } from '../api';
 import md2node from './md2node';
+import { escape } from './md2tgmd';
 
 class MessageContext implements Record<string, any> {
     chat_id: number;

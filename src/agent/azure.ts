@@ -1,9 +1,9 @@
 import type { AgentUserConfig } from '../config/env';
-import { Log } from '../extra/log/logDecortor';
 import type { ChatAgent, ChatStreamTextHandler, CompletionData, ImageAgent, ImageResult, LLMChatParams } from './types';
-import { requestChatCompletions } from './request';
-import { renderOpenAIMessage } from './openai';
+import { Log } from '../extra/log/logDecortor';
 import { requestText2Image } from './chat';
+import { renderOpenAIMessage } from './openai';
+import { requestChatCompletions } from './request';
 
 class AzureBase {
     readonly name = 'azure';

@@ -1,7 +1,7 @@
 import type { AgentUserConfig } from '../config/env';
-import { Log } from '../extra/log/logDecortor';
-import type { ChatAgent, ChatStreamTextHandler, CompletionData, HistoryItem, ImageAgent, ImageResult, LLMChatParams } from './types';
 import type { SseChatCompatibleOptions } from './request';
+import type { ChatAgent, ChatStreamTextHandler, CompletionData, HistoryItem, ImageAgent, ImageResult, LLMChatParams } from './types';
+import { Log } from '../extra/log/logDecortor';
 import { requestChatCompletions } from './request';
 
 class WorkerBase {

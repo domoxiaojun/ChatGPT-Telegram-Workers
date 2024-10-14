@@ -1,7 +1,7 @@
-import prompts_default from '../extra/prompt';
-import tools_default from '../extra/tools';
 import type { FuncTool } from '../extra/tools/external/types';
 import type { FlowStruct } from './types';
+import prompts_default from '../extra/prompt';
+import tools_default from '../extra/tools';
 // -- 只能通过环境变量覆盖的配置 --
 export class EnvironmentConfig {
     // 多语言支持

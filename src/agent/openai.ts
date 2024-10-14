@@ -1,11 +1,11 @@
-import { imageToBase64String, renderBase64DataURI } from '../utils/image';
 import type { AgentUserConfig } from '../config/env';
-import { ENV } from '../config/env';
-import { Log } from '../extra/log/logDecortor';
 import type { UnionData } from '../telegram/utils/utils';
 import type { AudioAgent, ChatAgent, ChatStreamTextHandler, CompletionData, HistoryItem, ImageAgent, ImageResult, LLMChatParams } from './types';
-import { requestChatCompletions } from './request';
+import { ENV } from '../config/env';
+import { Log } from '../extra/log/logDecortor';
+import { imageToBase64String, renderBase64DataURI } from '../utils/image';
 import { requestText2Image } from './chat';
+import { requestChatCompletions } from './request';
 
 export async function renderOpenAIMessage(item: HistoryItem): Promise<any> {
     const res: any = {

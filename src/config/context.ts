@@ -1,10 +1,10 @@
 import type * as Telegram from 'telegram-bot-api-types';
 import type { HistoryItem } from '../agent/types';
-import type { UnionData } from '../telegram/utils/utils';
 import type { MessageSender } from '../telegram/utils/send';
-import { ConfigMerger } from './merger';
+import type { UnionData } from '../telegram/utils/utils';
 import type { AgentUserConfig } from './env';
 import { ENV } from './env';
+import { ConfigMerger } from './merger';
 
 export class ShareContext {
     botId: number;
