@@ -1,5 +1,6 @@
 import { parseArray } from '../../config/merger';
 import { createTelegramBotAPI } from '../../telegram/api';
+import { log } from '../log/logger';
 
 interface ScheduledData {
     // [bot_name: string]: Record<string, Message[]>;
@@ -38,7 +39,7 @@ const scheduleResp: ScheduleRespType = (ok, reason = '') => {
 
 async function schedule_detele_message(ENV: any) {
     try {
-        console.log('- Start task: schedule_detele_message');
+        log.info('- Start task: schedule_detele_message');
         const botTokens: string[] = extractArrayData(ENV.TELEGRAM_AVAILABLE_TOKENS);
         const botNames: string[] = extractArrayData(ENV.TELEGRAM_BOT_NAME);
         const scheduleDeteleKey = 'schedule_detele_message';
@@ -55,7 +56,7 @@ async function schedule_detele_message(ENV: any) {
             scheduledData[bot_name] = sortData.rest;
 
             Object.entries(sortData.expired).forEach(([chat_id, messages]) => {
-                console.log(`Start delete: ${chat_id} - ${messages}`);
+                log.info(`Start delete: ${chat_id} - ${messages}`);
                 // 每次最多只能删除100条
                 for (let i = 0; i < messages.length; i += 100) {
                     taskPromises.push(api.deleteMessages({ chat_id, message_ids: messages.slice(i, i + 100) }));
@@ -63,12 +64,12 @@ async function schedule_detele_message(ENV: any) {
             });
         }
         if (taskPromises.length === 0) {
-            console.log(`Rest ids: ${JSON.stringify(scheduledData)}\nNothing need to delete.`);
+            log.info(`Rest ids: ${JSON.stringify(scheduledData)}\nNothing need to delete.`);
             return scheduleResp(true);
         }
 
         const resp: DeleteMessagesReturns[] = await Promise.all(taskPromises);
-        console.log('all task result: ', resp.map(r => r.ok));
+        log.info('all task result: ', resp.map(r => r.ok));
         await setData<ScheduledData>(ENV, scheduleDeteleKey, scheduledData);
 
         return scheduleResp(true);

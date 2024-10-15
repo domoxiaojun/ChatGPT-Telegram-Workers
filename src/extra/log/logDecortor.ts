@@ -4,16 +4,13 @@ import type { CompletionData } from '../../agent/types';
 import type { WorkerContext } from '../../config/context';
 import type { AgentUserConfig } from '../../config/env';
 
-// 使用 WeakMap 来存储每个 AgentUserConfig 对应的 Logs 实例
 export const logSingleton: WeakMap<AgentUserConfig, Logs> = new WeakMap();
 export const sentMessageIds = new WeakMap<Message, number[]>();
 
-// 日志装饰器
 export function Log(
     value: any,
     context: ClassFieldDecoratorContext | ClassMethodDecoratorContext,
 ): any {
-    // 处理属性装饰器
     if (context.kind === 'field') {
         const configIndex = 1; // config 的索引
         return function (initialValue: any) {
@@ -70,7 +67,6 @@ export function Log(
         };
     }
 
-    // 处理方法装饰器
     if (context.kind === 'method' && typeof value === 'function') {
         return async function (this: { context: WorkerContext }, ...args: any[]) {
             const config: AgentUserConfig = this.context.USER_CONFIG;
@@ -117,12 +113,13 @@ export function getLogSingleton(config: AgentUserConfig): Logs {
             },
             tokens: [],
             ongoingFunctions: [],
+            error: '',
         });
     }
     return logSingleton.get(config)!;
 }
 
-// 获取日志字符串
+// 获取日志
 export function getLog(context: AgentUserConfig, returnModel: boolean = false): any {
     if (!context.ENABLE_SHOWINFO)
         return '';
@@ -159,6 +156,11 @@ export function getLog(context: AgentUserConfig, returnModel: boolean = false): 
         logList.push(...functionLogs);
     }
 
+    // error
+    if (logObj.error) {
+        logList.push(`${logObj.error}`);
+    }
+
     // chat
     if (logObj.chat.model.length > 0) {
         const chatLogs = logObj.chat.model
@@ -181,7 +183,7 @@ export function getLog(context: AgentUserConfig, returnModel: boolean = false): 
         logList.push(`${logObj.tokens.join('|')}`);
     }
 
-    return logList.map(entry => `> \`${entry}\``).join('\n');
+    return logList.filter(Boolean).map(entry => `>\`${entry}\``).join('\n');
 }
 
 export function clearLog(context: AgentUserConfig) {
@@ -212,4 +214,5 @@ interface Logs {
     chat: { model: string[]; time: string[] };
     tokens: string[];
     ongoingFunctions: { name: string; startTime: number }[];
+    error: string;
 }

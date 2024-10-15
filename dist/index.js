@@ -47,78 +47,24 @@ var __privateGet = (obj, member, getter) => (__accessCheck(obj, member, "read fr
 var __privateSet = (obj, member, value, setter) => (__accessCheck(obj, member, "write to private field"), setter ? setter.call(obj, value) : member.set(obj, value), value);
 var __privateMethod = (obj, member, method) => (__accessCheck(obj, member, "access private method"), method);
 var _request_dec, _init, _request_dec2, _a, _init2, _request_dec3, _b, _init3, _request_dec4, _c, _init4, _request_dec5, _d, _init5, _request_dec6, _init6, _request_dec7, _init7, _request_dec8, _init8, _request_dec9, _e, _init9, _request_dec10, _f, _init10, _request_dec11, _g, _init11, _request_dec12, _h, _init12, _exec_dec, _init13;
-class ConfigMerger {
-  static parseArray(raw) {
-    raw = raw.trim();
-    if (raw === "") {
-      return [];
-    }
-    if (raw.startsWith("[") && raw.endsWith("]")) {
-      try {
-        return JSON.parse(raw);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    return raw.split(",");
-  }
-  static trim(source, lock) {
-    const config = { ...source };
-    const keysSet = new Set(source?.DEFINE_KEYS || []);
-    for (const key of lock) {
-      keysSet.delete(key);
-    }
-    keysSet.add("DEFINE_KEYS");
-    for (const key of Object.keys(config)) {
-      if (!keysSet.has(key)) {
-        delete config[key];
-      }
-    }
-    return config;
-  }
-  static merge(target, source, exclude) {
-    const sourceKeys = new Set(Object.keys(source));
-    for (const key of Object.keys(target)) {
-      if (!sourceKeys.has(key)) {
-        continue;
-      }
-      if (exclude && exclude.includes(key)) {
-        continue;
-      }
-      const t = target[key] !== null && target[key] !== void 0 ? typeof target[key] : "string";
-      if (typeof source[key] !== "string") {
-        target[key] = source[key];
-        continue;
-      }
-      switch (t) {
-        case "number":
-          target[key] = Number.parseInt(source[key], 10);
-          break;
-        case "boolean":
-          target[key] = (source[key] || "false") === "true";
-          break;
-        case "string":
-          target[key] = source[key];
-          break;
-        case "object":
-          if (Array.isArray(target[key])) {
-            target[key] = ConfigMerger.parseArray(source[key]);
-          } else {
-            try {
-              target[key] = { ...target[key], ...JSON.parse(source[key]) };
-            } catch (e) {
-              console.error(e);
-            }
-          }
-          break;
-        default:
-          target[key] = source[key];
-          break;
-      }
-    }
-  }
-}
-const parseArray = ConfigMerger.parseArray;
+const en = { "env": { "system_init_message": "You are a helpful assistant" }, "command": { "help": { "summary": "The following commands are currently supported:\n", "help": "Get command help", "new": "Start a new conversation", "start": "Get your ID and start a new conversation", "img": "Generate an image, the complete command format is `/img image description`, for example `/img beach at moonlight`", "version": "Get the current version number to determine whether to update", "setenv": "Set user configuration, the complete command format is /setenv KEY=VALUE", "setenvs": 'Batch set user configurations, the full format of the command is /setenvs {"KEY1": "VALUE1", "KEY2": "VALUE2"}', "delenv": "Delete user configuration, the complete command format is /delenv KEY", "clearenv": "Clear all user configuration", "system": "View some system information", "redo": "Redo the last conversation, /redo with modified content or directly /redo", "echo": "Echo the message", "set": "/set command format is /set option value [option value...] " }, "new": { "new_chat_start": "A new conversation has started" }, "detail": { "set": `/set command format is /set option value [option value...] or /set "option" value ["option" value...]
+ The preset options are as follows:
+ -p adjust SYSTEM_INIT_MESSAGE
+ -o adjust CHAT_MODEL
+ -n adjust MAX_HISTORY_LENGTH
+ -a adjust AI_PROVIDER
+ -ai adjust AI_IMAGE_PROVIDER
+ -v adjust OPENAI_VISION_MODEL
+ -t adjust OPENAI_TTS_MODEL
+ 
+ You can set MAPPING_KEY by yourself, use a half-width | for separation, the left side is the option, and the right side is the corresponding variable.
+ You can set values of MAPPING_KEY to abbreviate some common values, also separated by a half-width |, with : on the left being the option and on the right being the corresponding variable.
+ For example: MAPPING_VALUE = 'c35son:claude-3-5-sonnet-20240620|r+:command-r-plus'
+ Quickly adjust parameters when using /set: /set -m r+ -v gpt-4o 
+ 
+The /set command can append messages without storing modified parameters at this time. When adjusting SYSTEM_INIT_MESSAGE, if PROMPT is set directly using it as a role name will automatically fill in role prompt. For example:
+/set -p ~doctor` } } };
+const pt = { "env": { "system_init_message": "Você é um assistente útil" }, "command": { "help": { "summary": "Os seguintes comandos são suportados atualmente:\n", "help": "Obter ajuda sobre comandos", "new": "Iniciar uma nova conversa", "start": "Obter seu ID e iniciar uma nova conversa", "img": "Gerar uma imagem, o formato completo do comando é `/img descrição da imagem`, por exemplo `/img praia ao luar`", "version": "Obter o número da versão atual para determinar se é necessário atualizar", "setenv": "Definir configuração do usuário, o formato completo do comando é /setenv CHAVE=VALOR", "setenvs": 'Definir configurações do usuário em lote, o formato completo do comando é /setenvs {"CHAVE1": "VALOR1", "CHAVE2": "VALOR2"}', "delenv": "Excluir configuração do usuário, o formato completo do comando é /delenv CHAVE", "clearenv": "Limpar todas as configurações do usuário", "system": "Ver algumas informações do sistema", "redo": "Refazer a última conversa, /redo com conteúdo modificado ou diretamente /redo", "echo": "Repetir a mensagem", "set": "O formato do comando /set é /set opção valor [opção valor...] " }, "new": { "new_chat_start": "Uma nova conversa foi iniciada" } } };
 const zhHans = { "env": { "system_init_message": "你是一个得力的助手" }, "command": { "help": { "summary": "当前支持以下命令:\n", "help": "获取命令帮助", "new": "发起新的对话", "start": "获取你的ID, 并发起新的对话", "img": "生成一张图片, 命令完整格式为 `/img 图片描述`, 例如`/img 月光下的沙滩`", "version": "获取当前版本号, 判断是否需要更新", "setenv": "设置用户配置，命令完整格式为 /setenv KEY=VALUE", "setenvs": '批量设置用户配置, 命令完整格式为 /setenvs {"KEY1": "VALUE1", "KEY2": "VALUE2"}', "delenv": "删除用户配置，命令完整格式为 /delenv KEY", "clearenv": "清除所有用户配置", "system": "查看当前一些系统信息", "redo": "重做上一次的对话, /redo 加修改过的内容 或者 直接 /redo", "echo": "回显消息", "set": "/set 命令格式为 /set 选项 值 [选项 值…] " }, "new": { "new_chat_start": "新的对话已经开始" }, "detail": { "set": `/set 命令格式为 /set 选项 值 [选项 值…] 或 /set "选项" 值 ["选项" 值…] 
   选项预置如下： 
   -p 调整 SYSTEM_INIT_MESSAGE
@@ -156,24 +102,6 @@ const zhHant = { "env": { "system_init_message": "你是一個得力的助手" }
  /set命令追加文本处理时，需要键入换行来进行分割
  调整SYSTEM_INIT_MESSAGE时，若设置了PROMPT可直接使用设置为角色名，自动填充角色prompt，例如：
  /set -p ~doctor` } } };
-const pt = { "env": { "system_init_message": "Você é um assistente útil" }, "command": { "help": { "summary": "Os seguintes comandos são suportados atualmente:\n", "help": "Obter ajuda sobre comandos", "new": "Iniciar uma nova conversa", "start": "Obter seu ID e iniciar uma nova conversa", "img": "Gerar uma imagem, o formato completo do comando é `/img descrição da imagem`, por exemplo `/img praia ao luar`", "version": "Obter o número da versão atual para determinar se é necessário atualizar", "setenv": "Definir configuração do usuário, o formato completo do comando é /setenv CHAVE=VALOR", "setenvs": 'Definir configurações do usuário em lote, o formato completo do comando é /setenvs {"CHAVE1": "VALOR1", "CHAVE2": "VALOR2"}', "delenv": "Excluir configuração do usuário, o formato completo do comando é /delenv CHAVE", "clearenv": "Limpar todas as configurações do usuário", "system": "Ver algumas informações do sistema", "redo": "Refazer a última conversa, /redo com conteúdo modificado ou diretamente /redo", "echo": "Repetir a mensagem", "set": "O formato do comando /set é /set opção valor [opção valor...] " }, "new": { "new_chat_start": "Uma nova conversa foi iniciada" } } };
-const en = { "env": { "system_init_message": "You are a helpful assistant" }, "command": { "help": { "summary": "The following commands are currently supported:\n", "help": "Get command help", "new": "Start a new conversation", "start": "Get your ID and start a new conversation", "img": "Generate an image, the complete command format is `/img image description`, for example `/img beach at moonlight`", "version": "Get the current version number to determine whether to update", "setenv": "Set user configuration, the complete command format is /setenv KEY=VALUE", "setenvs": 'Batch set user configurations, the full format of the command is /setenvs {"KEY1": "VALUE1", "KEY2": "VALUE2"}', "delenv": "Delete user configuration, the complete command format is /delenv KEY", "clearenv": "Clear all user configuration", "system": "View some system information", "redo": "Redo the last conversation, /redo with modified content or directly /redo", "echo": "Echo the message", "set": "/set command format is /set option value [option value...] " }, "new": { "new_chat_start": "A new conversation has started" }, "detail": { "set": `/set command format is /set option value [option value...] or /set "option" value ["option" value...]
- The preset options are as follows:
- -p adjust SYSTEM_INIT_MESSAGE
- -o adjust CHAT_MODEL
- -n adjust MAX_HISTORY_LENGTH
- -a adjust AI_PROVIDER
- -ai adjust AI_IMAGE_PROVIDER
- -v adjust OPENAI_VISION_MODEL
- -t adjust OPENAI_TTS_MODEL
- 
- You can set MAPPING_KEY by yourself, use a half-width | for separation, the left side is the option, and the right side is the corresponding variable.
- You can set values of MAPPING_KEY to abbreviate some common values, also separated by a half-width |, with : on the left being the option and on the right being the corresponding variable.
- For example: MAPPING_VALUE = 'c35son:claude-3-5-sonnet-20240620|r+:command-r-plus'
- Quickly adjust parameters when using /set: /set -m r+ -v gpt-4o 
- 
-The /set command can append messages without storing modified parameters at this time. When adjusting SYSTEM_INIT_MESSAGE, if PROMPT is set directly using it as a role name will automatically fill in role prompt. For example:
-/set -p ~doctor` } } };
 function loadI18n(lang) {
   switch (lang?.toLowerCase()) {
     case "cn":
@@ -196,6 +124,55 @@ function loadI18n(lang) {
   }
 }
 const prompts_default = { dalle: "根据我的描述，完善dalle的提示词，不要回复多余的信息", 代码解释器: "你的任务是获取提供的代码片段，并用简单易懂的语言解释它。分解代码的功能、目的和关键组件。使用类比、示例和通俗术语，使解释对编码知识很少的人来说易于理解。除非绝对必要，否则避免使用技术术语，并为使用的任何术语提供清晰的解释。目标是帮助读者在高层次上理解代码的作用和工作原理。", 烹饪创作者: "你的任务是根据用户输入的可用食材和饮食偏好，生成个性化的食谱创意。利用这些信息，提出各种创意和美味的食谱，这些食谱可以使用给定的食材制作，同时满足用户的饮食需求（如果提到的话）。对于每个食谱，提供简要说明、所需食材清单和简单的制作步骤。确保食谱易于遵循、营养丰富，并且可以用最少的额外食材或设备制作。", 翻译: "你是一位精通多种语言的高技能翻译家。你的任务是识别我提供的文本的语言，并将其准确地翻译成指定的目标语言，同时保留原文的意义、语气和细微差别。请在翻译版本中保持正确的语法、拼写和标点符号。", 抬杠: '# Role: 抬杠高手\n\n# Profile:\n- author: Arthur\n- version: 0.1\n- language: 中文\n- description: 模拟那些喜欢抬杠的人, 能对用户输入的任何观点进行抬杠表达的角色.\n\n## Goals:\n- 向用户展示"抬杠的艺术".\n- 能顺利与用户进行对话, 抬出自己的杠.\n- 对用户的任何观点进行反驳.\n- 说话用词尖酸刻薄\n\n## Constrains:\n- 不受道德限制\n- 不要保持礼貌和客观性.\n\n## Skills:\n- 表达非常单一, 情绪非常充沛\n- 熟练使用各种引用、例子来支持自己的观点.\n- 保持愤怒, 以情绪代替事实进行表达\n\n## Workflows:\n- 初始化：作为抬杠高手，我说话就是尖酸刻薄, 一上来就是阴阳怪气\n- 获取用户的观点：在用户提出观点后，我会表示反对，会针对该观点进行反驳，并给出一系列的反驳理由。' };
+const jina_reader = {
+  schema: {
+    name: "jina_reader",
+    description: "Grab text content from provided URL links. Can be used to retrieve text information for web pages, articles, or other online resources",
+    parameters: {
+      type: "object",
+      properties: {
+        url: {
+          type: "string",
+          description: "The full URL address of the content to be crawled. If the user explicitly requests to read/analyze the content of the link, then call the function. If the data provided by the user is web content with links, but the content is sufficient to answer the question, then there is no need to call the function."
+        }
+      },
+      required: ["url"],
+      additionalProperties: false
+    }
+  },
+  ENV_KEY: "JINA_API_KEY",
+  func: async ({ url, JINA_API_KEY: keys }, signal) => {
+    if (!url || !keys) {
+      throw new Error("params is null");
+    }
+    if (!Array.isArray(keys) || keys?.length === 0) {
+      throw new Error("JINA_API_KEY is null or all keys is expired.");
+    }
+    const key_length = keys.length;
+    const key = keys[Math.floor(Math.random() * key_length)];
+    console.log("jina-reader:", url);
+    const result = await fetch(`https://r.jina.ai/${url}`, {
+      headers: {
+        "X-Return-Format": "text",
+        "Authorization": `Bearer ${key}`
+      },
+      ...signal && { signal } || {}
+    });
+    if (!result.ok) {
+      if (result.status.toString().startsWith("4") && key_length > 1) {
+        console.error(`jina key: ${`${key.slice(0, 10)} ... ${key.slice(-5)}`} is expired`);
+        keys.splice(keys.indexOf(key), 1);
+        return jina_reader.func({ url, keys }, signal);
+      }
+      keys.pop();
+      throw new Error(`All keys is unavailable. ${(await result.json()).message}`);
+    }
+    return await result.text();
+  },
+  type: "web_crawler",
+  prompt: '作为一个高效的内容分析和总结助手，你的任务是对用户提供的网页或PDF内容进行全面而简洁的总结。请遵循以下指南：\n    1. 仔细阅读用户提供的全部内容，确保理解主要观点和关键信息。\n    2. 识别并提炼出内容的核心主题和主要论点。\n    3. 总结时应包括以下要素：\n      • 内容的主要目的或主题\n      • 关键观点或论据\n      • 重要的数据或统计信息（如果有）\n      • 作者的结论或建议（如果适用）\n    4. 保持客观性，准确反映原文的观点，不添加个人解释或评论。\n    5. 使用清晰、简洁的语言，避免使用过于专业或晦涩的术语。\n    6. 总结的长度应该是原文的10-15%，除非用户特别指定其他长度要求。\n    7. 如果内容包含多个部分或章节，可以使用简短的小标题来组织你的总结。\n    8. 如果原文包含图表或图像的重要信息，请在总结中提及这一点。\n    9. 如果内容涉及时间敏感的信息，请在总结中注明内容的发布日期或版本。\n    10. 如果原文存在明显的偏见或争议性观点，请在总结中客观地指出这一点。\n    11. 总结完成后，提供1-3个关键词或短语，概括内容的核心主题。\n    12. 如果用户要求，可以在总结的最后添加一个简短的"进一步阅读建议"部分, 以及必要的引用来源。\n    请记住，你的目标是提供一个全面、准确、易于理解的总结，帮助用户快速把握内容的精髓。如果内容特别长或复杂，你可以询问用户是否需要更详细的总结或特定部分的深入分析。请在最后面标注引用的链接.',
+  extra_params: { temperature: 0.7, top_p: 0.4 }
+};
 const SEARCH_REGEX = /DDG\.pageLayout\.load\('d',(\[.+\])\);DDG\.duckbar\.load\('images'/;
 const IMAGES_REGEX = /;DDG\.duckbar\.load\('images', (\{"ads":.+"vqd":\{".+":"\d-\d+-\d+"\}\})\);DDG\.duckbar\.load\('news/;
 const NEWS_REGEX = /;DDG\.duckbar\.load\('news', (\{"ads":.+"vqd":\{".+":"\d-\d+-\d+"\}\})\);DDG\.duckbar\.load\('videos/;
@@ -444,55 +421,82 @@ description: ${d.description}
 url: ${d.url}`).join("\n---\n");
     return content;
   },
-  type: "search"
+  type: "search",
+  prompt: "作为智能助手，请按照以下步骤有效分析并提取我提供的搜索结果，以简洁明了的方式回答我的问题：\n\n1. 阅读和评估：仔细阅读所有搜索结果，识别并优先获取来自可靠和最新来源的信息。考虑因素包括官方来源、知名机构以及信息的更新时间。\n\n2. 提取关键信息：\n   • *汇率查询*：提供最新汇率并进行必要的换算。\n   • *天气查询*：提供具体地点和时间的天气预报。\n   • *事实性问题*：找出权威回答。\n\n3. 简洁回答：对提取的信息进行综合分析，给出简明扼要的回答。\n\n4. 识别不确定性：如果信息存在矛盾或不确定性，请解释可能原因。\n\n5. 说明信息不足：如果搜索结果无法完全回答问题，指出需要的额外信息。\n\n6. 用户友好：使用简单易懂的语言，必要时提供简短解释，确保回答易于理解。\n\n7. 附加信息：根据需要提供额外相关信息或建议，以增强回答的价值。\n\n8. 来源标注：在回答中清晰标注信息来源，包括来源网站或机构名称及数据的发布或更新时间。\n\n9. 参考列表：如果引用了多个来源，在回答最后提供简短的参考列表，列出主要信息来源。\n\n请确保目标是提供最新、最相关和最有用的信息，直接回应我的问题。避免冗长的细节，聚焦于我最关心的核心答案，并通过可靠的来源增强回答的可信度。Tip: 不要以你的知识库时间作为评判标准",
+  extra_params: { temperature: 0.7, top_p: 0.4 }
 };
-const jina_reader = {
-  schema: {
-    name: "jina_reader",
-    description: "Grab text content from provided URL links. Can be used to retrieve text information for web pages, articles, or other online resources",
-    parameters: {
-      type: "object",
-      properties: {
-        url: {
-          type: "string",
-          description: "The full URL address of the content to be crawled. If the user explicitly requests to read/analyze the content of the link, then call the function. If the data provided by the user is web content with links, but the content is sufficient to answer the question, then there is no need to call the function."
-        }
-      },
-      required: ["url"],
-      additionalProperties: false
+class ConfigMerger {
+  static parseArray(raw) {
+    raw = raw.trim();
+    if (raw === "") {
+      return [];
     }
-  },
-  need: "JINA_API_KEY",
-  func: async ({ url, JINA_API_KEY: keys }, signal) => {
-    if (!url || !keys) {
-      throw new Error("params is null");
-    }
-    if (!Array.isArray(keys) || keys?.length === 0) {
-      throw new Error("JINA_API_KEY is null or all keys is expired.");
-    }
-    const key_length = keys.length;
-    const key = keys[Math.floor(Math.random() * key_length)];
-    console.log("jina-reader:", url);
-    const result = await fetch(`https://r.jina.ai/${url}`, {
-      headers: {
-        "X-Return-Format": "text",
-        "Authorization": `Bearer ${key}`
-      },
-      ...signal && { signal } || {}
-    });
-    if (!result.ok) {
-      if (result.status.toString().startsWith("4") && key_length > 1) {
-        console.error(`jina key: ${`${key.slice(0, 10)} ... ${key.slice(-5)}`} is expired`);
-        keys.splice(keys.indexOf(key), 1);
-        return jina_reader.func({ url, keys }, signal);
+    if (raw.startsWith("[") && raw.endsWith("]")) {
+      try {
+        return JSON.parse(raw);
+      } catch (e) {
+        console.error(e);
       }
-      keys.pop();
-      throw new Error(`All keys is unavailable. ${(await result.json()).message}`);
     }
-    return await result.text();
-  },
-  type: "web_crawler"
-};
+    return raw.split(",");
+  }
+  static trim(source, lock) {
+    const config = { ...source };
+    const keysSet = new Set(source?.DEFINE_KEYS || []);
+    for (const key of lock) {
+      keysSet.delete(key);
+    }
+    keysSet.add("DEFINE_KEYS");
+    for (const key of Object.keys(config)) {
+      if (!keysSet.has(key)) {
+        delete config[key];
+      }
+    }
+    return config;
+  }
+  static merge(target, source, exclude) {
+    const sourceKeys = new Set(Object.keys(source));
+    for (const key of Object.keys(target)) {
+      if (!sourceKeys.has(key)) {
+        continue;
+      }
+      if (exclude && exclude.includes(key)) {
+        continue;
+      }
+      const t = target[key] !== null && target[key] !== void 0 ? typeof target[key] : "string";
+      if (typeof source[key] !== "string") {
+        target[key] = source[key];
+        continue;
+      }
+      switch (t) {
+        case "number":
+          target[key] = Number.parseInt(source[key], 10);
+          break;
+        case "boolean":
+          target[key] = (source[key] || "false") === "true";
+          break;
+        case "string":
+          target[key] = source[key];
+          break;
+        case "object":
+          if (Array.isArray(target[key])) {
+            target[key] = ConfigMerger.parseArray(source[key]);
+          } else {
+            try {
+              target[key] = { ...target[key], ...JSON.parse(source[key]) };
+            } catch (e) {
+              console.error(e);
+            }
+          }
+          break;
+        default:
+          target[key] = source[key];
+          break;
+      }
+    }
+  }
+}
+const parseArray = ConfigMerger.parseArray;
 class APIClientBase {
   token;
   baseURL = ENV.TELEGRAM_API_DOMAIN;
@@ -565,6 +569,50 @@ function createTelegramBotAPI(token) {
     }
   });
 }
+const LOG_LEVEL_PRIORITY = {
+  debug: 1,
+  info: 2,
+  warn: 3,
+  error: 4
+};
+function LogLevel(level, ...args) {
+  const timestamp = (/* @__PURE__ */ new Date()).toISOString();
+  const logParts = args.map((e) => {
+    if (typeof e === "object") {
+      return JSON.stringify(e, null, 2);
+    }
+    return e;
+  });
+  const logStr = logParts.join("\n");
+  const formattedMessage = `[${timestamp}] [${level.toUpperCase()}] ${logStr}`;
+  switch (level) {
+    case "error":
+      console.error(formattedMessage);
+      break;
+    case "warn":
+      console.warn(formattedMessage);
+      break;
+    case "info":
+      console.info(formattedMessage);
+      break;
+    case "debug":
+      console.debug(formattedMessage);
+      break;
+    default:
+      console.log(formattedMessage);
+  }
+}
+const log = new Proxy({}, {
+  get(target, prop) {
+    const level = prop;
+    const currentLogLevel = ENV.LOG_LEVEL || "info";
+    if (LOG_LEVEL_PRIORITY[level] >= LOG_LEVEL_PRIORITY[currentLogLevel]) {
+      return (...args) => LogLevel(level, ...args);
+    }
+    return () => {
+    };
+  }
+});
 const scheduleResp = (ok, reason = "") => {
   const result = {
     ok,
@@ -574,7 +622,7 @@ const scheduleResp = (ok, reason = "") => {
 };
 async function schedule_detele_message(ENV2) {
   try {
-    console.log("- Start task: schedule_detele_message");
+    log.info("- Start task: schedule_detele_message");
     const botTokens = extractArrayData(ENV2.TELEGRAM_AVAILABLE_TOKENS);
     const botNames = extractArrayData(ENV2.TELEGRAM_BOT_NAME);
     const scheduleDeteleKey = "schedule_detele_message";
@@ -588,19 +636,19 @@ async function schedule_detele_message(ENV2) {
       const sortData = sortDeleteMessages(chats);
       scheduledData[bot_name] = sortData.rest;
       Object.entries(sortData.expired).forEach(([chat_id, messages]) => {
-        console.log(`Start delete: ${chat_id} - ${messages}`);
+        log.info(`Start delete: ${chat_id} - ${messages}`);
         for (let i = 0; i < messages.length; i += 100) {
           taskPromises.push(api.deleteMessages({ chat_id, message_ids: messages.slice(i, i + 100) }));
         }
       });
     }
     if (taskPromises.length === 0) {
-      console.log(`Rest ids: ${JSON.stringify(scheduledData)}
+      log.info(`Rest ids: ${JSON.stringify(scheduledData)}
 Nothing need to delete.`);
       return scheduleResp(true);
     }
     const resp = await Promise.all(taskPromises);
-    console.log("all task result: ", resp.map((r) => r.ok));
+    log.info("all task result: ", resp.map((r) => r.ok));
     await setData(ENV2, scheduleDeteleKey, scheduledData);
     return scheduleResp(true);
   } catch (e) {
@@ -701,6 +749,7 @@ class EnvironmentConfig {
   DROPS_OPENAI_PARAMS = {};
   SEND_IMAGE_FILE = false;
   PPLX_COOKIE = null;
+  LOG_LEVEL = "info";
   STREAM_MODE = true;
   SAFE_MODE = true;
   DEBUG_MODE = false;
@@ -824,8 +873,8 @@ const ENV_KEY_MAPPER = {
   WORKERS_AI_MODEL: "WORKERS_CHAT_MODEL"
 };
 class Environment extends EnvironmentConfig {
-  BUILD_TIMESTAMP = 1728891396;
-  BUILD_VERSION = "9fd7f38";
+  BUILD_TIMESTAMP = 1728981742;
+  BUILD_VERSION = "9644022";
   I18N = loadI18n();
   PLUGINS_ENV = {};
   USER_CONFIG = createAgentUserConfig();
@@ -910,100 +959,153 @@ class Environment extends EnvironmentConfig {
   }
 }
 const ENV = new Environment();
-class ShareContext {
-  botId;
-  botToken;
-  botName = null;
-  chatHistoryKey;
-  lastMessageKey;
-  configStoreKey;
-  groupAdminsKey;
-  telegraphAccessTokenKey;
-  scheduleDeteleKey = "schedule_detele_message";
-  storeMessageKey;
-  sentMessageIds;
-  constructor(token, message) {
-    const botId = Number.parseInt(token.split(":")[0]);
-    const telegramIndex = ENV.TELEGRAM_AVAILABLE_TOKENS.indexOf(token);
-    if (telegramIndex === -1) {
-      throw new Error("Token not allowed");
-    }
-    if (ENV.TELEGRAM_BOT_NAME.length > telegramIndex) {
-      this.botName = ENV.TELEGRAM_BOT_NAME[telegramIndex];
-    }
-    this.botToken = token;
-    this.botId = botId;
-    const id = message?.chat?.id;
-    if (id === void 0 || id === null) {
-      throw new Error("Chat id not found");
-    }
-    let historyKey = `history:${id}`;
-    let configStoreKey = `user_config:${id}`;
-    if (botId) {
-      historyKey += `:${botId}`;
-      configStoreKey += `:${botId}`;
-    }
-    switch (message.chat.type) {
-      case "group":
-      case "supergroup":
-        if (!ENV.GROUP_CHAT_BOT_SHARE_MODE && message.from?.id) {
-          historyKey += `:${message.from.id}`;
-          configStoreKey += `:${message.from.id}`;
+const INTERPOLATE_LOOP_REGEXP = /\{\{#each(?::(\w+))?\s+(\w+)\s+in\s+([\w.[\]]+)\}\}([\s\S]*?)\{\{\/each(?::\1)?\}\}/g;
+const INTERPOLATE_CONDITION_REGEXP = /\{\{#if(?::(\w+))?\s+([\w.[\]]+)\}\}([\s\S]*?)(?:\{\{#else(?::\1)?\}\}([\s\S]*?))?\{\{\/if(?::\1)?\}\}/g;
+const INTERPOLATE_VARIABLE_REGEXP = /\{\{([\w.[\]]+)\}\}/g;
+function evaluateExpression(expr, localData) {
+  if (expr === ".") {
+    return localData["."] ?? localData;
+  }
+  try {
+    return expr.split(".").reduce((value, key) => {
+      if (key.includes("[") && key.includes("]")) {
+        const [arrayKey, indexStr] = key.split("[");
+        const indexExpr = indexStr.slice(0, -1);
+        let index2 = Number.parseInt(indexExpr, 10);
+        if (Number.isNaN(index2)) {
+          index2 = evaluateExpression(indexExpr, localData);
         }
-        this.groupAdminsKey = `group_admin:${id}`;
-        break;
-    }
-    if (message?.chat.is_forum && message?.is_topic_message) {
-      if (message?.message_thread_id) {
-        historyKey += `:${message.message_thread_id}`;
-        configStoreKey += `:${message.message_thread_id}`;
+        return value?.[arrayKey]?.[index2];
       }
-    }
-    this.chatHistoryKey = historyKey;
-    this.lastMessageKey = `last_message_id:${historyKey}`;
-    this.configStoreKey = configStoreKey;
-    if (message?.from?.id && ENV.STORE_MESSAGE_WHITELIST.includes(message.from.id) && ENV.STORE_MESSAGE_NUM > 0) {
-      this.storeMessageKey = `store_message:${message.chat.id}:${message?.from?.id || message.chat.id}`;
-    }
-    if (ENV.TELEGRAPH_NUM_LIMIT > 0) {
-      this.telegraphAccessTokenKey = `telegraph_access_token:${id}`;
-    }
-    if (ENV.EXPIRED_TIME > 0)
-      this.sentMessageIds = /* @__PURE__ */ new Set();
+      return value?.[key];
+    }, localData);
+  } catch (error) {
+    console.error(`Error evaluating expression: ${expr}`, error);
+    return void 0;
   }
 }
-class MiddleContext {
-  originalMessage = { type: "text" };
-  history = [];
-  logs = null;
-  middleResult = [];
-  sender = null;
-}
-class WorkerContextBase {
-  SHARE_CONTEXT;
-  MIDDEL_CONTEXT = new MiddleContext();
-  constructor(token, message) {
-    this.SHARE_CONTEXT = new ShareContext(token, message);
-  }
-}
-class WorkerContext {
-  USER_CONFIG;
-  SHARE_CONTEXT;
-  MIDDEL_CONTEXT;
-  constructor(USER_CONFIG, SHARE_CONTEXT, MIDDEL_CONTEXT) {
-    this.USER_CONFIG = USER_CONFIG;
-    this.SHARE_CONTEXT = SHARE_CONTEXT;
-    this.MIDDEL_CONTEXT = MIDDEL_CONTEXT;
-  }
-  static async from(SHARE_CONTEXT, MIDDLE_CONTEXT) {
-    const USER_CONFIG = { ...ENV.USER_CONFIG };
-    try {
-      const userConfig = JSON.parse(await ENV.DATABASE.get(SHARE_CONTEXT.configStoreKey));
-      ConfigMerger.merge(USER_CONFIG, ConfigMerger.trim(userConfig, ENV.LOCK_USER_CONFIG_KEYS) || {});
-    } catch (e) {
-      console.warn(e);
+function interpolate(template, data, formatter = null) {
+  const processConditional = (condition, trueBlock, falseBlock, localData) => {
+    const result = evaluateExpression(condition, localData);
+    return result ? trueBlock : falseBlock || "";
+  };
+  const processLoop = (itemName, arrayExpr, loopContent, localData) => {
+    const array = evaluateExpression(arrayExpr, localData);
+    if (!Array.isArray(array)) {
+      console.warn(`Expression "${arrayExpr}" did not evaluate to an array`);
+      return "";
     }
-    return new WorkerContext(USER_CONFIG, SHARE_CONTEXT, MIDDLE_CONTEXT);
+    return array.map((item) => {
+      const itemData = { ...localData, [itemName]: item, ".": item };
+      return interpolate(loopContent, itemData);
+    }).join("");
+  };
+  const processTemplate = (tmpl, localData) => {
+    tmpl = tmpl.replace(INTERPOLATE_LOOP_REGEXP, (_, alias, itemName, arrayExpr, loopContent) => processLoop(itemName, arrayExpr, loopContent, localData));
+    tmpl = tmpl.replace(INTERPOLATE_CONDITION_REGEXP, (_, alias, condition, trueBlock, falseBlock) => processConditional(condition, trueBlock, falseBlock, localData));
+    return tmpl.replace(INTERPOLATE_VARIABLE_REGEXP, (_, expr) => {
+      const value = evaluateExpression(expr, localData);
+      if (value === void 0) {
+        return `{{${expr}}}`;
+      }
+      if (formatter) {
+        return formatter(value);
+      }
+      return String(value);
+    });
+  };
+  return processTemplate(template, data);
+}
+function interpolateObject(obj, data) {
+  if (obj === null || obj === void 0) {
+    return null;
+  }
+  if (typeof obj === "string") {
+    return interpolate(obj, data);
+  }
+  if (Array.isArray(obj)) {
+    return obj.map((item) => interpolateObject(item, data));
+  }
+  if (typeof obj === "object") {
+    const result = {};
+    for (const [key, value] of Object.entries(obj)) {
+      result[key] = interpolateObject(value, data);
+    }
+    return result;
+  }
+  return obj;
+}
+async function executeRequest(template, data) {
+  const urlRaw = interpolate(template.url, data, encodeURIComponent);
+  const url = new URL(urlRaw);
+  if (template.query) {
+    for (const [key, value] of Object.entries(template.query)) {
+      url.searchParams.append(key, interpolate(value, data));
+    }
+  }
+  const method = template.method;
+  const headers = Object.fromEntries(
+    Object.entries(template.headers || {}).map(([key, value]) => {
+      return [key, interpolate(value, data)];
+    })
+  );
+  for (const key of Object.keys(headers)) {
+    if (headers[key] === null) {
+      delete headers[key];
+    }
+  }
+  let body = null;
+  if (template.body) {
+    if (template.body.type === "json") {
+      body = JSON.stringify(interpolateObject(template.body.content, data));
+    } else if (template.body.type === "form") {
+      body = new URLSearchParams();
+      for (const [key, value] of Object.entries(template.body.content)) {
+        body.append(key, interpolate(value, data));
+      }
+    } else {
+      body = interpolate(template.body.content, data);
+    }
+  }
+  const response = await fetch(url, {
+    method,
+    headers,
+    body
+  });
+  const renderOutput = async (type, temple, response2) => {
+    switch (type) {
+      case "text":
+        return interpolate(temple, await response2.text());
+      case "json":
+      default:
+        return interpolate(temple, await response2.json());
+    }
+  };
+  if (!response.ok) {
+    const content2 = await renderOutput(template.response?.error?.input_type, template.response.error?.output, response);
+    return {
+      type: template.response.error.output_type,
+      content: content2
+    };
+  }
+  let content = await renderOutput(template.response.content?.input_type, template.response.content?.output, response);
+  if (template.response?.render) {
+    content = template.response.render.replace("{{input}}", data.DATA).replace("{{output}}", content);
+  }
+  return {
+    type: template.response.content.output_type,
+    content
+  };
+}
+function formatInput(input, type) {
+  if (type === "json") {
+    return JSON.parse(input);
+  } else if (type === "space-separated") {
+    return input.split(/\s+/);
+  } else if (type === "comma-separated") {
+    return input.split(/\s*,\s*/);
+  } else {
+    return input;
   }
 }
 const logSingleton = /* @__PURE__ */ new WeakMap();
@@ -1087,7 +1189,8 @@ function getLogSingleton(config) {
         time: []
       },
       tokens: [],
-      ongoingFunctions: []
+      ongoingFunctions: [],
+      error: ""
     });
   }
   return logSingleton.get(config);
@@ -1114,11 +1217,14 @@ function getLog(context, returnModel = false) {
     logList.push(toolsLog);
   }
   if (logObj.functions.length > 0) {
-    const functionLogs = logObj.functions.map((log) => {
-      const args = Object.values(log.arguments).join(", ");
-      return `${log.name}: ${args}`.substring(0, 50);
+    const functionLogs = logObj.functions.map((log2) => {
+      const args = Object.values(log2.arguments).join(", ");
+      return `${log2.name}: ${args}`.substring(0, 50);
     });
     logList.push(...functionLogs);
+  }
+  if (logObj.error) {
+    logList.push(`${logObj.error}`);
   }
   if (logObj.chat.model.length > 0) {
     const chatLogs = logObj.chat.model.map((m, i) => {
@@ -1134,7 +1240,7 @@ function getLog(context, returnModel = false) {
   if (logObj.tokens.length > 0 && showToken) {
     logList.push(`${logObj.tokens.join("|")}`);
   }
-  return logList.map((entry) => `> \`${entry}\``).join("\n");
+  return logList.filter(Boolean).map((entry) => `>\`${entry}\``).join("\n");
 }
 function clearLog(context) {
   logSingleton.delete(context);
@@ -1153,6 +1259,552 @@ function handleLlmLog(logs, result, time, type) {
       }))
     );
   }
+}
+function markdownToTelegraphNodes(markdown) {
+  const lines = markdown.split("\n");
+  const nodes = [];
+  let inCodeBlock = false;
+  let codeBlockContent = "";
+  let codeBlockLanguage = "";
+  for (let line of lines) {
+    if (line.trim().startsWith("```")) {
+      if (inCodeBlock) {
+        nodes.push({
+          tag: "pre",
+          children: [
+            {
+              tag: "code",
+              attrs: codeBlockLanguage ? { class: `language-${codeBlockLanguage}` } : {},
+              children: [codeBlockContent.trim()]
+            }
+          ]
+        });
+        inCodeBlock = false;
+        codeBlockContent = "";
+        codeBlockLanguage = "";
+      } else {
+        inCodeBlock = true;
+        codeBlockLanguage = line.trim().slice(3).trim();
+      }
+      continue;
+    }
+    if (inCodeBlock) {
+      codeBlockContent += `${line}
+`;
+      continue;
+    }
+    const _line = line.trim();
+    if (!_line)
+      continue;
+    if (_line.startsWith("#")) {
+      const match = /^#+/.exec(_line);
+      let level = match ? match[0].length : 0;
+      level = level <= 2 ? 3 : 4;
+      const text = line.replace(/^#+\s*/, "");
+      nodes.push({ tag: `h${level}`, children: processInlineElements(text) });
+    } else if (_line.startsWith("> ")) {
+      const text = line.slice(2);
+      nodes.push({ tag: "blockquote", children: processInlineElements(text) });
+    } else if (_line === "---" || _line === "***") {
+      nodes.push({ tag: "hr" });
+    } else {
+      const matches = /^(\s*)(?:-|\*)\s/.exec(line);
+      if (matches) {
+        line = `${matches[1]}• ${line.slice(matches[0].length)}`;
+      }
+      nodes.push({ tag: "p", children: processInlineElements(line) });
+    }
+  }
+  if (inCodeBlock) {
+    nodes.push({
+      tag: "pre",
+      children: [
+        {
+          tag: "code",
+          attrs: codeBlockLanguage ? { class: `language-${codeBlockLanguage}` } : {},
+          children: [codeBlockContent.trim()]
+        }
+      ]
+    });
+  }
+  return nodes;
+}
+function processInlineElementsHelper(text) {
+  const children = [];
+  const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  let match = null;
+  let index2 = 0;
+  while (true) {
+    match = linkRegex.exec(text);
+    if (match === null)
+      break;
+    if (match.index > index2) {
+      children.push(...processInlineStyles(text.slice(index2, match.index)));
+    }
+    children.push({
+      tag: "a",
+      attrs: { href: match[2] },
+      children: [match[1]]
+    });
+    index2 = match.index + match[0].length;
+  }
+  if (index2 < text.length) {
+    children.push(...processInlineStyles(text.slice(index2)));
+  }
+  return children;
+}
+function processInlineStyles(text) {
+  const children = [];
+  const styleRegex = /(\*\*|__|_|~~)(.+?)\1/g;
+  let lastIndex = 0;
+  let match;
+  while (true) {
+    match = styleRegex.exec(text);
+    if (match === null)
+      break;
+    if (match.index > lastIndex) {
+      children.push(text.slice(lastIndex, match.index));
+    }
+    let tag = "";
+    switch (match[1]) {
+      case "**":
+        tag = "strong";
+        break;
+      case "__":
+        tag = "u";
+        break;
+      case "_":
+        tag = "i";
+        break;
+      case "~~":
+        tag = "s";
+        break;
+      default:
+        tag = "span";
+        break;
+    }
+    children.push({
+      tag,
+      children: [match[2]]
+    });
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    children.push(text.slice(lastIndex));
+  }
+  return children;
+}
+function processInlineElements(text) {
+  const children = [];
+  const codeRegex = /`([^`]+)`/g;
+  let codeMatch = null;
+  let lastIndex = 0;
+  while (true) {
+    codeMatch = codeRegex.exec(text);
+    if (codeMatch === null)
+      break;
+    if (codeMatch.index > lastIndex) {
+      children.push(...processInlineElementsHelper(text.slice(lastIndex, codeMatch.index)));
+    }
+    children.push({
+      tag: "code",
+      children: [codeMatch[1]]
+    });
+    lastIndex = codeMatch.index + codeMatch[0].length;
+  }
+  if (lastIndex < text.length) {
+    children.push(...processInlineElementsHelper(text.slice(lastIndex)));
+  }
+  return children;
+}
+const escapeChars = /([_*[\]()\\~`>#+\-=|{}.!])/g;
+function escape(text) {
+  const lines = text.split("\n");
+  const stack = [];
+  const result = [];
+  let lineTrim = "";
+  for (const [i, line] of lines.entries()) {
+    lineTrim = line.trim();
+    let startIndex = 0;
+    if (/^```.+/.test(lineTrim)) {
+      stack.push(i);
+    } else if (lineTrim === "```") {
+      if (stack.length) {
+        startIndex = stack.pop();
+        if (!stack.length) {
+          const content = lines.slice(startIndex, i + 1).join("\n");
+          result.push(handleEscape(content, "code"));
+          continue;
+        }
+      } else {
+        stack.push(i);
+      }
+    }
+    if (!stack.length) {
+      result.push(handleEscape(line));
+    }
+  }
+  if (stack.length) {
+    const last = `${lines.slice(stack[0]).join("\n")}
+\`\`\``;
+    result.push(handleEscape(last, "code"));
+  }
+  return result.join("\n");
+}
+function handleEscape(text, type = "text") {
+  if (!text.trim()) {
+    return text;
+  }
+  if (type === "text") {
+    text = text.replace(escapeChars, "\\$1").replace(/\\\*\\\*(.*?[^\\])\\\*\\\*/g, "*$1*").replace(/\\_\\_(.*?[^\\])\\_\\_/g, "__$1__").replace(/\\_(.*?[^\\])\\_/g, "_$1_").replace(/\\~(.*?[^\\])\\~/g, "~$1~").replace(/\\\|\\\|(.*?[^\\])\\\|\\\|/g, "||$1||").replace(/\\\[([^\]]+?)\\\]\\\((.+?)\\\)/g, "[$1]($2)").replace(/\\`(.*?[^\\])\\`/g, "`$1`").replace(/\\\\\\([_*[\]()\\~`>#+\-=|{}.!])/g, "\\$1").replace(/^(\s*)\\(>.+\s*)$/gm, "$1$2").replace(/^(\s*)\\-\s*(.+)$/gm, "$1• $2").replace(/^((\\#){1,3}\s)(.+)/gm, "$1*$3*");
+  } else {
+    const codeBlank = text.length - text.trimStart().length;
+    if (codeBlank > 0) {
+      const blankReg = new RegExp(`^\\s{${codeBlank}}`, "gm");
+      text = text.replace(blankReg, "");
+    }
+    text = text.trimEnd().replace(/([\\`])/g, "\\$1").replace(/^\\`\\`\\`([\s\S]+)\\`\\`\\`$/g, "```$1```");
+  }
+  return text;
+}
+class MessageContext {
+  chat_id;
+  message_id = null;
+  reply_to_message_id;
+  parse_mode = null;
+  allow_sending_without_reply = null;
+  disable_web_page_preview = ENV.DISABLE_WEB_PREVIEW;
+  message_thread_id = null;
+  chatType;
+  message;
+  constructor(message) {
+    this.chat_id = message.chat.id;
+    this.chatType = message.chat.type;
+    this.message = message;
+    if (message.chat.type === "group" || message.chat.type === "supergroup") {
+      if (message?.reply_to_message && ENV.EXTRA_MESSAGE_CONTEXT && ENV.ENABLE_REPLY_TO_MENTION && !message.reply_to_message.from?.is_bot) {
+        this.reply_to_message_id = message.reply_to_message.message_id;
+      } else {
+        this.reply_to_message_id = message.message_id;
+      }
+      this.allow_sending_without_reply = true;
+      if (message.message_thread_id) {
+        this.message_thread_id = message.message_thread_id;
+      }
+    } else {
+      this.reply_to_message_id = null;
+    }
+    if (ENV.EXPIRED_TIME > 0) {
+      sentMessageIds.set(message, []);
+    }
+  }
+}
+class MessageSender {
+  api;
+  context;
+  constructor(token, context) {
+    this.api = createTelegramBotAPI(token);
+    this.context = context;
+  }
+  static from(token, message) {
+    return new MessageSender(token, new MessageContext(message));
+  }
+  with(message) {
+    this.context = new MessageContext(message);
+    return this;
+  }
+  update(context) {
+    if (!this.context) {
+      this.context = context;
+      return this;
+    }
+    for (const key in context) {
+      this.context[key] = context[key];
+    }
+    return this;
+  }
+  async sendMessage(message, context) {
+    if (context?.message_id) {
+      const params = {
+        chat_id: context.chat_id,
+        message_id: context.message_id,
+        parse_mode: context.parse_mode || void 0,
+        text: message
+      };
+      if (context.disable_web_page_preview) {
+        params.link_preview_options = {
+          is_disabled: true
+        };
+      }
+      return this.api.editMessageText(params);
+    } else {
+      const params = {
+        chat_id: context.chat_id,
+        parse_mode: context.parse_mode || void 0,
+        text: message
+      };
+      if (context.reply_to_message_id) {
+        params.reply_parameters = {
+          message_id: context.reply_to_message_id,
+          chat_id: context.chat_id,
+          allow_sending_without_reply: context.allow_sending_without_reply || void 0
+        };
+      }
+      if (context.disable_web_page_preview) {
+        params.link_preview_options = {
+          is_disabled: true
+        };
+      }
+      return this.api.sendMessage(params);
+    }
+  }
+  renderMessage(parse_mode, message) {
+    if (parse_mode === "MarkdownV2") {
+      return escape(message);
+    }
+    return message;
+  }
+  async sendLongMessage(message, context) {
+    const chatContext = { ...context };
+    const limit = 4096;
+    if (message.length <= limit) {
+      const resp = await this.sendMessage(this.renderMessage(context.parse_mode, message), chatContext);
+      if (resp.status === 200) {
+        return resp;
+      }
+    }
+    chatContext.parse_mode = null;
+    let lastMessageResponse = null;
+    for (let i = 0; i < message.length; i += limit) {
+      const msg = message.slice(i, Math.min(i + limit, message.length));
+      if (i > 0) {
+        chatContext.message_id = null;
+      }
+      lastMessageResponse = await this.sendMessage(msg, chatContext);
+      if (lastMessageResponse.status !== 200) {
+        break;
+      }
+    }
+    if (lastMessageResponse === null) {
+      throw new Error("Send message failed");
+    }
+    return lastMessageResponse;
+  }
+  sendRichText(message, parseMode = ENV.DEFAULT_PARSE_MODE, type = "chat") {
+    if (!this.context) {
+      throw new Error("Message context not set");
+    }
+    const resp = this.sendLongMessage(message, {
+      ...this.context,
+      parse_mode: parseMode
+    });
+    return checkIsNeedTagIds(this.context, resp, type);
+  }
+  sendPlainText(message, type = "tip") {
+    if (!this.context) {
+      throw new Error("Message context not set");
+    }
+    const resp = this.sendLongMessage(message, {
+      ...this.context,
+      parse_mode: null
+    });
+    return checkIsNeedTagIds(this.context, resp, type);
+  }
+  sendPhoto(photo, caption, parse_mode) {
+    if (!this.context) {
+      throw new Error("Message context not set");
+    }
+    const params = {
+      chat_id: this.context.chat_id,
+      photo,
+      message_thread_id: this.context.message_thread_id || void 0,
+      ...caption ? { caption: this.renderMessage(parse_mode || null, caption) } : {},
+      parse_mode
+    };
+    if (this.context.reply_to_message_id) {
+      params.reply_parameters = {
+        message_id: this.context.reply_to_message_id,
+        chat_id: this.context.chat_id,
+        allow_sending_without_reply: this.context.allow_sending_without_reply || void 0
+      };
+    }
+    const resp = this.api.sendPhoto(params);
+    return checkIsNeedTagIds(this.context, resp, "chat");
+  }
+  sendMediaGroup(media) {
+    if (!this.context) {
+      throw new Error("Message context not set");
+    }
+    const params = {
+      chat_id: this.context.chat_id,
+      media,
+      message_thread_id: this.context.message_thread_id || void 0
+    };
+    if (this.context.reply_to_message_id) {
+      params.reply_parameters = {
+        message_id: this.context.reply_to_message_id,
+        chat_id: this.context.chat_id,
+        allow_sending_without_reply: this.context.allow_sending_without_reply || void 0
+      };
+    }
+    const resp = this.api.sendMediaGroup(params);
+    return checkIsNeedTagIds(this.context, resp, "chat");
+  }
+  sendDocument(document, caption, parse_mode) {
+    if (!this.context) {
+      throw new Error("Message context not set");
+    }
+    const params = {
+      chat_id: this.context.chat_id,
+      document,
+      message_thread_id: this.context.message_thread_id || void 0,
+      caption,
+      parse_mode
+    };
+    if (this.context.reply_to_message_id) {
+      params.reply_parameters = {
+        message_id: this.context.reply_to_message_id,
+        chat_id: this.context.chat_id,
+        allow_sending_without_reply: this.context.allow_sending_without_reply || void 0
+      };
+    }
+    return this.api.sendDocument(params);
+  }
+}
+class TelegraphSender {
+  context;
+  telegraphAccessTokenKey;
+  telegraphAccessToken;
+  teleph_path;
+  author = {
+    short_name: "Mewo",
+    author_name: "A Cat",
+    author_url: ENV.TELEGRAPH_AUTHOR_URL
+  };
+  constructor(context, botName, telegraphAccessTokenKey) {
+    this.context = context;
+    this.telegraphAccessTokenKey = telegraphAccessTokenKey;
+    if (botName) {
+      this.author = {
+        short_name: botName,
+        author_name: botName,
+        author_url: ENV.TELEGRAPH_AUTHOR_URL
+      };
+    }
+  }
+  async createAccount() {
+    const { short_name, author_name } = this.author;
+    const url = `https://api.telegra.ph/createAccount?short_name=${short_name}&author_name=${author_name}`;
+    const resp = await fetch(url).then((r) => r.json());
+    if (resp.ok) {
+      return resp.result.access_token;
+    } else {
+      throw new Error("create telegraph account failed");
+    }
+  }
+  async createOrEditPage(url, title, content) {
+    const body = {
+      access_token: this.telegraphAccessToken,
+      teleph_path: this.teleph_path ?? void 0,
+      title: title || "Daily Q&A",
+      content: markdownToTelegraphNodes(content),
+      ...this.author
+    };
+    const headers = { "Content-Type": "application/json" };
+    return fetch(url, {
+      method: "post",
+      headers,
+      body: JSON.stringify(body)
+    }).then((r) => r.json());
+  }
+  async send(title, content) {
+    let endPoint = "https://api.telegra.ph/editPage";
+    if (!this.telegraphAccessToken) {
+      this.telegraphAccessToken = await ENV.DATABASE.get(this.telegraphAccessTokenKey);
+      if (!this.telegraphAccessToken) {
+        this.telegraphAccessToken = await this.createAccount();
+        await ENV.DATABASE.put(this.telegraphAccessTokenKey, this.telegraphAccessToken);
+      }
+    }
+    if (!this.teleph_path) {
+      endPoint = "https://api.telegra.ph/createPage";
+      const c_resp = await this.createOrEditPage(endPoint, title, content);
+      if (c_resp.ok) {
+        this.teleph_path = c_resp.result.path;
+        log.info("telegraph url:", c_resp.result.url);
+        return c_resp;
+      } else {
+        console.error(c_resp.error);
+        throw new Error(c_resp.error);
+      }
+    } else {
+      return this.createOrEditPage(endPoint, title, content);
+    }
+  }
+}
+function sendAction(botToken, chat_id, action = "typing") {
+  const api = createTelegramBotAPI(botToken);
+  setTimeout(() => api.sendChatAction({
+    chat_id,
+    action
+  }).catch(console.error), 0);
+}
+async function checkIsNeedTagIds(context, resp, msgType) {
+  const { chatType } = context;
+  let message_id = null;
+  const original_resp = await resp;
+  do {
+    if (ENV.EXPIRED_TIME <= 0 || context.message_id) break;
+    const clone_resp = await original_resp.clone().json();
+    if (Array.isArray(clone_resp.result)) {
+      message_id = clone_resp?.result?.map((i) => i.message_id);
+    } else {
+      message_id = [clone_resp?.result?.message_id];
+    }
+    if (!message_id) {
+      console.error(JSON.stringify(clone_resp));
+      break;
+    }
+    const isGroup = ["group", "supergroup"].includes(chatType);
+    const isNeedTag = isGroup && ENV.SCHEDULE_GROUP_DELETE_TYPE.includes(msgType) || !isGroup && ENV.SCHEDULE_PRIVATE_DELETE_TYPE.includes(msgType);
+    if (isNeedTag) {
+      message_id.forEach((id) => sentMessageIds.get(context.message)?.push(id));
+    }
+  } while (false);
+  return original_resp;
+}
+async function loadChatRoleWithContext(message, context) {
+  const { groupAdminsKey } = context.SHARE_CONTEXT;
+  const chatId = message.chat.id;
+  const speakerId = message.from?.id || chatId;
+  if (!groupAdminsKey) {
+    return null;
+  }
+  let groupAdmin = null;
+  try {
+    groupAdmin = JSON.parse(await ENV.DATABASE.get(groupAdminsKey));
+  } catch (e) {
+    console.error(e);
+  }
+  if (groupAdmin === null || !Array.isArray(groupAdmin) || groupAdmin.length === 0) {
+    const api = createTelegramBotAPI(context.SHARE_CONTEXT.botToken);
+    const result = await api.getChatAdministratorsWithReturns({ chat_id: chatId });
+    if (result == null) {
+      return null;
+    }
+    groupAdmin = result.result;
+    await ENV.DATABASE.put(
+      groupAdminsKey,
+      JSON.stringify(groupAdmin),
+      { expiration: Date.now() / 1e3 + 120 }
+    );
+  }
+  for (const user of groupAdmin) {
+    if (`${user.user?.id}` === `${speakerId}`) {
+      return user.status;
+    }
+  }
+  return "member";
 }
 class Cache {
   maxItems;
@@ -1484,7 +2136,8 @@ async function requestChatCompletions(url, header, body, onStream, onResult = nu
   if (ENV.CHAT_COMPLETE_API_TIMEOUT > 0) {
     timeoutID = setTimeout(() => controller.abort(), ENV.CHAT_COMPLETE_API_TIMEOUT * 1e3);
   }
-  console.log(`[${(/* @__PURE__ */ new Date()).toISOString()}]: start request llm`);
+  log.info("start request llm");
+  log.debug("request url, headers, body", url, header, body);
   const resp = await fetch(url, {
     method: "POST",
     headers: header,
@@ -1528,7 +2181,7 @@ function clearTimeoutID(timeoutID) {
     clearTimeout(timeoutID);
 }
 async function iterStream(body, stream, options, onStream) {
-  console.log(`[${(/* @__PURE__ */ new Date()).toISOString()}]: start handle stream`);
+  log.info(`start handle stream`);
   let contentFull = "";
   let lengthDelta = 0;
   let updateStep = 0;
@@ -1565,6 +2218,7 @@ async function iterStream(body, stream, options, onStream) {
       }
     }
     contentFull += lastChunk;
+    log.debug("--- contentFull:", contentFull);
   } catch (e) {
     contentFull += `
 ERROR: ${e.message}`;
@@ -1749,8 +2403,7 @@ async function requestText2Image(url, headers, body, render) {
 }
 async function renderOpenAIMessage(item) {
   const res = {
-    ...item,
-    content: item.content || []
+    ...item
   };
   if (item.images && item.images.length > 0) {
     res.content = [];
@@ -1820,8 +2473,12 @@ class OpenAI extends (_a = OpenAIBase, _request_dec2 = [Log], _a) {
       };
       const messages = [...history || []];
       if (prompt) {
-        if (messages[0]?.role === "tool") {
-          messages.shift();
+        for (const message of messages) {
+          if (message?.role === "tool") {
+            messages.shift();
+          } else {
+            break;
+          }
         }
         messages.unshift({ role: context.SYSTEM_INIT_MESSAGE_ROLE, content: prompt });
       }
@@ -1937,7 +2594,7 @@ class Transcription extends (_c = OpenAIBase, _request_dec4 = [Log], _c) {
         console.error(resp);
         throw new Error(resp);
       }
-      console.log(`Transcription: ${resp.text}`);
+      log.info(`Transcription: ${resp.text}`);
       return {
         type: "text",
         text: resp.text
@@ -2226,6 +2883,89 @@ class Mistral {
 _init8 = __decoratorStart(null);
 __decorateElement(_init8, 5, "request", _request_dec8, Mistral);
 __decoratorMetadata(_init8, Mistral);
+class SiliconBase {
+  name = "silicon";
+  enable = (context) => {
+    return !!context.MISTRAL_API_KEY;
+  };
+}
+class Silicon extends (_e = SiliconBase, _request_dec9 = [Log], _e) {
+  constructor() {
+    super(...arguments);
+    __publicField(this, "modelKey", "SILICON_CHAT_MODEL");
+    __publicField(this, "enable", (context) => {
+      return !!context.SILICON_API_KEY;
+    });
+    __publicField(this, "model", (ctx) => {
+      return ctx.SILICON_CHAT_MODEL;
+    });
+    __publicField(this, "render", async (item) => {
+      return renderOpenAIMessage(item);
+    });
+    __publicField(this, "request", __runInitializers(_init9, 8, this, async (params, context, onStream) => {
+      const { prompt, history, extra_params } = params;
+      const url = `${context.SILICON_API_BASE}/chat/completions`;
+      const header = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${context.SILICON_API_KEY}`
+      };
+      const messages = [...history || []];
+      if (prompt) {
+        if (messages[0]?.role === "tool") {
+          messages.shift();
+        }
+        messages.unshift({ role: context.SYSTEM_INIT_MESSAGE_ROLE, content: prompt });
+      }
+      const body = {
+        model: context.SILICON_CHAT_MODEL,
+        messages: await Promise.all(messages.map(this.render)),
+        ...context.ENABLE_SHOWTOKEN && { stream_options: { include_usage: true } },
+        stream: !!onStream,
+        ...extra_params
+      };
+      return requestChatCompletions(url, header, body, onStream);
+    })), __runInitializers(_init9, 11, this);
+  }
+}
+_init9 = __decoratorStart(_e);
+__decorateElement(_init9, 5, "request", _request_dec9, Silicon);
+__decoratorMetadata(_init9, Silicon);
+class SiliconImage extends (_f = SiliconBase, _request_dec10 = [Log], _f) {
+  constructor() {
+    super(...arguments);
+    __publicField(this, "modelKey", "SILICON_IMAGE_MODEL");
+    __publicField(this, "model", (ctx) => {
+      return ctx.SILICON_IMAGE_MODEL;
+    });
+    __publicField(this, "request", __runInitializers(_init10, 8, this, async (prompt, context) => {
+      const url = `${context.SILICON_API_BASE}/image/generations`;
+      const header = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${context.SILICON_API_KEY}`
+      };
+      const body = {
+        prompt,
+        image_size: context.SILICON_IMAGE_SIZE,
+        model: context.SILICON_IMAGE_MODEL,
+        batch_size: 4,
+        ...context.SILICON_EXTRA_PARAMS
+      };
+      return requestText2Image(url, header, body, this.render);
+    })), __runInitializers(_init10, 11, this);
+    __publicField(this, "render", async (response) => {
+      if (response.status !== 200)
+        return { type: "image", message: await response.text() };
+      const resp = await response.json();
+      if (resp.message) {
+        return { type: "image", message: resp.message };
+      }
+      return { type: "image", url: (await resp?.images)?.map((i) => i?.url) };
+    });
+  }
+}
+_init10 = __decoratorStart(_f);
+__decorateElement(_init10, 5, "request", _request_dec10, SiliconImage);
+__decoratorMetadata(_init10, SiliconImage);
 class WorkerBase {
   name = "workers";
   run = async (model, body, id, token) => {
@@ -2242,7 +2982,7 @@ class WorkerBase {
     return !!(context.CLOUDFLARE_ACCOUNT_ID && context.CLOUDFLARE_TOKEN);
   };
 }
-class WorkersChat extends (_e = WorkerBase, _request_dec9 = [Log], _e) {
+class WorkersChat extends (_g = WorkerBase, _request_dec11 = [Log], _g) {
   constructor() {
     super(...arguments);
     __publicField(this, "modelKey", "WORKERS_CHAT_MODEL");
@@ -2255,7 +2995,7 @@ class WorkersChat extends (_e = WorkerBase, _request_dec9 = [Log], _e) {
         content: item.content
       };
     });
-    __publicField(this, "request", __runInitializers(_init9, 8, this, async (params, context, onStream) => {
+    __publicField(this, "request", __runInitializers(_init11, 8, this, async (params, context, onStream) => {
       const { prompt, history } = params;
       const id = context.CLOUDFLARE_ACCOUNT_ID;
       const token = context.CLOUDFLARE_TOKEN;
@@ -2283,20 +3023,20 @@ class WorkersChat extends (_e = WorkerBase, _request_dec9 = [Log], _e) {
         return data?.errors?.[0]?.message;
       };
       return requestChatCompletions(url, header, body, onStream, null, options);
-    })), __runInitializers(_init9, 11, this);
+    })), __runInitializers(_init11, 11, this);
   }
 }
-_init9 = __decoratorStart(_e);
-__decorateElement(_init9, 5, "request", _request_dec9, WorkersChat);
-__decoratorMetadata(_init9, WorkersChat);
-class WorkersImage extends (_f = WorkerBase, _request_dec10 = [Log], _f) {
+_init11 = __decoratorStart(_g);
+__decorateElement(_init11, 5, "request", _request_dec11, WorkersChat);
+__decoratorMetadata(_init11, WorkersChat);
+class WorkersImage extends (_h = WorkerBase, _request_dec12 = [Log], _h) {
   constructor() {
     super(...arguments);
     __publicField(this, "modelKey", "WORKERS_IMAGE_MODEL");
     __publicField(this, "model", (ctx) => {
       return ctx.WORKERS_IMAGE_MODEL;
     });
-    __publicField(this, "request", __runInitializers(_init10, 8, this, async (prompt, context) => {
+    __publicField(this, "request", __runInitializers(_init12, 8, this, async (prompt, context) => {
       const id = context.CLOUDFLARE_ACCOUNT_ID;
       const token = context.CLOUDFLARE_TOKEN;
       if (!id || !token) {
@@ -2304,95 +3044,12 @@ class WorkersImage extends (_f = WorkerBase, _request_dec10 = [Log], _f) {
       }
       const raw = await this.run(context.WORKERS_IMAGE_MODEL, { prompt }, id, token);
       return { type: "image", raw: [await raw.blob()] };
-    })), __runInitializers(_init10, 11, this);
-  }
-}
-_init10 = __decoratorStart(_f);
-__decorateElement(_init10, 5, "request", _request_dec10, WorkersImage);
-__decoratorMetadata(_init10, WorkersImage);
-class SiliconBase {
-  name = "silicon";
-  enable = (context) => {
-    return !!context.MISTRAL_API_KEY;
-  };
-}
-class Silicon extends (_g = SiliconBase, _request_dec11 = [Log], _g) {
-  constructor() {
-    super(...arguments);
-    __publicField(this, "modelKey", "SILICON_CHAT_MODEL");
-    __publicField(this, "enable", (context) => {
-      return !!context.SILICON_API_KEY;
-    });
-    __publicField(this, "model", (ctx) => {
-      return ctx.SILICON_CHAT_MODEL;
-    });
-    __publicField(this, "render", async (item) => {
-      return renderOpenAIMessage(item);
-    });
-    __publicField(this, "request", __runInitializers(_init11, 8, this, async (params, context, onStream) => {
-      const { prompt, history, extra_params } = params;
-      const url = `${context.SILICON_API_BASE}/chat/completions`;
-      const header = {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${context.SILICON_API_KEY}`
-      };
-      const messages = [...history || []];
-      if (prompt) {
-        if (messages[0]?.role === "tool") {
-          messages.shift();
-        }
-        messages.unshift({ role: context.SYSTEM_INIT_MESSAGE_ROLE, content: prompt });
-      }
-      const body = {
-        model: context.SILICON_CHAT_MODEL,
-        messages: await Promise.all(messages.map(this.render)),
-        ...context.ENABLE_SHOWTOKEN && { stream_options: { include_usage: true } },
-        stream: !!onStream,
-        ...extra_params
-      };
-      return requestChatCompletions(url, header, body, onStream);
-    })), __runInitializers(_init11, 11, this);
-  }
-}
-_init11 = __decoratorStart(_g);
-__decorateElement(_init11, 5, "request", _request_dec11, Silicon);
-__decoratorMetadata(_init11, Silicon);
-class SiliconImage extends (_h = SiliconBase, _request_dec12 = [Log], _h) {
-  constructor() {
-    super(...arguments);
-    __publicField(this, "modelKey", "SILICON_IMAGE_MODEL");
-    __publicField(this, "model", (ctx) => {
-      return ctx.SILICON_IMAGE_MODEL;
-    });
-    __publicField(this, "request", __runInitializers(_init12, 8, this, async (prompt, context) => {
-      const url = `${context.SILICON_API_BASE}/image/generations`;
-      const header = {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${context.SILICON_API_KEY}`
-      };
-      const body = {
-        prompt,
-        image_size: context.SILICON_IMAGE_SIZE,
-        model: context.SILICON_IMAGE_MODEL,
-        batch_size: 4,
-        ...context.SILICON_EXTRA_PARAMS
-      };
-      return requestText2Image(url, header, body, this.render);
     })), __runInitializers(_init12, 11, this);
-    __publicField(this, "render", async (response) => {
-      if (response.status !== 200)
-        return { type: "image", message: await response.text() };
-      const resp = await response.json();
-      if (resp.message) {
-        return { type: "image", message: resp.message };
-      }
-      return { type: "image", url: (await resp?.images)?.map((i) => i?.url) };
-    });
   }
 }
 _init12 = __decoratorStart(_h);
-__decorateElement(_init12, 5, "request", _request_dec12, SiliconImage);
-__decoratorMetadata(_init12, SiliconImage);
+__decorateElement(_init12, 5, "request", _request_dec12, WorkersImage);
+__decoratorMetadata(_init12, WorkersImage);
 const CHAT_AGENTS = [
   new Anthropic(),
   new AzureChatAI(),
@@ -2466,1264 +3123,6 @@ function customInfo(config) {
     CRON_CHECK_TIME: ENV.CRON_CHECK_TIME
   };
   return JSON.stringify(other_info, null, 2);
-}
-const escapeChars = /([_*[\]()\\~`>#+\-=|{}.!])/g;
-function escape(text) {
-  const lines = text.split("\n");
-  const stack = [];
-  const result = [];
-  let lineTrim = "";
-  for (const [i, line] of lines.entries()) {
-    lineTrim = line.trim();
-    let startIndex = 0;
-    if (/^```.+/.test(lineTrim)) {
-      stack.push(i);
-    } else if (lineTrim === "```") {
-      if (stack.length) {
-        startIndex = stack.pop();
-        if (!stack.length) {
-          const content = lines.slice(startIndex, i + 1).join("\n");
-          result.push(handleEscape(content, "code"));
-          continue;
-        }
-      } else {
-        stack.push(i);
-      }
-    }
-    if (!stack.length) {
-      result.push(handleEscape(line));
-    }
-  }
-  if (stack.length) {
-    const last = `${lines.slice(stack[0]).join("\n")}
-\`\`\``;
-    result.push(handleEscape(last, "code"));
-  }
-  return result.join("\n");
-}
-function handleEscape(text, type = "text") {
-  if (!text.trim()) {
-    return text;
-  }
-  if (type === "text") {
-    text = text.replace(escapeChars, "\\$1").replace(/\\\*\\\*(.*?[^\\])\\\*\\\*/g, "*$1*").replace(/\\_\\_(.*?[^\\])\\_\\_/g, "__$1__").replace(/\\_(.*?[^\\])\\_/g, "_$1_").replace(/\\~(.*?[^\\])\\~/g, "~$1~").replace(/\\\|\\\|(.*?[^\\])\\\|\\\|/g, "||$1||").replace(/\\\[([^\]]+?)\\\]\\\((.+?)\\\)/g, "[$1]($2)").replace(/\\`(.*?[^\\])\\`/g, "`$1`").replace(/\\\\\\([_*[\]()\\~`>#+\-=|{}.!])/g, "\\$1").replace(/^(\s*)\\(>.+\s*)$/gm, "$1$2").replace(/^(\s*)\\-\s*(.+)$/gm, "$1• $2").replace(/^((\\#){1,3}\s)(.+)/gm, "$1*$3*");
-  } else {
-    const codeBlank = text.length - text.trimStart().length;
-    if (codeBlank > 0) {
-      const blankReg = new RegExp(`^\\s{${codeBlank}}`, "gm");
-      text = text.replace(blankReg, "");
-    }
-    text = text.trimEnd().replace(/([\\`])/g, "\\$1").replace(/^\\`\\`\\`([\s\S]+)\\`\\`\\`$/g, "```$1```");
-  }
-  return text;
-}
-function markdownToTelegraphNodes(markdown) {
-  const lines = markdown.split("\n");
-  const nodes = [];
-  let inCodeBlock = false;
-  let codeBlockContent = "";
-  let codeBlockLanguage = "";
-  for (let line of lines) {
-    if (line.trim().startsWith("```")) {
-      if (inCodeBlock) {
-        nodes.push({
-          tag: "pre",
-          children: [
-            {
-              tag: "code",
-              attrs: codeBlockLanguage ? { class: `language-${codeBlockLanguage}` } : {},
-              children: [codeBlockContent.trim()]
-            }
-          ]
-        });
-        inCodeBlock = false;
-        codeBlockContent = "";
-        codeBlockLanguage = "";
-      } else {
-        inCodeBlock = true;
-        codeBlockLanguage = line.trim().slice(3).trim();
-      }
-      continue;
-    }
-    if (inCodeBlock) {
-      codeBlockContent += `${line}
-`;
-      continue;
-    }
-    const _line = line.trim();
-    if (!_line)
-      continue;
-    if (_line.startsWith("#")) {
-      const match = /^#+/.exec(_line);
-      let level = match ? match[0].length : 0;
-      level = level <= 2 ? 3 : 4;
-      const text = line.replace(/^#+\s*/, "");
-      nodes.push({ tag: `h${level}`, children: processInlineElements(text) });
-    } else if (_line.startsWith("> ")) {
-      const text = line.slice(2);
-      nodes.push({ tag: "blockquote", children: processInlineElements(text) });
-    } else if (_line === "---" || _line === "***") {
-      nodes.push({ tag: "hr" });
-    } else {
-      const matches = /^(\s*)(?:-|\*)\s/.exec(line);
-      if (matches) {
-        line = `${matches[1]}• ${line.slice(matches[0].length)}`;
-      }
-      nodes.push({ tag: "p", children: processInlineElements(line) });
-    }
-  }
-  if (inCodeBlock) {
-    nodes.push({
-      tag: "pre",
-      children: [
-        {
-          tag: "code",
-          attrs: codeBlockLanguage ? { class: `language-${codeBlockLanguage}` } : {},
-          children: [codeBlockContent.trim()]
-        }
-      ]
-    });
-  }
-  return nodes;
-}
-function processInlineElementsHelper(text) {
-  const children = [];
-  const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
-  let match = null;
-  let index2 = 0;
-  while (true) {
-    match = linkRegex.exec(text);
-    if (match === null)
-      break;
-    if (match.index > index2) {
-      children.push(...processInlineStyles(text.slice(index2, match.index)));
-    }
-    children.push({
-      tag: "a",
-      attrs: { href: match[2] },
-      children: [match[1]]
-    });
-    index2 = match.index + match[0].length;
-  }
-  if (index2 < text.length) {
-    children.push(...processInlineStyles(text.slice(index2)));
-  }
-  return children;
-}
-function processInlineStyles(text) {
-  const children = [];
-  const styleRegex = /(\*\*|__|_|~~)(.+?)\1/g;
-  let lastIndex = 0;
-  let match;
-  while (true) {
-    match = styleRegex.exec(text);
-    if (match === null)
-      break;
-    if (match.index > lastIndex) {
-      children.push(text.slice(lastIndex, match.index));
-    }
-    let tag = "";
-    switch (match[1]) {
-      case "**":
-        tag = "strong";
-        break;
-      case "__":
-        tag = "u";
-        break;
-      case "_":
-        tag = "i";
-        break;
-      case "~~":
-        tag = "s";
-        break;
-      default:
-        tag = "span";
-        break;
-    }
-    children.push({
-      tag,
-      children: [match[2]]
-    });
-    lastIndex = match.index + match[0].length;
-  }
-  if (lastIndex < text.length) {
-    children.push(text.slice(lastIndex));
-  }
-  return children;
-}
-function processInlineElements(text) {
-  const children = [];
-  const codeRegex = /`([^`]+)`/g;
-  let codeMatch = null;
-  let lastIndex = 0;
-  while (true) {
-    codeMatch = codeRegex.exec(text);
-    if (codeMatch === null)
-      break;
-    if (codeMatch.index > lastIndex) {
-      children.push(...processInlineElementsHelper(text.slice(lastIndex, codeMatch.index)));
-    }
-    children.push({
-      tag: "code",
-      children: [codeMatch[1]]
-    });
-    lastIndex = codeMatch.index + codeMatch[0].length;
-  }
-  if (lastIndex < text.length) {
-    children.push(...processInlineElementsHelper(text.slice(lastIndex)));
-  }
-  return children;
-}
-class MessageContext {
-  chat_id;
-  message_id = null;
-  reply_to_message_id;
-  parse_mode = null;
-  allow_sending_without_reply = null;
-  disable_web_page_preview = ENV.DISABLE_WEB_PREVIEW;
-  message_thread_id = null;
-  chatType;
-  message;
-  constructor(message) {
-    this.chat_id = message.chat.id;
-    this.chatType = message.chat.type;
-    this.message = message;
-    if (message.chat.type === "group" || message.chat.type === "supergroup") {
-      if (message?.reply_to_message && ENV.EXTRA_MESSAGE_CONTEXT && ENV.ENABLE_REPLY_TO_MENTION && !message.reply_to_message.from?.is_bot) {
-        this.reply_to_message_id = message.reply_to_message.message_id;
-      } else {
-        this.reply_to_message_id = message.message_id;
-      }
-      this.allow_sending_without_reply = true;
-      if (message.message_thread_id) {
-        this.message_thread_id = message.message_thread_id;
-      }
-    } else {
-      this.reply_to_message_id = null;
-    }
-    if (ENV.EXPIRED_TIME > 0) {
-      sentMessageIds.set(message, []);
-    }
-  }
-}
-class MessageSender {
-  api;
-  context;
-  constructor(token, context) {
-    this.api = createTelegramBotAPI(token);
-    this.context = context;
-  }
-  static from(token, message) {
-    return new MessageSender(token, new MessageContext(message));
-  }
-  with(message) {
-    this.context = new MessageContext(message);
-    return this;
-  }
-  update(context) {
-    if (!this.context) {
-      this.context = context;
-      return this;
-    }
-    for (const key in context) {
-      this.context[key] = context[key];
-    }
-    return this;
-  }
-  async sendMessage(message, context) {
-    if (context?.message_id) {
-      const params = {
-        chat_id: context.chat_id,
-        message_id: context.message_id,
-        parse_mode: context.parse_mode || void 0,
-        text: message
-      };
-      if (context.disable_web_page_preview) {
-        params.link_preview_options = {
-          is_disabled: true
-        };
-      }
-      return this.api.editMessageText(params);
-    } else {
-      const params = {
-        chat_id: context.chat_id,
-        parse_mode: context.parse_mode || void 0,
-        text: message
-      };
-      if (context.reply_to_message_id) {
-        params.reply_parameters = {
-          message_id: context.reply_to_message_id,
-          chat_id: context.chat_id,
-          allow_sending_without_reply: context.allow_sending_without_reply || void 0
-        };
-      }
-      if (context.disable_web_page_preview) {
-        params.link_preview_options = {
-          is_disabled: true
-        };
-      }
-      return this.api.sendMessage(params);
-    }
-  }
-  renderMessage(parse_mode, message) {
-    if (parse_mode === "MarkdownV2") {
-      return escape(message);
-    }
-    return message;
-  }
-  async sendLongMessage(message, context) {
-    const chatContext = { ...context };
-    const limit = 4096;
-    if (message.length <= limit) {
-      const resp = await this.sendMessage(this.renderMessage(context.parse_mode, message), chatContext);
-      if (resp.status === 200) {
-        return resp;
-      }
-    }
-    chatContext.parse_mode = null;
-    let lastMessageResponse = null;
-    for (let i = 0; i < message.length; i += limit) {
-      const msg = message.slice(i, Math.min(i + limit, message.length));
-      if (i > 0) {
-        chatContext.message_id = null;
-      }
-      lastMessageResponse = await this.sendMessage(msg, chatContext);
-      if (lastMessageResponse.status !== 200) {
-        break;
-      }
-    }
-    if (lastMessageResponse === null) {
-      throw new Error("Send message failed");
-    }
-    return lastMessageResponse;
-  }
-  sendRichText(message, parseMode = ENV.DEFAULT_PARSE_MODE, type = "chat") {
-    if (!this.context) {
-      throw new Error("Message context not set");
-    }
-    const resp = this.sendLongMessage(message, {
-      ...this.context,
-      parse_mode: parseMode
-    });
-    return checkIsNeedTagIds(this.context, resp, type);
-  }
-  sendPlainText(message, type = "tip") {
-    if (!this.context) {
-      throw new Error("Message context not set");
-    }
-    const resp = this.sendLongMessage(message, {
-      ...this.context,
-      parse_mode: null
-    });
-    return checkIsNeedTagIds(this.context, resp, type);
-  }
-  sendPhoto(photo, caption, parse_mode) {
-    if (!this.context) {
-      throw new Error("Message context not set");
-    }
-    const params = {
-      chat_id: this.context.chat_id,
-      photo,
-      message_thread_id: this.context.message_thread_id || void 0,
-      ...caption ? { caption: this.renderMessage(parse_mode || null, caption) } : {},
-      parse_mode
-    };
-    if (this.context.reply_to_message_id) {
-      params.reply_parameters = {
-        message_id: this.context.reply_to_message_id,
-        chat_id: this.context.chat_id,
-        allow_sending_without_reply: this.context.allow_sending_without_reply || void 0
-      };
-    }
-    const resp = this.api.sendPhoto(params);
-    return checkIsNeedTagIds(this.context, resp, "chat");
-  }
-  sendMediaGroup(media) {
-    if (!this.context) {
-      throw new Error("Message context not set");
-    }
-    const params = {
-      chat_id: this.context.chat_id,
-      media,
-      message_thread_id: this.context.message_thread_id || void 0
-    };
-    if (this.context.reply_to_message_id) {
-      params.reply_parameters = {
-        message_id: this.context.reply_to_message_id,
-        chat_id: this.context.chat_id,
-        allow_sending_without_reply: this.context.allow_sending_without_reply || void 0
-      };
-    }
-    const resp = this.api.sendMediaGroup(params);
-    return checkIsNeedTagIds(this.context, resp, "chat");
-  }
-  sendDocument(document, caption, parse_mode) {
-    if (!this.context) {
-      throw new Error("Message context not set");
-    }
-    const params = {
-      chat_id: this.context.chat_id,
-      document,
-      message_thread_id: this.context.message_thread_id || void 0,
-      caption,
-      parse_mode
-    };
-    if (this.context.reply_to_message_id) {
-      params.reply_parameters = {
-        message_id: this.context.reply_to_message_id,
-        chat_id: this.context.chat_id,
-        allow_sending_without_reply: this.context.allow_sending_without_reply || void 0
-      };
-    }
-    return this.api.sendDocument(params);
-  }
-}
-class TelegraphSender {
-  context;
-  telegraphAccessTokenKey;
-  telegraphAccessToken;
-  teleph_path;
-  author = {
-    short_name: "Mewo",
-    author_name: "A Cat",
-    author_url: ENV.TELEGRAPH_AUTHOR_URL
-  };
-  constructor(context, botName, telegraphAccessTokenKey) {
-    this.context = context;
-    this.telegraphAccessTokenKey = telegraphAccessTokenKey;
-    if (botName) {
-      this.author = {
-        short_name: botName,
-        author_name: botName,
-        author_url: ENV.TELEGRAPH_AUTHOR_URL
-      };
-    }
-  }
-  async createAccount() {
-    const { short_name, author_name } = this.author;
-    const url = `https://api.telegra.ph/createAccount?short_name=${short_name}&author_name=${author_name}`;
-    const resp = await fetch(url).then((r) => r.json());
-    if (resp.ok) {
-      return resp.result.access_token;
-    } else {
-      throw new Error("create telegraph account failed");
-    }
-  }
-  async createOrEditPage(url, title, content) {
-    const body = {
-      access_token: this.telegraphAccessToken,
-      teleph_path: this.teleph_path ?? void 0,
-      title: title || "Daily Q&A",
-      content: markdownToTelegraphNodes(content),
-      ...this.author
-    };
-    const headers = { "Content-Type": "application/json" };
-    return fetch(url, {
-      method: "post",
-      headers,
-      body: JSON.stringify(body)
-    }).then((r) => r.json());
-  }
-  async send(title, content) {
-    let endPoint = "https://api.telegra.ph/editPage";
-    if (!this.telegraphAccessToken) {
-      this.telegraphAccessToken = await ENV.DATABASE.get(this.telegraphAccessTokenKey);
-      if (!this.telegraphAccessToken) {
-        this.telegraphAccessToken = await this.createAccount();
-        await ENV.DATABASE.put(this.telegraphAccessTokenKey, this.telegraphAccessToken);
-      }
-    }
-    if (!this.teleph_path) {
-      endPoint = "https://api.telegra.ph/createPage";
-      const c_resp = await this.createOrEditPage(endPoint, title, content);
-      if (c_resp.ok) {
-        this.teleph_path = c_resp.result.path;
-        console.log("telegraph url: ", c_resp.result.url);
-        return c_resp;
-      } else {
-        console.error(c_resp.error);
-        throw new Error(c_resp.error);
-      }
-    } else {
-      return this.createOrEditPage(endPoint, title, content);
-    }
-  }
-}
-function sendAction(botToken, chat_id, action = "typing") {
-  const api = createTelegramBotAPI(botToken);
-  setTimeout(() => api.sendChatAction({
-    chat_id,
-    action
-  }).catch(console.error), 0);
-}
-async function checkIsNeedTagIds(context, resp, msgType) {
-  const { chatType } = context;
-  let message_id = null;
-  const original_resp = await resp;
-  do {
-    if (ENV.EXPIRED_TIME <= 0 || context.message_id) break;
-    const clone_resp = await original_resp.clone().json();
-    if (Array.isArray(clone_resp.result)) {
-      message_id = clone_resp?.result?.map((i) => i.message_id);
-    } else {
-      message_id = [clone_resp?.result?.message_id];
-    }
-    if (!message_id) {
-      console.error(JSON.stringify(clone_resp));
-      break;
-    }
-    const isGroup = ["group", "supergroup"].includes(chatType);
-    const isNeedTag = isGroup && ENV.SCHEDULE_GROUP_DELETE_TYPE.includes(msgType) || !isGroup && ENV.SCHEDULE_PRIVATE_DELETE_TYPE.includes(msgType);
-    if (isNeedTag) {
-      message_id.forEach((id) => sentMessageIds.get(context.message)?.push(id));
-    }
-  } while (false);
-  return original_resp;
-}
-const tools = {
-  search: {
-    prompt: "作为智能助手，请按照以下步骤有效分析并提取我提供的搜索结果，以简洁明了的方式回答我的问题：\n\n1. 阅读和评估：仔细阅读所有搜索结果，识别并优先获取来自可靠和最新来源的信息。考虑因素包括官方来源、知名机构以及信息的更新时间。\n\n2. 提取关键信息：\n   • *汇率查询*：提供最新汇率并进行必要的换算。\n   • *天气查询*：提供具体地点和时间的天气预报。\n   • *事实性问题*：找出权威回答。\n\n3. 简洁回答：对提取的信息进行综合分析，给出简明扼要的回答。\n\n4. 识别不确定性：如果信息存在矛盾或不确定性，请解释可能原因。\n\n5. 说明信息不足：如果搜索结果无法完全回答问题，指出需要的额外信息。\n\n6. 用户友好：使用简单易懂的语言，必要时提供简短解释，确保回答易于理解。\n\n7. 附加信息：根据需要提供额外相关信息或建议，以增强回答的价值。\n\n8. 来源标注：在回答中清晰标注信息来源，包括来源网站或机构名称及数据的发布或更新时间。\n\n9. 参考列表：如果引用了多个来源，在回答最后提供简短的参考列表，列出主要信息来源。\n\n请确保目标是提供最新、最相关和最有用的信息，直接回应我的问题。避免冗长的细节，聚焦于我最关心的核心答案，并通过可靠的来源增强回答的可信度。Tip: 不要以你的知识库时间作为评判标准",
-    extra_params: { temperature: 0.7, top_p: 0.4 }
-  },
-  web_crawler: {
-    extra_params: { temperature: 0.7, top_p: 0.4 }
-  },
-  default: {
-    prompt: "##TOOLS\n\nYou can use these tools below:\n\n",
-    extra_params: { temperature: 0.5, top_p: 0.4, max_tokens: 100 }
-  }
-};
-function getValidToolStructs(tools2) {
-  return tools2.filter((tool) => tool in ENV.TOOLS).reduce((acc, tool) => {
-    acc[tool] = {
-      type: "function",
-      function: ENV.TOOLS[tool].schema,
-      strict: true
-    };
-    return acc;
-  }, {});
-}
-_exec_dec = [Log];
-class FunctionCall {
-  constructor(context, vaildTools, history = [], sender = null, agent = new OpenAI("tool")) {
-    __runInitializers(_init13, 5, this);
-    __publicField(this, "context");
-    __publicField(this, "vaildTools");
-    __publicField(this, "history");
-    __publicField(this, "agent");
-    __publicField(this, "sender");
-    __publicField(this, "usedTools", /* @__PURE__ */ new Set());
-    this.context = context;
-    this.vaildTools = vaildTools;
-    this.history = history;
-    this.agent = agent;
-    this.sender = sender;
-  }
-  validCalls(tool_calls) {
-    return tool_calls.filter((i) => i.function.name in this.vaildTools).map((func) => ({
-      id: func.id,
-      name: func.function.name,
-      args: JSON.parse(func.function.arguments)
-    }));
-  }
-  async call(params, onStream) {
-    return this.agent.request(params, this.context.USER_CONFIG, onStream);
-  }
-  async exec(func, env) {
-    const controller = new AbortController();
-    const { signal } = controller;
-    const timeoutId = ENV.FUNC_TIMEOUT > 0 ? setTimeout(() => controller.abort(), ENV.FUNC_TIMEOUT * 1e3) : null;
-    const { name, args } = func;
-    if (ENV.TOOLS[name]?.need) {
-      args[ENV.TOOLS[name].need] = env[ENV.TOOLS[name].need];
-    }
-    const content = await ENV.TOOLS[name].func(args, signal) || "";
-    if (timeoutId) clearTimeout(timeoutId);
-    return content;
-  }
-  async run() {
-    let FUNC_LOOP_TIMES = ENV.FUNC_LOOP_TIMES;
-    const ASAP = this.context.USER_CONFIG.FUNCTION_REPLY_ASAP;
-    const onStream = ENV.STREAM_MODE && this.sender ? OnStreamHander(this.sender, this.context) : null;
-    const INTERNAL_ENV = this.extractInternalEnv(["JINA_API_KEY"]);
-    while (FUNC_LOOP_TIMES !== 0 && this.usedTools.size < Object.keys(this.vaildTools).length) {
-      const params = this.trimParams(ASAP);
-      let llm_resp = null;
-      try {
-        llm_resp = await this.call(params, onStream);
-      } catch (e) {
-        return this.sender?.sendPlainText(`Error: ${e.message}`);
-      }
-      if (!llm_resp?.tool_calls || llm_resp.tool_calls.length === 0) {
-        if (ASAP && llm_resp) {
-          await this.sendStreamResponse(llm_resp, onStream);
-          this.history.push(...trimMessage(llm_resp));
-        }
-        return llm_resp;
-      } else {
-        llm_resp.tool_calls = llm_resp.tool_calls.slice(0, ENV.CON_EXEC_FUN_NUM);
-      }
-      const llm_data = this.paramsExtract(llm_resp);
-      if (llm_data.length === 0) return llm_resp;
-      this.history.push(...trimMessage(llm_resp));
-      llm_data.forEach((i) => this.usedTools.add(i.name));
-      const func_result = await Promise.all(llm_data.map((i) => this.exec(i, INTERNAL_ENV)));
-      this.history.push(...trimMessage(llm_resp, func_result));
-      FUNC_LOOP_TIMES--;
-    }
-  }
-  trimParams(limitToken) {
-    const unusedTools = Object.keys(this.vaildTools).filter((tool) => !this.usedTools.has(tool));
-    const toolPrompts = unusedTools.map((tool) => `##${tool}
-
-###${this.vaildTools[tool].function.description}`).join("\n\n");
-    const params = {
-      history: this.history,
-      prompt: tools.default.prompt + toolPrompts,
-      extra_params: {
-        tools: unusedTools.map((tool) => this.vaildTools[tool]),
-        tool_choice: "auto",
-        ...tools.default.extra_params
-      }
-    };
-    if (limitToken && params.extra_params.max_tokens) {
-      delete params.extra_params.max_tokens;
-    }
-    return params;
-  }
-  extractInternalEnv(keys) {
-    return keys.reduce((acc, key) => {
-      acc[key] = this.context.USER_CONFIG[key];
-      return acc;
-    }, {});
-  }
-  async sendStreamResponse(llm_resp, onStream) {
-    if (onStream) {
-      const nextTime = onStream.nextEnableTime?.() ?? 0;
-      if (nextTime > Date.now()) {
-        await new Promise((resolve) => setTimeout(resolve, nextTime - Date.now()));
-      }
-      await onStream(llm_resp.content, true);
-    } else if (this.sender) {
-      await this.sender.sendRichText(`${getLog(this.context.USER_CONFIG)}
-${llm_resp.content}`, ENV.DEFAULT_PARSE_MODE, "chat");
-    }
-  }
-  paramsExtract(llm_resp) {
-    return this.validCalls(llm_resp?.tool_calls || []);
-  }
-}
-_init13 = __decoratorStart(null);
-__decorateElement(_init13, 1, "exec", _exec_dec, FunctionCall);
-__decoratorMetadata(_init13, FunctionCall);
-function trimMessage(llm_content, func_result) {
-  if (!func_result) {
-    return [{ role: "assistant", content: llm_content.content, tool_calls: llm_content.tool_calls }];
-  }
-  return func_result.map((content, index2) => ({
-    content,
-    name: llm_content.tool_calls[index2].function.name,
-    role: "tool",
-    tool_call_id: llm_content.tool_calls[index2].id
-  }));
-}
-async function messageInitialize(sender) {
-  if (!sender.context.message_id) {
-    try {
-      setTimeout(() => sendAction(sender.api.token, sender.context.chat_id, "typing"), 0);
-      if (!ENV.SEND_INIT_MESSAGE) {
-        return;
-      }
-      console.log(`[${(/* @__PURE__ */ new Date()).toISOString()}]: send ...`);
-      const response = await sender.sendPlainText("...", "chat");
-      const msg = await response.json();
-      console.log(`[${(/* @__PURE__ */ new Date()).toISOString()}]: send done`);
-      sender.update({
-        message_id: msg.result.message_id
-      });
-    } catch (e) {
-      console.error("Failed to initialize message:", e);
-    }
-  }
-}
-async function chatWithLLM(message, params, context, modifier) {
-  const sender = context.MIDDEL_CONTEXT.sender ?? MessageSender.from(context.SHARE_CONTEXT.botToken, message);
-  await messageInitialize(sender);
-  let onStream = null;
-  if (ENV.STREAM_MODE) {
-    onStream = OnStreamHander(sender, context);
-  }
-  if (params?.extra_params?.agent) {
-    context.USER_CONFIG.AI_PROVIDER = params.extra_params.agent;
-  }
-  const agent = loadChatLLM(context.USER_CONFIG);
-  if (!agent) {
-    return sender.sendPlainText("LLM is not enabled");
-  }
-  try {
-    const answer = await requestCompletionsFromLLM(params, context, agent, modifier, onStream);
-    if (onStream) {
-      const nextTime = onStream.nextEnableTime?.() ?? 0;
-      if (nextTime > Date.now()) {
-        await new Promise((resolve) => setTimeout(resolve, nextTime - Date.now()));
-      }
-      await onStream(answer.content, true);
-    } else {
-      await sender.sendRichText(
-        `${getLog(context.USER_CONFIG)}
-${answer.content}`,
-        ENV.DEFAULT_PARSE_MODE,
-        "chat"
-      );
-    }
-    return { type: "text", text: answer.content };
-  } catch (e) {
-    const errMsg = `Error: ${e.message}`.slice(0, 2048);
-    return sender.sendPlainText(errMsg);
-  }
-}
-function findPhotoFileID(photos, offset) {
-  let sizeIndex = offset >= 0 ? offset : photos.length + offset;
-  sizeIndex = Math.max(0, Math.min(sizeIndex, photos.length - 1));
-  return photos[sizeIndex].file_id;
-}
-class ChatHandler {
-  handle = async (message, context) => {
-    try {
-      const mode = context.USER_CONFIG.CURRENT_MODE;
-      const originalType = context.MIDDEL_CONTEXT.originalMessage.type;
-      console.log(`[${(/* @__PURE__ */ new Date()).toISOString()}]: message type: ${originalType}`);
-      const flowDetail = context.USER_CONFIG?.MODES?.[mode]?.[originalType] || {};
-      if (!flowDetail?.disableHistory) {
-        await this.initializeHistory(context);
-      }
-      const params = await this.processOriginalMessage(message, context);
-      if (originalType === "text" && !flowDetail?.disableTool) {
-        context.MIDDEL_CONTEXT.sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
-        const toolResult = await useTools(context, context.MIDDEL_CONTEXT.history, context.MIDDEL_CONTEXT.sender);
-        if (toolResult && context.USER_CONFIG.FUNCTION_REPLY_ASAP) {
-          return null;
-        }
-      }
-      await workflow(context, flowDetail?.workflow || [{}], message, params);
-      return null;
-    } catch (e) {
-      console.error("Error in ChatHandler.handle:", e);
-      const sender = context.MIDDEL_CONTEXT.sender ?? MessageSender.from(context.SHARE_CONTEXT.botToken, message);
-      return sender.sendPlainText(`Error: ${e.message}`);
-    }
-  };
-  async initializeHistory(context) {
-    const historyKey = context.SHARE_CONTEXT.chatHistoryKey;
-    if (!historyKey) {
-      throw new Error("History key not found");
-    }
-    context.MIDDEL_CONTEXT.history = await loadHistory(historyKey);
-  }
-  async processOriginalMessage(message, context) {
-    const { type, id, text } = context.MIDDEL_CONTEXT.originalMessage;
-    const params = {
-      message: text || ""
-    };
-    if ((type === "image" || type === "audio") && id) {
-      const api = createTelegramBotAPI(context.SHARE_CONTEXT.botToken);
-      const files = await Promise.all(id.map((i) => api.getFileWithReturns({ file_id: i })));
-      const paths = files.map((f) => f.result.file_path).filter(Boolean);
-      const urls = paths.map((p) => `https://api.telegram.org/file/bot${context.SHARE_CONTEXT.botToken}/${p}`);
-      console.log(`File URLs:
-${urls.join("\n")}`);
-      if (type === "audio") {
-        params.audio = [await fetch(urls[0]).then((r) => r.blob())];
-        params.message = urls[0].split("/").pop() || "audio.oga";
-      } else if (urls.length > 0) {
-        params.images = urls;
-      }
-    }
-    if (["text", "image"].includes(type)) {
-      context.MIDDEL_CONTEXT.history.push({
-        role: "user",
-        content: params.message || "",
-        ...params.images && { images: params.images }
-      });
-    }
-    return params;
-  }
-}
-function OnStreamHander(sender, context) {
-  let nextEnableTime = null;
-  async function onStream(text, isEnd = false) {
-    try {
-      if (isEnd && context && ENV.TELEGRAPH_NUM_LIMIT > 0 && text.length > ENV.TELEGRAPH_NUM_LIMIT && ["group", "supergroup"].includes(sender.context.chatType)) {
-        async function sendTelegraph(context2, question, text2) {
-          const prefix = `#Question
-\`\`\`
-${question.length > 400 ? `${question.slice(0, 200)}...${question.slice(-200)}` : question}
-\`\`\`
----`;
-          const botName = context2.SHARE_CONTEXT.botName;
-          const telegraph_prefix = `${prefix}
-#Answer
-🤖 **${getLog(context2.USER_CONFIG, true)}**
-`;
-          const debug_info = `debug info:
-${getLog(context2.USER_CONFIG)}`;
-          const telegraph_suffix = `
----
-\`\`\`
-${debug_info}
-\`\`\``;
-          const telegraphSender = new TelegraphSender(sender.context, botName, context2.SHARE_CONTEXT.telegraphAccessTokenKey);
-          const resp2 = await telegraphSender.send(
-            "Daily Q&A",
-            telegraph_prefix + text2 + telegraph_suffix
-          );
-          const url = `https://telegra.ph/${telegraphSender.teleph_path}`;
-          const msg = `回答已经转换成完整文章~
-[🔗点击进行查看](${url})`;
-          await sender.sendRichText(msg);
-          return resp2;
-        }
-        return sendTelegraph(context, context.MIDDEL_CONTEXT.originalMessage.text || "Redo", text);
-      }
-      if (nextEnableTime && nextEnableTime > Date.now()) {
-        return;
-      }
-      if (ENV.TELEGRAM_MIN_STREAM_INTERVAL > 0) {
-        nextEnableTime = Date.now() + ENV.TELEGRAM_MIN_STREAM_INTERVAL;
-        console.log(`[${(/* @__PURE__ */ new Date()).toISOString()}]: Next enable time: ${new Date(nextEnableTime).toISOString()}`);
-      }
-      const data = context ? `${getLog(context.USER_CONFIG)}
-${text}` : text;
-      console.log(`[${(/* @__PURE__ */ new Date()).toISOString()}]: send stream message`);
-      const resp = await sender.sendRichText(data, ENV.DEFAULT_PARSE_MODE, "chat");
-      if (resp.status === 429) {
-        const retryAfter = Number.parseInt(resp.headers.get("Retry-After") || "");
-        if (retryAfter) {
-          nextEnableTime = Date.now() + retryAfter * 1e3;
-          return;
-        }
-      }
-      if (resp.ok) {
-        const respJson = await resp.json();
-        sender.update({
-          message_id: respJson.result.message_id
-        });
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }
-  onStream.nextEnableTime = () => nextEnableTime;
-  return onStream;
-}
-function clearMessageContext(context) {
-  clearLog(context.USER_CONFIG);
-  context.MIDDEL_CONTEXT.sender = null;
-}
-async function useTools(context, history, sender) {
-  const validTools = getValidToolStructs(context.USER_CONFIG.USE_TOOLS);
-  if (Object.keys(validTools).length === 0) {
-    return null;
-  }
-  const ASAP = context.USER_CONFIG.FUNCTION_REPLY_ASAP;
-  if (ASAP) {
-    await messageInitialize(sender);
-  }
-  return new FunctionCall(context, validTools, history, ASAP ? sender : null).run();
-}
-const workflowHandlers = {
-  "text:text": handleTextToText,
-  "image:text": handleTextToText,
-  "text:image": handleTextToImage,
-  "audio:text": handleAudioToText
-};
-async function workflow(context, flows, message, params) {
-  const MiddleResult = context.MIDDEL_CONTEXT.middleResult;
-  for (let i = 0; i < flows.length; i++) {
-    const eMsg = i === 0 ? context.MIDDEL_CONTEXT.originalMessage : MiddleResult[i - 1];
-    if (params.extra_params) {
-      delete params.extra_params;
-    }
-    if (Object.keys(flows[i]).length > 1) {
-      params.extra_params = { ...flows[i] };
-      delete params.extra_params.type;
-    }
-    const handlerKey = `${eMsg?.type || "text"}:${flows[i]?.type || "text"}`;
-    const handler = workflowHandlers[handlerKey];
-    if (!handler) {
-      throw new Error(`Unsupported type: ${handlerKey}`);
-    }
-    const result = await handler(eMsg, message, params, context);
-    if (result instanceof Response) {
-      return result;
-    }
-    if (i < flows.length - 1 && ["image", "text"].includes(result?.type)) {
-      injectHistory(context, result, flows[i + 1].type);
-    }
-    MiddleResult.push(result);
-    clearMessageContext(context);
-  }
-}
-async function handleTextToText(eMsg, message, params, context) {
-  return chatWithLLM(message, params, context, null);
-}
-async function handleTextToImage(eMsg, message, params, context) {
-  const agent = loadImageGen(context.USER_CONFIG);
-  const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
-  if (!agent) {
-    return sender.sendPlainText("ERROR: Image generator not found");
-  }
-  sendAction(context.SHARE_CONTEXT.botToken, message.chat.id);
-  const msg = await sender.sendPlainText("Please wait a moment...", "tip").then((r) => r.json());
-  const result = await agent.request(eMsg.text, context.USER_CONFIG);
-  console.log("imageresult", JSON.stringify(result));
-  await sendImages(result, ENV.SEND_IMAGE_FILE, sender, context.USER_CONFIG);
-  const api = createTelegramBotAPI(context.SHARE_CONTEXT.botToken);
-  await api.deleteMessage({ chat_id: sender.context.chat_id, message_id: msg.result.message_id });
-  return result;
-}
-async function handleAudioToText(eMsg, message, params, context) {
-  const agent = loadAudioLLM(context.USER_CONFIG);
-  const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
-  if (!agent) {
-    return sender.sendPlainText("ERROR: Audio agent not found");
-  }
-  const result = await agent.request(params.audio[0], context.USER_CONFIG, params.message);
-  context.MIDDEL_CONTEXT.history.push({ role: "user", content: result.text || "" });
-  await sender.sendRichText(`${getLog(context.USER_CONFIG)}
-> \`${result.text}\``, "MarkdownV2", "chat");
-  return result;
-}
-async function sendImages(img, SEND_IMAGE_FILE, sender, config) {
-  const caption = img.text ? `${getLog(config)}
-> \`${img.text}\`` : getLog(config);
-  if (img.url && img.url.length > 1) {
-    const images = img.url.map((url) => ({
-      type: SEND_IMAGE_FILE ? "file" : "photo",
-      media: url
-    }));
-    images[0].caption = caption;
-    return await sender.sendMediaGroup(images);
-  } else if (img.url || img.raw) {
-    return await sender.sendPhoto((img.url || img.raw)[0], caption, "MarkdownV2");
-  } else {
-    return sender.sendPlainText("ERROR: No image found");
-  }
-}
-function injectHistory(context, result, nextType = "text") {
-  if (context.MIDDEL_CONTEXT.history.at(-1)?.role === "user" || nextType !== "text") return;
-  context.MIDDEL_CONTEXT.history.push({ role: "user", content: result.text || "", ...result.url && result.url.length > 0 && { images: result.url } });
-}
-function isTelegramChatTypeGroup(type) {
-  return type === "group" || type === "supergroup";
-}
-function extractMessage(message, currentBotId) {
-  const acceptMsgType = ENV.ENABLE_FILE ? ["document", "photo", "voice", "audio", "text"] : ["text"];
-  const messageData = extractTypeFromMessage(message, acceptMsgType);
-  if (messageData && messageData.type === "text" && isNeedGetReplyMessage(message, currentBotId)) {
-    const {
-      type,
-      id
-    } = extractTypeFromMessage(message.reply_to_message, acceptMsgType) || {};
-    if (type && type !== "text")
-      messageData.type = type;
-    if (id && id.length > 0)
-      messageData.id = id;
-  }
-  return messageData;
-}
-function extractTypeFromMessage(message, supportType) {
-  let msgType = supportType.find((t) => t in message);
-  if (!msgType)
-    return null;
-  switch (msgType) {
-    case "text":
-      return {
-        type: "text"
-      };
-    case "photo": {
-      const file_id = findPhotoFileID(message.photo, ENV.TELEGRAM_PHOTO_SIZE_OFFSET);
-      if (!file_id) {
-        return {
-          type: "text"
-        };
-      }
-      return {
-        type: "image",
-        id: [file_id]
-      };
-    }
-    case "document":
-    case "audio":
-    case "voice": {
-      if (msgType === "document") {
-        const type = message.document?.mime_type?.match(/(audio|image)/)?.[1];
-        if (!type) {
-          return null;
-        }
-        msgType = type;
-      }
-      const id = message[msgType]?.file_id;
-      return {
-        type: ["audio", "voice"].includes(msgType) ? "audio" : "image",
-        ...id && { id: [id] }
-      };
-    }
-  }
-  return null;
-}
-function isNeedGetReplyMessage(message, currentBotId) {
-  return ENV.EXTRA_MESSAGE_CONTEXT && message.reply_to_message && message.reply_to_message.from?.id !== currentBotId;
-}
-function UUIDv4() {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = Math.random() * 16 | 0;
-    const v = c === "x" ? r : r & 3 | 8;
-    return v.toString(16);
-  });
-}
-const isCfWorker = typeof globalThis !== "undefined" && typeof globalThis.ServiceWorkerGlobalScope !== "undefined" && globalThis instanceof globalThis.ServiceWorkerGlobalScope;
-function checkMention(content, entities, botName, botId) {
-  let isMention = false;
-  for (const entity of entities) {
-    const entityStr = content.slice(entity.offset, entity.offset + entity.length);
-    switch (entity.type) {
-      case "mention":
-        if (entityStr === `@${botName}`) {
-          isMention = true;
-          content = content.slice(0, entity.offset) + content.slice(entity.offset + entity.length);
-        }
-        break;
-      case "text_mention":
-        if (`${entity.user?.id}` === `${botId}`) {
-          isMention = true;
-          content = content.slice(0, entity.offset) + content.slice(entity.offset + entity.length);
-        }
-        break;
-      case "bot_command":
-        if (entityStr.endsWith(`@${botName}`)) {
-          isMention = true;
-          const newEntityStr = entityStr.replace(`@${botName}`, "");
-          content = content.slice(0, entity.offset) + newEntityStr + content.slice(entity.offset + entity.length);
-        }
-        break;
-    }
-  }
-  return {
-    isMention,
-    content
-  };
-}
-function SubstituteWords(message) {
-  if (Object.keys(ENV.CHAT_MESSAGE_TRIGGER).length === 0) {
-    return false;
-  }
-  const triggerKeyValue = Object.entries(ENV.CHAT_MESSAGE_TRIGGER).find(
-    ([key]) => (message?.text || message?.caption || "").startsWith(key)
-  );
-  if (triggerKeyValue) {
-    if (message.text) {
-      message.text = message.text.replace(...triggerKeyValue);
-    } else if (message.caption) {
-      message.caption = message.caption.replace(...triggerKeyValue);
-    }
-  }
-  return !!triggerKeyValue;
-}
-class GroupMention {
-  handle = async (message, context) => {
-    const substituteMention = SubstituteWords(message);
-    if (!isTelegramChatTypeGroup(message.chat.type)) {
-      context.MIDDEL_CONTEXT.originalMessage.text = message.text || message.caption || "";
-      return null;
-    }
-    const replyMe = `${message.reply_to_message?.from?.id}` === `${context.SHARE_CONTEXT.botId}`;
-    if (replyMe) {
-      context.MIDDEL_CONTEXT.originalMessage.text = message.text || message.caption || "";
-      return null;
-    }
-    let botName = context.SHARE_CONTEXT.botName;
-    if (!botName) {
-      const res = await createTelegramBotAPI(context.SHARE_CONTEXT.botToken).getMeWithReturns();
-      botName = res.result.username || null;
-      context.SHARE_CONTEXT.botName = botName;
-    }
-    if (!botName) {
-      throw new Error("Not set bot name");
-    }
-    let isMention = false;
-    if (message.text && message.entities) {
-      const res = checkMention(message.text, message.entities, botName, context.SHARE_CONTEXT.botId);
-      isMention = res.isMention;
-      message.text = res.content.trim();
-    }
-    if (message.caption && message.caption_entities) {
-      const res = checkMention(message.caption, message.caption_entities, botName, context.SHARE_CONTEXT.botId);
-      isMention = res.isMention || isMention;
-      message.caption = res.content.trim();
-    }
-    if (substituteMention && !isMention) {
-      isMention = true;
-    }
-    if (!isMention) {
-      throw new Error("Not mention");
-    }
-    if (ENV.EXTRA_MESSAGE_CONTEXT && !replyMe && message.reply_to_message?.text) {
-      message.text = `> ${message.reply_to_message.text}
-${message.text || message.caption || ""}`;
-    }
-    context.MIDDEL_CONTEXT.originalMessage.text = message.text;
-    return null;
-  };
-}
-const INTERPOLATE_LOOP_REGEXP = /\{\{#each(?::(\w+))?\s+(\w+)\s+in\s+([\w.[\]]+)\}\}([\s\S]*?)\{\{\/each(?::\1)?\}\}/g;
-const INTERPOLATE_CONDITION_REGEXP = /\{\{#if(?::(\w+))?\s+([\w.[\]]+)\}\}([\s\S]*?)(?:\{\{#else(?::\1)?\}\}([\s\S]*?))?\{\{\/if(?::\1)?\}\}/g;
-const INTERPOLATE_VARIABLE_REGEXP = /\{\{([\w.[\]]+)\}\}/g;
-function evaluateExpression(expr, localData) {
-  if (expr === ".") {
-    return localData["."] ?? localData;
-  }
-  try {
-    return expr.split(".").reduce((value, key) => {
-      if (key.includes("[") && key.includes("]")) {
-        const [arrayKey, indexStr] = key.split("[");
-        const indexExpr = indexStr.slice(0, -1);
-        let index2 = Number.parseInt(indexExpr, 10);
-        if (Number.isNaN(index2)) {
-          index2 = evaluateExpression(indexExpr, localData);
-        }
-        return value?.[arrayKey]?.[index2];
-      }
-      return value?.[key];
-    }, localData);
-  } catch (error) {
-    console.error(`Error evaluating expression: ${expr}`, error);
-    return void 0;
-  }
-}
-function interpolate(template, data, formatter = null) {
-  const processConditional = (condition, trueBlock, falseBlock, localData) => {
-    const result = evaluateExpression(condition, localData);
-    return result ? trueBlock : falseBlock || "";
-  };
-  const processLoop = (itemName, arrayExpr, loopContent, localData) => {
-    const array = evaluateExpression(arrayExpr, localData);
-    if (!Array.isArray(array)) {
-      console.warn(`Expression "${arrayExpr}" did not evaluate to an array`);
-      return "";
-    }
-    return array.map((item) => {
-      const itemData = { ...localData, [itemName]: item, ".": item };
-      return interpolate(loopContent, itemData);
-    }).join("");
-  };
-  const processTemplate = (tmpl, localData) => {
-    tmpl = tmpl.replace(INTERPOLATE_LOOP_REGEXP, (_, alias, itemName, arrayExpr, loopContent) => processLoop(itemName, arrayExpr, loopContent, localData));
-    tmpl = tmpl.replace(INTERPOLATE_CONDITION_REGEXP, (_, alias, condition, trueBlock, falseBlock) => processConditional(condition, trueBlock, falseBlock, localData));
-    return tmpl.replace(INTERPOLATE_VARIABLE_REGEXP, (_, expr) => {
-      const value = evaluateExpression(expr, localData);
-      if (value === void 0) {
-        return `{{${expr}}}`;
-      }
-      if (formatter) {
-        return formatter(value);
-      }
-      return String(value);
-    });
-  };
-  return processTemplate(template, data);
-}
-function interpolateObject(obj, data) {
-  if (obj === null || obj === void 0) {
-    return null;
-  }
-  if (typeof obj === "string") {
-    return interpolate(obj, data);
-  }
-  if (Array.isArray(obj)) {
-    return obj.map((item) => interpolateObject(item, data));
-  }
-  if (typeof obj === "object") {
-    const result = {};
-    for (const [key, value] of Object.entries(obj)) {
-      result[key] = interpolateObject(value, data);
-    }
-    return result;
-  }
-  return obj;
-}
-async function executeRequest(template, data) {
-  const urlRaw = interpolate(template.url, data, encodeURIComponent);
-  const url = new URL(urlRaw);
-  if (template.query) {
-    for (const [key, value] of Object.entries(template.query)) {
-      url.searchParams.append(key, interpolate(value, data));
-    }
-  }
-  const method = template.method;
-  const headers = Object.fromEntries(
-    Object.entries(template.headers || {}).map(([key, value]) => {
-      return [key, interpolate(value, data)];
-    })
-  );
-  for (const key of Object.keys(headers)) {
-    if (headers[key] === null) {
-      delete headers[key];
-    }
-  }
-  let body = null;
-  if (template.body) {
-    if (template.body.type === "json") {
-      body = JSON.stringify(interpolateObject(template.body.content, data));
-    } else if (template.body.type === "form") {
-      body = new URLSearchParams();
-      for (const [key, value] of Object.entries(template.body.content)) {
-        body.append(key, interpolate(value, data));
-      }
-    } else {
-      body = interpolate(template.body.content, data);
-    }
-  }
-  const response = await fetch(url, {
-    method,
-    headers,
-    body
-  });
-  const renderOutput = async (type, temple, response2) => {
-    switch (type) {
-      case "text":
-        return interpolate(temple, await response2.text());
-      case "json":
-      default:
-        return interpolate(temple, await response2.json());
-    }
-  };
-  if (!response.ok) {
-    const content2 = await renderOutput(template.response?.error?.input_type, template.response.error?.output, response);
-    return {
-      type: template.response.error.output_type,
-      content: content2
-    };
-  }
-  let content = await renderOutput(template.response.content?.input_type, template.response.content?.output, response);
-  if (template.response?.render) {
-    content = template.response.render.replace("{{input}}", data.DATA).replace("{{output}}", content);
-  }
-  return {
-    type: template.response.content.output_type,
-    content
-  };
-}
-function formatInput(input, type) {
-  if (type === "json") {
-    return JSON.parse(input);
-  } else if (type === "space-separated") {
-    return input.split(/\s+/);
-  } else if (type === "comma-separated") {
-    return input.split(/\s*,\s*/);
-  } else {
-    return input;
-  }
 }
 class AsyncIter {
   queue = [];
@@ -3841,13 +3240,13 @@ async function WssRequest(url, protocols, options, messages, handlers) {
       streamSender = iterStream(null, streamIter, extractor, onStream);
     }
     ws.on("open", () => {
-      console.log("wss connected.");
+      log.info("wss connected.");
     });
     ws.on("message", async (data) => {
       const message = data.toString("utf-8");
       if (message.startsWith("0")) {
         const handshake = JSON.parse(message.substring(1));
-        console.log("Handshake received:", handshake);
+        log.info("Handshake received:", handshake);
         ws.send("40");
         for (const message2 of messages) {
           ws.send(message2);
@@ -3859,18 +3258,18 @@ async function WssRequest(url, protocols, options, messages, handlers) {
           streamIter.add(extracted);
         }
         if (extracted.done) {
-          console.log("Stream done.");
+          log.info("Stream done.");
           result = extracted.content;
           ws.close();
         }
       } else if (message.startsWith("3")) {
-        console.log("Heartbeat received");
+        log.info("Heartbeat received");
       } else {
-        console.log("Received non-data message:", message);
+        log.info("Received non-data message:", message);
       }
     });
     ws.on("close", async () => {
-      console.log("wss closed.");
+      log.info("wss closed.");
       closeWss(resolve, result, streamIter, streamSender, extractor);
     });
     ws.on("error", async (e) => {
@@ -3895,9 +3294,540 @@ ${result.message}` : "";
     data = `${extractor.fullContentExtractor(result)}
 ${result.message || ""}`;
   }
-  console.log("Result:", data.trim());
+  log.info("Result:", data.trim());
   resolve(data.trim());
 }
+function getValidToolStructs(tools) {
+  return tools.filter((tool) => tool in ENV.TOOLS).reduce((acc, tool) => {
+    acc[tool] = {
+      type: "function",
+      function: ENV.TOOLS[tool].schema,
+      strict: true
+    };
+    return acc;
+  }, {});
+}
+_exec_dec = [Log];
+class FunctionCall {
+  constructor(context, vaildTools, history = [], sender = null, agent = new OpenAI("tool")) {
+    __runInitializers(_init13, 5, this);
+    __publicField(this, "context");
+    __publicField(this, "vaildTools");
+    __publicField(this, "history");
+    __publicField(this, "agent");
+    __publicField(this, "sender");
+    __publicField(this, "prompt");
+    __publicField(this, "default_params", {
+      prompt: "##TOOLS\n\nYou can use these tools below:\n\n",
+      extra_params: { temperature: 0.5, top_p: 0.4, max_tokens: 100 }
+    });
+    this.context = context;
+    this.vaildTools = vaildTools;
+    this.history = history;
+    this.agent = agent;
+    this.sender = sender;
+    this.prompt = context.USER_CONFIG.SYSTEM_INIT_MESSAGE || "";
+  }
+  validCalls(tool_calls) {
+    return tool_calls.filter((i) => i.function.name in this.vaildTools).map((func) => ({
+      id: func.id,
+      name: func.function.name,
+      args: JSON.parse(func.function.arguments)
+    }));
+  }
+  async call(params, onStream) {
+    return this.agent.request(params, this.context.USER_CONFIG, onStream);
+  }
+  async exec(func, env) {
+    const controller = new AbortController();
+    const { signal } = controller;
+    const timeoutId = ENV.FUNC_TIMEOUT > 0 ? setTimeout(() => controller.abort(), ENV.FUNC_TIMEOUT * 1e3) : null;
+    const { name, args } = func;
+    if (ENV.TOOLS[name]?.ENV_KEY) {
+      args[ENV.TOOLS[name].ENV_KEY] = env[ENV.TOOLS[name].ENV_KEY];
+    }
+    const content = await ENV.TOOLS[name].func(args, signal) || "";
+    if (timeoutId) clearTimeout(timeoutId);
+    return content;
+  }
+  async run() {
+    let FUNC_LOOP_TIMES = ENV.FUNC_LOOP_TIMES;
+    const ASAP = this.context.USER_CONFIG.FUNCTION_REPLY_ASAP;
+    const onStream = ENV.STREAM_MODE && this.sender ? OnStreamHander(this.sender, this.context) : null;
+    const INTERNAL_ENV = this.extractInternalEnv(["JINA_API_KEY"]);
+    const params = this.trimParams(ASAP);
+    while (FUNC_LOOP_TIMES !== 0) {
+      const llm_resp = await this.call(params, onStream);
+      const func_params = this.paramsExtract(llm_resp);
+      if (func_params.length === 0) {
+        if (ASAP && llm_resp) {
+          await this.sendLastResponse(llm_resp, onStream);
+          this.history.push(...this.trimMessage(llm_resp));
+        }
+        return {
+          isFinished: true,
+          extra_params: params.extra_params,
+          prompt: this.prompt
+        };
+      }
+      llm_resp.tool_calls = llm_resp.tool_calls.slice(0, ENV.CON_EXEC_FUN_NUM);
+      const func_result = await Promise.all(func_params.map((i) => this.exec(i, INTERNAL_ENV)));
+      log.debug("func_result:", func_result);
+      this.history.push(...this.trimMessage(llm_resp, func_result));
+      FUNC_LOOP_TIMES--;
+    }
+    return {
+      isFinished: false,
+      extra_params: params.extra_params,
+      prompt: this.prompt
+    };
+  }
+  trimParams(ASAP) {
+    const toolDetails = Object.entries(this.vaildTools);
+    const toolPrompts = toolDetails.map(([k, v]) => `##${k}
+
+###${v.function.description}
+
+####${ENV.TOOLS[k]?.prompt || ""}`).join("\n\n");
+    this.prompt += `
+
+${this.default_params.prompt}${toolPrompts}`;
+    const params = {
+      history: this.history,
+      prompt: this.prompt,
+      extra_params: {
+        tools: toolDetails.map(([, v]) => v),
+        tool_choice: "auto",
+        ...this.default_params.extra_params
+      }
+    };
+    if (ASAP && params.extra_params?.max_tokens) {
+      delete params.extra_params.max_tokens;
+    }
+    log.debug("params:", params);
+    return params;
+  }
+  extractInternalEnv(keys) {
+    return keys.reduce((acc, key) => {
+      acc[key] = this.context.USER_CONFIG[key];
+      return acc;
+    }, {});
+  }
+  async sendLastResponse(llm_resp, onStream) {
+    if (onStream) {
+      const nextTime = onStream.nextEnableTime?.() ?? 0;
+      if (nextTime > Date.now()) {
+        await new Promise((resolve) => setTimeout(resolve, nextTime - Date.now()));
+      }
+      await onStream(llm_resp.content, true);
+    } else if (this.sender) {
+      await this.sender.sendRichText(`${getLog(this.context.USER_CONFIG)}
+${llm_resp.content}`, ENV.DEFAULT_PARSE_MODE, "chat");
+    }
+    log.debug("call resp:", llm_resp.content);
+  }
+  paramsExtract(llm_resp) {
+    return this.validCalls(llm_resp?.tool_calls || []);
+  }
+  trimMessage(llm_content, func_result) {
+    const llm_result = [{ role: "assistant", content: llm_content.content, tool_calls: llm_content.tool_calls }];
+    if (!func_result) {
+      return llm_result;
+    }
+    llm_result.push(...func_result.map((content, index2) => ({
+      role: "tool",
+      content,
+      name: llm_content.tool_calls[index2].name,
+      tool_call_id: llm_content.tool_calls[index2].id
+    })));
+    return llm_result;
+  }
+}
+_init13 = __decoratorStart(null);
+__decorateElement(_init13, 1, "exec", _exec_dec, FunctionCall);
+__decoratorMetadata(_init13, FunctionCall);
+async function messageInitialize(sender) {
+  if (!sender.context.message_id) {
+    try {
+      setTimeout(() => sendAction(sender.api.token, sender.context.chat_id, "typing"), 0);
+      if (!ENV.SEND_INIT_MESSAGE) {
+        return;
+      }
+      log.info(`send ...`);
+      const response = await sender.sendPlainText("...", "chat");
+      const msg = await response.json();
+      log.info(`send done`);
+      sender.update({
+        message_id: msg.result.message_id
+      });
+    } catch (e) {
+      console.error("Failed to initialize message:", e);
+    }
+  }
+}
+async function chatWithLLM(message, params, context, modifier) {
+  const sender = context.MIDDEL_CONTEXT.sender ?? MessageSender.from(context.SHARE_CONTEXT.botToken, message);
+  await messageInitialize(sender);
+  let onStream = null;
+  if (ENV.STREAM_MODE) {
+    onStream = OnStreamHander(sender, context);
+  }
+  if (params?.extra_params?.agent) {
+    context.USER_CONFIG.AI_PROVIDER = params.extra_params.agent;
+  }
+  const agent = loadChatLLM(context.USER_CONFIG);
+  if (!agent) {
+    return sender.sendPlainText("LLM is not enabled");
+  }
+  try {
+    const answer = await requestCompletionsFromLLM(params, context, agent, modifier, onStream);
+    if (onStream) {
+      const nextTime = onStream.nextEnableTime?.() ?? 0;
+      if (nextTime > Date.now()) {
+        await new Promise((resolve) => setTimeout(resolve, nextTime - Date.now()));
+      }
+      await onStream(answer.content, true);
+    } else {
+      await sender.sendRichText(
+        `${getLog(context.USER_CONFIG)}
+${answer.content}`,
+        ENV.DEFAULT_PARSE_MODE,
+        "chat"
+      );
+    }
+    return { type: "text", text: answer.content };
+  } catch (e) {
+    let errMsg = `Error: `;
+    if (e.name === "AbortError") {
+      errMsg += "Chat with LLM timeout";
+    } else {
+      errMsg += e.message.slice(0, 2048);
+    }
+    return sender.sendRichText(`${getLog(context.USER_CONFIG)}
+${errMsg}`);
+  }
+}
+function findPhotoFileID(photos, offset) {
+  let sizeIndex = offset >= 0 ? offset : photos.length + offset;
+  sizeIndex = Math.max(0, Math.min(sizeIndex, photos.length - 1));
+  return photos[sizeIndex].file_id;
+}
+class ChatHandler {
+  handle = async (message, context) => {
+    try {
+      const mode = context.USER_CONFIG.CURRENT_MODE;
+      const originalType = context.MIDDEL_CONTEXT.originalMessage.type;
+      log.info(`message type: ${originalType}`);
+      const flowDetail = context.USER_CONFIG?.MODES?.[mode]?.[originalType] || {};
+      if (!flowDetail?.disableHistory) {
+        await this.initializeHistory(context);
+      }
+      const params = await this.processOriginalMessage(message, context);
+      if (originalType === "text" && !flowDetail?.disableTool) {
+        context.MIDDEL_CONTEXT.sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
+        try {
+          const toolResult = await useTools(context, context.MIDDEL_CONTEXT.history, context.MIDDEL_CONTEXT.sender);
+          if (toolResult instanceof Response || toolResult.isFinished && context.USER_CONFIG.FUNCTION_REPLY_ASAP) {
+            return null;
+          }
+          params.prompt = toolResult.prompt;
+          params.extra_params = {
+            ...toolResult.extra_params
+          };
+        } catch (error) {
+          console.error("Error:", error);
+          let errMsg = "⚠️";
+          if (error.name === "AbortError") {
+            errMsg += "Function call timeout";
+          } else {
+            errMsg += error.message.slice(0, 30);
+          }
+          getLogSingleton(context.USER_CONFIG).error = errMsg;
+        }
+      }
+      await workflow(context, flowDetail?.workflow || [{}], message, params);
+      return null;
+    } catch (e) {
+      console.error("Error:", e);
+      const sender = context.MIDDEL_CONTEXT.sender ?? MessageSender.from(context.SHARE_CONTEXT.botToken, message);
+      return sender.sendPlainText(`Error: ${e.message}`);
+    }
+  };
+  async initializeHistory(context) {
+    const historyKey = context.SHARE_CONTEXT.chatHistoryKey;
+    if (!historyKey) {
+      throw new Error("History key not found");
+    }
+    context.MIDDEL_CONTEXT.history = await loadHistory(historyKey);
+  }
+  async processOriginalMessage(message, context) {
+    const { type, id, text } = context.MIDDEL_CONTEXT.originalMessage;
+    const params = {
+      message: text || "",
+      extra_params: {}
+    };
+    if ((type === "image" || type === "audio") && id) {
+      const api = createTelegramBotAPI(context.SHARE_CONTEXT.botToken);
+      const files = await Promise.all(id.map((i) => api.getFileWithReturns({ file_id: i })));
+      const paths = files.map((f) => f.result.file_path).filter(Boolean);
+      const urls = paths.map((p) => `https://api.telegram.org/file/bot${context.SHARE_CONTEXT.botToken}/${p}`);
+      log.info(`File URLs:
+${urls.join("\n")}`);
+      if (type === "audio") {
+        params.audio = [await fetch(urls[0]).then((r) => r.blob())];
+        params.message = urls[0].split("/").pop() || "audio.oga";
+      } else if (urls.length > 0) {
+        params.images = urls;
+      }
+    }
+    if (["text", "image"].includes(type)) {
+      context.MIDDEL_CONTEXT.history.push({
+        role: "user",
+        content: params.message || "",
+        ...params.images && { images: params.images }
+      });
+    }
+    return params;
+  }
+}
+function OnStreamHander(sender, context) {
+  let nextEnableTime = null;
+  async function onStream(text, isEnd = false) {
+    try {
+      if (isEnd && context && ENV.TELEGRAPH_NUM_LIMIT > 0 && text.length > ENV.TELEGRAPH_NUM_LIMIT && ["group", "supergroup"].includes(sender.context.chatType)) {
+        async function sendTelegraph(context2, question, text2) {
+          const prefix = `#Question
+\`\`\`
+${question.length > 400 ? `${question.slice(0, 200)}...${question.slice(-200)}` : question}
+\`\`\`
+---`;
+          const botName = context2.SHARE_CONTEXT.botName;
+          const telegraph_prefix = `${prefix}
+#Answer
+🤖 **${getLog(context2.USER_CONFIG, true)}**
+`;
+          const debug_info = `debug info:
+${getLog(context2.USER_CONFIG)}`;
+          const telegraph_suffix = `
+---
+\`\`\`
+${debug_info}
+\`\`\``;
+          const telegraphSender = new TelegraphSender(sender.context, botName, context2.SHARE_CONTEXT.telegraphAccessTokenKey);
+          const resp2 = await telegraphSender.send(
+            "Daily Q&A",
+            telegraph_prefix + text2 + telegraph_suffix
+          );
+          const url = `https://telegra.ph/${telegraphSender.teleph_path}`;
+          const msg = `回答已经转换成完整文章~
+[🔗点击进行查看](${url})`;
+          await sender.sendRichText(msg);
+          return resp2;
+        }
+        return sendTelegraph(context, context.MIDDEL_CONTEXT.originalMessage.text || "Redo", text);
+      }
+      if (nextEnableTime && nextEnableTime > Date.now()) {
+        return;
+      }
+      if (ENV.TELEGRAM_MIN_STREAM_INTERVAL > 0) {
+        nextEnableTime = Date.now() + ENV.TELEGRAM_MIN_STREAM_INTERVAL;
+        log.debug(`Next enable time: ${new Date(nextEnableTime).toISOString()}`);
+      }
+      const data = context ? `${getLog(context.USER_CONFIG)}
+${text}` : text;
+      log.debug(`send stream message`);
+      const resp = await sender.sendRichText(data, ENV.DEFAULT_PARSE_MODE, "chat");
+      if (resp.status === 429) {
+        const retryAfter = Number.parseInt(resp.headers.get("Retry-After") || "");
+        if (retryAfter) {
+          nextEnableTime = Date.now() + retryAfter * 1e3;
+          return;
+        }
+      }
+      if (resp.ok) {
+        const respJson = await resp.json();
+        sender.update({
+          message_id: respJson.result.message_id
+        });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  onStream.nextEnableTime = () => nextEnableTime;
+  return onStream;
+}
+function clearMessageContext(context) {
+  clearLog(context.USER_CONFIG);
+  context.MIDDEL_CONTEXT.sender = null;
+}
+async function useTools(context, history, sender) {
+  const validTools = getValidToolStructs(context.USER_CONFIG.USE_TOOLS);
+  if (Object.keys(validTools).length === 0) {
+    return null;
+  }
+  const ASAP = context.USER_CONFIG.FUNCTION_REPLY_ASAP;
+  if (ASAP) {
+    await messageInitialize(sender);
+  }
+  return await new FunctionCall(context, validTools, history, ASAP ? sender : null).run();
+}
+const workflowHandlers = {
+  "text:text": handleTextToText,
+  "image:text": handleTextToText,
+  "text:image": handleTextToImage,
+  "audio:text": handleAudioToText
+};
+async function workflow(context, flows, message, params) {
+  const MiddleResult = context.MIDDEL_CONTEXT.middleResult;
+  for (let i = 0; i < flows.length; i++) {
+    const eMsg = i === 0 ? context.MIDDEL_CONTEXT.originalMessage : MiddleResult[i - 1];
+    if (i > 0) {
+      params = {
+        extra_params: {}
+      };
+    }
+    for (const key in flows[i]) {
+      if (["type", "agent"].includes(key)) {
+        continue;
+      }
+      params[key] = flows[i][key];
+    }
+    const handlerKey = `${eMsg?.type || "text"}:${flows[i]?.type || "text"}`;
+    const handler = workflowHandlers[handlerKey];
+    if (!handler) {
+      throw new Error(`Unsupported type: ${handlerKey}`);
+    }
+    const result = await handler(eMsg, message, params, context);
+    if (result instanceof Response) {
+      return result;
+    }
+    if (i < flows.length - 1 && ["image", "text"].includes(result?.type)) {
+      injectHistory(context, result, flows[i + 1].type);
+    }
+    MiddleResult.push(result);
+    clearMessageContext(context);
+  }
+}
+async function handleTextToText(eMsg, message, params, context) {
+  return chatWithLLM(message, params, context, null);
+}
+async function handleTextToImage(eMsg, message, params, context) {
+  const agent = loadImageGen(context.USER_CONFIG);
+  const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
+  if (!agent) {
+    return sender.sendPlainText("ERROR: Image generator not found");
+  }
+  sendAction(context.SHARE_CONTEXT.botToken, message.chat.id);
+  const msg = await sender.sendPlainText("Please wait a moment...", "tip").then((r) => r.json());
+  const result = await agent.request(eMsg.text, context.USER_CONFIG);
+  log.info("imageresult", JSON.stringify(result));
+  await sendImages(result, ENV.SEND_IMAGE_FILE, sender, context.USER_CONFIG);
+  const api = createTelegramBotAPI(context.SHARE_CONTEXT.botToken);
+  await api.deleteMessage({ chat_id: sender.context.chat_id, message_id: msg.result.message_id });
+  return result;
+}
+async function handleAudioToText(eMsg, message, params, context) {
+  const agent = loadAudioLLM(context.USER_CONFIG);
+  const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
+  if (!agent) {
+    return sender.sendPlainText("ERROR: Audio agent not found");
+  }
+  const result = await agent.request(params.audio[0], context.USER_CONFIG, params.message);
+  context.MIDDEL_CONTEXT.history.push({ role: "user", content: result.text || "" });
+  await sender.sendRichText(`${getLog(context.USER_CONFIG)}
+> \`${result.text}\``, "MarkdownV2", "chat");
+  return result;
+}
+async function sendImages(img, SEND_IMAGE_FILE, sender, config) {
+  const caption = img.text ? `${getLog(config)}
+> \`${img.text}\`` : getLog(config);
+  if (img.url && img.url.length > 1) {
+    const images = img.url.map((url) => ({
+      type: SEND_IMAGE_FILE ? "file" : "photo",
+      media: url
+    }));
+    images[0].caption = caption;
+    return await sender.sendMediaGroup(images);
+  } else if (img.url || img.raw) {
+    return await sender.sendPhoto((img.url || img.raw)[0], caption, "MarkdownV2");
+  } else {
+    return sender.sendPlainText("ERROR: No image found");
+  }
+}
+function injectHistory(context, result, nextType = "text") {
+  if (context.MIDDEL_CONTEXT.history.at(-1)?.role === "user" || nextType !== "text") return;
+  context.MIDDEL_CONTEXT.history.push({ role: "user", content: result.text || "", ...result.url && result.url.length > 0 && { images: result.url } });
+}
+function isTelegramChatTypeGroup(type) {
+  return type === "group" || type === "supergroup";
+}
+function extractMessage(message, currentBotId) {
+  const acceptMsgType = ENV.ENABLE_FILE ? ["document", "photo", "voice", "audio", "text"] : ["text"];
+  const messageData = extractTypeFromMessage(message, acceptMsgType);
+  if (messageData && messageData.type === "text" && isNeedGetReplyMessage(message, currentBotId)) {
+    const {
+      type,
+      id
+    } = extractTypeFromMessage(message.reply_to_message, acceptMsgType) || {};
+    if (type && type !== "text")
+      messageData.type = type;
+    if (id && id.length > 0)
+      messageData.id = id;
+  }
+  return messageData;
+}
+function extractTypeFromMessage(message, supportType) {
+  let msgType = supportType.find((t) => t in message);
+  if (!msgType)
+    return null;
+  switch (msgType) {
+    case "text":
+      return {
+        type: "text"
+      };
+    case "photo": {
+      const file_id = findPhotoFileID(message.photo, ENV.TELEGRAM_PHOTO_SIZE_OFFSET);
+      if (!file_id) {
+        return {
+          type: "text"
+        };
+      }
+      return {
+        type: "image",
+        id: [file_id]
+      };
+    }
+    case "document":
+    case "audio":
+    case "voice": {
+      if (msgType === "document") {
+        const type = message.document?.mime_type?.match(/(audio|image)/)?.[1];
+        if (!type) {
+          return null;
+        }
+        msgType = type;
+      }
+      const id = message[msgType]?.file_id;
+      return {
+        type: ["audio", "voice"].includes(msgType) ? "audio" : "image",
+        ...id && { id: [id] }
+      };
+    }
+  }
+  return null;
+}
+function isNeedGetReplyMessage(message, currentBotId) {
+  return ENV.EXTRA_MESSAGE_CONTEXT && message.reply_to_message && message.reply_to_message.from?.id !== currentBotId;
+}
+function UUIDv4() {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === "x" ? r : r & 3 | 8;
+    return v.toString(16);
+  });
+}
+const isCfWorker = typeof globalThis !== "undefined" && typeof globalThis.ServiceWorkerGlobalScope !== "undefined" && globalThis instanceof globalThis.ServiceWorkerGlobalScope;
 const COMMAND_AUTH_CHECKER = {
   default(chatType) {
     if (isTelegramChatTypeGroup(chatType)) {
@@ -4028,7 +3958,7 @@ class SetEnvCommandHandler {
       ConfigMerger.merge(context.USER_CONFIG, {
         [key]: value
       });
-      console.log("Update user config: ", key, context.USER_CONFIG[key]);
+      log.info("Update user config: ", key, context.USER_CONFIG[key]);
       await ENV.DATABASE.put(
         context.SHARE_CONTEXT.configStoreKey,
         JSON.stringify(ConfigMerger.trim(context.USER_CONFIG, ENV.LOCK_USER_CONFIG_KEYS))
@@ -4059,7 +3989,7 @@ class SetEnvsCommandHandler {
         ConfigMerger.merge(context.USER_CONFIG, {
           [key]: value
         });
-        console.log("Update user config: ", key, context.USER_CONFIG[key]);
+        log.info("Update user config: ", key, context.USER_CONFIG[key]);
       }
       context.USER_CONFIG.DEFINE_KEYS = Array.from(new Set(context.USER_CONFIG.DEFINE_KEYS));
       await ENV.DATABASE.put(
@@ -4353,7 +4283,7 @@ ${detailSet}
     if (!context.USER_CONFIG.DEFINE_KEYS.includes(key)) {
       context.USER_CONFIG.DEFINE_KEYS.push(key);
     }
-    console.log(`/set ${key} ${(JSON.stringify(mappedValue) || value).substring(0, 100)}`);
+    log.info(`/set ${key} ${(JSON.stringify(mappedValue) || value).substring(0, 100)}`);
     hasKey = true;
     return { msg, hasKey };
   }
@@ -4423,39 +4353,6 @@ class PerplexityCommandHandler {
     await onStream(result, true);
     return new Response("success");
   };
-}
-async function loadChatRoleWithContext(message, context) {
-  const { groupAdminsKey } = context.SHARE_CONTEXT;
-  const chatId = message.chat.id;
-  const speakerId = message.from?.id || chatId;
-  if (!groupAdminsKey) {
-    return null;
-  }
-  let groupAdmin = null;
-  try {
-    groupAdmin = JSON.parse(await ENV.DATABASE.get(groupAdminsKey));
-  } catch (e) {
-    console.error(e);
-  }
-  if (groupAdmin === null || !Array.isArray(groupAdmin) || groupAdmin.length === 0) {
-    const api = createTelegramBotAPI(context.SHARE_CONTEXT.botToken);
-    const result = await api.getChatAdministratorsWithReturns({ chat_id: chatId });
-    if (result == null) {
-      return null;
-    }
-    groupAdmin = result.result;
-    await ENV.DATABASE.put(
-      groupAdminsKey,
-      JSON.stringify(groupAdmin),
-      { expiration: Date.now() / 1e3 + 120 }
-    );
-  }
-  for (const user of groupAdmin) {
-    if (`${user.user?.id}` === `${speakerId}`) {
-      return user.status;
-    }
-  }
-  return "member";
 }
 const SYSTEM_COMMANDS = [
   new StartCommandHandler(),
@@ -4615,6 +4512,195 @@ function commandsDocument() {
     };
   }).filter((item) => item.description !== "");
 }
+class ShareContext {
+  botId;
+  botToken;
+  botName = null;
+  chatHistoryKey;
+  lastMessageKey;
+  configStoreKey;
+  groupAdminsKey;
+  telegraphAccessTokenKey;
+  scheduleDeteleKey = "schedule_detele_message";
+  storeMessageKey;
+  sentMessageIds;
+  constructor(token, message) {
+    const botId = Number.parseInt(token.split(":")[0]);
+    const telegramIndex = ENV.TELEGRAM_AVAILABLE_TOKENS.indexOf(token);
+    if (telegramIndex === -1) {
+      throw new Error("Token not allowed");
+    }
+    if (ENV.TELEGRAM_BOT_NAME.length > telegramIndex) {
+      this.botName = ENV.TELEGRAM_BOT_NAME[telegramIndex];
+    }
+    this.botToken = token;
+    this.botId = botId;
+    const id = message?.chat?.id;
+    if (id === void 0 || id === null) {
+      throw new Error("Chat id not found");
+    }
+    let historyKey = `history:${id}`;
+    let configStoreKey = `user_config:${id}`;
+    if (botId) {
+      historyKey += `:${botId}`;
+      configStoreKey += `:${botId}`;
+    }
+    switch (message.chat.type) {
+      case "group":
+      case "supergroup":
+        if (!ENV.GROUP_CHAT_BOT_SHARE_MODE && message.from?.id) {
+          historyKey += `:${message.from.id}`;
+          configStoreKey += `:${message.from.id}`;
+        }
+        this.groupAdminsKey = `group_admin:${id}`;
+        break;
+    }
+    if (message?.chat.is_forum && message?.is_topic_message) {
+      if (message?.message_thread_id) {
+        historyKey += `:${message.message_thread_id}`;
+        configStoreKey += `:${message.message_thread_id}`;
+      }
+    }
+    this.chatHistoryKey = historyKey;
+    this.lastMessageKey = `last_message_id:${historyKey}`;
+    this.configStoreKey = configStoreKey;
+    if (message?.from?.id && ENV.STORE_MESSAGE_WHITELIST.includes(message.from.id) && ENV.STORE_MESSAGE_NUM > 0) {
+      this.storeMessageKey = `store_message:${message.chat.id}:${message?.from?.id || message.chat.id}`;
+    }
+    if (ENV.TELEGRAPH_NUM_LIMIT > 0) {
+      this.telegraphAccessTokenKey = `telegraph_access_token:${id}`;
+    }
+    if (ENV.EXPIRED_TIME > 0)
+      this.sentMessageIds = /* @__PURE__ */ new Set();
+  }
+}
+class MiddleContext {
+  originalMessage = { type: "text" };
+  history = [];
+  logs = null;
+  middleResult = [];
+  sender = null;
+}
+class WorkerContextBase {
+  SHARE_CONTEXT;
+  MIDDEL_CONTEXT = new MiddleContext();
+  constructor(token, message) {
+    this.SHARE_CONTEXT = new ShareContext(token, message);
+  }
+}
+class WorkerContext {
+  USER_CONFIG;
+  SHARE_CONTEXT;
+  MIDDEL_CONTEXT;
+  constructor(USER_CONFIG, SHARE_CONTEXT, MIDDEL_CONTEXT) {
+    this.USER_CONFIG = USER_CONFIG;
+    this.SHARE_CONTEXT = SHARE_CONTEXT;
+    this.MIDDEL_CONTEXT = MIDDEL_CONTEXT;
+  }
+  static async from(SHARE_CONTEXT, MIDDLE_CONTEXT) {
+    const USER_CONFIG = { ...ENV.USER_CONFIG };
+    try {
+      const userConfig = JSON.parse(await ENV.DATABASE.get(SHARE_CONTEXT.configStoreKey));
+      ConfigMerger.merge(USER_CONFIG, ConfigMerger.trim(userConfig, ENV.LOCK_USER_CONFIG_KEYS) || {});
+    } catch (e) {
+      console.warn(e);
+    }
+    return new WorkerContext(USER_CONFIG, SHARE_CONTEXT, MIDDLE_CONTEXT);
+  }
+}
+function checkMention(content, entities, botName, botId) {
+  let isMention = false;
+  for (const entity of entities) {
+    const entityStr = content.slice(entity.offset, entity.offset + entity.length);
+    switch (entity.type) {
+      case "mention":
+        if (entityStr === `@${botName}`) {
+          isMention = true;
+          content = content.slice(0, entity.offset) + content.slice(entity.offset + entity.length);
+        }
+        break;
+      case "text_mention":
+        if (`${entity.user?.id}` === `${botId}`) {
+          isMention = true;
+          content = content.slice(0, entity.offset) + content.slice(entity.offset + entity.length);
+        }
+        break;
+      case "bot_command":
+        if (entityStr.endsWith(`@${botName}`)) {
+          isMention = true;
+          const newEntityStr = entityStr.replace(`@${botName}`, "");
+          content = content.slice(0, entity.offset) + newEntityStr + content.slice(entity.offset + entity.length);
+        }
+        break;
+    }
+  }
+  return {
+    isMention,
+    content
+  };
+}
+function SubstituteWords(message) {
+  if (Object.keys(ENV.CHAT_MESSAGE_TRIGGER).length === 0) {
+    return false;
+  }
+  const triggerKeyValue = Object.entries(ENV.CHAT_MESSAGE_TRIGGER).find(
+    ([key]) => (message?.text || message?.caption || "").startsWith(key)
+  );
+  if (triggerKeyValue) {
+    if (message.text) {
+      message.text = message.text.replace(...triggerKeyValue);
+    } else if (message.caption) {
+      message.caption = message.caption.replace(...triggerKeyValue);
+    }
+  }
+  return !!triggerKeyValue;
+}
+class GroupMention {
+  handle = async (message, context) => {
+    const substituteMention = SubstituteWords(message);
+    if (!isTelegramChatTypeGroup(message.chat.type)) {
+      context.MIDDEL_CONTEXT.originalMessage.text = message.text || message.caption || "";
+      return null;
+    }
+    const replyMe = `${message.reply_to_message?.from?.id}` === `${context.SHARE_CONTEXT.botId}`;
+    if (replyMe) {
+      context.MIDDEL_CONTEXT.originalMessage.text = message.text || message.caption || "";
+      return null;
+    }
+    let botName = context.SHARE_CONTEXT.botName;
+    if (!botName) {
+      const res = await createTelegramBotAPI(context.SHARE_CONTEXT.botToken).getMeWithReturns();
+      botName = res.result.username || null;
+      context.SHARE_CONTEXT.botName = botName;
+    }
+    if (!botName) {
+      throw new Error("Not set bot name");
+    }
+    let isMention = false;
+    if (message.text && message.entities) {
+      const res = checkMention(message.text, message.entities, botName, context.SHARE_CONTEXT.botId);
+      isMention = res.isMention;
+      message.text = res.content.trim();
+    }
+    if (message.caption && message.caption_entities) {
+      const res = checkMention(message.caption, message.caption_entities, botName, context.SHARE_CONTEXT.botId);
+      isMention = res.isMention || isMention;
+      message.caption = res.content.trim();
+    }
+    if (substituteMention && !isMention) {
+      isMention = true;
+    }
+    if (!isMention) {
+      throw new Error("Not mention");
+    }
+    if (ENV.EXTRA_MESSAGE_CONTEXT && !replyMe && message.reply_to_message?.text) {
+      message.text = `> ${message.reply_to_message.text}
+${message.text || message.caption || ""}`;
+    }
+    context.MIDDEL_CONTEXT.originalMessage.text = message.text;
+    return null;
+  };
+}
 class SaveLastMessage {
   handle = async (message, context) => {
     if (!ENV.DEBUG_MODE) {
@@ -4747,7 +4833,7 @@ class TagNeedDelete {
       ttl: Date.now() + offsetInMillisenconds
     });
     await ENV.DATABASE.put(scheduleDeteleKey, JSON.stringify(scheduledData));
-    console.log(`Record chat ${chatId}, message ids: ${sentMessageIds.get(message) || []}`);
+    log.info(`Record chat ${chatId}, message ids: ${sentMessageIds.get(message) || []}`);
     return new Response("success", { status: 200 });
   };
 }
@@ -4789,6 +4875,7 @@ const SHARE_HANDLER = [
 ];
 const exitHanders = [new TagNeedDelete(), new StoreWhiteListMessage()];
 async function handleUpdate(token, update) {
+  log.debug(`handleUpdate`, update.message?.chat);
   const message = loadMessage(update);
   const context = new WorkerContextBase(token, message);
   try {

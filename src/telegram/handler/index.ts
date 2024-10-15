@@ -3,6 +3,7 @@ import type { WorkerContext } from '../../config/context';
 import type { MessageHandler } from './types';
 import { WorkerContextBase } from '../../config/context';
 import { clearLog, sentMessageIds } from '../../extra/log/logDecortor';
+import { log } from '../../extra/log/logger';
 import { ChatHandler } from './chat';
 import { GroupMention } from './group';
 import {
@@ -56,7 +57,7 @@ const SHARE_HANDLER: MessageHandler<any>[] = [
 const exitHanders: MessageHandler<any>[] = [new TagNeedDelete(), new StoreWhiteListMessage()];
 
 export async function handleUpdate(token: string, update: Telegram.Update): Promise<Response | null> {
-    // console.log(`[${new Date().toISOString()}]: handleUpdate: ${JSON.stringify(update.message?.chat)}`);
+    log.debug(`handleUpdate`, update.message?.chat);
     const message = loadMessage(update);
     // 延迟初始化用户配置
     const context = new WorkerContextBase(token, message);

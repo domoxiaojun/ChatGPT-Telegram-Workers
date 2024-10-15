@@ -10,6 +10,7 @@ import { WssRequest } from '../../agent/wsrequest';
 import { ENV, ENV_KEY_MAPPER } from '../../config/env';
 import { ConfigMerger } from '../../config/merger';
 import { getLogSingleton } from '../../extra/log/logDecortor';
+import { log } from '../../extra/log/logger';
 import { createTelegramBotAPI } from '../api';
 import { chatWithLLM, OnStreamHander, sendImages } from '../handler/chat';
 import { type MessageSender, sendAction } from '../utils/send';
@@ -150,7 +151,7 @@ export class SetEnvCommandHandler implements CommandHandler {
             ConfigMerger.merge(context.USER_CONFIG, {
                 [key]: value,
             });
-            console.log('Update user config: ', key, context.USER_CONFIG[key]);
+            log.info('Update user config: ', key, context.USER_CONFIG[key]);
             await ENV.DATABASE.put(
                 context.SHARE_CONTEXT.configStoreKey,
                 JSON.stringify(ConfigMerger.trim(context.USER_CONFIG, ENV.LOCK_USER_CONFIG_KEYS)),
@@ -183,7 +184,7 @@ export class SetEnvsCommandHandler implements CommandHandler {
                 ConfigMerger.merge(context.USER_CONFIG, {
                     [key]: value,
                 });
-                console.log('Update user config: ', key, context.USER_CONFIG[key]);
+                log.info('Update user config: ', key, context.USER_CONFIG[key]);
             }
             context.USER_CONFIG.DEFINE_KEYS = Array.from(new Set(context.USER_CONFIG.DEFINE_KEYS));
             await ENV.DATABASE.put(
@@ -528,7 +529,7 @@ export class SetCommandHandler implements CommandHandler {
         if (!context.USER_CONFIG.DEFINE_KEYS.includes(key)) {
             context.USER_CONFIG.DEFINE_KEYS.push(key);
         }
-        console.log(`/set ${key} ${(JSON.stringify(mappedValue) || value).substring(0, 100)}`);
+        log.info(`/set ${key} ${(JSON.stringify(mappedValue) || value).substring(0, 100)}`);
         hasKey = true;
         return { msg, hasKey };
     }

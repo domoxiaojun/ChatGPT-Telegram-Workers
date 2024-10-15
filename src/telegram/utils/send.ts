@@ -3,6 +3,7 @@ import type * as Telegram from 'telegram-bot-api-types';
 import type { TelegramBotAPI } from '../api';
 import { ENV } from '../../config/env';
 import { sentMessageIds } from '../../extra/log/logDecortor';
+import { log } from '../../extra/log/logger';
 import { createTelegramBotAPI } from '../api';
 import md2node from './md2node';
 import { escape } from './md2tgmd';
@@ -313,7 +314,7 @@ export class TelegraphSender {
             const c_resp = await this.createOrEditPage(endPoint, title, content);
             if (c_resp.ok) {
                 this.teleph_path = c_resp.result!.path;
-                console.log('telegraph url: ', c_resp.result!.url);
+                log.info('telegraph url:', c_resp.result!.url);
                 return c_resp;
             } else {
                 console.error(c_resp.error);

@@ -1,4 +1,5 @@
 import type { CompletionData } from './types';
+import { log } from '../extra/log/logger';
 import { AsyncIter } from './readable';
 import { iterStream } from './request';
 
@@ -66,14 +67,14 @@ export async function WssRequest(url: string, protocols: string | string[] | nul
         }
 
         ws.on('open', () => {
-            console.log('wss connected.');
+            log.info('wss connected.');
         });
 
         ws.on('message', async (data) => {
             const message = data.toString('utf-8');
             if (message.startsWith('0')) {
                 const handshake = JSON.parse(message.substring(1));
-                console.log('Handshake received:', handshake);
+                log.info('Handshake received:', handshake);
                 // send connection confirm message
                 ws.send('40');
                 // send custom event message
@@ -83,26 +84,26 @@ export async function WssRequest(url: string, protocols: string | string[] | nul
             } else if (message.startsWith('42')) {
                 const parsedMsg = JSON.parse(message.substring(2));
                 const extracted = perplexityFormatter(parsedMsg);
-                // console.log('Received data:', parsedMsg);
+                // log.info('Received data:', parsedMsg);
                 if (streamIter && !streamIter.isDone) {
                     streamIter.add(extracted);
-                    // console.log('added:\n', extracted);
+                    // log.info('added:\n', extracted);
                 }
                 if (extracted.done) {
-                    console.log('Stream done.');
+                    log.info('Stream done.');
                     result = extracted.content;
                     ws.close();
                 }
             } else if (message.startsWith('3')) {
                 // handle heartbeat message
-                console.log('Heartbeat received');
+                log.info('Heartbeat received');
             } else {
-                console.log('Received non-data message:', message);
+                log.info('Received non-data message:', message);
             }
         });
 
         ws.on('close', async () => {
-            console.log('wss closed.');
+            log.info('wss closed.');
             closeWss(resolve, result, streamIter, streamSender, extractor);
         });
 
@@ -126,6 +127,6 @@ async function closeWss(resolve: any, result: any, streamIter: AsyncIter<any> | 
         data = `${extractor.fullContentExtractor(result)}\n${result.message || ''}`;
     }
 
-    console.log('Result:', data.trim());
+    log.info('Result:', data.trim());
     resolve(data.trim());
 }

@@ -1,5 +1,5 @@
 import type { WorkerContext } from '../config/context';
-import type { ChatAgent, ChatStreamTextHandler, CompletionData, HistoryItem, HistoryModifier, ImageResult, LLMChatRequestParams } from './types';
+import type { ChatAgent, ChatStreamTextHandler, CompletionData, HistoryItem, HistoryModifier, ImageResult, LLMChatParams } from './types';
 import { ENV } from '../config/env';
 
 /**
@@ -62,7 +62,7 @@ export async function loadHistory(key: string): Promise<HistoryItem[]> {
 
 export type StreamResultHandler = (text: string) => Promise<any>;
 
-export async function requestCompletionsFromLLM(params: LLMChatRequestParams, context: WorkerContext, agent: ChatAgent, modifier: HistoryModifier | null, onStream: ChatStreamTextHandler | null): Promise<CompletionData> {
+export async function requestCompletionsFromLLM(params: LLMChatParams, context: WorkerContext, agent: ChatAgent, modifier: HistoryModifier | null, onStream: ChatStreamTextHandler | null): Promise<CompletionData> {
     let history = context.MIDDEL_CONTEXT.history;
     if (modifier) {
         const modifierData = modifier(history, params.message || null);

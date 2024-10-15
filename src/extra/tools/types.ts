@@ -18,5 +18,7 @@ export interface FuncTool {
     schema: SchemaData;
     func: (params: Record<string, any>, signal?: AbortSignal) => Promise<string>;
     type: ToolType;
-    need?: string;
+    ENV_KEY?: string;
+    prompt?: string;
+    extra_params?: Record<string, any>;
 }

@@ -1,6 +1,6 @@
 /* eslint-disable unused-imports/no-unused-vars */
 
-import type { FuncTool } from '../external/types';
+import type { FuncTool } from '../types';
 
 // import { decode } from "html-entities";
 const SEARCH_REGEX = /DDG\.pageLayout\.load\('d',(\[.+\])\);DDG\.duckbar\.load\('images'/;
@@ -285,7 +285,7 @@ export const duckduckgo_search: FuncTool = {
         },
     },
 
-    func: async (args) => {
+    func: async (args: any) => {
         const { keywords } = args;
         if (!keywords || keywords.length === 0)
             throw new Error('无参数');
@@ -305,4 +305,8 @@ export const duckduckgo_search: FuncTool = {
     },
 
     type: 'search',
+
+    prompt:
+        '作为智能助手，请按照以下步骤有效分析并提取我提供的搜索结果，以简洁明了的方式回答我的问题：\n\n1. 阅读和评估：仔细阅读所有搜索结果，识别并优先获取来自可靠和最新来源的信息。考虑因素包括官方来源、知名机构以及信息的更新时间。\n\n2. 提取关键信息：\n   • *汇率查询*：提供最新汇率并进行必要的换算。\n   • *天气查询*：提供具体地点和时间的天气预报。\n   • *事实性问题*：找出权威回答。\n\n3. 简洁回答：对提取的信息进行综合分析，给出简明扼要的回答。\n\n4. 识别不确定性：如果信息存在矛盾或不确定性，请解释可能原因。\n\n5. 说明信息不足：如果搜索结果无法完全回答问题，指出需要的额外信息。\n\n6. 用户友好：使用简单易懂的语言，必要时提供简短解释，确保回答易于理解。\n\n7. 附加信息：根据需要提供额外相关信息或建议，以增强回答的价值。\n\n8. 来源标注：在回答中清晰标注信息来源，包括来源网站或机构名称及数据的发布或更新时间。\n\n9. 参考列表：如果引用了多个来源，在回答最后提供简短的参考列表，列出主要信息来源。\n\n请确保目标是提供最新、最相关和最有用的信息，直接回应我的问题。避免冗长的细节，聚焦于我最关心的核心答案，并通过可靠的来源增强回答的可信度。Tip: 不要以你的知识库时间作为评判标准',
+    extra_params: { temperature: 0.7, top_p: 0.4 },
 };

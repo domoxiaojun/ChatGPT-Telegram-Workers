@@ -55,17 +55,17 @@ export interface ChatStreamTextHandler {
     nextEnableTime?: () => number | null;
 }
 
-export interface LLMChatRequestParams {
-    message: string;
+interface LLMChatParamsBase {
+    message?: string;
     images?: string[];
     audio?: Blob[];
+    prompt?: string | null;
     extra_params?: Record<string, any>;
 }
 
-export interface LLMChatParams extends LLMChatRequestParams {
-    prompt?: string | null;
+export interface LLMChatParams extends LLMChatParamsBase {
+    model?: string;
     history?: HistoryItem[];
-    extra_params?: Record<string, any>;
 }
 
 export type ChatAgentRequest = (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null) => Promise<CompletionData>;

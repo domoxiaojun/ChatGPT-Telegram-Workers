@@ -5,6 +5,7 @@ import type { MessageHandler } from './types';
 import { WorkerContext } from '../../config/context';
 import { ENV } from '../../config/env';
 import { sentMessageIds } from '../../extra/log/logDecortor';
+import { log } from '../../extra/log/logger';
 import { handleCommandMessage } from '../command';
 import { MessageSender } from '../utils/send';
 import { extractMessage, isTelegramChatTypeGroup } from '../utils/utils';
@@ -163,7 +164,7 @@ export class TagNeedDelete implements MessageHandler<WorkerContext> {
         });
 
         await ENV.DATABASE.put(scheduleDeteleKey, JSON.stringify(scheduledData));
-        console.log(`Record chat ${chatId}, message ids: ${sentMessageIds.get(message) || []}`);
+        log.info(`Record chat ${chatId}, message ids: ${sentMessageIds.get(message) || []}`);
 
         return new Response('success', { status: 200 });
     };

@@ -30,3 +30,5 @@ export type FlowStruct = {
         }[];
     };
 };
+
+export type LogLevelType = 'debug' | 'info' | 'warn' | 'error';

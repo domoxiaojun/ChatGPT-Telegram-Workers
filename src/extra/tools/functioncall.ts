@@ -3,12 +3,12 @@ import type { ParseMode } from 'telegram-bot-api-types';
 import type { ChatAgent, ChatStreamTextHandler, CompletionData, HistoryItem, LLMChatParams, MessageAssistantFunction, MessageTool } from '../../agent/types';
 import type { WorkerContext } from '../../config/context';
 import type { MessageSender } from '../../telegram/utils/send';
-import type { SchemaData } from './external/types';
+import type { SchemaData } from './types';
 import { OpenAI } from '../../agent/openai';
 import { ENV } from '../../config/env';
 import { OnStreamHander } from '../../telegram/handler/chat';
 import { getLog, Log } from '../log/logDecortor';
-import tools_settings from '../prompt/tools.js';
+import { log } from '../log/logger';
 
 interface FunctionCallResult {
     id: string;
@@ -41,7 +41,11 @@ export class FunctionCall {
     history: HistoryItem[];
     agent: ChatAgent;
     sender: MessageSender | null;
-    usedTools: Set<string> = new Set();
+    prompt: string;
+    default_params = {
+        prompt: '##TOOLS\n\nYou can use these tools below:\n\n',
+        extra_params: { temperature: 0.5, top_p: 0.4, max_tokens: 100 },
+    };
 
     constructor(context: WorkerContext, vaildTools: Record<string, ToolStruct>, history: HistoryItem[] = [], sender: MessageSender | null = null, agent: ChatAgent = new OpenAI('tool')) {
         this.context = context;
@@ -49,6 +53,7 @@ export class FunctionCall {
         this.history = history;
         this.agent = agent;
         this.sender = sender;
+        this.prompt = context.USER_CONFIG.SYSTEM_INIT_MESSAGE || '';
     }
 
     validCalls(tool_calls: any[]): FunctionCallResult[] {
@@ -69,8 +74,8 @@ export class FunctionCall {
         const { signal } = controller;
         const timeoutId = ENV.FUNC_TIMEOUT > 0 ? setTimeout(() => controller.abort(), ENV.FUNC_TIMEOUT * 1e3) : null;
         const { name, args } = func;
-        if (ENV.TOOLS[name]?.need) {
-            args[ENV.TOOLS[name].need] = env[ENV.TOOLS[name].need];
+        if (ENV.TOOLS[name]?.ENV_KEY) {
+            args[ENV.TOOLS[name].ENV_KEY] = env[ENV.TOOLS[name].ENV_KEY];
         }
         const content = await ENV.TOOLS[name].func(args, signal) || '';
         if (timeoutId) clearTimeout(timeoutId);
@@ -81,56 +86,59 @@ export class FunctionCall {
         let FUNC_LOOP_TIMES = ENV.FUNC_LOOP_TIMES;
         const ASAP = this.context.USER_CONFIG.FUNCTION_REPLY_ASAP;
         const onStream = ENV.STREAM_MODE && this.sender ? OnStreamHander(this.sender, this.context) : null;
+        // TODO 目前只支持一个 后续增加需要改进读取方式
         const INTERNAL_ENV = this.extractInternalEnv(['JINA_API_KEY']);
+        const params = this.trimParams(ASAP);
 
-        while (FUNC_LOOP_TIMES !== 0 && this.usedTools.size < Object.keys(this.vaildTools).length) {
-            const params = this.trimParams(ASAP);
-            let llm_resp: CompletionData | null = null;
-            try {
-                llm_resp = await this.call(params, onStream);
-            } catch (e) {
-                return this.sender?.sendPlainText(`Error: ${(e as Error).message}`);
-            }
+        while (FUNC_LOOP_TIMES !== 0) {
+            const llm_resp = await this.call(params, onStream);
+            const func_params = this.paramsExtract(llm_resp);
 
-            if (!llm_resp?.tool_calls || llm_resp.tool_calls.length === 0) {
+            if (func_params.length === 0) {
                 if (ASAP && llm_resp) {
-                    await this.sendStreamResponse(llm_resp, onStream);
-                    this.history.push(...trimMessage(llm_resp));
+                    await this.sendLastResponse(llm_resp, onStream);
+                    this.history.push(...this.trimMessage(llm_resp));
                 }
-                return llm_resp;
-            } else {
-                llm_resp.tool_calls = llm_resp.tool_calls.slice(0, ENV.CON_EXEC_FUN_NUM);
+                return {
+                    isFinished: true,
+                    extra_params: params.extra_params,
+                    prompt: this.prompt,
+                };
             }
-            const llm_data = this.paramsExtract(llm_resp);
-            if (llm_data.length === 0) return llm_resp;
 
-            this.history.push(...trimMessage(llm_resp) as MessageTool[]);
-            llm_data.forEach(i => this.usedTools.add(i.name));
-
-            const func_result = await Promise.all(llm_data.map(i => this.exec(i, INTERNAL_ENV)));
-            this.history.push(...trimMessage(llm_resp, func_result));
+            llm_resp.tool_calls = llm_resp.tool_calls!.slice(0, ENV.CON_EXEC_FUN_NUM);
+            const func_result = await Promise.all(func_params.map(i => this.exec(i, INTERNAL_ENV)));
+            log.debug('func_result:', func_result);
+            this.history.push(...this.trimMessage(llm_resp, func_result));
             FUNC_LOOP_TIMES--;
         }
+        return {
+            isFinished: false,
+            extra_params: params.extra_params,
+            prompt: this.prompt,
+        };
     }
 
-    private trimParams(limitToken: boolean): Record<string, any> {
-        const unusedTools = Object.keys(this.vaildTools).filter(tool => !this.usedTools.has(tool));
-        const toolPrompts = unusedTools
-            .map(tool => `##${tool}\n\n###${this.vaildTools[tool].function.description}`)
+    private trimParams(ASAP: boolean): Record<string, any> {
+        const toolDetails = Object.entries(this.vaildTools);
+        const toolPrompts = toolDetails
+            .map(([k, v]) => `##${k}\n\n###${v.function.description}\n\n####${ENV.TOOLS[k]?.prompt || ''}`)
             .join('\n\n');
+        this.prompt += `\n\n${this.default_params.prompt}${toolPrompts}`;
 
-        const params = {
+        const params: LLMChatParams = {
             history: this.history,
-            prompt: tools_settings.default.prompt + toolPrompts,
+            prompt: this.prompt,
             extra_params: {
-                tools: unusedTools.map(tool => this.vaildTools[tool]),
+                tools: toolDetails.map(([, v]) => v),
                 tool_choice: 'auto',
-                ...tools_settings.default.extra_params,
+                ...this.default_params.extra_params,
             },
         };
-        if (limitToken && params.extra_params.max_tokens) {
+        if (ASAP && params.extra_params?.max_tokens) {
             delete params.extra_params.max_tokens;
         }
+        log.debug('params:', params);
         return params;
     }
 
@@ -141,7 +149,7 @@ export class FunctionCall {
         }, {} as Record<string, any>);
     }
 
-    private async sendStreamResponse(llm_resp: CompletionData, onStream: ChatStreamTextHandler | null): Promise<void> {
+    private async sendLastResponse(llm_resp: CompletionData, onStream: ChatStreamTextHandler | null): Promise<void> {
         if (onStream) {
             const nextTime = onStream.nextEnableTime?.() ?? 0;
             if (nextTime > Date.now()) {
@@ -151,22 +159,25 @@ export class FunctionCall {
         } else if (this.sender) {
             await this.sender.sendRichText(`${getLog(this.context.USER_CONFIG)}\n${llm_resp.content}`, ENV.DEFAULT_PARSE_MODE as ParseMode, 'chat');
         }
-        // console.log('stream resp:\n', llm_resp.content);
+        log.debug('call resp:', llm_resp.content);
     }
 
     paramsExtract(llm_resp: CompletionData): FunctionCallResult[] {
         return this.validCalls(llm_resp?.tool_calls || []);
     }
-}
 
-function trimMessage(llm_content: CompletionData, func_result?: string[]): MessageTool[] | MessageAssistantFunction[] {
-    if (!func_result) {
-        return [{ role: 'assistant', content: llm_content.content, tool_calls: llm_content.tool_calls }] as MessageAssistantFunction[];
+    trimMessage(llm_content: CompletionData, func_result?: string[]): (MessageAssistantFunction | MessageTool)[] {
+        const llm_result = [{ role: 'assistant', content: llm_content.content, tool_calls: llm_content.tool_calls }] as any[];
+        if (!func_result) {
+            return llm_result;
+        }
+
+        llm_result.push(...func_result.map((content, index) => ({
+            role: 'tool',
+            content,
+            name: llm_content.tool_calls![index].name,
+            tool_call_id: llm_content.tool_calls![index].id,
+        })));
+        return llm_result;
     }
-    return func_result.map((content, index) => ({
-        content,
-        name: llm_content.tool_calls![index].function.name,
-        role: 'tool',
-        tool_call_id: llm_content.tool_calls![index].id,
-    })) as MessageTool[];
 }

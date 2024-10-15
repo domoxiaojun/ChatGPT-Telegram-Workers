@@ -1,5 +1,5 @@
 import { ENV } from './config/env';
-import tasks from './extra/tools/scheduleTask';
+import tasks from './extra/tools/scheduletask';
 /* eslint-disable unused-imports/no-unused-vars */
 import { createRouter } from './route';
 

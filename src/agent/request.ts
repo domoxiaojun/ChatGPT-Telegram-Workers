@@ -1,6 +1,7 @@
 import type { ChatStreamTextHandler, CompletionData, OpenAIFuncCallData } from './types';
 /* eslint-disable antfu/if-newline */
 import { ENV } from '../config/env';
+import { log } from '../extra/log/logger';
 import { Stream } from './stream';
 
 export interface SseChatCompatibleOptions {
@@ -75,7 +76,9 @@ export async function requestChatCompletions(url: string, header: Record<string,
         timeoutID = setTimeout(() => controller.abort(), ENV.CHAT_COMPLETE_API_TIMEOUT * 1e3);
     }
 
-    console.log(`[${new Date().toISOString()}]: start request llm`);
+    log.info('start request llm');
+
+    log.debug('request url, headers, body', url, header, body);
     const resp = await fetch(url, {
         method: 'POST',
         headers: header,
@@ -129,7 +132,7 @@ function clearTimeoutID(timeoutID: any) {
 }
 
 export async function iterStream(body: any, stream: AsyncIterable<any>, options: SseChatCompatibleOptions, onStream: ChatStreamTextHandler): Promise<CompletionData> {
-    console.log(`[${new Date().toISOString()}]: start handle stream`);
+    log.info(`start handle stream`);
 
     let contentFull = '';
     let lengthDelta = 0;
@@ -145,7 +148,7 @@ export async function iterStream(body: any, stream: AsyncIterable<any>, options:
     try {
         for await (const data of stream) {
             const c = options.contentExtractor?.(data) || '';
-            // console.log('--- data:\n', c);
+            // log.debug('--- chunck data:', data);
             usage = data?.usage;
             if (body?.tools?.length > 0)
                 options.functionCallExtractor?.(data, tool_calls);
@@ -177,8 +180,8 @@ export async function iterStream(body: any, stream: AsyncIterable<any>, options:
                 // console.log(`____chunck send: ${contentFull}●`);
             }
         }
-        // console.log('--- lastChunk:\n', lastChunk);
         contentFull += lastChunk;
+        log.debug('--- contentFull:', contentFull);
     } catch (e) {
         contentFull += `\nERROR: ${(e as Error).message}`;
     }

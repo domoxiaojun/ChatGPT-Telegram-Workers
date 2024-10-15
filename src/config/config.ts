@@ -1,5 +1,5 @@
-import type { FuncTool } from '../extra/tools/external/types';
-import type { FlowStruct } from './types';
+import type { FuncTool } from '../extra/tools/types';
+import type { FlowStruct, LogLevelType } from './types';
 import prompts_default from '../extra/prompt';
 import tools_default from '../extra/tools';
 // -- 只能通过环境变量覆盖的配置 --
@@ -124,6 +124,8 @@ export class EnvironmentConfig {
     SEND_IMAGE_FILE: boolean = false;
     // Perplexity cookie
     PPLX_COOKIE: string | null = null;
+    // 日志级别
+    LOG_LEVEL: LogLevelType = 'info';
 
     // -------------
 

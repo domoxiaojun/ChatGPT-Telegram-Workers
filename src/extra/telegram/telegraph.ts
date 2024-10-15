@@ -1,5 +1,6 @@
 import { ENV } from '../../config/env';
 import md2node from '../../telegram/utils/md2node';
+import { log } from '../log/logger';
 
 interface Author {
     short_name?: string;
@@ -89,7 +90,7 @@ async function sendTelegraph(context: Context, title: string, content: string, a
         const c_resp = await createOrEditPage(sendContext, title, content, author);
         if (c_resp.ok) {
             context.telegraphPath = c_resp.result!.path;
-            console.log('telegraph url: ', c_resp.result!.url);
+            log.info('telegraph url: ', c_resp.result!.url);
             return c_resp;
         } else {
             console.error(c_resp.error);

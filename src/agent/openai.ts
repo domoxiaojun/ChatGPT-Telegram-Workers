@@ -3,6 +3,7 @@ import type { UnionData } from '../telegram/utils/utils';
 import type { AudioAgent, ChatAgent, ChatStreamTextHandler, CompletionData, HistoryItem, ImageAgent, ImageResult, LLMChatParams } from './types';
 import { ENV } from '../config/env';
 import { Log } from '../extra/log/logDecortor';
+import { log } from '../extra/log/logger';
 import { imageToBase64String, renderBase64DataURI } from '../utils/image';
 import { requestText2Image } from './chat';
 import { requestChatCompletions } from './request';
@@ -10,7 +11,6 @@ import { requestChatCompletions } from './request';
 export async function renderOpenAIMessage(item: HistoryItem): Promise<any> {
     const res: any = {
         ...item,
-        content: item.content || [],
     };
     if (item.images && item.images.length > 0) {
         res.content = [];
@@ -95,8 +95,13 @@ export class OpenAI extends OpenAIBase implements ChatAgent {
         const messages = [...(history || [])];
 
         if (prompt) {
-            if (messages[0]?.role === 'tool') {
-                messages.shift();
+            // 第一条消息不能是tool
+            for (const message of messages) {
+                if (message?.role === 'tool') {
+                    messages.shift();
+                } else {
+                    break;
+                }
             }
             messages.unshift({ role: context.SYSTEM_INIT_MESSAGE_ROLE, content: prompt });
         }
@@ -215,7 +220,7 @@ export class Transcription extends OpenAIBase implements AudioAgent {
             console.error(resp);
             throw new Error(resp);
         }
-        console.log(`Transcription: ${resp.text}`);
+        log.info(`Transcription: ${resp.text}`);
         return {
             type: 'text',
             text: resp.text,
