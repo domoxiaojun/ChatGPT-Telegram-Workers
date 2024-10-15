@@ -65,7 +65,7 @@ const en = { "env": { "system_init_message": "You are a helpful assistant" }, "c
 The /set command can append messages without storing modified parameters at this time. When adjusting SYSTEM_INIT_MESSAGE, if PROMPT is set directly using it as a role name will automatically fill in role prompt. For example:
 /set -p ~doctor` } } };
 const pt = { "env": { "system_init_message": "Você é um assistente útil" }, "command": { "help": { "summary": "Os seguintes comandos são suportados atualmente:\n", "help": "Obter ajuda sobre comandos", "new": "Iniciar uma nova conversa", "start": "Obter seu ID e iniciar uma nova conversa", "img": "Gerar uma imagem, o formato completo do comando é `/img descrição da imagem`, por exemplo `/img praia ao luar`", "version": "Obter o número da versão atual para determinar se é necessário atualizar", "setenv": "Definir configuração do usuário, o formato completo do comando é /setenv CHAVE=VALOR", "setenvs": 'Definir configurações do usuário em lote, o formato completo do comando é /setenvs {"CHAVE1": "VALOR1", "CHAVE2": "VALOR2"}', "delenv": "Excluir configuração do usuário, o formato completo do comando é /delenv CHAVE", "clearenv": "Limpar todas as configurações do usuário", "system": "Ver algumas informações do sistema", "redo": "Refazer a última conversa, /redo com conteúdo modificado ou diretamente /redo", "echo": "Repetir a mensagem", "set": "O formato do comando /set é /set opção valor [opção valor...] " }, "new": { "new_chat_start": "Uma nova conversa foi iniciada" } } };
-const zhHans = { "env": { "system_init_message": "你是一个得力的助手" }, "command": { "help": { "summary": "当前支持以下命令:\n", "help": "获取命令帮助", "new": "发起新的对话", "start": "获取你的ID, 并发起新的对话", "img": "生成一张图片, 命令完整格式为 `/img 图片描述`, 例如`/img 月光下的沙滩`", "version": "获取当前版本号, 判断是否需要更新", "setenv": "设置用户配置，命令完整格式为 /setenv KEY=VALUE", "setenvs": '批量设置用户配置, 命令完整格式为 /setenvs {"KEY1": "VALUE1", "KEY2": "VALUE2"}', "delenv": "删除用户配置，命令完整格式为 /delenv KEY", "clearenv": "清除所有用户配置", "system": "查看当前一些系统信息", "redo": "重做上一次的对话, /redo 加修改过的内容 或者 直接 /redo", "echo": "回显消息", "set": "/set 命令格式为 /set 选项 值 [选项 值…] " }, "new": { "new_chat_start": "新的对话已经开始" }, "detail": { "set": `/set 命令格式为 /set 选项 值 [选项 值…] 或 /set "选项" 值 ["选项" 值…] 
+const zhHans = { "env": { "system_init_message": "你是一个得力的助手" }, "command": { "help": { "summary": "当前支持以下命令:\n", "help": "获取命令帮助", "new": "发起新的对话", "start": "获取你的ID, 并发起新的对话", "img": "生成一张图片, 命令完整格式为 `/img 图片描述`, 例如`/img 月光下的沙滩`", "version": "获取当前版本号, 判断是否需要更新", "setenv": "设置用户配置，命令完整格式为 /setenv KEY=VALUE", "setenvs": '批量设置用户配置, 命令完整格式为 /setenvs {"KEY1": "VALUE1", "KEY2": "VALUE2"}', "delenv": "删除用户配置，命令完整格式为 /delenv KEY", "clearenv": "清除所有用户配置", "system": "查看当前一些系统信息", "redo": "重做上一次的对话, /redo 加修改过的内容 或者 直接 /redo", "echo": "回显消息", "set": "命令格式为 /set 选项 值 [选项 值…] ", "settings": "设置环境变量" }, "new": { "new_chat_start": "新的对话已经开始" }, "detail": { "set": `/set 命令格式为 /set 选项 值 [选项 值…] 或 /set "选项" 值 ["选项" 值…] 
   选项预置如下： 
   -p 调整 SYSTEM_INIT_MESSAGE
   -o 调整 CHAT_MODEL
@@ -755,6 +755,12 @@ class EnvironmentConfig {
   DEBUG_MODE = false;
   DEV_MODE = false;
   SEND_INIT_MESSAGE = true;
+  INLINE_AGENTS = [];
+  INLINE_CHAT_MODELS = [];
+  INLINE_IMAGE_MODELS = [];
+  INLINE_FUNCTION_CALL_TOOLS = [];
+  INLINE_IMAGE_TRANSFER_MODE = [];
+  INLINE_HISTORY_LENGTH = [];
 }
 class AgentShareConfig {
   AI_PROVIDER = "auto";
@@ -873,8 +879,8 @@ const ENV_KEY_MAPPER = {
   WORKERS_AI_MODEL: "WORKERS_CHAT_MODEL"
 };
 class Environment extends EnvironmentConfig {
-  BUILD_TIMESTAMP = 1728996237;
-  BUILD_VERSION = "e05bdd9";
+  BUILD_TIMESTAMP = 1729016681;
+  BUILD_VERSION = "9e80d85";
   I18N = loadI18n();
   PLUGINS_ENV = {};
   USER_CONFIG = createAgentUserConfig();
@@ -1617,7 +1623,6 @@ class MessageSender {
     const params = {
       chat_id: this.context.chat_id,
       photo,
-      message_thread_id: this.context.message_thread_id || void 0,
       ...caption ? { caption: this.renderMessage(parse_mode || null, caption) } : {},
       parse_mode
     };
@@ -3527,13 +3532,17 @@ class ChatHandler {
         context.MIDDEL_CONTEXT.sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
         try {
           const toolResult = await useTools(context, context.MIDDEL_CONTEXT.history, context.MIDDEL_CONTEXT.sender);
-          if (toolResult instanceof Response || toolResult.isFinished && context.USER_CONFIG.FUNCTION_REPLY_ASAP) {
+          if (toolResult instanceof Response || toolResult?.isFinished && context.USER_CONFIG.FUNCTION_REPLY_ASAP) {
             return null;
           }
-          params.prompt = toolResult.prompt;
-          params.extra_params = {
-            ...toolResult.extra_params
-          };
+          if (toolResult?.prompt) {
+            params.prompt = toolResult.prompt;
+          }
+          if (toolResult?.extra_params) {
+            params.extra_params = {
+              ...toolResult.extra_params
+            };
+          }
         } catch (error) {
           console.error("Error:", error);
           let errMsg = "⚠️";
@@ -3859,6 +3868,7 @@ class ImgCommandHandler {
       }
       sendAction(context.SHARE_CONTEXT.botToken, message.chat.id, "upload_photo");
       const img = await agent.request(subcommand, context.USER_CONFIG);
+      log.info("img", img);
       const resp = await sendImages(img, ENV.SEND_IMAGE_FILE, sender, context.USER_CONFIG);
       if (!resp.ok) {
         return sender.sendPlainText(`ERROR: ${resp.statusText} ${await resp.text()}`);
@@ -4291,7 +4301,6 @@ ${detailSet}
 class PerplexityCommandHandler {
   command = "/pplx";
   needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
-  scopes = ["all_private_chats", "all_chat_administrators"];
   handle = async (message, subcommand, context, sender) => {
     if (isCfWorker) {
       return sender.sendPlainText("Due to the limitation of browser, Perplexity is not supported in worker / browser");
@@ -4354,6 +4363,80 @@ class PerplexityCommandHandler {
     return new Response("success");
   };
 }
+class InlineCommandHandler {
+  command = "/settings";
+  scopes = ["all_private_chats", "all_chat_administrators"];
+  needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
+  handle = async (message, subcommand, context, sender) => {
+    const agent = loadChatLLM(context.USER_CONFIG);
+    const supportInlineKeys = {
+      INLINE_AGENTS: {
+        label: "Agent",
+        value: context.USER_CONFIG.AI_PROVIDER
+      },
+      INLINE_IMAGE_AGENTS: {
+        label: "Image Agent",
+        value: context.USER_CONFIG.AI_IMAGE_PROVIDER
+      },
+      INLINE_CHAT_MODELS: {
+        label: "Chat Model",
+        value: agent?.model(context.USER_CONFIG) || "None"
+      },
+      INLINE_VISION_MODELS: {
+        label: "Vision Model",
+        value: ["openai", "auto"].includes(context.USER_CONFIG.AI_PROVIDER) ? context.USER_CONFIG.OPENAI_VISION_MODEL : agent?.model(context.USER_CONFIG) || "None"
+      },
+      INLINE_IMAGE_MODELS: {
+        label: "Image Model",
+        value: loadImageGen(context.USER_CONFIG)?.model(context.USER_CONFIG) || "None"
+      },
+      INLINE_FUNCTION_CALL_MODELS: {
+        label: "Function Model",
+        value: loadChatLLM(context.USER_CONFIG)?.model(context.USER_CONFIG) || "None"
+      },
+      INLINE_FUNCTION_CALL_TOOLS: {
+        label: "Function Tools",
+        value: context.USER_CONFIG.USE_TOOLS.join(",") || "None"
+      }
+    };
+    const reply_markup_list = Object.entries(supportInlineKeys).reduce((acc, [key, value]) => {
+      if (key in ENV && ENV[key].length > 0) {
+        acc.push({
+          text: `${value.label}`,
+          callback_data: key
+        });
+      }
+      return acc;
+    }, []);
+    reply_markup_list.push({
+      text: "Close",
+      callback_data: "CLOSE"
+    });
+    const currentSettings = `>\`当前配置:\`
+> 
+${Object.values(supportInlineKeys).map(({ label, value }) => {
+      return `>\`${label}: ${value}\``;
+    }).join("\n")}`;
+    const chunckArray = (arr, size) => {
+      const result = [];
+      for (let i = 0; i < arr.length; i += size) {
+        result.push(arr.slice(i, i + size));
+      }
+      return result;
+    };
+    const reply_markup = {
+      inline_keyboard: chunckArray(reply_markup_list, 3)
+    };
+    await createTelegramBotAPI(context.SHARE_CONTEXT.botToken).sendMessage({
+      chat_id: message.chat.id,
+      ...message.chat.type === "private" ? {} : { reply_to_message_id: message.message_id },
+      text: escape(currentSettings),
+      parse_mode: "MarkdownV2",
+      reply_markup
+    }).then((r) => r.json());
+    return new Response("ok");
+  };
+}
 const SYSTEM_COMMANDS = [
   new StartCommandHandler(),
   new NewCommandHandler(),
@@ -4367,7 +4450,8 @@ const SYSTEM_COMMANDS = [
   new SystemCommandHandler(),
   new HelpCommandHandler(),
   new SetCommandHandler(),
-  new PerplexityCommandHandler()
+  new PerplexityCommandHandler(),
+  new InlineCommandHandler()
 ];
 async function handleSystemCommand(message, raw, command, context) {
   const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);

@@ -177,7 +177,8 @@ export class MessageSender {
         const params: Telegram.SendPhotoParams = {
             chat_id: this.context.chat_id,
             photo,
-            message_thread_id: this.context.message_thread_id || undefined,
+            // fourm模式发送时带message_thread_id会报错
+            // message_thread_id: this.context.message_thread_id || undefined,
             ...(caption ? { caption: this.renderMessage(parse_mode || null, caption) } : {}),
             parse_mode,
         };

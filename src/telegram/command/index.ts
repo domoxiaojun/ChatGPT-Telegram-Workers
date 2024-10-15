@@ -13,6 +13,7 @@ import {
     EchoCommandHandler,
     HelpCommandHandler,
     ImgCommandHandler,
+    InlineCommandHandler,
     NewCommandHandler,
     PerplexityCommandHandler,
     RedoCommandHandler,
@@ -38,6 +39,7 @@ const SYSTEM_COMMANDS: CommandHandler[] = [
     new HelpCommandHandler(),
     new SetCommandHandler(),
     new PerplexityCommandHandler(),
+    new InlineCommandHandler(),
 ];
 
 // const commandHanders: any[] = [

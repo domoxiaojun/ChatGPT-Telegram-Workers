@@ -184,3 +184,13 @@ export class StoreWhiteListMessage implements MessageHandler<WorkerContext> {
         return new Response('ok');
     };
 }
+
+// TODO 处理内联消息
+// export class InlineMessageHandler implements MessageHandler<WorkerContext> {
+//     handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | null> => {
+//         if (message.inline_query) {
+//             return await handleInlineQuery(message, context);
+//         }
+//         return null;
+//     };
+// }

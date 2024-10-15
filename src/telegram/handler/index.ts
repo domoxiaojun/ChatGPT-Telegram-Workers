@@ -46,6 +46,8 @@ const SHARE_HANDLER: MessageHandler<any>[] = [
     new SaveLastMessage(),
     // 初始化用户配置
     new InitUserConfig(),
+    // TODO 处理内联消息
+    // new InlineMessageHandler(),
     // 处理命令消息
     new CommandHandler(),
     // 与llm聊天

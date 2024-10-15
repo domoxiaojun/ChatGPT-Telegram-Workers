@@ -1,10 +1,11 @@
+/* eslint-disable unused-imports/no-unused-vars */
 /* eslint-disable no-cond-assign */
 import type * as Telegram from 'telegram-bot-api-types';
 import type { HistoryItem, HistoryModifierResult } from '../../agent/types';
 import type { WorkerContext } from '../../config/context';
 import type { UnionData } from '../utils/utils';
 import type { CommandHandler, ScopeType } from './types';
-import { customInfo, loadChatLLM, loadImageGen } from '../../agent';
+import { customInfo, loadAudioLLM, loadChatLLM, loadImageGen } from '../../agent';
 import { loadHistory } from '../../agent/chat';
 import { WssRequest } from '../../agent/wsrequest';
 import { ENV, ENV_KEY_MAPPER } from '../../config/env';
@@ -13,6 +14,7 @@ import { getLogSingleton } from '../../extra/log/logDecortor';
 import { log } from '../../extra/log/logger';
 import { createTelegramBotAPI } from '../api';
 import { chatWithLLM, OnStreamHander, sendImages } from '../handler/chat';
+import { escape } from '../utils/md2tgmd';
 import { type MessageSender, sendAction } from '../utils/send';
 import { isCfWorker, isTelegramChatTypeGroup, UUIDv4 } from '../utils/utils';
 
@@ -49,6 +51,7 @@ export class ImgCommandHandler implements CommandHandler {
             }
             sendAction(context.SHARE_CONTEXT.botToken, message.chat.id, 'upload_photo');
             const img = await agent.request(subcommand, context.USER_CONFIG);
+            log.info('img', img);
             const resp = await sendImages(img, ENV.SEND_IMAGE_FILE, sender, context.USER_CONFIG);
 
             if (!resp.ok) {
@@ -538,7 +541,6 @@ export class SetCommandHandler implements CommandHandler {
 export class PerplexityCommandHandler implements CommandHandler {
     command = '/pplx';
     needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
-    scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
         if (isCfWorker) {
             return sender.sendPlainText('Due to the limitation of browser, Perplexity is not supported in worker / browser');
@@ -602,5 +604,82 @@ export class PerplexityCommandHandler implements CommandHandler {
         }
         await onStream(result, true);
         return new Response('success');
+    };
+}
+
+export class InlineCommandHandler implements CommandHandler {
+    command = '/settings';
+    scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
+    needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
+    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
+        const agent = loadChatLLM(context.USER_CONFIG);
+        const supportInlineKeys: Record<string, { label: string; value: string }> = {
+            INLINE_AGENTS: {
+                label: 'Agent',
+                value: context.USER_CONFIG.AI_PROVIDER,
+            },
+            INLINE_IMAGE_AGENTS: {
+                label: 'Image Agent',
+                value: context.USER_CONFIG.AI_IMAGE_PROVIDER,
+            },
+            INLINE_CHAT_MODELS: {
+                label: 'Chat Model',
+                value: agent?.model(context.USER_CONFIG) || 'None',
+            },
+            INLINE_VISION_MODELS: {
+                label: 'Vision Model',
+                value: ['openai', 'auto'].includes(context.USER_CONFIG.AI_PROVIDER) ? context.USER_CONFIG.OPENAI_VISION_MODEL : agent?.model(context.USER_CONFIG) || 'None',
+            },
+            INLINE_IMAGE_MODELS: {
+                label: 'Image Model',
+                value: loadImageGen(context.USER_CONFIG)?.model(context.USER_CONFIG) || 'None',
+            },
+            INLINE_FUNCTION_CALL_MODELS: {
+                label: 'Function Model',
+                value: loadChatLLM(context.USER_CONFIG)?.model(context.USER_CONFIG) || 'None',
+            },
+            INLINE_FUNCTION_CALL_TOOLS: {
+                label: 'Function Tools',
+                value: context.USER_CONFIG.USE_TOOLS.join(',') || 'None',
+            },
+        };
+        const reply_markup_list = Object.entries(supportInlineKeys).reduce<Telegram.InlineKeyboardButton[]>((acc, [key, value]) => {
+            if (key in ENV && ENV[key as keyof typeof ENV].length > 0) {
+                acc.push({
+                    text: `${value.label}`,
+                    callback_data: key,
+                });
+            }
+            return acc;
+        }, [] as Telegram.InlineKeyboardButton[]);
+        reply_markup_list.push({
+            text: 'Close',
+            callback_data: 'CLOSE',
+        });
+
+        const currentSettings = `>\`当前配置:\`\n> \n${Object.values(supportInlineKeys).map(({ label, value }) => {
+            return `>\`${label}: ${value}\``;
+        }).join('\n')}`;
+
+        const chunckArray = (arr: any[], size: number): any[][] => {
+            const result = [];
+            for (let i = 0; i < arr.length; i += size) {
+                result.push(arr.slice(i, i + size));
+            }
+            return result;
+        };
+
+        const reply_markup: Telegram.InlineKeyboardMarkup = {
+            inline_keyboard: chunckArray(reply_markup_list, 3),
+        };
+
+        const resp = await createTelegramBotAPI(context.SHARE_CONTEXT.botToken).sendMessage({
+            chat_id: message.chat.id,
+            ...(message.chat.type === 'private' ? {} : { reply_to_message_id: message.message_id }),
+            text: escape(currentSettings),
+            parse_mode: 'MarkdownV2',
+            reply_markup,
+        }).then(r => r.json());
+        return new Response('ok');
     };
 }

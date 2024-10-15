@@ -141,6 +141,18 @@ export class EnvironmentConfig {
     DEV_MODE = false;
     // 是否发送初始化消息
     SEND_INIT_MESSAGE = true;
+    // INLINE_AGENTS
+    INLINE_AGENTS = [];
+    // INLINE_CHAT_MODELS
+    INLINE_CHAT_MODELS = [];
+    // INLINE_IMAGE_MODELS
+    INLINE_IMAGE_MODELS = [];
+    // INLINE_FUNCTION_CALL_TOOLS
+    INLINE_FUNCTION_CALL_TOOLS = [];
+    // INLINE_IMAGE_TRANSFER_MODE
+    INLINE_IMAGE_TRANSFER_MODE = [];
+    // INLINE_HISTORY_LENGTH
+    INLINE_HISTORY_LENGTH = [];
 }
 
 // -- 通用配置 --

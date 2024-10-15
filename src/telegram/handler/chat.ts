@@ -115,13 +115,17 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
                 try {
                     const toolResult = await useTools(context, context.MIDDEL_CONTEXT.history, context.MIDDEL_CONTEXT.sender);
                     // 已经给出了回复，且开启了 ASAP，则不再继续处理
-                    if (toolResult instanceof Response || (toolResult.isFinished && context.USER_CONFIG.FUNCTION_REPLY_ASAP)) {
+                    if (toolResult instanceof Response || (toolResult?.isFinished && context.USER_CONFIG.FUNCTION_REPLY_ASAP)) {
                         return null;
                     }
-                    params.prompt = toolResult.prompt;
-                    params.extra_params = {
-                        ...toolResult.extra_params,
-                    };
+                    if (toolResult?.prompt) {
+                        params.prompt = toolResult.prompt;
+                    }
+                    if (toolResult?.extra_params) {
+                        params.extra_params = {
+                            ...toolResult.extra_params,
+                        };
+                    }
                 } catch (error) {
                     console.error('Error:', error);
                     let errMsg = '⚠️';
