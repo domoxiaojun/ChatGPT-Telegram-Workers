@@ -873,8 +873,8 @@ const ENV_KEY_MAPPER = {
   WORKERS_AI_MODEL: "WORKERS_CHAT_MODEL"
 };
 class Environment extends EnvironmentConfig {
-  BUILD_TIMESTAMP = 1728981742;
-  BUILD_VERSION = "9644022";
+  BUILD_TIMESTAMP = 1728993432;
+  BUILD_VERSION = "56361e1";
   I18N = loadI18n();
   PLUGINS_ENV = {};
   USER_CONFIG = createAgentUserConfig();
@@ -5144,9 +5144,73 @@ function createRouter() {
   router.all("*", () => new Response("Not Found", { status: 404 }));
   return router;
 }
+class UpstashRedis {
+  baseUrl;
+  token;
+  constructor(baseUrl, token) {
+    this.baseUrl = baseUrl;
+    this.token = token;
+  }
+  async fetchFromRedis(endpoint, method = "GET", body = null) {
+    const headers = {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${this.token}`
+    };
+    const options = {
+      method,
+      headers,
+      ...body ? { body } : {}
+    };
+    const response = await fetch(`${this.baseUrl}/${endpoint}`, options);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch from Redis: ${response.statusText}`);
+    }
+    return response.json();
+  }
+  async get(key, info) {
+    try {
+      const raw = await this.fetchFromRedis(`get/${key}`);
+      if (!raw) {
+        return null;
+      }
+      switch (info?.type || "string") {
+        case "string":
+          return raw.result;
+        case "json":
+          return JSON.parse(raw.result);
+        case "arrayBuffer":
+          return new Uint8Array(raw).buffer;
+        default:
+          return raw.result;
+      }
+    } catch (error) {
+      console.error(`Error getting key ${key}:`, error);
+      return null;
+    }
+  }
+  async put(key, value, info) {
+    let endpoint = `set/${key}`;
+    let expiration = -1;
+    if (info?.expiration) {
+      expiration = Math.round(info.expirationTtl);
+    } else if (info?.expirationTtl) {
+      expiration = Math.round(Date.now() / 1e3 + info.expirationTtl);
+    }
+    if (expiration > 0) {
+      endpoint += `?exat=${expiration}`;
+    }
+    await this.fetchFromRedis(endpoint, "POST", value);
+  }
+  async delete(key) {
+    await this.fetchFromRedis(`del/${key}`, "POST");
+  }
+}
 const index = {
   async fetch(request, env) {
     try {
+      if (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) {
+        env.DATABASE = new UpstashRedis(env.UPSTASH_REDIS_REST_URL, env.UPSTASH_REDIS_REST_TOKEN);
+      }
       ENV.merge(env);
       return createRouter().fetch(request);
     } catch (e) {
@@ -5159,6 +5223,9 @@ const index = {
   },
   async scheduled(event, env, ctx) {
     try {
+      if (env.UPSTASH_REDIS_URL && env.UPSTASH_REDIS_REST_TOKEN) {
+        env.DATABASE = new UpstashRedis(env.UPSTASH_REDIS_URL, env.UPSTASH_REDIS_REST_TOKEN);
+      }
       const promises = [];
       for (const task of Object.values(tasks)) {
         promises.push(task(env));

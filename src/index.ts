@@ -1,11 +1,15 @@
+/* eslint-disable unused-imports/no-unused-vars */
 import { ENV } from './config/env';
 import tasks from './extra/tools/scheduletask';
-/* eslint-disable unused-imports/no-unused-vars */
 import { createRouter } from './route';
+import { UpstashRedis } from './utils/cache/upstash';
 
 export default {
     async fetch(request: Request, env: any): Promise<Response> {
         try {
+            if (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) {
+                env.DATABASE = new UpstashRedis(env.UPSTASH_REDIS_REST_URL, env.UPSTASH_REDIS_REST_TOKEN);
+            }
             ENV.merge(env);
             return createRouter().fetch(request);
         } catch (e) {
@@ -18,6 +22,9 @@ export default {
     },
     async scheduled(event: Event, env: any, ctx: any) {
         try {
+            if (env.UPSTASH_REDIS_URL && env.UPSTASH_REDIS_REST_TOKEN) {
+                env.DATABASE = new UpstashRedis(env.UPSTASH_REDIS_URL, env.UPSTASH_REDIS_REST_TOKEN);
+            }
             const promises = [];
             for (const task of Object.values(tasks)) {
                 promises.push(task(env));
