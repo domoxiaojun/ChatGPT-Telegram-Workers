@@ -1,6 +1,6 @@
 /* eslint-disable unused-imports/no-unused-vars */
 import { ENV } from './config/env';
-import tasks from './extra/tools/scheduletask';
+import { tasks } from './extra/tools';
 import { createRouter } from './route';
 import { UpstashRedis } from './utils/cache/upstash';
 
