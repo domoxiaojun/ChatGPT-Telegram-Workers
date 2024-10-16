@@ -2,7 +2,7 @@ import type { AgentUserConfig } from '../config/env';
 import type { SseChatCompatibleOptions } from './request';
 import type { ChatAgent, ChatStreamTextHandler, CompletionData, HistoryItem, ImageAgent, ImageResult, LLMChatParams } from './types';
 import { Log } from '../extra/log/logDecortor';
-import { requestChatCompletions } from './request';
+import { isJsonResponse, requestChatCompletions } from './request';
 
 class WorkerBase {
     readonly name = 'workers';
@@ -86,6 +86,25 @@ export class WorkersImage extends WorkerBase implements ImageAgent {
             throw new Error('Cloudflare account ID or token is not set');
         }
         const raw = await this.run(context.WORKERS_IMAGE_MODEL, { prompt }, id, token);
+        if (isJsonResponse(raw)) {
+            const { result } = await raw.json();
+            const image = result?.image;
+            if (typeof image !== 'string') {
+                throw new TypeError('Invalid image response');
+            }
+            return { type: 'image', raw: [await base64StringToBlob(image)] };
+        }
         return { type: 'image', raw: [await raw.blob()] };
     };
+}
+
+async function base64StringToBlob(base64String: string): Promise<Blob> {
+    try {
+        const { Buffer } = await import('node:buffer');
+        const buffer = Buffer.from(base64String, 'base64');
+        return new Blob([buffer], { type: 'image/png' });
+    } catch {
+        const uint8Array = Uint8Array.from(atob(base64String), c => c.charCodeAt(0));
+        return new Blob([uint8Array], { type: 'image/png' });
+    }
 }

@@ -508,6 +508,8 @@ class APIClientBase {
     while (this.baseURL.endsWith("/")) {
       this.baseURL = this.baseURL.slice(0, -1);
     }
+    this.request = this.request.bind(this);
+    this.requestJSON = this.requestJSON.bind(this);
   }
   uri(method) {
     return `${this.baseURL}/bot${this.token}/${method}`;
@@ -879,8 +881,8 @@ const ENV_KEY_MAPPER = {
   WORKERS_AI_MODEL: "WORKERS_CHAT_MODEL"
 };
 class Environment extends EnvironmentConfig {
-  BUILD_TIMESTAMP = 1729055845;
-  BUILD_VERSION = "f289732";
+  BUILD_TIMESTAMP = 1729057465;
+  BUILD_VERSION = "2cad8ff";
   I18N = loadI18n();
   PLUGINS_ENV = {};
   USER_CONFIG = createAgentUserConfig();
@@ -888,6 +890,10 @@ class Environment extends EnvironmentConfig {
   PLUGINS_COMMAND = {};
   DATABASE = null;
   API_GUARD = null;
+  constructor() {
+    super();
+    this.merge = this.merge.bind(this);
+  }
   merge(source) {
     this.DATABASE = source.DATABASE;
     this.API_GUARD = source.API_GUARD;
@@ -1511,6 +1517,9 @@ class MessageSender {
   constructor(token, context) {
     this.api = createTelegramBotAPI(token);
     this.context = context;
+    this.sendRichText = this.sendRichText.bind(this);
+    this.sendPlainText = this.sendPlainText.bind(this);
+    this.sendPhoto = this.sendPhoto.bind(this);
   }
   static from(token, message) {
     return new MessageSender(token, new MessageContext(message));
@@ -1819,6 +1828,8 @@ class Cache {
     this.maxItems = 10;
     this.maxAge = 1e3 * 60 * 60;
     this.cache = {};
+    this.set = this.set.bind(this);
+    this.get = this.get.bind(this);
   }
   set(key, value) {
     this.trim();
@@ -2805,7 +2816,8 @@ const _Gemini = class _Gemini {
       if (onStream !== null) {
         console.warn("Stream mode is not supported");
       }
-      const url = `${context.GOOGLE_COMPLETIONS_API}${context.GOOGLE_COMPLETIONS_MODEL}:${"generateContent"}?key=${context.GOOGLE_API_KEY}`;
+      const mode = "generateContent";
+      const url = `${context.GOOGLE_COMPLETIONS_API}${context.GOOGLE_COMPLETIONS_MODEL}:${mode}`;
       const contentsTemp = [...history || []];
       if (prompt) {
         contentsTemp.unshift({ role: "assistant", content: prompt });
@@ -2822,7 +2834,8 @@ const _Gemini = class _Gemini {
       const resp = await fetch(url, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "x-goog-api-key": context.GOOGLE_API_KEY
         },
         body: JSON.stringify({ contents })
       });
@@ -3048,6 +3061,14 @@ class WorkersImage extends (_h = WorkerBase, _request_dec12 = [Log], _h) {
         throw new Error("Cloudflare account ID or token is not set");
       }
       const raw = await this.run(context.WORKERS_IMAGE_MODEL, { prompt }, id, token);
+      if (isJsonResponse(raw)) {
+        const { result } = await raw.json();
+        const image = result?.image;
+        if (typeof image !== "string") {
+          throw new TypeError("Invalid image response");
+        }
+        return { type: "image", raw: [await base64StringToBlob(image)] };
+      }
       return { type: "image", raw: [await raw.blob()] };
     })), __runInitializers(_init12, 11, this);
   }
@@ -3055,6 +3076,16 @@ class WorkersImage extends (_h = WorkerBase, _request_dec12 = [Log], _h) {
 _init12 = __decoratorStart(_h);
 __decorateElement(_init12, 5, "request", _request_dec12, WorkersImage);
 __decoratorMetadata(_init12, WorkersImage);
+async function base64StringToBlob(base64String) {
+  try {
+    const { Buffer: Buffer2 } = await import("node:buffer");
+    const buffer = Buffer2.from(base64String, "base64");
+    return new Blob([buffer], { type: "image/png" });
+  } catch {
+    const uint8Array = Uint8Array.from(atob(base64String), (c) => c.charCodeAt(0));
+    return new Blob([uint8Array], { type: "image/png" });
+  }
+}
 const CHAT_AGENTS = [
   new Anthropic(),
   new AzureChatAI(),
@@ -5091,6 +5122,16 @@ class Router {
     this.routes = routes;
     this.base = base;
     Object.assign(this, other);
+    this.fetch = this.fetch.bind(this);
+    this.route = this.route.bind(this);
+    this.get = this.get.bind(this);
+    this.post = this.post.bind(this);
+    this.put = this.put.bind(this);
+    this.delete = this.delete.bind(this);
+    this.patch = this.patch.bind(this);
+    this.head = this.head.bind(this);
+    this.options = this.options.bind(this);
+    this.all = this.all.bind(this);
   }
   parseQueryParams(searchParams) {
     const query = {};

@@ -5,7 +5,7 @@ import type { HistoryItem, HistoryModifierResult } from '../../agent/types';
 import type { WorkerContext } from '../../config/context';
 import type { UnionData } from '../utils/utils';
 import type { CommandHandler, ScopeType } from './types';
-import { customInfo, loadAudioLLM, loadChatLLM, loadImageGen } from '../../agent';
+import { customInfo, loadChatLLM, loadImageGen } from '../../agent';
 import { loadHistory } from '../../agent/chat';
 import { WssRequest } from '../../agent/wsrequest';
 import { ENV, ENV_KEY_MAPPER } from '../../config/env';
