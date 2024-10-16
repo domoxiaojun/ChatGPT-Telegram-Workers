@@ -181,7 +181,7 @@ export async function iterStream(body: any, stream: AsyncIterable<any>, options:
             }
         }
         contentFull += lastChunk;
-        log.debug('--- contentFull:', contentFull);
+        log.info('--- contentFull:', contentFull);
     } catch (e) {
         contentFull += `\nERROR: ${(e as Error).message}`;
     }

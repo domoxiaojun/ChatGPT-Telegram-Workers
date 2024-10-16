@@ -881,8 +881,8 @@ const ENV_KEY_MAPPER = {
   WORKERS_AI_MODEL: "WORKERS_CHAT_MODEL"
 };
 class Environment extends EnvironmentConfig {
-  BUILD_TIMESTAMP = 1729057465;
-  BUILD_VERSION = "2cad8ff";
+  BUILD_TIMESTAMP = 1729060498;
+  BUILD_VERSION = "30b5252";
   I18N = loadI18n();
   PLUGINS_ENV = {};
   USER_CONFIG = createAgentUserConfig();
@@ -2234,7 +2234,7 @@ async function iterStream(body, stream, options, onStream) {
       }
     }
     contentFull += lastChunk;
-    log.debug("--- contentFull:", contentFull);
+    log.info("--- contentFull:", contentFull);
   } catch (e) {
     contentFull += `
 ERROR: ${e.message}`;
@@ -3649,7 +3649,7 @@ function OnStreamHander(sender, context) {
       }
       const data = context ? `${getLog(context.USER_CONFIG)}
 ${text}` : text;
-      log.debug(`send ${isEnd ? "end" : "stream"} message`);
+      log.info(`send ${isEnd ? "end" : "stream"} message`);
       const resp = await sender.sendRichText(data, ENV.DEFAULT_PARSE_MODE, "chat");
       if (resp.status === 429) {
         const retryAfter = Number.parseInt(resp.headers.get("Retry-After") || "");
@@ -3664,6 +3664,9 @@ ${text}` : text;
         sender.update({
           message_id: respJson.result.message_id
         });
+      } else {
+        log.error(`send message failed: ${resp.status} ${resp.statusText}`);
+        return sender.sendPlainText(text);
       }
     } catch (e) {
       console.error(e);

@@ -220,7 +220,7 @@ export function OnStreamHander(sender: MessageSender, context?: WorkerContext): 
             }
             // log.info(`LOG:\n${context ? getLog(context.USER_CONFIG) : ''}`);
             const data = context ? `${getLog(context.USER_CONFIG)}\n${text}` : text;
-            log.debug(`send ${isEnd ? 'end' : 'stream'} message`);
+            log.info(`send ${isEnd ? 'end' : 'stream'} message`);
             const resp = await sender.sendRichText(data, ENV.DEFAULT_PARSE_MODE as Telegram.ParseMode, 'chat');
             // 判断429
             if (resp.status === 429) {
@@ -237,6 +237,9 @@ export function OnStreamHander(sender: MessageSender, context?: WorkerContext): 
                 sender.update({
                     message_id: respJson.result.message_id,
                 });
+            } else {
+                log.error(`send message failed: ${resp.status} ${resp.statusText}`);
+                return sender.sendPlainText(text);
             }
         } catch (e) {
             console.error(e);
