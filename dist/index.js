@@ -879,8 +879,8 @@ const ENV_KEY_MAPPER = {
   WORKERS_AI_MODEL: "WORKERS_CHAT_MODEL"
 };
 class Environment extends EnvironmentConfig {
-  BUILD_TIMESTAMP = 1729016681;
-  BUILD_VERSION = "9e80d85";
+  BUILD_TIMESTAMP = 1729055845;
+  BUILD_VERSION = "f289732";
   I18N = loadI18n();
   PLUGINS_ENV = {};
   USER_CONFIG = createAgentUserConfig();
@@ -3429,7 +3429,6 @@ ${this.default_params.prompt}${toolPrompts}`;
       await this.sender.sendRichText(`${getLog(this.context.USER_CONFIG)}
 ${llm_resp.content}`, ENV.DEFAULT_PARSE_MODE, "chat");
     }
-    log.debug("call resp:", llm_resp.content);
   }
   paramsExtract(llm_resp) {
     return this.validCalls(llm_resp?.tool_calls || []);
@@ -3458,10 +3457,10 @@ async function messageInitialize(sender) {
       if (!ENV.SEND_INIT_MESSAGE) {
         return;
       }
-      log.info(`send ...`);
+      log.info(`send init message`);
       const response = await sender.sendPlainText("...", "chat");
       const msg = await response.json();
-      log.info(`send done`);
+      log.info(`send init message done`);
       sender.update({
         message_id: msg.result.message_id
       });
@@ -3485,14 +3484,18 @@ async function chatWithLLM(message, params, context, modifier) {
     return sender.sendPlainText("LLM is not enabled");
   }
   try {
+    log.info(`start chat with LLM`);
     const answer = await requestCompletionsFromLLM(params, context, agent, modifier, onStream);
+    log.info(`chat with LLM done`);
     if (onStream) {
       const nextTime = onStream.nextEnableTime?.() ?? 0;
       if (nextTime > Date.now()) {
         await new Promise((resolve) => setTimeout(resolve, nextTime - Date.now()));
       }
+      log.info(`send chat end message via stream`);
       await onStream(answer.content, true);
     } else {
+      log.info(`send chat end message via rich text`);
       await sender.sendRichText(
         `${getLog(context.USER_CONFIG)}
 ${answer.content}`,
@@ -3604,52 +3607,24 @@ function OnStreamHander(sender, context) {
   async function onStream(text, isEnd = false) {
     try {
       if (isEnd && context && ENV.TELEGRAPH_NUM_LIMIT > 0 && text.length > ENV.TELEGRAPH_NUM_LIMIT && ["group", "supergroup"].includes(sender.context.chatType)) {
-        async function sendTelegraph(context2, question, text2) {
-          const prefix = `#Question
-\`\`\`
-${question.length > 400 ? `${question.slice(0, 200)}...${question.slice(-200)}` : question}
-\`\`\`
----`;
-          const botName = context2.SHARE_CONTEXT.botName;
-          const telegraph_prefix = `${prefix}
-#Answer
-🤖 **${getLog(context2.USER_CONFIG, true)}**
-`;
-          const debug_info = `debug info:
-${getLog(context2.USER_CONFIG)}`;
-          const telegraph_suffix = `
----
-\`\`\`
-${debug_info}
-\`\`\``;
-          const telegraphSender = new TelegraphSender(sender.context, botName, context2.SHARE_CONTEXT.telegraphAccessTokenKey);
-          const resp2 = await telegraphSender.send(
-            "Daily Q&A",
-            telegraph_prefix + text2 + telegraph_suffix
-          );
-          const url = `https://telegra.ph/${telegraphSender.teleph_path}`;
-          const msg = `回答已经转换成完整文章~
-[🔗点击进行查看](${url})`;
-          await sender.sendRichText(msg);
-          return resp2;
-        }
-        return sendTelegraph(context, context.MIDDEL_CONTEXT.originalMessage.text || "Redo", text);
+        return sendTelegraph(context, sender, context.MIDDEL_CONTEXT.originalMessage.text || "Redo", text);
       }
       if (nextEnableTime && nextEnableTime > Date.now()) {
+        log.info(`Need await: ${nextEnableTime - Date.now()}ms`);
         return;
       }
       if (ENV.TELEGRAM_MIN_STREAM_INTERVAL > 0) {
         nextEnableTime = Date.now() + ENV.TELEGRAM_MIN_STREAM_INTERVAL;
-        log.debug(`Next enable time: ${new Date(nextEnableTime).toISOString()}`);
       }
       const data = context ? `${getLog(context.USER_CONFIG)}
 ${text}` : text;
-      log.debug(`send stream message`);
+      log.debug(`send ${isEnd ? "end" : "stream"} message`);
       const resp = await sender.sendRichText(data, ENV.DEFAULT_PARSE_MODE, "chat");
       if (resp.status === 429) {
         const retryAfter = Number.parseInt(resp.headers.get("Retry-After") || "");
         if (retryAfter) {
           nextEnableTime = Date.now() + retryAfter * 1e3;
+          log.info(`Status 429, need await: ${nextEnableTime - Date.now()}ms`);
           return;
         }
       }
@@ -3665,6 +3640,36 @@ ${text}` : text;
   }
   onStream.nextEnableTime = () => nextEnableTime;
   return onStream;
+}
+async function sendTelegraph(context, sender, question, text) {
+  log.info(`send telegraph`);
+  const prefix = `#Question
+\`\`\`
+${question.length > 400 ? `${question.slice(0, 200)}...${question.slice(-200)}` : question}
+\`\`\`
+---`;
+  const botName = context.SHARE_CONTEXT.botName;
+  const telegraph_prefix = `${prefix}
+#Answer
+🤖 **${getLog(context.USER_CONFIG, true)}**
+`;
+  const debug_info = `debug info:
+${getLog(context.USER_CONFIG)}`;
+  const telegraph_suffix = `
+---
+\`\`\`
+${debug_info}
+\`\`\``;
+  const telegraphSender = new TelegraphSender(sender.context, botName, context.SHARE_CONTEXT.telegraphAccessTokenKey);
+  const resp = await telegraphSender.send(
+    "Daily Q&A",
+    telegraph_prefix + text + telegraph_suffix
+  );
+  const url = `https://telegra.ph/${telegraphSender.teleph_path}`;
+  const msg = `回答已经转换成完整文章~
+[🔗点击进行查看](${url})`;
+  await sender.sendRichText(msg);
+  return resp;
 }
 function clearMessageContext(context) {
   clearLog(context.USER_CONFIG);
@@ -4896,8 +4901,10 @@ ${userMessage.content}`;
 }
 class TagNeedDelete {
   handle = async (message, context) => {
-    if (!sentMessageIds.get(message) || sentMessageIds.get(message)?.length === 0)
+    if (!sentMessageIds.get(message) || sentMessageIds.get(message)?.length === 0) {
+      log.info(`[TAG MESSAGE] Do not need delete message: ${message.message_id}`);
       return new Response("success", { status: 200 });
+    }
     const botName = context.SHARE_CONTEXT?.botName;
     if (!botName) {
       throw new Error("未检索到Bot Name, 无法设定定时删除.");
@@ -4917,7 +4924,7 @@ class TagNeedDelete {
       ttl: Date.now() + offsetInMillisenconds
     });
     await ENV.DATABASE.put(scheduleDeteleKey, JSON.stringify(scheduledData));
-    log.info(`Record chat ${chatId}, message ids: ${sentMessageIds.get(message) || []}`);
+    log.info(`[TAG MESSAGE] Record chat ${chatId}, message ids: ${sentMessageIds.get(message) || []}`);
     return new Response("success", { status: 200 });
   };
 }
@@ -4936,31 +4943,38 @@ class StoreWhiteListMessage {
   };
 }
 function loadMessage(body) {
-  if (body.edited_message) {
-    throw new Error("Ignore edited message");
-  }
-  if (body.message) {
-    return body?.message;
-  } else {
-    throw new Error("Invalid message");
+  switch (true) {
+    case !!body.message:
+      return (token) => handleMessage(token, body.message);
+    case !!body.inline_query:
+      return (token) => handleInlineQuery(token, body.inline_query);
+    case !!body.callback_query:
+      return (token) => handleCallbackQuery(token, body.callback_query);
+    case !!body.edited_message:
+      throw new Error("Ignore edited message");
+    default:
+      throw new Error("Not support message type");
   }
 }
-const SHARE_HANDLER = [
-  new EnvChecker(),
-  new WhiteListFilter(),
-  new MessageFilter(),
-  new GroupMention(),
-  new OldMessageFilter(),
-  new SaveLastMessage(),
-  new InitUserConfig(),
-  new CommandHandler(),
-  new ChatHandler(),
-  new StoreHistory()
-];
 const exitHanders = [new TagNeedDelete(), new StoreWhiteListMessage()];
 async function handleUpdate(token, update) {
   log.debug(`handleUpdate`, update.message?.chat);
-  const message = loadMessage(update);
+  const messageHandler = loadMessage(update);
+  return await messageHandler(token);
+}
+async function handleMessage(token, message) {
+  const SHARE_HANDLER = [
+    new EnvChecker(),
+    new WhiteListFilter(),
+    new MessageFilter(),
+    new GroupMention(),
+    new OldMessageFilter(),
+    new SaveLastMessage(),
+    new InitUserConfig(),
+    new CommandHandler(),
+    new ChatHandler(),
+    new StoreHistory()
+  ];
   const context = new WorkerContextBase(token, message);
   try {
     for (const handler of SHARE_HANDLER) {
@@ -4985,11 +4999,20 @@ async function handleUpdate(token, update) {
   } finally {
     clearMessageIdsAndLog(message, context);
   }
+  function clearMessageIdsAndLog(message2, context2) {
+    log.info(`[END] Clear Message Set and Log`);
+    sentMessageIds.delete(message2);
+    clearLog(context2.USER_CONFIG);
+  }
   return null;
 }
-function clearMessageIdsAndLog(message, context) {
-  sentMessageIds.delete(message);
-  clearLog(context.USER_CONFIG);
+async function handleInlineQuery(token, inlineQuery) {
+  log.info(`handleInlineQuery`, inlineQuery);
+  return new Response("ok");
+}
+async function handleCallbackQuery(token, callbackQuery) {
+  log.info(`handleCallbackQuery`, callbackQuery);
+  return new Response("ok");
 }
 function renderHTML(body) {
   return `

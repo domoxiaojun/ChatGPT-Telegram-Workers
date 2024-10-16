@@ -19,48 +19,53 @@ import {
     WhiteListFilter,
 } from './handlers';
 
-function loadMessage(body: Telegram.Update): Telegram.Message {
-    if (body.edited_message) {
-        throw new Error('Ignore edited message');
-    }
-    if (body.message) {
-        return body?.message;
-    } else {
-        throw new Error('Invalid message');
+function loadMessage(body: Telegram.Update) {
+    switch (true) {
+        case !!body.message:
+            return (token: string) => handleMessage(token, body.message!);
+        case !!body.inline_query:
+            return (token: string) => handleInlineQuery(token, body.inline_query!);
+        case !!body.callback_query:
+            return (token: string) => handleCallbackQuery(token, body.callback_query!);
+        case !!body.edited_message:
+            throw new Error('Ignore edited message');
+        default:
+            throw new Error('Not support message type');
     }
 }
-
-// 消息处理中间件
-const SHARE_HANDLER: MessageHandler<any>[] = [
-    // 检查环境是否准备好: DATABASE
-    new EnvChecker(),
-    // 过滤非白名单用户, 提前过滤减少KV消耗
-    new WhiteListFilter(),
-    // 过滤不支持的消息(抛出异常结束消息处理)
-    new MessageFilter(),
-    // 处理群消息，判断是否需要响应此条消息
-    new GroupMention(),
-    // 忽略旧消息
-    new OldMessageFilter(),
-    // DEBUG: 保存最后一条消息,按照需求自行调整此中间件位置
-    new SaveLastMessage(),
-    // 初始化用户配置
-    new InitUserConfig(),
-    // TODO 处理内联消息
-    // new InlineMessageHandler(),
-    // 处理命令消息
-    new CommandHandler(),
-    // 与llm聊天
-    new ChatHandler(),
-    // 缓存历史记录
-    new StoreHistory(),
-];
 
 const exitHanders: MessageHandler<any>[] = [new TagNeedDelete(), new StoreWhiteListMessage()];
 
 export async function handleUpdate(token: string, update: Telegram.Update): Promise<Response | null> {
     log.debug(`handleUpdate`, update.message?.chat);
-    const message = loadMessage(update);
+    const messageHandler = loadMessage(update);
+    return await messageHandler(token);
+}
+
+async function handleMessage(token: string, message: Telegram.Message) {
+    // 消息处理中间件
+    const SHARE_HANDLER: MessageHandler<any>[] = [
+    // 检查环境是否准备好: DATABASE
+        new EnvChecker(),
+        // 过滤非白名单用户, 提前过滤减少KV消耗
+        new WhiteListFilter(),
+        // 过滤不支持的消息(抛出异常结束消息处理)
+        new MessageFilter(),
+        // 处理群消息，判断是否需要响应此条消息
+        new GroupMention(),
+        // 忽略旧消息
+        new OldMessageFilter(),
+        // DEBUG: 保存最后一条消息,按照需求自行调整此中间件位置
+        new SaveLastMessage(),
+        // 初始化用户配置
+        new InitUserConfig(),
+        // 处理命令消息
+        new CommandHandler(),
+        // 与llm聊天
+        new ChatHandler(),
+        // 缓存历史记录
+        new StoreHistory(),
+    ];
     // 延迟初始化用户配置
     const context = new WorkerContextBase(token, message);
     try {
@@ -88,10 +93,25 @@ export async function handleUpdate(token: string, update: Telegram.Update): Prom
         clearMessageIdsAndLog(message, context as WorkerContext);
     }
 
+    function clearMessageIdsAndLog(message: Telegram.Message, context: WorkerContext) {
+        log.info(`[END] Clear Message Set and Log`);
+        sentMessageIds.delete(message);
+        clearLog(context.USER_CONFIG);
+    }
+
     return null;
 }
 
-function clearMessageIdsAndLog(message: Telegram.Message, context: WorkerContext) {
-    sentMessageIds.delete(message);
-    clearLog(context.USER_CONFIG);
+async function handleInlineQuery(token: string, inlineQuery: Telegram.InlineQuery) {
+    log.info(`handleInlineQuery`, inlineQuery);
+    // TODO
+
+    return new Response('ok');
+}
+
+async function handleCallbackQuery(token: string, callbackQuery: Telegram.CallbackQuery) {
+    log.info(`handleCallbackQuery`, callbackQuery);
+    // TODO
+
+    return new Response('ok');
 }

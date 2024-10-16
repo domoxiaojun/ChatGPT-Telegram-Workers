@@ -1,7 +1,7 @@
 import type * as Telegram from 'telegram-bot-api-types';
 import type { WorkerContextBase } from '../../config/context';
 import type { UnionData } from '../utils/utils';
-import type { MessageHandler } from './types';
+import type { CallbackQueryHandler, InlineQueryHandler, MessageHandler } from './types';
 import { WorkerContext } from '../../config/context';
 import { ENV } from '../../config/env';
 import { sentMessageIds } from '../../extra/log/logDecortor';
@@ -141,8 +141,10 @@ export class StoreHistory implements MessageHandler<WorkerContext> {
 export class TagNeedDelete implements MessageHandler<WorkerContext> {
     handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | null> => {
         // 未记录消息
-        if (!sentMessageIds.get(message) || sentMessageIds.get(message)?.length === 0)
+        if (!sentMessageIds.get(message) || sentMessageIds.get(message)?.length === 0) {
+            log.info(`[TAG MESSAGE] Do not need delete message: ${message.message_id}`);
             return new Response('success', { status: 200 });
+        }
         const botName = context.SHARE_CONTEXT?.botName;
         if (!botName) {
             throw new Error('未检索到Bot Name, 无法设定定时删除.');
@@ -164,7 +166,7 @@ export class TagNeedDelete implements MessageHandler<WorkerContext> {
         });
 
         await ENV.DATABASE.put(scheduleDeteleKey, JSON.stringify(scheduledData));
-        log.info(`Record chat ${chatId}, message ids: ${sentMessageIds.get(message) || []}`);
+        log.info(`[TAG MESSAGE] Record chat ${chatId}, message ids: ${sentMessageIds.get(message) || []}`);
 
         return new Response('success', { status: 200 });
     };
@@ -185,12 +187,14 @@ export class StoreWhiteListMessage implements MessageHandler<WorkerContext> {
     };
 }
 
-// TODO 处理内联消息
-// export class InlineMessageHandler implements MessageHandler<WorkerContext> {
-//     handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | null> => {
-//         if (message.inline_query) {
-//             return await handleInlineQuery(message, context);
-//         }
-//         return null;
-//     };
-// }
+export class HandlerInlineQuery implements InlineQueryHandler<WorkerContext> {
+    handle = async (_inlineQuery: Telegram.InlineQuery, _context: WorkerContext): Promise<Response | null> => {
+        return null;
+    };
+}
+
+export class HandlerCallbackQuery implements CallbackQueryHandler<WorkerContext> {
+    handle = async (_callbackQuery: Telegram.CallbackQuery, _context: WorkerContext): Promise<Response | null> => {
+        return null;
+    };
+}

@@ -21,10 +21,10 @@ async function messageInitialize(sender: MessageSender): Promise<void> {
             if (!ENV.SEND_INIT_MESSAGE) {
                 return;
             }
-            log.info(`send ...`);
+            log.info(`send init message`);
             const response = await sender.sendPlainText('...', 'chat');
             const msg = await response.json() as Telegram.ResponseWithMessage;
-            log.info(`send done`);
+            log.info(`send init message done`);
             sender.update({
                 message_id: msg.result.message_id,
             });
@@ -41,9 +41,7 @@ export async function chatWithLLM(
     modifier: HistoryModifier | null,
 ): Promise<UnionData | Response> {
     const sender = context.MIDDEL_CONTEXT.sender ?? MessageSender.from(context.SHARE_CONTEXT.botToken, message);
-
     await messageInitialize(sender);
-
     let onStream: ChatStreamTextHandler | null = null;
 
     if (ENV.STREAM_MODE) {
@@ -60,15 +58,18 @@ export async function chatWithLLM(
     }
 
     try {
+        log.info(`start chat with LLM`);
         const answer = await requestCompletionsFromLLM(params, context, agent, modifier, onStream);
-
+        log.info(`chat with LLM done`);
         if (onStream) {
             const nextTime = onStream.nextEnableTime?.() ?? 0;
             if (nextTime > Date.now()) {
                 await new Promise(resolve => setTimeout(resolve, nextTime - Date.now()));
             }
+            log.info(`send chat end message via stream`);
             await onStream(answer.content, true);
         } else {
+            log.info(`send chat end message via rich text`);
             await sender.sendRichText(
                 `${getLog(context.USER_CONFIG)}\n${answer.content}`,
                 ENV.DEFAULT_PARSE_MODE as Telegram.ParseMode,
@@ -205,38 +206,21 @@ export function OnStreamHander(sender: MessageSender, context?: WorkerContext): 
                 && ENV.TELEGRAPH_NUM_LIMIT > 0
                 && text.length > ENV.TELEGRAPH_NUM_LIMIT
                 && ['group', 'supergroup'].includes(sender.context.chatType)) {
-                async function sendTelegraph(context: WorkerContext, question: string, text: string) {
-                    const prefix = `#Question\n\`\`\`\n${question.length > 400 ? `${question.slice(0, 200)}...${question.slice(-200)}` : question}\n\`\`\`\n---`;
-                    const botName = context.SHARE_CONTEXT.botName;
-
-                    const telegraph_prefix = `${prefix}\n#Answer\n🤖 **${getLog(context.USER_CONFIG, true)}**\n`;
-                    const debug_info = `debug info:\n${getLog(context.USER_CONFIG) as string}`;
-                    const telegraph_suffix = `\n---\n\`\`\`\n${debug_info}\n\`\`\``;
-                    const telegraphSender = new TelegraphSender(sender.context, botName, context.SHARE_CONTEXT.telegraphAccessTokenKey!);
-                    const resp = await telegraphSender.send(
-                        'Daily Q&A',
-                        telegraph_prefix + text + telegraph_suffix,
-                    );
-                    const url = `https://telegra.ph/${telegraphSender.teleph_path}`;
-                    const msg = `回答已经转换成完整文章~\n[🔗点击进行查看](${url})`;
-                    await sender.sendRichText(msg);
-                    return resp;
-                }
-                return sendTelegraph(context, context.MIDDEL_CONTEXT.originalMessage.text || 'Redo', text);
+                return sendTelegraph(context, sender, context.MIDDEL_CONTEXT.originalMessage.text || 'Redo', text);
             }
             // 判断是否需要等待
             if (nextEnableTime && nextEnableTime > Date.now()) {
+                log.info(`Need await: ${nextEnableTime - Date.now()}ms`);
                 return;
             }
 
             // 设置最小流间隔
             if (ENV.TELEGRAM_MIN_STREAM_INTERVAL > 0) {
                 nextEnableTime = Date.now() + ENV.TELEGRAM_MIN_STREAM_INTERVAL;
-                log.debug(`Next enable time: ${new Date(nextEnableTime).toISOString()}`);
             }
             // log.info(`LOG:\n${context ? getLog(context.USER_CONFIG) : ''}`);
             const data = context ? `${getLog(context.USER_CONFIG)}\n${text}` : text;
-            log.debug(`send stream message`);
+            log.debug(`send ${isEnd ? 'end' : 'stream'} message`);
             const resp = await sender.sendRichText(data, ENV.DEFAULT_PARSE_MODE as Telegram.ParseMode, 'chat');
             // 判断429
             if (resp.status === 429) {
@@ -244,6 +228,7 @@ export function OnStreamHander(sender: MessageSender, context?: WorkerContext): 
                 const retryAfter = Number.parseInt(resp.headers.get('Retry-After') || '');
                 if (retryAfter) {
                     nextEnableTime = Date.now() + retryAfter * 1000;
+                    log.info(`Status 429, need await: ${nextEnableTime - Date.now()}ms`);
                     return;
                 }
             }
@@ -260,6 +245,25 @@ export function OnStreamHander(sender: MessageSender, context?: WorkerContext): 
 
     onStream.nextEnableTime = () => nextEnableTime;
     return onStream;
+}
+
+async function sendTelegraph(context: WorkerContext, sender: MessageSender, question: string, text: string) {
+    log.info(`send telegraph`);
+    const prefix = `#Question\n\`\`\`\n${question.length > 400 ? `${question.slice(0, 200)}...${question.slice(-200)}` : question}\n\`\`\`\n---`;
+    const botName = context.SHARE_CONTEXT.botName;
+
+    const telegraph_prefix = `${prefix}\n#Answer\n🤖 **${getLog(context.USER_CONFIG, true)}**\n`;
+    const debug_info = `debug info:\n${getLog(context.USER_CONFIG) as string}`;
+    const telegraph_suffix = `\n---\n\`\`\`\n${debug_info}\n\`\`\``;
+    const telegraphSender = new TelegraphSender(sender.context, botName, context.SHARE_CONTEXT.telegraphAccessTokenKey!);
+    const resp = await telegraphSender.send(
+        'Daily Q&A',
+        telegraph_prefix + text + telegraph_suffix,
+    );
+    const url = `https://telegra.ph/${telegraphSender.teleph_path}`;
+    const msg = `回答已经转换成完整文章~\n[🔗点击进行查看](${url})`;
+    await sender.sendRichText(msg);
+    return resp;
 }
 
 function clearMessageContext(context: WorkerContext) {

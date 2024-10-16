@@ -159,7 +159,6 @@ export class FunctionCall {
         } else if (this.sender) {
             await this.sender.sendRichText(`${getLog(this.context.USER_CONFIG)}\n${llm_resp.content}`, ENV.DEFAULT_PARSE_MODE as ParseMode, 'chat');
         }
-        log.debug('call resp:', llm_resp.content);
     }
 
     paramsExtract(llm_resp: CompletionData): FunctionCallResult[] {
