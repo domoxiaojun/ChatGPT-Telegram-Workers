@@ -881,8 +881,8 @@ const ENV_KEY_MAPPER = {
   WORKERS_AI_MODEL: "WORKERS_CHAT_MODEL"
 };
 class Environment extends EnvironmentConfig {
-  BUILD_TIMESTAMP = 1729060498;
-  BUILD_VERSION = "30b5252";
+  BUILD_TIMESTAMP = 1729061062;
+  BUILD_VERSION = "4393c50";
   I18N = loadI18n();
   PLUGINS_ENV = {};
   USER_CONFIG = createAgentUserConfig();
@@ -3640,7 +3640,7 @@ function OnStreamHander(sender, context) {
       if (isEnd && context && ENV.TELEGRAPH_NUM_LIMIT > 0 && text.length > ENV.TELEGRAPH_NUM_LIMIT && ["group", "supergroup"].includes(sender.context.chatType)) {
         return sendTelegraph(context, sender, context.MIDDEL_CONTEXT.originalMessage.text || "Redo", text);
       }
-      if (nextEnableTime && nextEnableTime > Date.now()) {
+      if (!isEnd && nextEnableTime && nextEnableTime > Date.now()) {
         log.info(`Need await: ${nextEnableTime - Date.now()}ms`);
         return;
       }
@@ -3655,7 +3655,7 @@ ${text}` : text;
         const retryAfter = Number.parseInt(resp.headers.get("Retry-After") || "");
         if (retryAfter) {
           nextEnableTime = Date.now() + retryAfter * 1e3;
-          log.info(`Status 429, need await: ${nextEnableTime - Date.now()}ms`);
+          log.info(`Status 429, need wait: ${nextEnableTime - Date.now()}ms`);
           return;
         }
       }

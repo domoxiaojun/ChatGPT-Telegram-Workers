@@ -209,7 +209,7 @@ export function OnStreamHander(sender: MessageSender, context?: WorkerContext): 
                 return sendTelegraph(context, sender, context.MIDDEL_CONTEXT.originalMessage.text || 'Redo', text);
             }
             // 判断是否需要等待
-            if (nextEnableTime && nextEnableTime > Date.now()) {
+            if (!isEnd && nextEnableTime && nextEnableTime > Date.now()) {
                 log.info(`Need await: ${nextEnableTime - Date.now()}ms`);
                 return;
             }
@@ -228,7 +228,7 @@ export function OnStreamHander(sender: MessageSender, context?: WorkerContext): 
                 const retryAfter = Number.parseInt(resp.headers.get('Retry-After') || '');
                 if (retryAfter) {
                     nextEnableTime = Date.now() + retryAfter * 1000;
-                    log.info(`Status 429, need await: ${nextEnableTime - Date.now()}ms`);
+                    log.info(`Status 429, need wait: ${nextEnableTime - Date.now()}ms`);
                     return;
                 }
             }
