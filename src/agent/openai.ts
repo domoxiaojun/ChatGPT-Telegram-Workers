@@ -110,9 +110,9 @@ export class OpenAI extends OpenAIBase implements ChatAgent {
             model: this.model(context, params),
             ...context.OPENAI_API_EXTRA_PARAMS,
             messages: await Promise.all(messages.map(this.render)),
-            ...(context.ENABLE_SHOWTOKEN && { stream_options: { include_usage: true } }),
             stream: !!onStream,
             ...extra_params,
+            ...(context.ENABLE_SHOWTOKEN && !!onStream && { stream_options: { include_usage: true } }),
         };
         delete body.agent;
         delete body.type;

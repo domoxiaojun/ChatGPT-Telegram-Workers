@@ -49,9 +49,9 @@ export class Silicon extends SiliconBase implements ChatAgent {
         const body: Record<string, any> = {
             model: context.SILICON_CHAT_MODEL,
             messages: await Promise.all(messages.map(this.render)),
-            ...(context.ENABLE_SHOWTOKEN && { stream_options: { include_usage: true } }),
             stream: !!onStream,
             ...extra_params,
+            ...(context.ENABLE_SHOWTOKEN && !!onStream && { stream_options: { include_usage: true } }),
         };
 
         return requestChatCompletions(url, header, body, onStream);

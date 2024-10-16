@@ -881,8 +881,8 @@ const ENV_KEY_MAPPER = {
   WORKERS_AI_MODEL: "WORKERS_CHAT_MODEL"
 };
 class Environment extends EnvironmentConfig {
-  BUILD_TIMESTAMP = 1729061062;
-  BUILD_VERSION = "4393c50";
+  BUILD_TIMESTAMP = 1729064547;
+  BUILD_VERSION = "2552f4d";
   I18N = loadI18n();
   PLUGINS_ENV = {};
   USER_CONFIG = createAgentUserConfig();
@@ -2502,9 +2502,9 @@ class OpenAI extends (_a = OpenAIBase, _request_dec2 = [Log], _a) {
         model: this.model(context, params),
         ...context.OPENAI_API_EXTRA_PARAMS,
         messages: await Promise.all(messages.map(this.render)),
-        ...context.ENABLE_SHOWTOKEN && { stream_options: { include_usage: true } },
         stream: !!onStream,
-        ...extra_params
+        ...extra_params,
+        ...context.ENABLE_SHOWTOKEN && !!onStream && { stream_options: { include_usage: true } }
       };
       delete body.agent;
       delete body.type;
@@ -2937,9 +2937,9 @@ class Silicon extends (_e = SiliconBase, _request_dec9 = [Log], _e) {
       const body = {
         model: context.SILICON_CHAT_MODEL,
         messages: await Promise.all(messages.map(this.render)),
-        ...context.ENABLE_SHOWTOKEN && { stream_options: { include_usage: true } },
         stream: !!onStream,
-        ...extra_params
+        ...extra_params,
+        ...context.ENABLE_SHOWTOKEN && !!onStream && { stream_options: { include_usage: true } }
       };
       return requestChatCompletions(url, header, body, onStream);
     })), __runInitializers(_init9, 11, this);
