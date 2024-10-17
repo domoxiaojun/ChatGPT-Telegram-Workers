@@ -752,6 +752,7 @@ class EnvironmentConfig {
   SEND_IMAGE_FILE = false;
   PPLX_COOKIE = null;
   LOG_LEVEL = "info";
+  MODEL_COMPATIBLE_OPENAI = false;
   STREAM_MODE = true;
   SAFE_MODE = true;
   DEBUG_MODE = false;
@@ -854,6 +855,7 @@ class ExtraUserConfig {
   INLINE_AGENTS = ["oenai", "claude", "gemini", "cohere", "workersai"];
   INLINE_IMAGE_AGENTS = ["openai", "silicon"];
   INLINE_CHAT_MODELS = ["gpt-4o-mini", "gpt-4o-2024-05-13"];
+  INLINE_VISION_MODELS = ["gpt-4o-mini", "gpt-4o-2024-05-13"];
   INLINE_IMAGE_MODELS = ["dall-e-2", "dall-e-3"];
   INLINE_FUNCTION_CALL_TOOLS = ["duckduckgo_search", "jina_reader"];
   INLINE_FUNCTION_ASAP = ["true", "false"];
@@ -881,8 +883,8 @@ const ENV_KEY_MAPPER = {
   WORKERS_AI_MODEL: "WORKERS_CHAT_MODEL"
 };
 class Environment extends EnvironmentConfig {
-  BUILD_TIMESTAMP = 1729160598;
-  BUILD_VERSION = "c82eaa3";
+  BUILD_TIMESTAMP = 1729165647;
+  BUILD_VERSION = "31a18f5";
   I18N = loadI18n();
   PLUGINS_ENV = {};
   USER_CONFIG = createAgentUserConfig();
@@ -2424,6 +2426,7 @@ async function renderOpenAIMessage(item) {
   const res = {
     ...item
   };
+  delete res?.images;
   if (item.images && item.images.length > 0) {
     res.content = [];
     if (item.content) {
@@ -2499,7 +2502,6 @@ class OpenAI extends (_a = OpenAIBase, _request_dec2 = [Log], _a) {
             break;
           }
         }
-        messages.unshift({ role: context.SYSTEM_INIT_MESSAGE_ROLE, content: prompt });
       }
       const body = {
         model: this.model(context, params),
@@ -2522,6 +2524,21 @@ class OpenAI extends (_a = OpenAIBase, _request_dec2 = [Log], _a) {
           body.stream = false;
           onStream = null;
         }
+      }
+      if (!this.model(context, params).includes("gpt") && !ENV.MODEL_COMPATIBLE_OPENAI) {
+        body.messages = body.messages.filter((m) => !!m.content).map(
+          (m) => {
+            if (m.role === "tool") {
+              return {
+                role: "user",
+                content: `${m.name} result:${m.content}`
+              };
+            }
+            return m;
+          }
+        );
+        delete body.tool_choice;
+        delete body.tool_calls;
       }
       return requestChatCompletions(url, header, body, onStream);
     })), __runInitializers(_init2, 11, this);
@@ -3398,7 +3415,6 @@ class FunctionCall {
     while (FUNC_LOOP_TIMES !== 0) {
       const llm_resp = await this.call(params, onStream);
       let func_params = this.paramsExtract(llm_resp);
-      log.info("解析到函数调用参数:", func_params);
       if (func_params.length === 0) {
         if (ASAP && llm_resp) {
           await this.sendLastResponse(llm_resp, onStream);
@@ -3410,6 +3426,7 @@ class FunctionCall {
           prompt: this.prompt
         };
       }
+      log.info("解析到函数调用参数:", func_params);
       llm_resp.tool_calls = llm_resp.tool_calls.slice(0, ENV.CON_EXEC_FUN_NUM);
       func_params = func_params.slice(0, ENV.CON_EXEC_FUN_NUM);
       const func_result = await Promise.all(func_params.map((i) => this.exec(i, INTERNAL_ENV)));

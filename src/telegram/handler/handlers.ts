@@ -1,10 +1,9 @@
 import type * as Telegram from 'telegram-bot-api-types';
 import type { CallbackQueryContext, WorkerContextBase } from '../../config/context';
-import type { AgentUserConfig } from '../../config/env';
 import type { TelegramBotAPI } from '../api';
 import type { InlineItem } from '../command/system';
 import type { UnionData } from '../utils/utils';
-import type { CallbackQueryHandler, InlineQueryHandler, MessageHandler } from './types';
+import type { CallbackQueryHandler, MessageHandler } from './types';
 import { WorkerContext } from '../../config/context';
 import { ENV } from '../../config/env';
 import { sentMessageIds } from '../../extra/log/logDecortor';

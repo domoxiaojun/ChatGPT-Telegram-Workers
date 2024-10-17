@@ -9,9 +9,11 @@ import { requestText2Image } from './chat';
 import { requestChatCompletions } from './request';
 
 export async function renderOpenAIMessage(item: HistoryItem): Promise<any> {
+    // 由于增加函数调用数据，故直接使用item 再移除images
     const res: any = {
         ...item,
     };
+    delete res?.images;
     if (item.images && item.images.length > 0) {
         res.content = [];
         if (item.content) {
@@ -103,7 +105,6 @@ export class OpenAI extends OpenAIBase implements ChatAgent {
                     break;
                 }
             }
-            messages.unshift({ role: context.SYSTEM_INIT_MESSAGE_ROLE, content: prompt });
         }
 
         const body: Record<string, any> = {
@@ -128,6 +129,23 @@ export class OpenAI extends OpenAIBase implements ChatAgent {
                 body.stream = false;
                 onStream = null;
             }
+        }
+
+        if (!this.model(context, params).includes('gpt') && !ENV.MODEL_COMPATIBLE_OPENAI) {
+            // claude 和 gemini 不支持content为空
+            body.messages = body.messages.filter((m: any) => !!m.content).map(
+                (m: any) => {
+                    if (m.role === 'tool') {
+                        return {
+                            role: 'user',
+                            content: `${m.name} result:${m.content}`,
+                        };
+                    }
+                    return m;
+                },
+            );
+            delete body.tool_choice;
+            delete body.tool_calls;
         }
 
         // console.log(JSON.stringify(messages, null, 2));

@@ -94,8 +94,6 @@ export class FunctionCall {
             const llm_resp = await this.call(params, onStream);
             let func_params = this.paramsExtract(llm_resp);
 
-            log.info('解析到函数调用参数:', func_params);
-
             if (func_params.length === 0) {
                 if (ASAP && llm_resp) {
                     await this.sendLastResponse(llm_resp, onStream);
@@ -107,6 +105,8 @@ export class FunctionCall {
                     prompt: this.prompt,
                 };
             }
+
+            log.info('解析到函数调用参数:', func_params);
 
             // 裁剪响应与函数调用参数
             llm_resp.tool_calls = llm_resp.tool_calls!.slice(0, ENV.CON_EXEC_FUN_NUM);

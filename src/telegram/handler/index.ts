@@ -1,7 +1,7 @@
 import type * as Telegram from 'telegram-bot-api-types';
 import type { WorkerContext } from '../../config/context';
 import type { MessageHandler } from './types';
-import { CallbackQueryContext, MiddleContext, ShareContext, WorkerContextBase } from '../../config/context';
+import { CallbackQueryContext, WorkerContextBase } from '../../config/context';
 import { clearLog, sentMessageIds } from '../../extra/log/logDecortor';
 import { log } from '../../extra/log/logger';
 import { ChatHandler } from './chat';

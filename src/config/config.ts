@@ -127,6 +127,12 @@ export class EnvironmentConfig {
     // 日志级别
     LOG_LEVEL: LogLevelType = 'info';
 
+    // 模型不完全兼容openai function call设置参数为false， 默认不完全兼容
+    // 当 模型名不包含 gpt 且此参数设置为false时：去掉 content为空的数据（gpt调用函数时，content为空），去掉 tool_choice、tool_calls参数
+    // 同时将role = tool 的数据 role替换为user，content 替换为 name + result
+    // 此参数仅在chat agent为openai时生效
+    MODEL_COMPATIBLE_OPENAI = false;
+
     // -------------
 
     // -- 模式开关 --
@@ -315,9 +321,12 @@ export class ExtraUserConfig {
     INLINE_IMAGE_AGENTS = ['openai', 'silicon'];
     // INLINE_CHAT_MODELS
     INLINE_CHAT_MODELS = ['gpt-4o-mini', 'gpt-4o-2024-05-13'];
+    // INLINE_VISION_MODELS
+    INLINE_VISION_MODELS = ['gpt-4o-mini', 'gpt-4o-2024-05-13'];
     // INLINE_IMAGE_MODELS
     INLINE_IMAGE_MODELS = ['dall-e-2', 'dall-e-3'];
     // INLINE_FUNCTION_CALL_TOOLS
     INLINE_FUNCTION_CALL_TOOLS = ['duckduckgo_search', 'jina_reader'];
+    // INLINE_FUNCTION_ASAP
     INLINE_FUNCTION_ASAP = ['true', 'false'];
 }

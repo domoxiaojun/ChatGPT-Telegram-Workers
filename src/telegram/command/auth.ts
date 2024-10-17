@@ -1,5 +1,4 @@
 import type * as Telegram from 'telegram-bot-api-types';
-import type { WorkerContext } from '../../config/context';
 import { ENV } from '../../config/env';
 import { createTelegramBotAPI } from '../api';
 
