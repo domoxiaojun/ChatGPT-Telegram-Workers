@@ -94,3 +94,11 @@ export function UUIDv4() {
 export const isCfWorker = typeof globalThis !== 'undefined'
     && typeof (globalThis as any).ServiceWorkerGlobalScope !== 'undefined'
     && globalThis instanceof ((globalThis as any).ServiceWorkerGlobalScope);
+
+export function chunckArray(arr: any[], size: number): any[][] {
+    const result = [];
+    for (let i = 0; i < arr.length; i += size) {
+        result.push(arr.slice(i, i + size));
+    }
+    return result;
+}

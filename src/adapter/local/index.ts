@@ -7,7 +7,7 @@ import { defaultRequestBuilder, initEnv, startServerV2 } from 'cloudflare-worker
 import { schedule } from 'node-cron';
 import worker from '../../';
 import { ENV } from '../../config/env';
-import { createRouter } from '../../route';
+import { createRouter } from '../../route/index';
 import { createTelegramBotAPI } from '../../telegram/api';
 import { handleUpdate } from '../../telegram/handler';
 

@@ -1,7 +1,7 @@
 import type * as Telegram from 'telegram-bot-api-types';
 import type { WorkerContext } from '../../config/context';
 import type { MessageHandler } from './types';
-import { WorkerContextBase } from '../../config/context';
+import { CallbackQueryContext, MiddleContext, ShareContext, WorkerContextBase } from '../../config/context';
 import { clearLog, sentMessageIds } from '../../extra/log/logDecortor';
 import { log } from '../../extra/log/logger';
 import { ChatHandler } from './chat';
@@ -9,6 +9,7 @@ import { GroupMention } from './group';
 import {
     CommandHandler,
     EnvChecker,
+    HandlerCallbackQuery,
     InitUserConfig,
     MessageFilter,
     OldMessageFilter,
@@ -79,7 +80,6 @@ async function handleMessage(token: string, message: Telegram.Message) {
         for (const handler of exitHanders) {
             const result = await handler.handle(message, context);
             if (result && result instanceof Response) {
-                clearMessageIdsAndLog(message, context as WorkerContext);
                 return result;
             }
         }
@@ -110,8 +110,38 @@ async function handleInlineQuery(token: string, inlineQuery: Telegram.InlineQuer
 }
 
 async function handleCallbackQuery(token: string, callbackQuery: Telegram.CallbackQuery) {
-    log.info(`handleCallbackQuery`, callbackQuery);
-    // TODO
+    try {
+        log.debug(`handleCallbackQuery`, callbackQuery);
+        if (!callbackQuery?.message || !callbackQuery?.data) {
+            throw new Error('Not support callback query type');
+        }
 
-    return new Response('ok');
+        const workContext = new WorkerContextBase(token, callbackQuery.message);
+        const handlers: MessageHandler<any>[] = [
+            new EnvChecker(),
+            new WhiteListFilter(),
+            new InitUserConfig(),
+        ];
+        for (const handler of handlers) {
+            const result = await handler.handle(callbackQuery.message, workContext);
+            if (result instanceof Response) {
+                return result;
+            }
+        }
+
+        const callbackQueryContext = new CallbackQueryContext(callbackQuery, workContext as WorkerContext);
+
+        const result = await new HandlerCallbackQuery().handle(callbackQuery.message, callbackQueryContext);
+        if (result instanceof Response) {
+            return result;
+        }
+
+        return new Response('ok');
+    } catch (e) {
+        console.error((e as Error).message);
+        return new Response(JSON.stringify({
+            message: (e as Error).message,
+            stack: (e as Error).stack,
+        }), { status: 500 });
+    }
 }

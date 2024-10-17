@@ -3,11 +3,14 @@ import type { WorkerContext } from '../../config/context';
 import { ENV } from '../../config/env';
 import { createTelegramBotAPI } from '../api';
 
-export async function loadChatRoleWithContext(message: Telegram.Message, context: WorkerContext): Promise<string | null> {
+export async function loadChatRoleWithContext(message: Telegram.Message, context: any, isCallbackQuery: boolean = false): Promise<string | null> {
     const { groupAdminsKey } = context.SHARE_CONTEXT;
 
     const chatId = message.chat.id;
-    const speakerId = message.from?.id || chatId;
+    let speakerId = message.from?.id || chatId;
+    if (isCallbackQuery) {
+        speakerId = context?.from?.id;
+    }
 
     if (!groupAdminsKey) {
         return null;

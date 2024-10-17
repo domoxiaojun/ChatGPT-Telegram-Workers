@@ -86,13 +86,15 @@ export class FunctionCall {
         let FUNC_LOOP_TIMES = ENV.FUNC_LOOP_TIMES;
         const ASAP = this.context.USER_CONFIG.FUNCTION_REPLY_ASAP;
         const onStream = ENV.STREAM_MODE && this.sender ? OnStreamHander(this.sender, this.context) : null;
-        // TODO 目前只支持一个 后续增加需要改进读取方式
+        // 目前只支持一个 后续增加需要改进读取方式
         const INTERNAL_ENV = this.extractInternalEnv(['JINA_API_KEY']);
         const params = this.trimParams(ASAP);
 
         while (FUNC_LOOP_TIMES !== 0) {
             const llm_resp = await this.call(params, onStream);
-            const func_params = this.paramsExtract(llm_resp);
+            let func_params = this.paramsExtract(llm_resp);
+
+            log.info('解析到函数调用参数:', func_params);
 
             if (func_params.length === 0) {
                 if (ASAP && llm_resp) {
@@ -106,7 +108,10 @@ export class FunctionCall {
                 };
             }
 
+            // 裁剪响应与函数调用参数
             llm_resp.tool_calls = llm_resp.tool_calls!.slice(0, ENV.CON_EXEC_FUN_NUM);
+            func_params = func_params.slice(0, ENV.CON_EXEC_FUN_NUM);
+
             const func_result = await Promise.all(func_params.map(i => this.exec(i, INTERNAL_ENV)));
             log.debug('func_result:', func_result);
             this.history.push(...this.trimMessage(llm_resp, func_result));
@@ -170,6 +175,8 @@ export class FunctionCall {
         if (!func_result) {
             return llm_result;
         }
+
+        log.debug('func_result length:', func_result.length);
 
         llm_result.push(...func_result.map((content, index) => ({
             role: 'tool',

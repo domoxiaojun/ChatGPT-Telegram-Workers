@@ -757,12 +757,6 @@ class EnvironmentConfig {
   DEBUG_MODE = false;
   DEV_MODE = false;
   SEND_INIT_MESSAGE = true;
-  INLINE_AGENTS = [];
-  INLINE_CHAT_MODELS = [];
-  INLINE_IMAGE_MODELS = [];
-  INLINE_FUNCTION_CALL_TOOLS = [];
-  INLINE_IMAGE_TRANSFER_MODE = [];
-  INLINE_HISTORY_LENGTH = [];
 }
 class AgentShareConfig {
   AI_PROVIDER = "auto";
@@ -857,6 +851,12 @@ class ExtraUserConfig {
     }
   };
   CURRENT_MODE = "default";
+  INLINE_AGENTS = ["oenai", "claude", "gemini", "cohere", "workersai"];
+  INLINE_IMAGE_AGENTS = ["openai", "silicon"];
+  INLINE_CHAT_MODELS = ["gpt-4o-mini", "gpt-4o-2024-05-13"];
+  INLINE_IMAGE_MODELS = ["dall-e-2", "dall-e-3"];
+  INLINE_FUNCTION_CALL_TOOLS = ["duckduckgo_search", "jina_reader"];
+  INLINE_FUNCTION_ASAP = ["true", "false"];
 }
 function createAgentUserConfig() {
   return Object.assign(
@@ -881,8 +881,8 @@ const ENV_KEY_MAPPER = {
   WORKERS_AI_MODEL: "WORKERS_CHAT_MODEL"
 };
 class Environment extends EnvironmentConfig {
-  BUILD_TIMESTAMP = 1729064547;
-  BUILD_VERSION = "2552f4d";
+  BUILD_TIMESTAMP = 1729160598;
+  BUILD_VERSION = "c82eaa3";
   I18N = loadI18n();
   PLUGINS_ENV = {};
   USER_CONFIG = createAgentUserConfig();
@@ -1737,7 +1737,7 @@ class TelegraphSender {
       this.telegraphAccessToken = await ENV.DATABASE.get(this.telegraphAccessTokenKey);
       if (!this.telegraphAccessToken) {
         this.telegraphAccessToken = await this.createAccount();
-        await ENV.DATABASE.put(this.telegraphAccessTokenKey, this.telegraphAccessToken);
+        await ENV.DATABASE.put(this.telegraphAccessTokenKey, this.telegraphAccessToken).catch(console.error);
       }
     }
     if (!this.teleph_path) {
@@ -1787,10 +1787,13 @@ async function checkIsNeedTagIds(context, resp, msgType) {
   } while (false);
   return original_resp;
 }
-async function loadChatRoleWithContext(message, context) {
+async function loadChatRoleWithContext(message, context, isCallbackQuery = false) {
   const { groupAdminsKey } = context.SHARE_CONTEXT;
   const chatId = message.chat.id;
-  const speakerId = message.from?.id || chatId;
+  let speakerId = message.from?.id || chatId;
+  if (isCallbackQuery) {
+    speakerId = context?.from?.id;
+  }
   if (!groupAdminsKey) {
     return null;
   }
@@ -3394,7 +3397,8 @@ class FunctionCall {
     const params = this.trimParams(ASAP);
     while (FUNC_LOOP_TIMES !== 0) {
       const llm_resp = await this.call(params, onStream);
-      const func_params = this.paramsExtract(llm_resp);
+      let func_params = this.paramsExtract(llm_resp);
+      log.info("解析到函数调用参数:", func_params);
       if (func_params.length === 0) {
         if (ASAP && llm_resp) {
           await this.sendLastResponse(llm_resp, onStream);
@@ -3407,6 +3411,7 @@ class FunctionCall {
         };
       }
       llm_resp.tool_calls = llm_resp.tool_calls.slice(0, ENV.CON_EXEC_FUN_NUM);
+      func_params = func_params.slice(0, ENV.CON_EXEC_FUN_NUM);
       const func_result = await Promise.all(func_params.map((i) => this.exec(i, INTERNAL_ENV)));
       log.debug("func_result:", func_result);
       this.history.push(...this.trimMessage(llm_resp, func_result));
@@ -3469,6 +3474,7 @@ ${llm_resp.content}`, ENV.DEFAULT_PARSE_MODE, "chat");
     if (!func_result) {
       return llm_result;
     }
+    log.debug("func_result length:", func_result.length);
     llm_result.push(...func_result.map((content, index2) => ({
       role: "tool",
       content,
@@ -3876,6 +3882,13 @@ function UUIDv4() {
   });
 }
 const isCfWorker = typeof globalThis !== "undefined" && typeof globalThis.ServiceWorkerGlobalScope !== "undefined" && globalThis instanceof globalThis.ServiceWorkerGlobalScope;
+function chunckArray(arr, size) {
+  const result = [];
+  for (let i = 0; i < arr.length; i += size) {
+    result.push(arr.slice(i, i + size));
+  }
+  return result;
+}
 const COMMAND_AUTH_CHECKER = {
   default(chatType) {
     if (isTelegramChatTypeGroup(chatType)) {
@@ -4407,73 +4420,98 @@ class InlineCommandHandler {
   scopes = ["all_private_chats", "all_chat_administrators"];
   needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
   handle = async (message, subcommand, context, sender) => {
-    const agent = loadChatLLM(context.USER_CONFIG);
-    const supportInlineKeys = {
+    const defaultInlineKeys = this.defaultInlineKeys(context.USER_CONFIG);
+    const currentSettings = this.settingsMessage(context.USER_CONFIG, defaultInlineKeys);
+    const resp = await createTelegramBotAPI(context.SHARE_CONTEXT.botToken).sendMessage({
+      chat_id: message.chat.id,
+      ...message.chat.type === "private" ? {} : { reply_to_message_id: message.message_id },
+      text: escape(currentSettings),
+      parse_mode: "MarkdownV2",
+      reply_markup: {
+        inline_keyboard: this.inlineKeyboard(context.USER_CONFIG, defaultInlineKeys)
+      }
+    }).then((r) => r.json());
+    return resp;
+  };
+  defaultInlineKeys = (context) => {
+    return {
       INLINE_AGENTS: {
         label: "Agent",
-        value: context.USER_CONFIG.AI_PROVIDER
+        data: "INLINE_AGENTS",
+        config_key: "AI_PROVIDER",
+        available_values: context.INLINE_AGENTS
       },
       INLINE_IMAGE_AGENTS: {
         label: "Image Agent",
-        value: context.USER_CONFIG.AI_IMAGE_PROVIDER
+        data: "INLINE_IMAGE_AGENTS",
+        config_key: "AI_IMAGE_PROVIDER",
+        available_values: context.INLINE_IMAGE_AGENTS
       },
       INLINE_CHAT_MODELS: {
         label: "Chat Model",
-        value: agent?.model(context.USER_CONFIG) || "None"
+        data: "INLINE_CHAT_MODELS",
+        config_key: loadChatLLM(context)?.modelKey || "None",
+        available_values: context.INLINE_CHAT_MODELS
       },
       INLINE_VISION_MODELS: {
         label: "Vision Model",
-        value: ["openai", "auto"].includes(context.USER_CONFIG.AI_PROVIDER) ? context.USER_CONFIG.OPENAI_VISION_MODEL : agent?.model(context.USER_CONFIG) || "None"
+        data: "INLINE_VISION_MODELS",
+        config_key: loadChatLLM(context)?.name === "OpenAI" ? "OPENAI_VISION_MODEL" : loadChatLLM(context)?.modelKey || "None",
+        available_values: context.INLINE_VISION_MODELS
       },
       INLINE_IMAGE_MODELS: {
         label: "Image Model",
-        value: loadImageGen(context.USER_CONFIG)?.model(context.USER_CONFIG) || "None"
+        data: "INLINE_IMAGE_MODELS",
+        config_key: loadImageGen(context)?.modelKey || "",
+        available_values: context.INLINE_IMAGE_MODELS
       },
       INLINE_FUNCTION_CALL_MODELS: {
         label: "Function Model",
-        value: loadChatLLM(context.USER_CONFIG)?.model(context.USER_CONFIG) || "None"
+        data: "INLINE_FUNCTION_CALL_MODELS",
+        config_key: "FUNCTION_CALL_MODEL",
+        available_values: context.INLINE_FUNCTION_CALL_MODELS
       },
       INLINE_FUNCTION_CALL_TOOLS: {
-        label: "Function Tools",
-        value: context.USER_CONFIG.USE_TOOLS.join(",") || "None"
+        label: "Tools",
+        data: "INLINE_FUNCTION_CALL_TOOLS",
+        config_key: "USE_TOOLS",
+        available_values: context.INLINE_FUNCTION_CALL_TOOLS
+      },
+      INLINE_FUNCTION_ASAP: {
+        label: "Call ASAP",
+        data: "INLINE_FUNCTION_ASAP",
+        config_key: "FUNCTION_REPLY_ASAP",
+        available_values: context.INLINE_FUNCTION_ASAP
       }
     };
-    const reply_markup_list = Object.entries(supportInlineKeys).reduce((acc, [key, value]) => {
-      if (key in ENV && ENV[key].length > 0) {
+  };
+  settingsMessage = (context, inlineKeys) => {
+    const currentSettings = `当前配置如下:
+>${"-".repeat(40)}
+> 
+${Object.entries(inlineKeys).map(([_, { label, config_key }]) => {
+      return `>\`${label}: ${context[config_key]}\``;
+    }).join("\n")}`;
+    return `
+${currentSettings}
+> 
+>${"-".repeat(40)}`;
+  };
+  inlineKeyboard = (context, inlineKeys) => {
+    const inline_keyboard_list = Object.entries(inlineKeys).reduce((acc, [key, { label }]) => {
+      if (key in context && context[key].length > 0) {
         acc.push({
-          text: `${value.label}`,
+          text: label,
           callback_data: key
         });
       }
       return acc;
     }, []);
-    reply_markup_list.push({
-      text: "Close",
+    inline_keyboard_list.push({
+      text: "❌",
       callback_data: "CLOSE"
     });
-    const currentSettings = `>\`当前配置:\`
-> 
-${Object.values(supportInlineKeys).map(({ label, value }) => {
-      return `>\`${label}: ${value}\``;
-    }).join("\n")}`;
-    const chunckArray = (arr, size) => {
-      const result = [];
-      for (let i = 0; i < arr.length; i += size) {
-        result.push(arr.slice(i, i + size));
-      }
-      return result;
-    };
-    const reply_markup = {
-      inline_keyboard: chunckArray(reply_markup_list, 3)
-    };
-    await createTelegramBotAPI(context.SHARE_CONTEXT.botToken).sendMessage({
-      chat_id: message.chat.id,
-      ...message.chat.type === "private" ? {} : { reply_to_message_id: message.message_id },
-      text: escape(currentSettings),
-      parse_mode: "MarkdownV2",
-      reply_markup
-    }).then((r) => r.json());
-    return new Response("ok");
+    return chunckArray(inline_keyboard_list, 3);
   };
 }
 const SYSTEM_COMMANDS = [
@@ -4731,6 +4769,20 @@ class WorkerContext {
     return new WorkerContext(USER_CONFIG, SHARE_CONTEXT, MIDDLE_CONTEXT);
   }
 }
+class CallbackQueryContext {
+  data;
+  query_id;
+  from;
+  USER_CONFIG;
+  SHARE_CONTEXT;
+  constructor(callbackQuery, workContext) {
+    this.data = callbackQuery.data;
+    this.query_id = callbackQuery.id;
+    this.from = callbackQuery.from;
+    this.USER_CONFIG = workContext.USER_CONFIG;
+    this.SHARE_CONTEXT = workContext.SHARE_CONTEXT;
+  }
+}
 function checkMention(content, entities, botName, botId) {
   let isMention = false;
   for (const entity of entities) {
@@ -4817,8 +4869,8 @@ class GroupMention {
       throw new Error("Not mention");
     }
     if (ENV.EXTRA_MESSAGE_CONTEXT && !replyMe && message.reply_to_message?.text) {
-      message.text = `> ${message.reply_to_message.text}
-${message.text || message.caption || ""}`;
+      message.text = `${message.text || message.caption || ""}
+> ${message.reply_to_message.text}`;
     }
     context.MIDDEL_CONTEXT.originalMessage.text = message.text;
     return null;
@@ -4976,6 +5028,136 @@ class StoreWhiteListMessage {
     return new Response("ok");
   };
 }
+class HandlerCallbackQuery {
+  handle = async (message, context) => {
+    const api = createTelegramBotAPI(context.SHARE_CONTEXT.botToken);
+    const checkRoleResult = await this.checkWhiteList(message, context, api);
+    if (checkRoleResult instanceof Response) {
+      return checkRoleResult;
+    }
+    if (context.data === "CLOSE") {
+      await this.closeInlineKeyboard(api, message);
+      return null;
+    }
+    const queryHandler = new InlineCommandHandler();
+    const defaultInlineKeys = queryHandler.defaultInlineKeys(context.USER_CONFIG);
+    const [inlineKey, option] = context.data.split(".");
+    await this.checkInlineKey(api, context, inlineKey, option, defaultInlineKeys);
+    let inlineKeyboard = [];
+    if (inlineKey === "BACK") {
+      inlineKeyboard = queryHandler.inlineKeyboard(context.USER_CONFIG, defaultInlineKeys);
+    } else {
+      const configKey = defaultInlineKeys[inlineKey].config_key;
+      const optionValue = defaultInlineKeys[inlineKey].available_values?.[Number.parseInt(option)];
+      if (optionValue) {
+        await this.updateConfig(context, api, configKey, optionValue);
+      }
+      let configValue = context.USER_CONFIG[configKey];
+      if (typeof configValue === "boolean") {
+        configValue = configValue ? "true" : "false";
+      }
+      inlineKeyboard = this.updateInlineList(defaultInlineKeys[inlineKey], configValue);
+    }
+    const settingMessage = queryHandler.settingsMessage(context.USER_CONFIG, defaultInlineKeys);
+    await this.sendCallBackMessage(api, message, settingMessage, inlineKeyboard);
+    return null;
+  };
+  async checkInlineKey(api, context, key, index2, inlineKeys) {
+    if (key === "BACK") {
+      return;
+    }
+    if (index2 && inlineKeys[key]?.available_values?.[index2] || !index2 && inlineKeys[key]) {
+      return;
+    }
+    this.sendAlert(api, context.query_id, "Not support inline key", false);
+    throw new Error("Not support inline key");
+  }
+  async sendAlert(api, query_id, text, show_alert = false, cache_time = 0) {
+    return api.answerCallbackQuery({
+      callback_query_id: query_id,
+      text,
+      show_alert,
+      cache_time
+    });
+  }
+  async checkWhiteList(message, context, api) {
+    const roleList = COMMAND_AUTH_CHECKER.shareModeGroup(message.chat.type);
+    if (roleList) {
+      const chatRole = await loadChatRoleWithContext(message, context, true);
+      if (chatRole === null) {
+        return this.sendAlert(api, context.query_id, "⚠️ Get chat role failed", false);
+      }
+      if (!roleList.includes(chatRole)) {
+        return this.sendAlert(api, context.query_id, `⚠️ 你没有权限进行此操作`, true);
+      }
+    }
+    return null;
+  }
+  async updateConfig(context, api, configKey, newValue) {
+    const oldValue = context.USER_CONFIG[configKey];
+    const type = Array.isArray(oldValue) ? "array" : typeof oldValue;
+    switch (type) {
+      case "string":
+      case "boolean":
+        if (oldValue === newValue) {
+          return;
+        } else {
+          context.USER_CONFIG[configKey] = newValue;
+        }
+        break;
+      case "array":
+        if (oldValue.includes(newValue)) {
+          oldValue.splice(oldValue.indexOf(newValue), 1);
+        } else {
+          oldValue.push(newValue);
+        }
+        break;
+      default:
+        throw new TypeError("Not support config type");
+    }
+    log.info(`[CALLBACK QUERY] Update config: ${configKey} = ${context.USER_CONFIG[configKey]}`);
+    await ENV.DATABASE.put(context.SHARE_CONTEXT.configStoreKey, JSON.stringify(context.USER_CONFIG)).catch(console.error);
+    this.sendAlert(api, context.query_id, "数据更新成功", false);
+  }
+  async closeInlineKeyboard(api, message) {
+    const resp = await api.deleteMessage({
+      chat_id: message.chat.id,
+      message_id: message.message_id
+    }).then((r) => r.json());
+    return resp;
+  }
+  async sendCallBackMessage(api, message, text, inline_keyboard) {
+    const resp = await api.editMessageText({
+      chat_id: message.chat.id,
+      message_id: message.message_id,
+      ...message.chat.type === "private" ? {} : { reply_to_message_id: message.message_id },
+      text: escape(text),
+      parse_mode: "MarkdownV2",
+      reply_markup: { inline_keyboard }
+    }).then((r) => r.json());
+    return resp;
+  }
+  updateInlineList(inline_item, configValue) {
+    const inline_list = inline_item.available_values.map((item, index2) => {
+      let selected = "";
+      if (configValue && item === configValue || Array.isArray(configValue) && configValue?.includes(item)) {
+        selected = "✅";
+      }
+      return {
+        text: `${selected}${item}`,
+        callback_data: `${inline_item.data}.${index2}`
+      };
+    });
+    inline_list.push({
+      text: "↩️",
+      callback_data: "BACK"
+    }, {
+      text: "❌",
+      callback_data: "CLOSE"
+    });
+    return chunckArray(inline_list, 2);
+  }
+}
 function loadMessage(body) {
   switch (true) {
     case !!body.message:
@@ -5020,7 +5202,6 @@ async function handleMessage(token, message) {
     for (const handler of exitHanders) {
       const result = await handler.handle(message, context);
       if (result && result instanceof Response) {
-        clearMessageIdsAndLog(message, context);
         return result;
       }
     }
@@ -5045,8 +5226,36 @@ async function handleInlineQuery(token, inlineQuery) {
   return new Response("ok");
 }
 async function handleCallbackQuery(token, callbackQuery) {
-  log.info(`handleCallbackQuery`, callbackQuery);
-  return new Response("ok");
+  try {
+    log.debug(`handleCallbackQuery`, callbackQuery);
+    if (!callbackQuery?.message || !callbackQuery?.data) {
+      throw new Error("Not support callback query type");
+    }
+    const workContext = new WorkerContextBase(token, callbackQuery.message);
+    const handlers = [
+      new EnvChecker(),
+      new WhiteListFilter(),
+      new InitUserConfig()
+    ];
+    for (const handler of handlers) {
+      const result2 = await handler.handle(callbackQuery.message, workContext);
+      if (result2 instanceof Response) {
+        return result2;
+      }
+    }
+    const callbackQueryContext = new CallbackQueryContext(callbackQuery, workContext);
+    const result = await new HandlerCallbackQuery().handle(callbackQuery.message, callbackQueryContext);
+    if (result instanceof Response) {
+      return result;
+    }
+    return new Response("ok");
+  } catch (e) {
+    console.error(e.message);
+    return new Response(JSON.stringify({
+      message: e.message,
+      stack: e.stack
+    }), { status: 500 });
+  }
 }
 function renderHTML(body) {
   return `

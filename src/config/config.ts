@@ -141,18 +141,6 @@ export class EnvironmentConfig {
     DEV_MODE = false;
     // 是否发送初始化消息
     SEND_INIT_MESSAGE = true;
-    // INLINE_AGENTS
-    INLINE_AGENTS = [];
-    // INLINE_CHAT_MODELS
-    INLINE_CHAT_MODELS = [];
-    // INLINE_IMAGE_MODELS
-    INLINE_IMAGE_MODELS = [];
-    // INLINE_FUNCTION_CALL_TOOLS
-    INLINE_FUNCTION_CALL_TOOLS = [];
-    // INLINE_IMAGE_TRANSFER_MODE
-    INLINE_IMAGE_TRANSFER_MODE = [];
-    // INLINE_HISTORY_LENGTH
-    INLINE_HISTORY_LENGTH = [];
 }
 
 // -- 通用配置 --
@@ -320,4 +308,16 @@ export class ExtraUserConfig {
     };
 
     CURRENT_MODE = 'default';
+
+    // INLINE_AGENTS
+    INLINE_AGENTS = ['oenai', 'claude', 'gemini', 'cohere', 'workersai'];
+    // INLINE_IMAGE_AGENTS
+    INLINE_IMAGE_AGENTS = ['openai', 'silicon'];
+    // INLINE_CHAT_MODELS
+    INLINE_CHAT_MODELS = ['gpt-4o-mini', 'gpt-4o-2024-05-13'];
+    // INLINE_IMAGE_MODELS
+    INLINE_IMAGE_MODELS = ['dall-e-2', 'dall-e-3'];
+    // INLINE_FUNCTION_CALL_TOOLS
+    INLINE_FUNCTION_CALL_TOOLS = ['duckduckgo_search', 'jina_reader'];
+    INLINE_FUNCTION_ASAP = ['true', 'false'];
 }

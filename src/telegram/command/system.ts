@@ -3,6 +3,7 @@
 import type * as Telegram from 'telegram-bot-api-types';
 import type { HistoryItem, HistoryModifierResult } from '../../agent/types';
 import type { WorkerContext } from '../../config/context';
+import type { AgentUserConfig } from '../../config/env';
 import type { UnionData } from '../utils/utils';
 import type { CommandHandler, ScopeType } from './types';
 import { customInfo, loadChatLLM, loadImageGen } from '../../agent';
@@ -16,7 +17,7 @@ import { createTelegramBotAPI } from '../api';
 import { chatWithLLM, OnStreamHander, sendImages } from '../handler/chat';
 import { escape } from '../utils/md2tgmd';
 import { type MessageSender, sendAction } from '../utils/send';
-import { isCfWorker, isTelegramChatTypeGroup, UUIDv4 } from '../utils/utils';
+import { chunckArray, isCfWorker, isTelegramChatTypeGroup, UUIDv4 } from '../utils/utils';
 
 export const COMMAND_AUTH_CHECKER = {
     default(chatType: string): string[] | null {
@@ -607,79 +608,107 @@ export class PerplexityCommandHandler implements CommandHandler {
     };
 }
 
+export interface InlineItem {
+    label: string;
+    data: string;
+    config_key: string;
+    available_values: string[];
+}
+
 export class InlineCommandHandler implements CommandHandler {
     command = '/settings';
     scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
     needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
-    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
-        const agent = loadChatLLM(context.USER_CONFIG);
-        const supportInlineKeys: Record<string, { label: string; value: string }> = {
-            INLINE_AGENTS: {
-                label: 'Agent',
-                value: context.USER_CONFIG.AI_PROVIDER,
-            },
-            INLINE_IMAGE_AGENTS: {
-                label: 'Image Agent',
-                value: context.USER_CONFIG.AI_IMAGE_PROVIDER,
-            },
-            INLINE_CHAT_MODELS: {
-                label: 'Chat Model',
-                value: agent?.model(context.USER_CONFIG) || 'None',
-            },
-            INLINE_VISION_MODELS: {
-                label: 'Vision Model',
-                value: ['openai', 'auto'].includes(context.USER_CONFIG.AI_PROVIDER) ? context.USER_CONFIG.OPENAI_VISION_MODEL : agent?.model(context.USER_CONFIG) || 'None',
-            },
-            INLINE_IMAGE_MODELS: {
-                label: 'Image Model',
-                value: loadImageGen(context.USER_CONFIG)?.model(context.USER_CONFIG) || 'None',
-            },
-            INLINE_FUNCTION_CALL_MODELS: {
-                label: 'Function Model',
-                value: loadChatLLM(context.USER_CONFIG)?.model(context.USER_CONFIG) || 'None',
-            },
-            INLINE_FUNCTION_CALL_TOOLS: {
-                label: 'Function Tools',
-                value: context.USER_CONFIG.USE_TOOLS.join(',') || 'None',
-            },
-        };
-        const reply_markup_list = Object.entries(supportInlineKeys).reduce<Telegram.InlineKeyboardButton[]>((acc, [key, value]) => {
-            if (key in ENV && ENV[key as keyof typeof ENV].length > 0) {
-                acc.push({
-                    text: `${value.label}`,
-                    callback_data: key,
-                });
-            }
-            return acc;
-        }, [] as Telegram.InlineKeyboardButton[]);
-        reply_markup_list.push({
-            text: 'Close',
-            callback_data: 'CLOSE',
-        });
-
-        const currentSettings = `>\`当前配置:\`\n> \n${Object.values(supportInlineKeys).map(({ label, value }) => {
-            return `>\`${label}: ${value}\``;
-        }).join('\n')}`;
-
-        const chunckArray = (arr: any[], size: number): any[][] => {
-            const result = [];
-            for (let i = 0; i < arr.length; i += size) {
-                result.push(arr.slice(i, i + size));
-            }
-            return result;
-        };
-
-        const reply_markup: Telegram.InlineKeyboardMarkup = {
-            inline_keyboard: chunckArray(reply_markup_list, 3),
-        };
+    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender?: MessageSender): Promise<Response> => {
+        const defaultInlineKeys = this.defaultInlineKeys(context.USER_CONFIG);
+        const currentSettings = this.settingsMessage(context.USER_CONFIG, defaultInlineKeys);
 
         const resp = await createTelegramBotAPI(context.SHARE_CONTEXT.botToken).sendMessage({
             chat_id: message.chat.id,
             ...(message.chat.type === 'private' ? {} : { reply_to_message_id: message.message_id }),
             text: escape(currentSettings),
             parse_mode: 'MarkdownV2',
-            reply_markup,
+            reply_markup: {
+                inline_keyboard: this.inlineKeyboard(context.USER_CONFIG, defaultInlineKeys),
+            },
         }).then(r => r.json());
-        return new Response('ok');
+        return resp;
+    };
+
+    defaultInlineKeys = (context: AgentUserConfig): Record<string, InlineItem> => {
+        return {
+            INLINE_AGENTS: {
+                label: 'Agent',
+                data: 'INLINE_AGENTS',
+                config_key: 'AI_PROVIDER',
+                available_values: context.INLINE_AGENTS,
+            },
+            INLINE_IMAGE_AGENTS: {
+                label: 'Image Agent',
+                data: 'INLINE_IMAGE_AGENTS',
+                config_key: 'AI_IMAGE_PROVIDER',
+                available_values: context.INLINE_IMAGE_AGENTS,
+            },
+            INLINE_CHAT_MODELS: {
+                label: 'Chat Model',
+                data: 'INLINE_CHAT_MODELS',
+                config_key: loadChatLLM(context)?.modelKey || 'None',
+                available_values: context.INLINE_CHAT_MODELS,
+            },
+            INLINE_VISION_MODELS: {
+                label: 'Vision Model',
+                data: 'INLINE_VISION_MODELS',
+                config_key: loadChatLLM(context)?.name === 'OpenAI' ? 'OPENAI_VISION_MODEL' : loadChatLLM(context)?.modelKey || 'None',
+                available_values: context.INLINE_VISION_MODELS,
+            },
+            INLINE_IMAGE_MODELS: {
+                label: 'Image Model',
+                data: 'INLINE_IMAGE_MODELS',
+                config_key: loadImageGen(context)?.modelKey || '',
+                available_values: context.INLINE_IMAGE_MODELS,
+            },
+            INLINE_FUNCTION_CALL_MODELS: {
+                label: 'Function Model',
+                data: 'INLINE_FUNCTION_CALL_MODELS',
+                config_key: 'FUNCTION_CALL_MODEL',
+                available_values: context.INLINE_FUNCTION_CALL_MODELS,
+            },
+            INLINE_FUNCTION_CALL_TOOLS: {
+                label: 'Tools',
+                data: 'INLINE_FUNCTION_CALL_TOOLS',
+                config_key: 'USE_TOOLS',
+                available_values: context.INLINE_FUNCTION_CALL_TOOLS,
+            },
+            INLINE_FUNCTION_ASAP: {
+                label: 'Call ASAP',
+                data: 'INLINE_FUNCTION_ASAP',
+                config_key: 'FUNCTION_REPLY_ASAP',
+                available_values: context.INLINE_FUNCTION_ASAP,
+            },
+        };
+    };
+
+    settingsMessage = (context: AgentUserConfig, inlineKeys: Record<string, InlineItem>) => {
+        const currentSettings = `当前配置如下:\n>${'-'.repeat(40)}\n> \n${Object.entries(inlineKeys).map(([_, { label, config_key }]) => {
+            return `>\`${label}: ${context[config_key]}\``;
+        }).join('\n')}`;
+        return `\n${currentSettings}\n> \n>${'-'.repeat(40)}`;
+    };
+
+    inlineKeyboard = (context: AgentUserConfig, inlineKeys: Record<string, InlineItem>) => {
+        const inline_keyboard_list = Object.entries(inlineKeys).reduce<Telegram.InlineKeyboardButton[]>((acc, [key, { label }]) => {
+            if (key in context && context[key].length > 0) {
+                acc.push({
+                    text: label,
+                    callback_data: key,
+                });
+            }
+            return acc;
+        }, [] as Telegram.InlineKeyboardButton[]);
+        inline_keyboard_list.push({
+            text: '❌',
+            callback_data: 'CLOSE',
+        });
+        return chunckArray(inline_keyboard_list, 3);
     };
 }

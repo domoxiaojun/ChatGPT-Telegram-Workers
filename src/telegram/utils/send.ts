@@ -309,7 +309,7 @@ export class TelegraphSender {
             this.telegraphAccessToken = await ENV.DATABASE.get(this.telegraphAccessTokenKey);
             if (!this.telegraphAccessToken) {
                 this.telegraphAccessToken = await this.createAccount();
-                await ENV.DATABASE.put(this.telegraphAccessTokenKey, this.telegraphAccessToken);
+                await ENV.DATABASE.put(this.telegraphAccessTokenKey, this.telegraphAccessToken).catch(console.error);
             }
         }
 

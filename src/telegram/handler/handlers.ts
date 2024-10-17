@@ -1,14 +1,21 @@
 import type * as Telegram from 'telegram-bot-api-types';
-import type { WorkerContextBase } from '../../config/context';
+import type { CallbackQueryContext, WorkerContextBase } from '../../config/context';
+import type { AgentUserConfig } from '../../config/env';
+import type { TelegramBotAPI } from '../api';
+import type { InlineItem } from '../command/system';
 import type { UnionData } from '../utils/utils';
 import type { CallbackQueryHandler, InlineQueryHandler, MessageHandler } from './types';
 import { WorkerContext } from '../../config/context';
 import { ENV } from '../../config/env';
 import { sentMessageIds } from '../../extra/log/logDecortor';
 import { log } from '../../extra/log/logger';
+import { createTelegramBotAPI } from '../api';
 import { handleCommandMessage } from '../command';
+import { loadChatRoleWithContext } from '../command/auth';
+import { COMMAND_AUTH_CHECKER, InlineCommandHandler } from '../command/system';
+import { escape } from '../utils/md2tgmd';
 import { MessageSender } from '../utils/send';
-import { extractMessage, isTelegramChatTypeGroup } from '../utils/utils';
+import { chunckArray, extractMessage, isTelegramChatTypeGroup } from '../utils/utils';
 
 export class SaveLastMessage implements MessageHandler<WorkerContextBase> {
     handle = async (message: Telegram.Message, context: WorkerContextBase): Promise<Response | null> => {
@@ -187,14 +194,156 @@ export class StoreWhiteListMessage implements MessageHandler<WorkerContext> {
     };
 }
 
-export class HandlerInlineQuery implements InlineQueryHandler<WorkerContext> {
-    handle = async (_inlineQuery: Telegram.InlineQuery, _context: WorkerContext): Promise<Response | null> => {
+// export class HandlerInlineQuery implements InlineQueryHandler<WorkerContext> {
+//     handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | null> => {
+//         return null;
+//     };
+// }
+
+export class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext> {
+    handle = async (message: Telegram.Message, context: CallbackQueryContext): Promise<Response | null> => {
+        const api = createTelegramBotAPI(context.SHARE_CONTEXT.botToken);
+        const checkRoleResult = await this.checkWhiteList(message, context, api);
+        if (checkRoleResult instanceof Response) {
+            return checkRoleResult;
+        }
+        if (context.data === 'CLOSE') {
+            await this.closeInlineKeyboard(api, message);
+            return null;
+        }
+        const queryHandler = new InlineCommandHandler();
+        const defaultInlineKeys = queryHandler.defaultInlineKeys(context.USER_CONFIG);
+
+        const [inlineKey, option] = context.data!.split('.');
+        await this.checkInlineKey(api, context, inlineKey, option, defaultInlineKeys);
+
+        let inlineKeyboard: Telegram.InlineKeyboardButton[][] = [];
+
+        if (inlineKey === 'BACK') {
+            inlineKeyboard = queryHandler.inlineKeyboard(context.USER_CONFIG, defaultInlineKeys);
+        } else {
+            const configKey = defaultInlineKeys[inlineKey].config_key;
+            const optionValue = defaultInlineKeys[inlineKey].available_values?.[Number.parseInt(option)];
+
+            if (optionValue) {
+                await this.updateConfig(context, api, configKey, optionValue);
+            }
+
+            let configValue = context.USER_CONFIG[configKey];
+            if (typeof configValue === 'boolean') {
+                configValue = configValue ? 'true' : 'false';
+            }
+            inlineKeyboard = this.updateInlineList(defaultInlineKeys[inlineKey], configValue);
+        }
+        const settingMessage = queryHandler.settingsMessage(context.USER_CONFIG, defaultInlineKeys);
+
+        await this.sendCallBackMessage(api, message, settingMessage, inlineKeyboard);
         return null;
     };
-}
 
-export class HandlerCallbackQuery implements CallbackQueryHandler<WorkerContext> {
-    handle = async (_callbackQuery: Telegram.CallbackQuery, _context: WorkerContext): Promise<Response | null> => {
+    private async checkInlineKey(api: TelegramBotAPI, context: CallbackQueryContext, key: string, index: string, inlineKeys: Record<string, any>) {
+        if (key === 'BACK') {
+            return;
+        }
+        if ((index && inlineKeys[key]?.available_values?.[index]) || (!index && inlineKeys[key])) {
+            return;
+        }
+        this.sendAlert(api, context.query_id, 'Not support inline key', false);
+        throw new Error('Not support inline key');
+    }
+
+    private async sendAlert(api: TelegramBotAPI, query_id: string, text: string, show_alert: boolean = false, cache_time: number = 0) {
+        return api.answerCallbackQuery({
+            callback_query_id: query_id,
+            text,
+            show_alert,
+            cache_time,
+        });
+    }
+
+    private async checkWhiteList(message: Telegram.Message, context: CallbackQueryContext, api: TelegramBotAPI) {
+        const roleList = COMMAND_AUTH_CHECKER.shareModeGroup(message.chat.type);
+        if (roleList) {
+            // 获取身份并判断
+            const chatRole = await loadChatRoleWithContext(message, context, true);
+            if (chatRole === null) {
+                return this.sendAlert(api, context.query_id, '⚠️ Get chat role failed', false);
+            }
+            if (!roleList.includes(chatRole)) {
+                return this.sendAlert(api, context.query_id, `⚠️ 你没有权限进行此操作`, true);
+            }
+        }
         return null;
+    }
+
+    private async updateConfig(context: CallbackQueryContext, api: TelegramBotAPI, configKey: string, newValue: string) {
+        const oldValue = context.USER_CONFIG[configKey];
+        const type = Array.isArray(oldValue) ? 'array' : typeof oldValue;
+        switch (type) {
+            case 'string':
+            case 'boolean':
+                if (oldValue === newValue) {
+                    return;
+                } else {
+                    context.USER_CONFIG[configKey] = newValue;
+                }
+                break;
+            case 'array':
+                if (oldValue.includes(newValue)) {
+                    oldValue.splice(oldValue.indexOf(newValue), 1);
+                } else {
+                    oldValue.push(newValue);
+                }
+                break;
+            default:
+                throw new TypeError('Not support config type');
+        }
+
+        log.info(`[CALLBACK QUERY] Update config: ${configKey} = ${context.USER_CONFIG[configKey]}`);
+
+        await ENV.DATABASE.put(context.SHARE_CONTEXT.configStoreKey, JSON.stringify(context.USER_CONFIG)).catch(console.error);
+        this.sendAlert(api, context.query_id, '数据更新成功', false);
+    }
+
+    private async closeInlineKeyboard(api: TelegramBotAPI, message: Telegram.Message) {
+        const resp = await api.deleteMessage({
+            chat_id: message.chat.id,
+            message_id: message.message_id,
+        }).then(r => r.json());
+        return resp;
+    }
+
+    private async sendCallBackMessage(api: TelegramBotAPI, message: Telegram.Message, text: string, inline_keyboard: Telegram.InlineKeyboardButton[][]) {
+        const resp = await api.editMessageText({
+            chat_id: message.chat.id,
+            message_id: message.message_id,
+            ...(message.chat.type === 'private' ? {} : { reply_to_message_id: message.message_id }),
+            text: escape(text),
+            parse_mode: 'MarkdownV2',
+            reply_markup: { inline_keyboard },
+        }).then(r => r.json());
+        return resp;
+    }
+
+    private updateInlineList(inline_item: InlineItem, configValue: string | boolean) {
+        const inline_list = inline_item.available_values.map((item: string | boolean, index: number) => {
+            let selected = '';
+            if ((configValue && item === configValue) || (Array.isArray(configValue) && configValue?.includes(item))) {
+                selected = '✅';
+            }
+            return {
+                text: `${selected}${item}`,
+                callback_data: `${inline_item.data}.${index}`,
+            };
+        });
+
+        inline_list.push({
+            text: '↩️',
+            callback_data: 'BACK',
+        }, {
+            text: '❌',
+            callback_data: 'CLOSE',
+        });
+        return chunckArray(inline_list, 2);
     };
 }

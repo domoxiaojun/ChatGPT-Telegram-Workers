@@ -2,7 +2,7 @@ services:
   chatgpt-telegram-workers:
     container_name: chatgpt-telegram-workers
     build: .
-    image: adolphnov/chatgpt-telegram-workers:latest
+    image: chatgpt-telegram-workers:latest
     ports:
       - "8787:8787"
     volumes:
