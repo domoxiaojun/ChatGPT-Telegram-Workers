@@ -883,8 +883,8 @@ const ENV_KEY_MAPPER = {
   WORKERS_AI_MODEL: "WORKERS_CHAT_MODEL"
 };
 class Environment extends EnvironmentConfig {
-  BUILD_TIMESTAMP = 1729165647;
-  BUILD_VERSION = "31a18f5";
+  BUILD_TIMESTAMP = 1729167087;
+  BUILD_VERSION = "6405abe";
   I18N = loadI18n();
   PLUGINS_ENV = {};
   USER_CONFIG = createAgentUserConfig();
@@ -2502,6 +2502,7 @@ class OpenAI extends (_a = OpenAIBase, _request_dec2 = [Log], _a) {
             break;
           }
         }
+        messages.unshift({ role: context.SYSTEM_INIT_MESSAGE_ROLE, content: prompt });
       }
       const body = {
         model: this.model(context, params),

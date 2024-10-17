@@ -105,6 +105,7 @@ export class OpenAI extends OpenAIBase implements ChatAgent {
                     break;
                 }
             }
+            messages.unshift({ role: context.SYSTEM_INIT_MESSAGE_ROLE, content: prompt });
         }
 
         const body: Record<string, any> = {
