@@ -15,10 +15,10 @@ export interface MessageHandler<Ctx = any> {
     handle: (message: Telegram.Message, context: Ctx) => Promise<Response | UnionData | null>;
 }
 
-export interface InlineQueryHandler<Ctx = any> {
-    handle: (context: Ctx) => Promise<Response | UnionData | null>;
-}
-
 export interface CallbackQueryHandler<Ctx = any> {
     handle: (message: Telegram.Message, context: Ctx) => Promise<Response | UnionData | null>;
+}
+
+export interface InlineQueryHandler<Ctx = any> {
+    handle: (context: Ctx) => Promise<Response | UnionData | null>;
 }

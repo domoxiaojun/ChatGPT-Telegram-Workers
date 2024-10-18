@@ -702,7 +702,7 @@ class EnvironmentConfig {
   CHAT_COMPLETE_API_TIMEOUT = 0;
   TELEGRAM_API_DOMAIN = "https://api.telegram.org";
   TELEGRAM_AVAILABLE_TOKENS = [];
-  DEFAULT_PARSE_MODE = "Markdown";
+  DEFAULT_PARSE_MODE = "MarkdownV2";
   TELEGRAM_MIN_STREAM_INTERVAL = 0;
   TELEGRAM_PHOTO_SIZE_OFFSET = -2;
   TELEGRAM_IMAGE_TRANSFER_MODE = "url";
@@ -749,6 +749,7 @@ class EnvironmentConfig {
   STORE_MESSAGE_WHITELIST = [];
   STORE_MESSAGE_NUM = 0;
   DROPS_OPENAI_PARAMS = {};
+  COVER_MESSAGE_ROLE = {};
   SEND_IMAGE_FILE = false;
   PPLX_COOKIE = null;
   LOG_LEVEL = "info";
@@ -832,7 +833,7 @@ class ExtraUserConfig {
   FUNCTION_CALL_MODEL = "gpt-4o-mini";
   FUNCTION_CALL_API_KEY = "";
   FUNCTION_CALL_BASE = "";
-  FUNCTION_REPLY_ASAP = false;
+  FUNCTION_REPLY_ASAP = true;
   PROMPT = prompts_default;
   MODES = {
     default: { text: {}, image: {}, audio: { workflow: [{ type: "text" }, {}] } },
@@ -854,8 +855,8 @@ class ExtraUserConfig {
   CURRENT_MODE = "default";
   INLINE_AGENTS = ["oenai", "claude", "gemini", "cohere", "workersai"];
   INLINE_IMAGE_AGENTS = ["openai", "silicon"];
-  INLINE_CHAT_MODELS = ["gpt-4o-mini", "gpt-4o-2024-05-13"];
-  INLINE_VISION_MODELS = ["gpt-4o-mini", "gpt-4o-2024-05-13"];
+  INLINE_CHAT_MODELS = [];
+  INLINE_VISION_MODELS = [];
   INLINE_IMAGE_MODELS = ["dall-e-2", "dall-e-3"];
   INLINE_FUNCTION_CALL_TOOLS = ["duckduckgo_search", "jina_reader"];
   INLINE_FUNCTION_ASAP = ["true", "false"];
@@ -883,8 +884,8 @@ const ENV_KEY_MAPPER = {
   WORKERS_AI_MODEL: "WORKERS_CHAT_MODEL"
 };
 class Environment extends EnvironmentConfig {
-  BUILD_TIMESTAMP = 1729167087;
-  BUILD_VERSION = "6405abe";
+  BUILD_TIMESTAMP = 1729252671;
+  BUILD_VERSION = "9c1cbbd";
   I18N = loadI18n();
   PLUGINS_ENV = {};
   USER_CONFIG = createAgentUserConfig();
@@ -2514,10 +2515,14 @@ class OpenAI extends (_a = OpenAIBase, _request_dec2 = [Log], _a) {
       };
       delete body.agent;
       delete body.type;
+      const { body: newBody, onStream: newOnStream } = this.extraHandle(body, context, onStream);
+      return requestChatCompletions(url, header, newBody, newOnStream);
+    })), __runInitializers(_init2, 11, this);
+    __publicField(this, "extraHandle", (body, context, onStream) => {
       if (Object.keys(ENV.DROPS_OPENAI_PARAMS).length > 0) {
-        for (const [models, params2] of Object.entries(ENV.DROPS_OPENAI_PARAMS)) {
-          if (models.includes(body.model)) {
-            params2.split(",").forEach((p) => delete body[p]);
+        for (const [models, params] of Object.entries(ENV.DROPS_OPENAI_PARAMS)) {
+          if (models.split(",").includes(body.model)) {
+            params.split(",").forEach((p) => delete body[p]);
             break;
           }
         }
@@ -2526,7 +2531,18 @@ class OpenAI extends (_a = OpenAIBase, _request_dec2 = [Log], _a) {
           onStream = null;
         }
       }
-      if (!this.model(context, params).includes("gpt") && !ENV.MODEL_COMPATIBLE_OPENAI) {
+      if (ENV.COVER_MESSAGE_ROLE) {
+        for (const [models, roles] of Object.entries(ENV.COVER_MESSAGE_ROLE)) {
+          const [oldRole, newRole] = roles.split(":");
+          if (models.split(",").includes(body.model)) {
+            body.messages = body.messages.map((m) => {
+              m.role = m.role === oldRole ? newRole : m.role;
+              return m;
+            });
+          }
+        }
+      }
+      if (!body.model.includes("gpt") && !ENV.MODEL_COMPATIBLE_OPENAI) {
         body.messages = body.messages.filter((m) => !!m.content).map(
           (m) => {
             if (m.role === "tool") {
@@ -2541,8 +2557,8 @@ class OpenAI extends (_a = OpenAIBase, _request_dec2 = [Log], _a) {
         delete body.tool_choice;
         delete body.tool_calls;
       }
-      return requestChatCompletions(url, header, body, onStream);
-    })), __runInitializers(_init2, 11, this);
+      return { body, onStream };
+    });
     this.type = type;
   }
 }
@@ -4801,6 +4817,34 @@ class CallbackQueryContext {
     this.SHARE_CONTEXT = workContext.SHARE_CONTEXT;
   }
 }
+class InlineQueryContext {
+  token;
+  query_id;
+  from_id;
+  chat_type;
+  query;
+  constructor(token, inlineQuery) {
+    this.token = token;
+    this.query_id = inlineQuery.id;
+    this.from_id = inlineQuery.from.id;
+    this.chat_type = inlineQuery.chat_type;
+    this.query = inlineQuery.query;
+  }
+}
+class ChosenInlineContext {
+  token;
+  from_id;
+  query;
+  result_id;
+  inline_message_id;
+  constructor(token, choosenInlineQuery) {
+    this.token = token;
+    this.from_id = choosenInlineQuery.from.id;
+    this.query = choosenInlineQuery.query;
+    this.result_id = choosenInlineQuery.result_id;
+    this.inline_message_id = choosenInlineQuery.inline_message_id || "";
+  }
+}
 function checkMention(content, entities, botName, botId) {
   let isMention = false;
   for (const entity of entities) {
@@ -5048,6 +5092,9 @@ class StoreWhiteListMessage {
 }
 class HandlerCallbackQuery {
   handle = async (message, context) => {
+    if (!context.data) {
+      return new Response("success", { status: 200 });
+    }
     const api = createTelegramBotAPI(context.SHARE_CONTEXT.botToken);
     const checkRoleResult = await this.checkWhiteList(message, context, api);
     if (checkRoleResult instanceof Response) {
@@ -5176,6 +5223,74 @@ class HandlerCallbackQuery {
     return chunckArray(inline_list, 2);
   }
 }
+class HandlerInlineQuery {
+  handle = async (context) => {
+    if (!context.query?.endsWith("$$")) {
+      log.info(`[INLINE QUERY] Not end with $$: ${context.query}`);
+      return new Response("success", { status: 200 });
+    }
+    const api = createTelegramBotAPI(context.token);
+    const resp = await api.answerInlineQuery({
+      inline_query_id: context.query_id,
+      results: [{
+        type: "article",
+        id: "STREAM",
+        title: "Stream Mode",
+        input_message_content: {
+          message_text: `Stream text will be sent`,
+          parse_mode: "MarkdownV2"
+        },
+        reply_markup: {
+          inline_keyboard: [
+            [{
+              text: "Thinking...",
+              callback_data: "STREAM"
+            }]
+          ]
+        }
+      }, {
+        type: "article",
+        id: "FULL",
+        title: "Full Mode",
+        input_message_content: {
+          message_text: `Full text will be sent`,
+          parse_mode: "MarkdownV2"
+        },
+        reply_markup: {
+          inline_keyboard: [
+            [{
+              text: "Thinking...",
+              callback_data: "FULL"
+            }]
+          ]
+        }
+      }]
+    }).then((r) => r.json());
+    log.info(`[INLINE QUERY] Answer inline query: ${JSON.stringify(resp)}`);
+    return new Response("success", { status: 200 });
+  };
+}
+class HandlerChosenInline {
+  handle = async (context) => {
+    const api = createTelegramBotAPI(context.token);
+    await new Promise((resolve) => setTimeout(resolve, 3e3));
+    const resp = await api.editMessageText({
+      inline_message_id: context.inline_message_id,
+      text: `Test edit message.`,
+      parse_mode: "MarkdownV2"
+    }).then((r) => r.json());
+    return resp;
+  };
+}
+class CheckInlineQueryWhiteList {
+  handle = async (context) => {
+    if (ENV.CHAT_WHITE_LIST.includes(`${context.from_id}`)) {
+      return null;
+    }
+    log.error(`User ${context.from_id} not in the white list`);
+    return new Response(`User ${context.from_id} not in the white list`, { status: 403 });
+  };
+}
 function loadMessage(body) {
   switch (true) {
     case !!body.message:
@@ -5184,9 +5299,12 @@ function loadMessage(body) {
       return (token) => handleInlineQuery(token, body.inline_query);
     case !!body.callback_query:
       return (token) => handleCallbackQuery(token, body.callback_query);
+    case !!body.chosen_inline_result:
+      return (token) => handleChosenInline(token, body.chosen_inline_result);
     case !!body.edited_message:
       throw new Error("Ignore edited message");
     default:
+      log.info(`Not support message type: ${JSON.stringify(body, null, 2)}`);
       throw new Error("Not support message type");
   }
 }
@@ -5224,11 +5342,7 @@ async function handleMessage(token, message) {
       }
     }
   } catch (e) {
-    console.error(e.message);
-    return new Response(JSON.stringify({
-      message: e.message,
-      stack: e.stack
-    }), { status: 500 });
+    return catchError(e);
   } finally {
     clearMessageIdsAndLog(message, context);
   }
@@ -5238,10 +5352,6 @@ async function handleMessage(token, message) {
     clearLog(context2.USER_CONFIG);
   }
   return null;
-}
-async function handleInlineQuery(token, inlineQuery) {
-  log.info(`handleInlineQuery`, inlineQuery);
-  return new Response("ok");
 }
 async function handleCallbackQuery(token, callbackQuery) {
   try {
@@ -5266,14 +5376,54 @@ async function handleCallbackQuery(token, callbackQuery) {
     if (result instanceof Response) {
       return result;
     }
-    return new Response("ok");
   } catch (e) {
-    console.error(e.message);
-    return new Response(JSON.stringify({
-      message: e.message,
-      stack: e.stack
-    }), { status: 500 });
+    return catchError(e);
   }
+  return null;
+}
+async function handleInlineQuery(token, inlineQuery) {
+  log.info(`handleInlineQuery`, inlineQuery);
+  try {
+    const context = new InlineQueryContext(token, inlineQuery);
+    const handlers = [
+      new CheckInlineQueryWhiteList(),
+      new HandlerInlineQuery()
+    ];
+    for (const handler of handlers) {
+      const result = await handler.handle(context);
+      if (result instanceof Response) {
+        return result;
+      }
+    }
+  } catch (error) {
+    return catchError(error);
+  }
+  return null;
+}
+async function handleChosenInline(token, chosenInlineQuery) {
+  log.info(`handleChosenInlineQuery`, chosenInlineQuery);
+  try {
+    const context = new ChosenInlineContext(token, chosenInlineQuery);
+    const handlers = [
+      new HandlerChosenInline()
+    ];
+    for (const handler of handlers) {
+      const result = await handler.handle(context);
+      if (result instanceof Response) {
+        return result;
+      }
+    }
+  } catch (error) {
+    return catchError(error);
+  }
+  return null;
+}
+function catchError(e) {
+  console.error(e.message);
+  return new Response(JSON.stringify({
+    message: e.message,
+    stack: e.stack
+  }), { status: 500 });
 }
 function renderHTML(body) {
   return `

@@ -118,10 +118,17 @@ export class OpenAI extends OpenAIBase implements ChatAgent {
         };
         delete body.agent;
         delete body.type;
+
         // 过滤掉不支持的参数
+        const { body: newBody, onStream: newOnStream } = this.extraHandle(body, context, onStream);
+        return requestChatCompletions(url, header, newBody, newOnStream);
+    };
+
+    readonly extraHandle = (body: Record<string, any>, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): any => {
+        // drop params
         if (Object.keys(ENV.DROPS_OPENAI_PARAMS).length > 0) {
             for (const [models, params] of Object.entries(ENV.DROPS_OPENAI_PARAMS)) {
-                if (models.includes(body.model)) {
+                if (models.split(',').includes(body.model)) {
                     params.split(',').forEach(p => delete body[p]);
                     break;
                 }
@@ -131,8 +138,20 @@ export class OpenAI extends OpenAIBase implements ChatAgent {
                 onStream = null;
             }
         }
-
-        if (!this.model(context, params).includes('gpt') && !ENV.MODEL_COMPATIBLE_OPENAI) {
+        // cover message role
+        if (ENV.COVER_MESSAGE_ROLE) {
+            for (const [models, roles] of Object.entries(ENV.COVER_MESSAGE_ROLE)) {
+                const [oldRole, newRole] = roles.split(':');
+                if (models.split(',').includes(body.model)) {
+                    body.messages = body.messages.map((m: any) => {
+                        m.role = m.role === oldRole ? newRole : m.role;
+                        return m;
+                    });
+                }
+            }
+        }
+        // compatible function call
+        if (!body.model.includes('gpt') && !ENV.MODEL_COMPATIBLE_OPENAI) {
             // claude 和 gemini 不支持content为空
             body.messages = body.messages.filter((m: any) => !!m.content).map(
                 (m: any) => {
@@ -148,9 +167,7 @@ export class OpenAI extends OpenAIBase implements ChatAgent {
             delete body.tool_choice;
             delete body.tool_calls;
         }
-
-        // console.log(JSON.stringify(messages, null, 2));
-        return requestChatCompletions(url, header, body, onStream);
+        return { body, onStream };
     };
 }
 

@@ -18,7 +18,7 @@ export class EnvironmentConfig {
     // 允许访问的Telegram Token， 设置时以逗号分隔
     TELEGRAM_AVAILABLE_TOKENS: string[] = [];
     // 默认消息模式
-    DEFAULT_PARSE_MODE = 'Markdown';
+    DEFAULT_PARSE_MODE = 'MarkdownV2';
     // 最小stream模式消息间隔，小于等于0则不限制
     TELEGRAM_MIN_STREAM_INTERVAL = 0;
     // 图片尺寸偏移 0为第一位，-1为最后一位, 越靠后的图片越大。PS: 图片过大可能导致token消耗过多，或者workers超时或内存不足
@@ -78,59 +78,63 @@ export class EnvironmentConfig {
 
     // -------------
 
-    // 是否读取文件
+    // Whether to read files
     ENABLE_FILE = true;
-    // 群聊中回复对象默认为触发对象，开启时优先为被回复的对象
+    // In group chats, the reply object is the trigger object by default, and when enabled, it is prioritized as the object to be replied to
     ENABLE_REPLY_TO_MENTION = false;
-    // 忽略指定文本开头的消息
+    // Ignore messages starting with specified text
     IGNORE_TEXT = '';
-    // 多流程时, 是否隐藏中间步骤信息
+    // When multiple processes, whether to hide intermediate step information
     HIDE_MIDDLE_MESSAGE = false;
-    // 替换词，同时会强制触发bot { ':n': '/new', ':g3': '/gpt3', ':g4': '/gpt4'}
+    // Replace words, and will force trigger bot { ':n': '/new', ':g3': '/gpt3', ':g4': '/gpt4'}
     CHAT_MESSAGE_TRIGGER = {};
     TOOLS: Record<string, FuncTool> = tools_default;
-    // 询问AI调用function的次数
+    // Ask AI to call function times
     FUNC_LOOP_TIMES = 1;
-    // 显示调用信息
+    // Show call info
     CALL_INFO = true;
-    // func call 每次成功命中后最多并发次数
+    // func call Maximum number of concurrent calls after each successful hit
     CON_EXEC_FUN_NUM = 1;
-    // 当长度到达设置值时群组将发送telegraph文章 小于0时不发送
+    // When the length reaches the set value, the group will send a telegraph article. If less than 0, it will not be sent
     TELEGRAPH_NUM_LIMIT = -1;
-    // 发文的作者链接; 发文作者目前为机器人ID, 未设置时为anonymous
+    // Telegraph author link; The author of the article is currently the robot ID, and if not set, it is anonymous
     TELEGRAPH_AUTHOR_URL = '';
-    // 关闭链接预览
+    // Disable link preview
     DISABLE_WEB_PREVIEW = false;
-    // 消息过期时间, 单位: 分钟
+    // Message expired time, unit: minute
     EXPIRED_TIME = -1;
-    // 任务扫描周期 使用cron 表达式, 例如 '*/10 0-2,6-23 * * *' 表示每天0-2点，6-23点，每十分钟执行一次定时任务
+    // Schedule check time use cron expression, for example '*/10 0-2,6-23 * * *' means every ten minutes from 0 to 2 and from 6 to 23
     CRON_CHECK_TIME = '';
-    // 定时删除群组消息的类型 提示信息:tip 普通对话:chat
+    // Schedule group delete type tip dialog:tip and chat dialog:chat
     SCHEDULE_GROUP_DELETE_TYPE = ['tip'];
-    // 定时删除私人消息的类型 命令对话:command与普通对话:chat
+    // Schedule private delete type command dialog:command and chat dialog:chat
     SCHEDULE_PRIVATE_DELETE_TYPE = ['tip'];
 
-    // 对话总时长时间限制
+    // All complete api timeout
     ALL_COMPLETE_API_TIMEOUT = 180;
-    // 函数调用超时时间
+    // Function call timeout
     FUNC_TIMEOUT = 15;
-    // 存储消息白名单
+    // Store message whitelist
     STORE_MESSAGE_WHITELIST: number[] = [];
-    // 存储消息条数
+    // Store message num
     STORE_MESSAGE_NUM = 0;
+    // Drop openai params, the key is the model name, separated by commas, and the value is the parameters to be dropped, separated by commas.
     // DROPS_OPENAI_PARAMS = { 'o1-mini,o1-preview': 'max_tokens,temperature,stream' };
     DROPS_OPENAI_PARAMS: Record<string, string> = {};
-    //  以文件方式发送图片
+    // Cover message rol, the key is the model name, separated by commas, and the value is overridden_role:new_role.
+    // COVER_MESSAGE_ROLE = { 'o1-mini,o1-preview': 'system:user' };
+    COVER_MESSAGE_ROLE: Record<string, string> = {};
+    // Send pictures via files format
     SEND_IMAGE_FILE: boolean = false;
     // Perplexity cookie
     PPLX_COOKIE: string | null = null;
-    // 日志级别
+    // Log level
     LOG_LEVEL: LogLevelType = 'info';
 
-    // 模型不完全兼容openai function call设置参数为false， 默认不完全兼容
-    // 当 模型名不包含 gpt 且此参数设置为false时：去掉 content为空的数据（gpt调用函数时，content为空），去掉 tool_choice、tool_calls参数
-    // 同时将role = tool 的数据 role替换为user，content 替换为 name + result
-    // 此参数仅在chat agent为openai时生效
+    // The model is not fully compatible with the openai function call setting parameter to false, by default it is not fully compatible.
+    // When the model name does not contain "gpt" and this parameter is set to false: remove data with empty content (when calling gpt function, content is empty), remove tool_choice and tool_calls parameters.
+    // At the same time, replace role = tool data with role = user, and replace content with name + result.
+    // This parameter only takes effect when chat agent is openai.
     MODEL_COMPATIBLE_OPENAI = false;
 
     // -------------
@@ -165,17 +169,17 @@ export class AgentShareConfig {
 export class OpenAIConfig {
     // OpenAI API Key
     OPENAI_API_KEY: string[] = [];
-    // OpenAI的模型名称
+    // OpenAI Model
     OPENAI_CHAT_MODEL = 'gpt-4o-mini';
     // OpenAI API BASE ``
     OPENAI_API_BASE = 'https://api.openai.com/v1';
     // OpenAI API Extra Params
     OPENAI_API_EXTRA_PARAMS: Record<string, any> = {};
-    // OpenAI STT 模型
+    // OpenAI STT Model
     OPENAI_STT_MODEL = 'whisper-1';
-    // OpenAI Vision 模型
+    // OpenAI Vision Model
     OPENAI_VISION_MODEL = 'gpt-4o-mini';
-    // OpenAI TTS 模型
+    // OpenAI TTS Model
     OPENAI_TTS_MODEL = 'tts-1';
 }
 
@@ -276,23 +280,23 @@ export class DefineKeys {
 
 export class ExtraUserConfig {
     MAPPING_KEY = '-p:SYSTEM_INIT_MESSAGE|-n:MAX_HISTORY_LENGTH|-a:AI_PROVIDER|-ai:AI_IMAGE_PROVIDER|-m:CHAT_MODEL|-md:CURRENT_MODE|-v:OPENAI_VISION_MODEL|-t:OPENAI_TTS_MODEL|-ex:OPENAI_API_EXTRA_PARAMS|-mk:MAPPING_KEY|-mv:MAPPING_VALUE|-asap:FUNCTION_REPLY_ASAP|-fm:FUNCTION_CALL_MODEL|-tool:USE_TOOLS|-oli:IMAGE_MODEL';
-    // /set 指令映射值  | 分隔多个关系，:分隔映射
+    // /set command mapping value, separated by |, : separates multiple relationships
     MAPPING_VALUE = '';
     // MAPPING_VALUE = "cson:claude-3-5-sonnet-20240620|haiku:claude-3-haiku-20240307|g4m:gpt-4o-mini|g4:gpt-4o|rp+:command-r-plus";
-    // 消息中是否显示模型、时间额外信息
+    // Whether to show model and time information in the message
     ENABLE_SHOWINFO = false;
-    // 消息中是否显示token信息(如果有)
+    // Whether to show token information in the message (if any)
     ENABLE_SHOWTOKEN = false;
-    // 需要使用的函数 当前有 duckduckgo_search 和jina_reader
+    // Function to use, currently has duckduckgo_search and jina_reader
     // '["duckduckgo_search", "jina_reader"]'
     USE_TOOLS: string[] = [];
     JINA_API_KEY = [];
-    // openai格式调用FUNCTION CALL参数
+    // openai format function call parameters
     FUNCTION_CALL_MODEL = 'gpt-4o-mini';
     FUNCTION_CALL_API_KEY = '';
     FUNCTION_CALL_BASE = '';
-    // 启用FUNCTION CALL未命中函数时，开启此选项，会直接收到FUNCTION_CALL模型的回复
-    FUNCTION_REPLY_ASAP = false;
+    // When the function call is not hit, enable this option to directly receive the reply from the FUNCTION_CALL model.
+    FUNCTION_REPLY_ASAP = true;
     PROMPT: Record<string, string> = prompts_default;
     MODES: Record<string, FlowStruct> = {
         default: { text: {}, image: {}, audio: { workflow: [{ type: 'text' }, {}] } },
@@ -320,9 +324,9 @@ export class ExtraUserConfig {
     // INLINE_IMAGE_AGENTS
     INLINE_IMAGE_AGENTS = ['openai', 'silicon'];
     // INLINE_CHAT_MODELS
-    INLINE_CHAT_MODELS = ['gpt-4o-mini', 'gpt-4o-2024-05-13'];
+    INLINE_CHAT_MODELS = [];
     // INLINE_VISION_MODELS
-    INLINE_VISION_MODELS = ['gpt-4o-mini', 'gpt-4o-2024-05-13'];
+    INLINE_VISION_MODELS = [];
     // INLINE_IMAGE_MODELS
     INLINE_IMAGE_MODELS = ['dall-e-2', 'dall-e-3'];
     // INLINE_FUNCTION_CALL_TOOLS

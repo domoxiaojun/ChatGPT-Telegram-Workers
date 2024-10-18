@@ -1,15 +1,18 @@
 import type * as Telegram from 'telegram-bot-api-types';
 import type { WorkerContext } from '../../config/context';
-import type { MessageHandler } from './types';
-import { CallbackQueryContext, WorkerContextBase } from '../../config/context';
+import type { InlineQueryHandler, MessageHandler } from './types';
+import { CallbackQueryContext, ChosenInlineContext, InlineQueryContext, WorkerContextBase } from '../../config/context';
 import { clearLog, sentMessageIds } from '../../extra/log/logDecortor';
 import { log } from '../../extra/log/logger';
 import { ChatHandler } from './chat';
 import { GroupMention } from './group';
 import {
+    CheckInlineQueryWhiteList,
     CommandHandler,
     EnvChecker,
     HandlerCallbackQuery,
+    HandlerChosenInline,
+    HandlerInlineQuery,
     InitUserConfig,
     MessageFilter,
     OldMessageFilter,
@@ -28,9 +31,12 @@ function loadMessage(body: Telegram.Update) {
             return (token: string) => handleInlineQuery(token, body.inline_query!);
         case !!body.callback_query:
             return (token: string) => handleCallbackQuery(token, body.callback_query!);
+        case !!body.chosen_inline_result:
+            return (token: string) => handleChosenInline(token, body.chosen_inline_result!);
         case !!body.edited_message:
             throw new Error('Ignore edited message');
         default:
+            log.info(`Not support message type: ${JSON.stringify(body, null, 2)}`);
             throw new Error('Not support message type');
     }
 }
@@ -84,11 +90,7 @@ async function handleMessage(token: string, message: Telegram.Message) {
             }
         }
     } catch (e) {
-        console.error((e as Error).message);
-        return new Response(JSON.stringify({
-            message: (e as Error).message,
-            stack: (e as Error).stack,
-        }), { status: 500 });
+        return catchError(e as Error);
     } finally {
         clearMessageIdsAndLog(message, context as WorkerContext);
     }
@@ -100,13 +102,6 @@ async function handleMessage(token: string, message: Telegram.Message) {
     }
 
     return null;
-}
-
-async function handleInlineQuery(token: string, inlineQuery: Telegram.InlineQuery) {
-    log.info(`handleInlineQuery`, inlineQuery);
-    // TODO
-
-    return new Response('ok');
 }
 
 async function handleCallbackQuery(token: string, callbackQuery: Telegram.CallbackQuery) {
@@ -130,18 +125,59 @@ async function handleCallbackQuery(token: string, callbackQuery: Telegram.Callba
         }
 
         const callbackQueryContext = new CallbackQueryContext(callbackQuery, workContext as WorkerContext);
-
         const result = await new HandlerCallbackQuery().handle(callbackQuery.message, callbackQueryContext);
         if (result instanceof Response) {
             return result;
         }
-
-        return new Response('ok');
     } catch (e) {
-        console.error((e as Error).message);
-        return new Response(JSON.stringify({
-            message: (e as Error).message,
-            stack: (e as Error).stack,
-        }), { status: 500 });
+        return catchError(e as Error);
     }
+    return null;
+}
+
+async function handleInlineQuery(token: string, inlineQuery: Telegram.InlineQuery) {
+    log.info(`handleInlineQuery`, inlineQuery);
+    try {
+        const context = new InlineQueryContext(token, inlineQuery);
+        const handlers: InlineQueryHandler<InlineQueryContext>[] = [
+            new CheckInlineQueryWhiteList(),
+            new HandlerInlineQuery(),
+        ];
+        for (const handler of handlers) {
+            const result = await handler.handle(context);
+            if (result instanceof Response) {
+                return result;
+            }
+        }
+    } catch (error) {
+        return catchError(error as Error);
+    }
+    return null;
+}
+
+async function handleChosenInline(token: string, chosenInlineQuery: Telegram.ChosenInlineResult) {
+    log.info(`handleChosenInlineQuery`, chosenInlineQuery);
+    try {
+        const context = new ChosenInlineContext(token, chosenInlineQuery);
+        const handlers: InlineQueryHandler<ChosenInlineContext>[] = [
+            new HandlerChosenInline(),
+        ];
+        for (const handler of handlers) {
+            const result = await handler.handle(context);
+            if (result instanceof Response) {
+                return result;
+            }
+        }
+    } catch (error) {
+        return catchError(error as Error);
+    }
+    return null;
+}
+
+function catchError(e: Error) {
+    console.error((e as Error).message);
+    return new Response(JSON.stringify({
+        message: (e as Error).message,
+        stack: (e as Error).stack,
+    }), { status: 500 });
 }

@@ -169,3 +169,34 @@ export class CallbackQueryContext {
         this.SHARE_CONTEXT = workContext.SHARE_CONTEXT;
     }
 }
+
+export class InlineQueryContext {
+    token: string;
+    query_id: string;
+    from_id: number;
+    chat_type: string | undefined;
+    query: string;
+
+    constructor(token: string, inlineQuery: Telegram.InlineQuery) {
+        this.token = token;
+        this.query_id = inlineQuery.id;
+        this.from_id = inlineQuery.from.id;
+        this.chat_type = inlineQuery.chat_type;
+        this.query = inlineQuery.query;
+    }
+}
+
+export class ChosenInlineContext {
+    token: string;
+    from_id: number;
+    query: string;
+    result_id: string;
+    inline_message_id: string;
+    constructor(token: string, choosenInlineQuery: Telegram.ChosenInlineResult) {
+        this.token = token;
+        this.from_id = choosenInlineQuery.from.id;
+        this.query = choosenInlineQuery.query;
+        this.result_id = choosenInlineQuery.result_id;
+        this.inline_message_id = choosenInlineQuery.inline_message_id || '';
+    }
+}
