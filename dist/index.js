@@ -398,7 +398,7 @@ const duckduckgo_search = {
         keywords: {
           type: "array",
           items: { type: "string" },
-          description: "搜索的关键词列表。例如：['Python', '机器学习', '最新进展']。列表长度至少为3，最大为4。这些关键词应该：- 简洁明了，通常每个关键词不超过2-3个单词 - 涵盖查询的核心内容 - 避免使用过于宽泛或模糊的词语 - 最后一个关键词应该最全。另外,不要自行生成当前时间的关键词"
+          description: `Keyword list for search. For example: ['Python', 'machine learning', 'latest developments']. The list should have a length of at least 3 and maximum of 4. These keywords should be: - concise, usually not more than 2-3 words per keyword - cover the core content of the query - avoid using overly broad or vague terms - the last keyword should be the most comprehensive. Also, do not generate keywords based on current time.`
         }
       },
       required: ["keywords"],
@@ -625,6 +625,7 @@ const scheduleResp = (ok, reason = "") => {
 async function schedule_detele_message(ENV2) {
   try {
     log.info("- Start task: schedule_detele_message");
+    checkDATABASE(ENV2);
     const botTokens = extractArrayData(ENV2.TELEGRAM_AVAILABLE_TOKENS);
     const botNames = extractArrayData(ENV2.TELEGRAM_BOT_NAME);
     const scheduleDeteleKey = "schedule_detele_message";
@@ -654,7 +655,7 @@ Nothing need to delete.`);
     await setData(ENV2, scheduleDeteleKey, scheduledData);
     return scheduleResp(true);
   } catch (e) {
-    console.error(e.message);
+    console.error(e.message, e.stack);
     return scheduleResp(false, e.message);
   }
 }
@@ -693,6 +694,11 @@ function sortDeleteMessages(chats) {
     sortedMessages.rest[chat_id] = messages.filter((msg) => msg.ttl > Date.now());
   }
   return sortedMessages;
+}
+function checkDATABASE(ENV2) {
+  if (!ENV2.DATABASE) {
+    throw new Error("DATABASE is not found");
+  }
 }
 const tasks = { schedule_detele_message };
 const tools_default = { duckduckgo_search, jina_reader };
@@ -884,8 +890,8 @@ const ENV_KEY_MAPPER = {
   WORKERS_AI_MODEL: "WORKERS_CHAT_MODEL"
 };
 class Environment extends EnvironmentConfig {
-  BUILD_TIMESTAMP = 1729252671;
-  BUILD_VERSION = "9c1cbbd";
+  BUILD_TIMESTAMP = 1729315618;
+  BUILD_VERSION = "7829ead";
   I18N = loadI18n();
   PLUGINS_ENV = {};
   USER_CONFIG = createAgentUserConfig();
@@ -1778,7 +1784,7 @@ async function checkIsNeedTagIds(context, resp, msgType) {
     } else {
       message_id = [clone_resp?.result?.message_id];
     }
-    if (!message_id) {
+    if (message_id.filter(Boolean).length === 0) {
       console.error(JSON.stringify(clone_resp));
       break;
     }
@@ -2115,20 +2121,23 @@ function fixOpenAICompatibleOptions(options) {
   options.contentExtractor = options.contentExtractor || function(d) {
     return d?.choices?.[0]?.delta?.content;
   };
+  options.fullContentExtractor = options.fullContentExtractor || function(d) {
+    return d.choices?.[0]?.message.content;
+  };
   options.functionCallExtractor = options.functionCallExtractor || function(d, call_list) {
     const chunck = d?.choices?.[0]?.delta?.tool_calls;
     if (!Array.isArray(chunck))
       return;
     for (const a of chunck) {
+      if (!Object.hasOwn(a, "index")) {
+        throw new Error(`The function chunck don't have index: ${JSON.stringify(chunck)}`);
+      }
       if (a?.type === "function") {
         call_list[a.index] = { id: a.id, type: a.type, function: a.function };
       } else {
         call_list[a.index].function.arguments += a.function.arguments;
       }
     }
-  };
-  options.fullContentExtractor = options.fullContentExtractor || function(d) {
-    return d.choices?.[0]?.message.content;
   };
   options.fullFunctionCallExtractor = options.fullFunctionCallExtractor || function(d) {
     return d?.choices?.[0]?.message?.tool_calls;
@@ -2556,6 +2565,9 @@ class OpenAI extends (_a = OpenAIBase, _request_dec2 = [Log], _a) {
         );
         delete body.tool_choice;
         delete body.tool_calls;
+      }
+      if (!onStream && body.stream_options) {
+        delete body.stream_options;
       }
       return { body, onStream };
     });
@@ -3512,7 +3524,7 @@ ${llm_resp.content}`, ENV.DEFAULT_PARSE_MODE, "chat");
     llm_result.push(...func_result.map((content, index2) => ({
       role: "tool",
       content,
-      name: llm_content.tool_calls[index2].name,
+      name: llm_content.tool_calls[index2].function.name,
       tool_call_id: llm_content.tool_calls[index2].id
     })));
     return llm_result;
@@ -4302,6 +4314,9 @@ ${detailSet}
   };
   parseMappings(context) {
     const parseMapping = (mapping) => {
+      if (!mapping) {
+        return {};
+      }
       const entries = [];
       const pairs = mapping.split("|");
       for (const k of pairs) {

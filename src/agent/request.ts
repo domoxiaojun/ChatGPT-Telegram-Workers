@@ -7,8 +7,8 @@ import { Stream } from './stream';
 export interface SseChatCompatibleOptions {
     streamBuilder?: (resp: Response, controller: AbortController) => Stream;
     contentExtractor?: (data: object) => string | null;
-    functionCallExtractor?: (data: object, call_list: any[]) => void;
     fullContentExtractor?: (data: object) => string | null;
+    functionCallExtractor?: (data: object, call_list: any[]) => void;
     fullFunctionCallExtractor?: (data: object) => OpenAIFuncCallData[] | null;
     errorExtractor?: (data: object) => string | null;
 }
@@ -21,6 +21,9 @@ function fixOpenAICompatibleOptions(options: SseChatCompatibleOptions | null): S
     options.contentExtractor = options.contentExtractor || function (d: any) {
         return d?.choices?.[0]?.delta?.content;
     };
+    options.fullContentExtractor = options.fullContentExtractor || function (d: any) {
+        return d.choices?.[0]?.message.content;
+    };
     options.functionCallExtractor
         = options.functionCallExtractor
         || function (d: any, call_list: OpenAIFuncCallData[]) {
@@ -28,9 +31,9 @@ function fixOpenAICompatibleOptions(options: SseChatCompatibleOptions | null): S
             if (!Array.isArray(chunck))
                 return;
             for (const a of chunck) {
-                // if (!Object.hasOwn(a, 'index')) {
-                //     throw new Error(`The function chunck don't have index: ${JSON.stringify(chunck)}`);
-                // }
+                if (!Object.hasOwn(a, 'index')) {
+                    throw new Error(`The function chunck don't have index: ${JSON.stringify(chunck)}`);
+                }
                 if (a?.type === 'function') {
                     call_list[a.index] = { id: a.id, type: a.type, function: a.function };
                 } else {
@@ -38,9 +41,6 @@ function fixOpenAICompatibleOptions(options: SseChatCompatibleOptions | null): S
                 }
             }
         };
-    options.fullContentExtractor = options.fullContentExtractor || function (d: any) {
-        return d.choices?.[0]?.message.content;
-    };
     options.fullFunctionCallExtractor
         = options.fullFunctionCallExtractor
         || function (d: any) {

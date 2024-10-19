@@ -181,7 +181,7 @@ export class FunctionCall {
         llm_result.push(...func_result.map((content, index) => ({
             role: 'tool',
             content,
-            name: llm_content.tool_calls![index].name,
+            name: llm_content.tool_calls![index].function.name,
             tool_call_id: llm_content.tool_calls![index].id,
         })));
         return llm_result;

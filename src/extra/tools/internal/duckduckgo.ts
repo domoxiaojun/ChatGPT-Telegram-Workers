@@ -277,7 +277,7 @@ export const duckduckgo_search: FuncTool = {
                 keywords: {
                     type: 'array',
                     items: { type: 'string' },
-                    description: '搜索的关键词列表。例如：[\'Python\', \'机器学习\', \'最新进展\']。列表长度至少为3，最大为4。这些关键词应该：- 简洁明了，通常每个关键词不超过2-3个单词 - 涵盖查询的核心内容 - 避免使用过于宽泛或模糊的词语 - 最后一个关键词应该最全。另外,不要自行生成当前时间的关键词',
+                    description: `Keyword list for search. For example: ['Python', 'machine learning', 'latest developments']. The list should have a length of at least 3 and maximum of 4. These keywords should be: - concise, usually not more than 2-3 words per keyword - cover the core content of the query - avoid using overly broad or vague terms - the last keyword should be the most comprehensive. Also, do not generate keywords based on current time.`,
                 },
             },
             required: ['keywords'],

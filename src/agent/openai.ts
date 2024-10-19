@@ -167,6 +167,10 @@ export class OpenAI extends OpenAIBase implements ChatAgent {
             delete body.tool_choice;
             delete body.tool_calls;
         }
+        // delete stream_options
+        if (!onStream && body.stream_options) {
+            delete body.stream_options;
+        }
         return { body, onStream };
     };
 }

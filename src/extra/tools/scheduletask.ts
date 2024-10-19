@@ -40,6 +40,7 @@ const scheduleResp: ScheduleRespType = (ok, reason = '') => {
 async function schedule_detele_message(ENV: any) {
     try {
         log.info('- Start task: schedule_detele_message');
+        checkDATABASE(ENV);
         const botTokens: string[] = extractArrayData(ENV.TELEGRAM_AVAILABLE_TOKENS);
         const botNames: string[] = extractArrayData(ENV.TELEGRAM_BOT_NAME);
         const scheduleDeteleKey = 'schedule_detele_message';
@@ -74,7 +75,7 @@ async function schedule_detele_message(ENV: any) {
 
         return scheduleResp(true);
     } catch (e: any) {
-        console.error(e.message);
+        console.error(e.message, e.stack);
         return scheduleResp(false, e.message);
     }
 }
@@ -124,6 +125,12 @@ function sortDeleteMessages(chats: Chat): SortMessagesType {
         sortedMessages.rest[chat_id] = messages.filter(msg => msg.ttl > Date.now());
     }
     return sortedMessages;
+}
+
+function checkDATABASE(ENV: any) {
+    if (!ENV.DATABASE) {
+        throw new Error('DATABASE is not found');
+    }
 }
 
 export default { schedule_detele_message };

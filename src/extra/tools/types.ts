@@ -3,8 +3,11 @@ export interface SchemaData {
     description: string;
     parameters: {
         type: string;
-        properties: Record<string, any & {
+        properties: Record<string, {
             type: string;
+            items?: {
+                type: string;
+            };
             description: string;
         }>;
         required: string[];

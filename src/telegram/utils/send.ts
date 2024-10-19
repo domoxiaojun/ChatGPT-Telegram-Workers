@@ -346,11 +346,11 @@ async function checkIsNeedTagIds(context: MessageContext, resp: Promise<Response
         if (ENV.EXPIRED_TIME <= 0 || context.message_id) break;
         const clone_resp = await original_resp.clone().json() as Telegram.SendMediaGroupResponse | Telegram.SendMessageResponse;
         if (Array.isArray(clone_resp.result)) {
-            message_id = clone_resp?.result?.map((i: { message_id: any }) => i.message_id);
+            message_id = clone_resp?.result?.map((i: { message_id: any }) => i.message_id)
         } else {
             message_id = [clone_resp?.result?.message_id];
         }
-        if (!message_id) {
+        if (message_id.filter(Boolean).length === 0) {
             console.error(JSON.stringify(clone_resp));
             break;
         }

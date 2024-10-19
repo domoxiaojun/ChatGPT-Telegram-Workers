@@ -427,6 +427,9 @@ export class SetCommandHandler implements CommandHandler {
 
     private parseMappings(context: WorkerContext): { keys: Record<string, string>; values: Record<string, string> } {
         const parseMapping = (mapping: string): Record<string, string> => {
+            if (!mapping) {
+                return {};
+            }
             const entries: [string, string][] = [];
             const pairs = mapping.split('|');
             for (const k of pairs) {

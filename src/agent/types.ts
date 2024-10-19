@@ -14,8 +14,8 @@ export interface OpenAIFuncCallData {
     id: string;
     type: 'function';
     function: {
-        name?: string;
-        arguments?: string;
+        name: string;
+        arguments: string;
     };
 };
 
@@ -26,7 +26,7 @@ export interface HistoryModifierResult {
 
 export interface CompletionData {
     content: string;
-    tool_calls?: OpenAIFuncCallData[] | any[];
+    tool_calls?: OpenAIFuncCallData[];
     usage?: {
         prompt_tokens: number;
         completion_tokens: number;
