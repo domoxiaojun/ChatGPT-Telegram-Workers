@@ -1,17 +1,17 @@
 import type * as Telegram from 'telegram-bot-api-types';
 import type { WorkerContext } from '../../config/context';
-import type { InlineQueryHandler, MessageHandler } from './types';
-import { CallbackQueryContext, ChosenInlineContext, InlineQueryContext, WorkerContextBase } from '../../config/context';
+import type { ChosenInlineQueryHandler, InlineQueryHandler, MessageHandler } from './types';
+import { CallbackQueryContext, ChosenInlineWorkerContext, InlineQueryContext, WorkerContextBase } from '../../config/context';
 import { clearLog, sentMessageIds } from '../../extra/log/logDecortor';
 import { log } from '../../extra/log/logger';
 import { ChatHandler } from './chat';
 import { GroupMention } from './group';
 import {
+    AnswerInlineQuery,
     CheckInlineQueryWhiteList,
     CommandHandler,
     EnvChecker,
     HandlerCallbackQuery,
-    HandlerChosenInline,
     HandlerInlineQuery,
     InitUserConfig,
     MessageFilter,
@@ -144,7 +144,7 @@ async function handleInlineQuery(token: string, inlineQuery: Telegram.InlineQuer
             new HandlerInlineQuery(),
         ];
         for (const handler of handlers) {
-            const result = await handler.handle(context);
+            const result = await handler.handle(inlineQuery, context);
             if (result instanceof Response) {
                 return result;
             }
@@ -158,12 +158,12 @@ async function handleInlineQuery(token: string, inlineQuery: Telegram.InlineQuer
 async function handleChosenInline(token: string, chosenInlineQuery: Telegram.ChosenInlineResult) {
     log.info(`handleChosenInlineQuery`, chosenInlineQuery);
     try {
-        const context = new ChosenInlineContext(token, chosenInlineQuery);
-        const handlers: InlineQueryHandler<ChosenInlineContext>[] = [
-            new HandlerChosenInline(),
+        const context = await ChosenInlineWorkerContext.from(token, chosenInlineQuery);
+        const handlers: ChosenInlineQueryHandler<ChosenInlineWorkerContext>[] = [
+            new AnswerInlineQuery(),
         ];
         for (const handler of handlers) {
-            const result = await handler.handle(context);
+            const result = await handler.handle(chosenInlineQuery, context);
             if (result instanceof Response) {
                 return result;
             }
@@ -175,9 +175,9 @@ async function handleChosenInline(token: string, chosenInlineQuery: Telegram.Cho
 }
 
 function catchError(e: Error) {
-    console.error((e as Error).message);
+    console.error(e.message);
     return new Response(JSON.stringify({
-        message: (e as Error).message,
-        stack: (e as Error).stack,
+        message: e.message,
+        stack: e.stack,
     }), { status: 500 });
 }

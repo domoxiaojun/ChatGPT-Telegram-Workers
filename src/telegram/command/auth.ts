@@ -6,10 +6,7 @@ export async function loadChatRoleWithContext(message: Telegram.Message, context
     const { groupAdminsKey } = context.SHARE_CONTEXT;
 
     const chatId = message.chat.id;
-    let speakerId = message.from?.id || chatId;
-    if (isCallbackQuery) {
-        speakerId = context?.from?.id;
-    }
+    const speakerId = isCallbackQuery ? context?.from?.id : message.from?.id || chatId;
 
     if (!groupAdminsKey) {
         return null;

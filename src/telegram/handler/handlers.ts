@@ -1,9 +1,9 @@
 import type * as Telegram from 'telegram-bot-api-types';
-import type { CallbackQueryContext, ChosenInlineContext, InlineQueryContext, WorkerContextBase } from '../../config/context';
+import type { CallbackQueryContext, ChosenInlineWorkerContext, InlineQueryContext, WorkerContextBase } from '../../config/context';
 import type { TelegramBotAPI } from '../api';
 import type { InlineItem } from '../command/system';
 import type { UnionData } from '../utils/utils';
-import type { CallbackQueryHandler, InlineQueryHandler, MessageHandler } from './types';
+import type { CallbackQueryHandler, ChosenInlineQueryHandler, InlineQueryHandler, MessageHandler } from './types';
 import { WorkerContext } from '../../config/context';
 import { ENV } from '../../config/env';
 import { sentMessageIds } from '../../extra/log/logDecortor';
@@ -15,6 +15,7 @@ import { COMMAND_AUTH_CHECKER, InlineCommandHandler } from '../command/system';
 import { escape } from '../utils/md2tgmd';
 import { MessageSender } from '../utils/send';
 import { chunckArray, extractMessage, isTelegramChatTypeGroup } from '../utils/utils';
+import { AnswerChatInlineQuery } from './query';
 
 export class SaveLastMessage implements MessageHandler<WorkerContextBase> {
     handle = async (message: Telegram.Message, context: WorkerContextBase): Promise<Response | null> => {
@@ -248,7 +249,7 @@ export class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryC
         throw new Error('Not support inline key');
     }
 
-    private async sendAlert(api: TelegramBotAPI, query_id: string, text: string, show_alert: boolean = false, cache_time: number = 0) {
+    private async sendAlert(api: TelegramBotAPI, query_id: string, text: string, show_alert?: boolean, cache_time?: number) {
         return api.answerCallbackQuery({
             callback_query_id: query_id,
             text,
@@ -266,7 +267,7 @@ export class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryC
                 return this.sendAlert(api, context.query_id, '⚠️ Get chat role failed', false);
             }
             if (!roleList.includes(chatRole)) {
-                return this.sendAlert(api, context.query_id, `⚠️ 你没有权限进行此操作`, true);
+                return this.sendAlert(api, context.query_id, `⚠️ You don't have permission to operate`, true);
             }
         }
         return null;
@@ -298,7 +299,7 @@ export class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryC
         log.info(`[CALLBACK QUERY] Update config: ${configKey} = ${context.USER_CONFIG[configKey]}`);
 
         await ENV.DATABASE.put(context.SHARE_CONTEXT.configStoreKey, JSON.stringify(context.USER_CONFIG)).catch(console.error);
-        this.sendAlert(api, context.query_id, '数据更新成功', false);
+        this.sendAlert(api, context.query_id, 'Data update successful', false);
     }
 
     private async closeInlineKeyboard(api: TelegramBotAPI, message: Telegram.Message) {
@@ -345,9 +346,9 @@ export class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryC
 }
 
 export class HandlerInlineQuery implements InlineQueryHandler<InlineQueryContext> {
-    handle = async (context: InlineQueryContext): Promise<Response | null> => {
-        if (!context.query?.endsWith('$$')) {
-            log.info(`[INLINE QUERY] Not end with $$: ${context.query}`);
+    handle = async (chosenInline: Telegram.InlineQuery, context: InlineQueryContext): Promise<Response | null> => {
+        if (!context.query?.endsWith('$')) {
+            log.info(`[INLINE QUERY] Not end with $: ${context.query}`);
             return new Response('success', { status: 200 });
         }
         const api = createTelegramBotAPI(context.token);
@@ -355,33 +356,31 @@ export class HandlerInlineQuery implements InlineQueryHandler<InlineQueryContext
             inline_query_id: context.query_id,
             results: [{
                 type: 'article',
-                id: 'STREAM',
+                id: ':c stream',
                 title: 'Stream Mode',
                 input_message_content: {
-                    message_text: `Stream text will be sent`,
-                    parse_mode: 'MarkdownV2',
+                    message_text: `Please wait a moment`,
                 },
                 reply_markup: {
                     inline_keyboard: [
                         [{
                             text: 'Thinking...',
-                            callback_data: 'STREAM',
+                            callback_data: ':c stream',
                         }],
                     ],
                 },
             }, {
                 type: 'article',
-                id: 'FULL',
+                id: ':c full',
                 title: 'Full Mode',
                 input_message_content: {
-                    message_text: `Full text will be sent`,
-                    parse_mode: 'MarkdownV2',
+                    message_text: `Please wait a moment`,
                 },
                 reply_markup: {
                     inline_keyboard: [
                         [{
                             text: 'Thinking...',
-                            callback_data: 'FULL',
+                            callback_data: ':c full',
                         }],
                     ],
                 },
@@ -392,25 +391,19 @@ export class HandlerInlineQuery implements InlineQueryHandler<InlineQueryContext
     };
 }
 
-export class HandlerChosenInline implements InlineQueryHandler<ChosenInlineContext> {
-    handle = async (context: ChosenInlineContext): Promise<Response | null> => {
-        const api = createTelegramBotAPI(context.token);
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        const resp = await api.editMessageText({
-            inline_message_id: context.inline_message_id,
-            text: `Test edit message.`,
-            parse_mode: 'MarkdownV2',
-        }).then(r => r.json());
-        return resp;
-    };
-}
-
 export class CheckInlineQueryWhiteList implements InlineQueryHandler<InlineQueryContext> {
-    handle = async (context: InlineQueryContext): Promise<Response | null> => {
+    handle = async (inlineQuery: Telegram.InlineQuery, context: InlineQueryContext): Promise<Response | null> => {
         if (ENV.CHAT_WHITE_LIST.includes(`${context.from_id}`)) {
             return null;
         }
         log.error(`User ${context.from_id} not in the white list`);
         return new Response(`User ${context.from_id} not in the white list`, { status: 403 });
+    };
+}
+
+export class AnswerInlineQuery implements ChosenInlineQueryHandler<ChosenInlineWorkerContext> {
+    handle = async (chosenInline: Telegram.ChosenInlineResult, context: ChosenInlineWorkerContext): Promise<Response | null> => {
+        const answer = new AnswerChatInlineQuery();
+        return answer.handler(chosenInline, context);
     };
 }

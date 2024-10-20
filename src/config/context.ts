@@ -200,3 +200,35 @@ export class ChosenInlineContext {
         this.inline_message_id = choosenInlineQuery.inline_message_id || '';
     }
 }
+
+export class ChosenInlineWorkerContext {
+    USER_CONFIG: AgentUserConfig;
+    botToken: string;
+    MIDDEL_CONTEXT: Record<string, any>;
+    constructor(token: string, USER_CONFIG: AgentUserConfig) {
+        this.USER_CONFIG = USER_CONFIG;
+        this.botToken = token;
+        // 模拟私聊消息
+        this.MIDDEL_CONTEXT = {
+            originalMessage: { type: 'text' },
+        };
+    }
+
+    static async from(token: string, chosenInline: Telegram.ChosenInlineResult): Promise<ChosenInlineWorkerContext> {
+        const USER_CONFIG = { ...ENV.USER_CONFIG };
+        // Same as private chat
+        let userConfigKey = `user_config:${chosenInline.from.id}`;
+        const botId = Number.parseInt(token.split(':')[0]);
+        if (botId) {
+            userConfigKey += `:{botId}`;
+        }
+        try {
+            const userConfig: AgentUserConfig = JSON.parse(await ENV.DATABASE.get(userConfigKey));
+            ConfigMerger.merge(USER_CONFIG, ConfigMerger.trim(userConfig, ENV.LOCK_USER_CONFIG_KEYS) || {});
+            USER_CONFIG.ENABLE_SHOWINFO = false;
+        } catch (e) {
+            console.warn(e);
+        }
+        return new ChosenInlineWorkerContext(token, USER_CONFIG);
+    }
+}

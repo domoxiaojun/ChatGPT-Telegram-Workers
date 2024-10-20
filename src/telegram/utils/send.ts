@@ -1,3 +1,4 @@
+/* eslint-disable unused-imports/no-unused-vars */
 /* eslint-disable antfu/if-newline */
 import type * as Telegram from 'telegram-bot-api-types';
 import type { TelegramBotAPI } from '../api';
@@ -346,12 +347,12 @@ async function checkIsNeedTagIds(context: MessageContext, resp: Promise<Response
         if (ENV.EXPIRED_TIME <= 0 || context.message_id) break;
         const clone_resp = await original_resp.clone().json() as Telegram.SendMediaGroupResponse | Telegram.SendMessageResponse;
         if (Array.isArray(clone_resp.result)) {
-            message_id = clone_resp?.result?.map((i: { message_id: any }) => i.message_id)
+            message_id = clone_resp?.result?.map((i: { message_id: any }) => i.message_id);
         } else {
             message_id = [clone_resp?.result?.message_id];
         }
         if (message_id.filter(Boolean).length === 0) {
-            console.error(JSON.stringify(clone_resp));
+            log.error('Not exist message_id');
             break;
         }
         const isGroup = ['group', 'supergroup'].includes(chatType);
@@ -364,4 +365,135 @@ async function checkIsNeedTagIds(context: MessageContext, resp: Promise<Response
     } while (false);
 
     return original_resp;
+}
+
+class CallbackQueryContext {
+    id: string;
+    from: Telegram.User;
+    message?: Telegram.Message;
+    inline_message_id?: string;
+    data?: string;
+    constructor(query: Telegram.CallbackQuery) {
+        this.id = query.id;
+        this.from = query.from;
+        this.message = query.message;
+        this.inline_message_id = query.inline_message_id;
+        this.data = query.data;
+    }
+}
+
+class AnswerCallbackQuerySender {
+    api: TelegramBotAPI;
+    context: CallbackQueryContext;
+    constructor(token: string, context: CallbackQueryContext) {
+        this.api = createTelegramBotAPI(token);
+        this.context = context;
+    }
+
+    answerCallbackQuery(text: string, show_alert?: boolean, url?: string, cache_time?: number): Promise<Response> {
+        return this.api.answerCallbackQuery({
+            callback_query_id: this.context.id,
+            text,
+            show_alert,
+            url,
+            cache_time,
+        });
+    }
+}
+
+class InlineQueryContext {
+    id: string;
+    from: Telegram.User;
+    query: string;
+    offset: string;
+    chat_type?: string;
+    constructor(query: Telegram.InlineQuery) {
+        this.id = query.id;
+        this.from = query.from;
+        this.query = query.query;
+        this.offset = query.offset;
+        this.chat_type = query.chat_type;
+    }
+}
+
+class InlineQuerySender {
+    api: TelegramBotAPI;
+    context: InlineQueryContext;
+    constructor(token: string, context: InlineQueryContext) {
+        this.api = createTelegramBotAPI(token);
+        this.context = context;
+    }
+
+    answerInlineQuery(results: Telegram.InlineQueryResult[], button?: Telegram.InlineQueryResultsButton, cache_time?: number): Promise<Response> {
+        return this.api.answerInlineQuery({
+            inline_query_id: this.context.id,
+            results,
+            button,
+            cache_time,
+        });
+    }
+}
+
+class ChosenInlineContext {
+    result_id: string;
+    from: Telegram.User;
+    inline_message_id?: string;
+    query: string;
+    parse_mode: Telegram.ParseMode | null = null;
+    constructor(result: Telegram.ChosenInlineResult) {
+        this.result_id = result.result_id;
+        this.from = result.from;
+        this.inline_message_id = result.inline_message_id;
+        this.query = result.query;
+    }
+}
+
+export class ChosenInlineSender {
+    api: TelegramBotAPI;
+    context: ChosenInlineContext;
+    constructor(token: string, context: ChosenInlineContext) {
+        this.api = createTelegramBotAPI(token);
+        this.context = context;
+    }
+
+    static from(token: string, result: Telegram.ChosenInlineResult): ChosenInlineSender {
+        return new ChosenInlineSender(token, new ChosenInlineContext(result));
+    }
+
+    sendRichText(text: string, parseMode: Telegram.ParseMode = ENV.DEFAULT_PARSE_MODE as Telegram.ParseMode, type: string = 'chat'): Promise<Response> {
+        return this.editMessageText(text, parseMode);
+    }
+
+    sendPlainText(text: string): Promise<Response> {
+        return this.editMessageText(text);
+    }
+
+    editMessageText(text: string, parse_mode?: Telegram.ParseMode): Promise<Response> {
+        return this.api.editMessageText({
+            inline_message_id: this.context.inline_message_id,
+            text: this.renderMessage(parse_mode || null, text),
+            parse_mode,
+            link_preview_options: {
+                is_disabled: ENV.DISABLE_WEB_PREVIEW,
+            },
+        });
+    }
+
+    editMessageMedia(media: string, type: 'photo' | 'video' | 'audio' | 'document', caption?: string | undefined, parse_mode?: Telegram.ParseMode): Promise<Response> {
+        return this.api.editMessageMedia({
+            inline_message_id: this.context.inline_message_id,
+            media: {
+                type,
+                media,
+                ...(caption ? { caption: this.renderMessage(parse_mode || null, caption) } : {}),
+            },
+        });
+    }
+
+    private renderMessage(parse_mode: Telegram.ParseMode | null, message: string): string {
+        if (parse_mode === 'MarkdownV2') {
+            return escape(message);
+        }
+        return message;
+    }
 }

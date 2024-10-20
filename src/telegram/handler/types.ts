@@ -20,5 +20,9 @@ export interface CallbackQueryHandler<Ctx = any> {
 }
 
 export interface InlineQueryHandler<Ctx = any> {
-    handle: (context: Ctx) => Promise<Response | UnionData | null>;
+    handle: (inlineQuery: Telegram.InlineQuery, context: Ctx) => Promise<Response | UnionData | null>;
+}
+
+export interface ChosenInlineQueryHandler<Ctx = any> {
+    handle: (chosenInline: Telegram.ChosenInlineResult, context: Ctx) => Promise<Response | UnionData | null>;
 }

@@ -369,10 +369,9 @@ export class SetCommandHandler implements CommandHandler {
         context: WorkerContext,
         sender: MessageSender,
     ): Promise<Response | null> => {
-        // const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
         try {
             if (!subcommand) {
-                const detailSet = ENV.I18N.command?.detail?.set || '默认详细信息';
+                const detailSet = ENV.I18N.command?.detail?.set || 'Default detailed information';
                 return sender.sendRichText(`\`\`\`plaintext\n${detailSet}\n\`\`\``, 'MarkdownV2');
             }
 
@@ -392,15 +391,12 @@ export class SetCommandHandler implements CommandHandler {
                 if (result instanceof Response) {
                     return result;
                 }
-                if (result.msg) {
-                    msg += result.msg;
-                }
-                if (!hasKey && result.hasKey) {
+                if (!hasKey && result) {
                     hasKey = true;
                 }
             }
 
-            if (needUpdate && hasKey) {
+            if (needUpdate && hasKey && context.SHARE_CONTEXT?.configStoreKey) {
                 context.USER_CONFIG.DEFINE_KEYS = Array.from(new Set(context.USER_CONFIG.DEFINE_KEYS));
                 await ENV.DATABASE.put(
                     context.SHARE_CONTEXT.configStoreKey,
@@ -479,31 +475,23 @@ export class SetCommandHandler implements CommandHandler {
         values: Record<string, any>,
         context: WorkerContext,
         sender: MessageSender,
-    ): Promise<{ msg: string; hasKey: boolean } | Response> {
-        let msg = '';
+    ): Promise<boolean | Response> {
         let hasKey = false;
 
         let key = keys[flag];
         let mappedValue = values[value] ?? value;
 
         if (!key) {
-            return sender.sendPlainText(`Mapping Key ${flag} 不存在`);
+            return sender.sendPlainText(`Mapping Key ${flag} not found`);
         }
 
-        if (ENV.LOCK_USER_CONFIG_KEYS.includes(key)) {
-            return sender.sendPlainText(`Key ${key} 是锁定的`);
+        if (ENV.LOCK_USER_CONFIG_KEYS.includes(key) && sender) {
+            return sender.sendPlainText(`Key ${key} is locked`);
         }
 
-        const role_prefix = '~';
         switch (key) {
             case 'SYSTEM_INIT_MESSAGE':
-                if (value.startsWith(role_prefix)) {
-                    const promptKey = value.substring(1);
-                    mappedValue = context.USER_CONFIG.PROMPT[promptKey] || ENV.I18N?.env?.system_init_message || 'You are a helpful assistant';
-                    if (!context.USER_CONFIG.PROMPT[promptKey]) {
-                        msg += `>\`${value} 不存在，将使用默认提示\`\n`;
-                    }
-                }
+                mappedValue = context.USER_CONFIG.PROMPT[value] || value;
                 break;
             case 'CHAT_MODEL':
             case 'VISION_MODEL':
@@ -514,7 +502,7 @@ export class SetCommandHandler implements CommandHandler {
                 break;
             // case 'CURRENT_MODE':
             //     if (!Object.keys(context.USER_CONFIG.MODES).includes(value)) {
-            //         return sender.sendPlainText(`模式 ${value} 不存在`);
+            //         return sender.sendPlainText(`mode ${value} not found`);
             //     }
             //     break;
             case 'USE_TOOLS':
@@ -529,16 +517,16 @@ export class SetCommandHandler implements CommandHandler {
         }
 
         if (!(key in context.USER_CONFIG)) {
-            return sender.sendPlainText(`Key ${key} 未找到`);
+            return sender.sendPlainText(`Key ${key} not found`);
         }
 
         context.USER_CONFIG[key] = mappedValue;
         if (!context.USER_CONFIG.DEFINE_KEYS.includes(key)) {
             context.USER_CONFIG.DEFINE_KEYS.push(key);
         }
-        log.info(`/set ${key} ${(JSON.stringify(mappedValue) || value).substring(0, 100)}`);
+        log.info(`/set ${key} ${(JSON.stringify(mappedValue) || value).substring(0, 100)}...`);
         hasKey = true;
-        return { msg, hasKey };
+        return hasKey;
     }
 }
 
@@ -626,7 +614,7 @@ export class InlineCommandHandler implements CommandHandler {
         const defaultInlineKeys = this.defaultInlineKeys(context.USER_CONFIG);
         const currentSettings = this.settingsMessage(context.USER_CONFIG, defaultInlineKeys);
 
-        const resp = await createTelegramBotAPI(context.SHARE_CONTEXT.botToken).sendMessage({
+        return createTelegramBotAPI(context.SHARE_CONTEXT.botToken).sendMessage({
             chat_id: message.chat.id,
             ...(message.chat.type === 'private' ? {} : { reply_to_message_id: message.message_id }),
             text: escape(currentSettings),
@@ -634,8 +622,7 @@ export class InlineCommandHandler implements CommandHandler {
             reply_markup: {
                 inline_keyboard: this.inlineKeyboard(context.USER_CONFIG, defaultInlineKeys),
             },
-        }).then(r => r.json());
-        return resp;
+        });
     };
 
     defaultInlineKeys = (context: AgentUserConfig): Record<string, InlineItem> => {
@@ -692,7 +679,7 @@ export class InlineCommandHandler implements CommandHandler {
     };
 
     settingsMessage = (context: AgentUserConfig, inlineKeys: Record<string, InlineItem>) => {
-        const currentSettings = `当前配置如下:\n>${'-'.repeat(40)}\n> \n${Object.entries(inlineKeys).map(([_, { label, config_key }]) => {
+        const currentSettings = `Current Settings:\n>${'-'.repeat(40)}\n> \n${Object.entries(inlineKeys).map(([_, { label, config_key }]) => {
             return `>\`${label}: ${context[config_key]}\``;
         }).join('\n')}`;
         return `\n${currentSettings}\n> \n>${'-'.repeat(40)}`;

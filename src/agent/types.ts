@@ -53,6 +53,7 @@ export type HistoryModifier = (history: HistoryItem[], message: string | null) =
 export interface ChatStreamTextHandler {
     (text: string, isEnd?: boolean): Promise<any>;
     nextEnableTime?: () => number | null;
+    end?: (text: string) => Promise<any>;
 }
 
 interface LLMChatParamsBase {

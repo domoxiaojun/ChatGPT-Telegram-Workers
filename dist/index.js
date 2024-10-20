@@ -890,8 +890,8 @@ const ENV_KEY_MAPPER = {
   WORKERS_AI_MODEL: "WORKERS_CHAT_MODEL"
 };
 class Environment extends EnvironmentConfig {
-  BUILD_TIMESTAMP = 1729315618;
-  BUILD_VERSION = "7829ead";
+  BUILD_TIMESTAMP = 1729427399;
+  BUILD_VERSION = "f4510da";
   I18N = loadI18n();
   PLUGINS_ENV = {};
   USER_CONFIG = createAgentUserConfig();
@@ -1785,7 +1785,7 @@ async function checkIsNeedTagIds(context, resp, msgType) {
       message_id = [clone_resp?.result?.message_id];
     }
     if (message_id.filter(Boolean).length === 0) {
-      console.error(JSON.stringify(clone_resp));
+      log.error("Not exist message_id");
       break;
     }
     const isGroup = ["group", "supergroup"].includes(chatType);
@@ -1796,13 +1796,66 @@ async function checkIsNeedTagIds(context, resp, msgType) {
   } while (false);
   return original_resp;
 }
+class ChosenInlineContext {
+  result_id;
+  from;
+  inline_message_id;
+  query;
+  parse_mode = null;
+  constructor(result) {
+    this.result_id = result.result_id;
+    this.from = result.from;
+    this.inline_message_id = result.inline_message_id;
+    this.query = result.query;
+  }
+}
+class ChosenInlineSender {
+  api;
+  context;
+  constructor(token, context) {
+    this.api = createTelegramBotAPI(token);
+    this.context = context;
+  }
+  static from(token, result) {
+    return new ChosenInlineSender(token, new ChosenInlineContext(result));
+  }
+  sendRichText(text, parseMode = ENV.DEFAULT_PARSE_MODE, type = "chat") {
+    return this.editMessageText(text, parseMode);
+  }
+  sendPlainText(text) {
+    return this.editMessageText(text);
+  }
+  editMessageText(text, parse_mode) {
+    return this.api.editMessageText({
+      inline_message_id: this.context.inline_message_id,
+      text: this.renderMessage(parse_mode || null, text),
+      parse_mode,
+      link_preview_options: {
+        is_disabled: ENV.DISABLE_WEB_PREVIEW
+      }
+    });
+  }
+  editMessageMedia(media, type, caption, parse_mode) {
+    return this.api.editMessageMedia({
+      inline_message_id: this.context.inline_message_id,
+      media: {
+        type,
+        media,
+        ...caption ? { caption: this.renderMessage(parse_mode || null, caption) } : {}
+      }
+    });
+  }
+  renderMessage(parse_mode, message) {
+    if (parse_mode === "MarkdownV2") {
+      return escape(message);
+    }
+    return message;
+  }
+}
 async function loadChatRoleWithContext(message, context, isCallbackQuery = false) {
   const { groupAdminsKey } = context.SHARE_CONTEXT;
   const chatId = message.chat.id;
-  let speakerId = message.from?.id || chatId;
-  if (isCallbackQuery) {
-    speakerId = context?.from?.id;
-  }
+  const speakerId = isCallbackQuery ? context?.from?.id : message.from?.id || chatId;
   if (!groupAdminsKey) {
     return null;
   }
@@ -3686,7 +3739,7 @@ ${urls.join("\n")}`);
   }
 }
 function OnStreamHander(sender, context) {
-  let nextEnableTime = null;
+  let nextEnableTime = Date.now();
   async function onStream(text, isEnd = false) {
     try {
       if (isEnd && context && ENV.TELEGRAPH_NUM_LIMIT > 0 && text.length > ENV.TELEGRAPH_NUM_LIMIT && ["group", "supergroup"].includes(sender.context.chatType)) {
@@ -3711,12 +3764,12 @@ ${text}` : text;
           return;
         }
       }
-      if (resp.ok) {
+      if (resp.ok && sender instanceof MessageSender) {
         const respJson = await resp.json();
         sender.update({
           message_id: respJson.result.message_id
         });
-      } else {
+      } else if (!resp.ok) {
         log.error(`send message failed: ${resp.status} ${resp.statusText}`);
         return sender.sendPlainText(text);
       }
@@ -3725,6 +3778,12 @@ ${text}` : text;
     }
   }
   onStream.nextEnableTime = () => nextEnableTime;
+  onStream.end = async (text) => {
+    if (nextEnableTime > Date.now()) {
+      await new Promise((resolve) => setTimeout(resolve, nextEnableTime - Date.now()));
+    }
+    return sender.sendRichText(text, ENV.DEFAULT_PARSE_MODE);
+  };
   return onStream;
 }
 async function sendTelegraph(context, sender, question, text) {
@@ -4266,7 +4325,7 @@ class SetCommandHandler {
   handle = async (message, subcommand, context, sender) => {
     try {
       if (!subcommand) {
-        const detailSet = ENV.I18N.command?.detail?.set || "默认详细信息";
+        const detailSet = ENV.I18N.command?.detail?.set || "Default detailed information";
         return sender.sendRichText(`\`\`\`plaintext
 ${detailSet}
 \`\`\``, "MarkdownV2");
@@ -4284,14 +4343,11 @@ ${detailSet}
         if (result instanceof Response) {
           return result;
         }
-        if (result.msg) {
-          msg += result.msg;
-        }
-        if (!hasKey && result.hasKey) {
+        if (!hasKey && result) {
           hasKey = true;
         }
       }
-      if (needUpdate && hasKey) {
+      if (needUpdate && hasKey && context.SHARE_CONTEXT?.configStoreKey) {
         context.USER_CONFIG.DEFINE_KEYS = Array.from(new Set(context.USER_CONFIG.DEFINE_KEYS));
         await ENV.DATABASE.put(
           context.SHARE_CONTEXT.configStoreKey,
@@ -4352,27 +4408,18 @@ ${detailSet}
     return { flags, remainingText };
   }
   async processSubcommand(flag, value, keys, values, context, sender) {
-    let msg = "";
     let hasKey = false;
     let key = keys[flag];
     let mappedValue = values[value] ?? value;
     if (!key) {
-      return sender.sendPlainText(`Mapping Key ${flag} 不存在`);
+      return sender.sendPlainText(`Mapping Key ${flag} not found`);
     }
-    if (ENV.LOCK_USER_CONFIG_KEYS.includes(key)) {
-      return sender.sendPlainText(`Key ${key} 是锁定的`);
+    if (ENV.LOCK_USER_CONFIG_KEYS.includes(key) && sender) {
+      return sender.sendPlainText(`Key ${key} is locked`);
     }
-    const role_prefix = "~";
     switch (key) {
       case "SYSTEM_INIT_MESSAGE":
-        if (value.startsWith(role_prefix)) {
-          const promptKey = value.substring(1);
-          mappedValue = context.USER_CONFIG.PROMPT[promptKey] || ENV.I18N?.env?.system_init_message || "You are a helpful assistant";
-          if (!context.USER_CONFIG.PROMPT[promptKey]) {
-            msg += `>\`${value} 不存在，将使用默认提示\`
-`;
-          }
-        }
+        mappedValue = context.USER_CONFIG.PROMPT[value] || value;
         break;
       case "CHAT_MODEL":
       case "VISION_MODEL":
@@ -4388,15 +4435,15 @@ ${detailSet}
         break;
     }
     if (!(key in context.USER_CONFIG)) {
-      return sender.sendPlainText(`Key ${key} 未找到`);
+      return sender.sendPlainText(`Key ${key} not found`);
     }
     context.USER_CONFIG[key] = mappedValue;
     if (!context.USER_CONFIG.DEFINE_KEYS.includes(key)) {
       context.USER_CONFIG.DEFINE_KEYS.push(key);
     }
-    log.info(`/set ${key} ${(JSON.stringify(mappedValue) || value).substring(0, 100)}`);
+    log.info(`/set ${key} ${(JSON.stringify(mappedValue) || value).substring(0, 100)}...`);
     hasKey = true;
-    return { msg, hasKey };
+    return hasKey;
   }
 }
 class PerplexityCommandHandler {
@@ -4471,7 +4518,7 @@ class InlineCommandHandler {
   handle = async (message, subcommand, context, sender) => {
     const defaultInlineKeys = this.defaultInlineKeys(context.USER_CONFIG);
     const currentSettings = this.settingsMessage(context.USER_CONFIG, defaultInlineKeys);
-    const resp = await createTelegramBotAPI(context.SHARE_CONTEXT.botToken).sendMessage({
+    return createTelegramBotAPI(context.SHARE_CONTEXT.botToken).sendMessage({
       chat_id: message.chat.id,
       ...message.chat.type === "private" ? {} : { reply_to_message_id: message.message_id },
       text: escape(currentSettings),
@@ -4479,8 +4526,7 @@ class InlineCommandHandler {
       reply_markup: {
         inline_keyboard: this.inlineKeyboard(context.USER_CONFIG, defaultInlineKeys)
       }
-    }).then((r) => r.json());
-    return resp;
+    });
   };
   defaultInlineKeys = (context) => {
     return {
@@ -4535,7 +4581,7 @@ class InlineCommandHandler {
     };
   };
   settingsMessage = (context, inlineKeys) => {
-    const currentSettings = `当前配置如下:
+    const currentSettings = `Current Settings:
 >${"-".repeat(40)}
 > 
 ${Object.entries(inlineKeys).map(([_, { label, config_key }]) => {
@@ -4846,18 +4892,32 @@ class InlineQueryContext {
     this.query = inlineQuery.query;
   }
 }
-class ChosenInlineContext {
-  token;
-  from_id;
-  query;
-  result_id;
-  inline_message_id;
-  constructor(token, choosenInlineQuery) {
-    this.token = token;
-    this.from_id = choosenInlineQuery.from.id;
-    this.query = choosenInlineQuery.query;
-    this.result_id = choosenInlineQuery.result_id;
-    this.inline_message_id = choosenInlineQuery.inline_message_id || "";
+class ChosenInlineWorkerContext {
+  USER_CONFIG;
+  botToken;
+  MIDDEL_CONTEXT;
+  constructor(token, USER_CONFIG) {
+    this.USER_CONFIG = USER_CONFIG;
+    this.botToken = token;
+    this.MIDDEL_CONTEXT = {
+      originalMessage: { type: "text" }
+    };
+  }
+  static async from(token, chosenInline) {
+    const USER_CONFIG = { ...ENV.USER_CONFIG };
+    let userConfigKey = `user_config:${chosenInline.from.id}`;
+    const botId = Number.parseInt(token.split(":")[0]);
+    if (botId) {
+      userConfigKey += `:{botId}`;
+    }
+    try {
+      const userConfig = JSON.parse(await ENV.DATABASE.get(userConfigKey));
+      ConfigMerger.merge(USER_CONFIG, ConfigMerger.trim(userConfig, ENV.LOCK_USER_CONFIG_KEYS) || {});
+      USER_CONFIG.ENABLE_SHOWINFO = false;
+    } catch (e) {
+      console.warn(e);
+    }
+    return new ChosenInlineWorkerContext(token, USER_CONFIG);
   }
 }
 function checkMention(content, entities, botName, botId) {
@@ -4951,6 +5011,36 @@ class GroupMention {
     }
     context.MIDDEL_CONTEXT.originalMessage.text = message.text;
     return null;
+  };
+}
+class AnswerChatInlineQuery {
+  type = ":c";
+  handler = async (chosenInline, context) => {
+    const sender = ChosenInlineSender.from(context.botToken, chosenInline);
+    const question = await this.handlerQuestion(chosenInline, context, sender);
+    if (!question) {
+      return new Response("ok");
+    }
+    const agent = new OpenAI();
+    const isStream = chosenInline.result_id === ":c stream";
+    const OnStream = OnStreamHander(sender, context);
+    const resp = await agent.request({
+      history: [{ role: "user", content: question }],
+      prompt: context.USER_CONFIG.SYSTEM_INIT_MESSAGE
+    }, context.USER_CONFIG, isStream ? OnStream : null);
+    return OnStream.end?.(resp.content);
+  };
+  handlerQuestion = async (chosenInline, context, sender) => {
+    const question = chosenInline.query.substring(0, chosenInline.query.length - 1).trim();
+    const message = { text: question };
+    SubstituteWords(message);
+    if (message.text?.startsWith("/set ")) {
+      const resp = await new SetCommandHandler().handle(message, message.text.substring(5).trim(), context, sender);
+      if (resp instanceof Response) {
+        return "";
+      }
+    }
+    return message.text || "";
   };
 }
 class SaveLastMessage {
@@ -5152,7 +5242,7 @@ class HandlerCallbackQuery {
     this.sendAlert(api, context.query_id, "Not support inline key", false);
     throw new Error("Not support inline key");
   }
-  async sendAlert(api, query_id, text, show_alert = false, cache_time = 0) {
+  async sendAlert(api, query_id, text, show_alert, cache_time) {
     return api.answerCallbackQuery({
       callback_query_id: query_id,
       text,
@@ -5168,7 +5258,7 @@ class HandlerCallbackQuery {
         return this.sendAlert(api, context.query_id, "⚠️ Get chat role failed", false);
       }
       if (!roleList.includes(chatRole)) {
-        return this.sendAlert(api, context.query_id, `⚠️ 你没有权限进行此操作`, true);
+        return this.sendAlert(api, context.query_id, `⚠️ You don't have permission to operate`, true);
       }
     }
     return null;
@@ -5197,7 +5287,7 @@ class HandlerCallbackQuery {
     }
     log.info(`[CALLBACK QUERY] Update config: ${configKey} = ${context.USER_CONFIG[configKey]}`);
     await ENV.DATABASE.put(context.SHARE_CONTEXT.configStoreKey, JSON.stringify(context.USER_CONFIG)).catch(console.error);
-    this.sendAlert(api, context.query_id, "数据更新成功", false);
+    this.sendAlert(api, context.query_id, "Data update successful", false);
   }
   async closeInlineKeyboard(api, message) {
     const resp = await api.deleteMessage({
@@ -5239,9 +5329,9 @@ class HandlerCallbackQuery {
   }
 }
 class HandlerInlineQuery {
-  handle = async (context) => {
-    if (!context.query?.endsWith("$$")) {
-      log.info(`[INLINE QUERY] Not end with $$: ${context.query}`);
+  handle = async (chosenInline, context) => {
+    if (!context.query?.endsWith("$")) {
+      log.info(`[INLINE QUERY] Not end with $: ${context.query}`);
       return new Response("success", { status: 200 });
     }
     const api = createTelegramBotAPI(context.token);
@@ -5249,33 +5339,31 @@ class HandlerInlineQuery {
       inline_query_id: context.query_id,
       results: [{
         type: "article",
-        id: "STREAM",
+        id: ":c stream",
         title: "Stream Mode",
         input_message_content: {
-          message_text: `Stream text will be sent`,
-          parse_mode: "MarkdownV2"
+          message_text: `Please wait a moment`
         },
         reply_markup: {
           inline_keyboard: [
             [{
               text: "Thinking...",
-              callback_data: "STREAM"
+              callback_data: ":c stream"
             }]
           ]
         }
       }, {
         type: "article",
-        id: "FULL",
+        id: ":c full",
         title: "Full Mode",
         input_message_content: {
-          message_text: `Full text will be sent`,
-          parse_mode: "MarkdownV2"
+          message_text: `Please wait a moment`
         },
         reply_markup: {
           inline_keyboard: [
             [{
               text: "Thinking...",
-              callback_data: "FULL"
+              callback_data: ":c full"
             }]
           ]
         }
@@ -5285,25 +5373,19 @@ class HandlerInlineQuery {
     return new Response("success", { status: 200 });
   };
 }
-class HandlerChosenInline {
-  handle = async (context) => {
-    const api = createTelegramBotAPI(context.token);
-    await new Promise((resolve) => setTimeout(resolve, 3e3));
-    const resp = await api.editMessageText({
-      inline_message_id: context.inline_message_id,
-      text: `Test edit message.`,
-      parse_mode: "MarkdownV2"
-    }).then((r) => r.json());
-    return resp;
-  };
-}
 class CheckInlineQueryWhiteList {
-  handle = async (context) => {
+  handle = async (inlineQuery, context) => {
     if (ENV.CHAT_WHITE_LIST.includes(`${context.from_id}`)) {
       return null;
     }
     log.error(`User ${context.from_id} not in the white list`);
     return new Response(`User ${context.from_id} not in the white list`, { status: 403 });
+  };
+}
+class AnswerInlineQuery {
+  handle = async (chosenInline, context) => {
+    const answer = new AnswerChatInlineQuery();
+    return answer.handler(chosenInline, context);
   };
 }
 function loadMessage(body) {
@@ -5405,7 +5487,7 @@ async function handleInlineQuery(token, inlineQuery) {
       new HandlerInlineQuery()
     ];
     for (const handler of handlers) {
-      const result = await handler.handle(context);
+      const result = await handler.handle(inlineQuery, context);
       if (result instanceof Response) {
         return result;
       }
@@ -5418,12 +5500,12 @@ async function handleInlineQuery(token, inlineQuery) {
 async function handleChosenInline(token, chosenInlineQuery) {
   log.info(`handleChosenInlineQuery`, chosenInlineQuery);
   try {
-    const context = new ChosenInlineContext(token, chosenInlineQuery);
+    const context = await ChosenInlineWorkerContext.from(token, chosenInlineQuery);
     const handlers = [
-      new HandlerChosenInline()
+      new AnswerInlineQuery()
     ];
     for (const handler of handlers) {
-      const result = await handler.handle(context);
+      const result = await handler.handle(chosenInlineQuery, context);
       if (result instanceof Response) {
         return result;
       }

@@ -48,7 +48,7 @@ function checkMention(content: string, entities: Telegram.MessageEntity[], botNa
  * @param {Telegram.Message} message
  * @returns {boolean} 如果找到触发词，返回 true；否则 false
  */
-function SubstituteWords(message: Telegram.Message): boolean {
+export function SubstituteWords(message: Telegram.Message): boolean {
     if (Object.keys(ENV.CHAT_MESSAGE_TRIGGER).length === 0) {
         return false;
     }

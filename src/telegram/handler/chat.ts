@@ -3,6 +3,7 @@ import type * as Telegram from 'telegram-bot-api-types';
 import type { ChatStreamTextHandler, HistoryItem, HistoryModifier, ImageResult, LLMChatParams } from '../../agent/types';
 import type { WorkerContext } from '../../config/context';
 import type { AgentUserConfig } from '../../config/env';
+import type { ChosenInlineSender } from '../utils/send';
 import type { UnionData } from '../utils/utils';
 import type { MessageHandler } from './types';
 import { loadAudioLLM, loadChatLLM, loadImageGen } from '../../agent';
@@ -197,16 +198,16 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
     }
 }
 
-export function OnStreamHander(sender: MessageSender, context?: WorkerContext): ChatStreamTextHandler {
-    let nextEnableTime: number | null = null;
+export function OnStreamHander(sender: MessageSender | ChosenInlineSender, context?: WorkerContext): ChatStreamTextHandler {
+    let nextEnableTime = Date.now();
     async function onStream(text: string, isEnd: boolean = false): Promise<any> {
         try {
             if (isEnd
                 && context
                 && ENV.TELEGRAPH_NUM_LIMIT > 0
                 && text.length > ENV.TELEGRAPH_NUM_LIMIT
-                && ['group', 'supergroup'].includes(sender.context.chatType)) {
-                return sendTelegraph(context, sender, context.MIDDEL_CONTEXT.originalMessage.text || 'Redo', text);
+                && ['group', 'supergroup'].includes((sender as MessageSender).context.chatType)) {
+                return sendTelegraph(context, sender as MessageSender, context.MIDDEL_CONTEXT.originalMessage.text || 'Redo', text);
             }
             // 判断是否需要等待
             if (!isEnd && nextEnableTime && nextEnableTime > Date.now()) {
@@ -232,12 +233,13 @@ export function OnStreamHander(sender: MessageSender, context?: WorkerContext): 
                     return;
                 }
             }
-            if (resp.ok /* && text.length > 4000 */) {
+
+            if (resp.ok && sender instanceof MessageSender) {
                 const respJson = await resp.json() as Telegram.ResponseWithMessage;
                 sender.update({
                     message_id: respJson.result.message_id,
                 });
-            } else {
+            } else if (!resp.ok) {
                 log.error(`send message failed: ${resp.status} ${resp.statusText}`);
                 return sender.sendPlainText(text);
             }
@@ -247,6 +249,12 @@ export function OnStreamHander(sender: MessageSender, context?: WorkerContext): 
     };
 
     onStream.nextEnableTime = () => nextEnableTime;
+    onStream.end = async (text: string): Promise<any> => {
+        if (nextEnableTime > Date.now()) {
+            await new Promise(resolve => setTimeout(resolve, nextEnableTime - Date.now()));
+        }
+        return sender.sendRichText(text, ENV.DEFAULT_PARSE_MODE as Telegram.ParseMode);
+    };
     return onStream;
 }
 
