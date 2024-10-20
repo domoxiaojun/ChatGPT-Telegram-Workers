@@ -22,8 +22,8 @@ export default {
     },
     async scheduled(event: Event, env: any, ctx: any) {
         try {
-            if (env.UPSTASH_REDIS_URL && env.UPSTASH_REDIS_REST_TOKEN) {
-                env.DATABASE = new UpstashRedis(env.UPSTASH_REDIS_URL, env.UPSTASH_REDIS_REST_TOKEN);
+            if (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) {
+                env.DATABASE = new UpstashRedis(env.UPSTASH_REDIS_REST_URL, env.UPSTASH_REDIS_REST_TOKEN);
             }
             const promises = [];
             for (const task of Object.values(tasks)) {

@@ -911,8 +911,8 @@ const ENV_KEY_MAPPER = {
   WORKERS_AI_MODEL: "WORKERS_CHAT_MODEL"
 };
 class Environment extends EnvironmentConfig {
-  BUILD_TIMESTAMP = 1729439426;
-  BUILD_VERSION = "32340ea";
+  BUILD_TIMESTAMP = 1729440762;
+  BUILD_VERSION = "91714ce";
   I18N = loadI18n();
   PLUGINS_ENV = {};
   USER_CONFIG = createAgentUserConfig();
@@ -5875,8 +5875,8 @@ const index = {
   },
   async scheduled(event, env, ctx) {
     try {
-      if (env.UPSTASH_REDIS_URL && env.UPSTASH_REDIS_REST_TOKEN) {
-        env.DATABASE = new UpstashRedis(env.UPSTASH_REDIS_URL, env.UPSTASH_REDIS_REST_TOKEN);
+      if (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) {
+        env.DATABASE = new UpstashRedis(env.UPSTASH_REDIS_REST_URL, env.UPSTASH_REDIS_REST_TOKEN);
       }
       const promises = [];
       for (const task of Object.values(tasks)) {
