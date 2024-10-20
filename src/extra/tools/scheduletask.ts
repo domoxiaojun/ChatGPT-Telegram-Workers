@@ -8,7 +8,7 @@ interface ScheduledData {
 }
 
 interface Message {
-    id: string;
+    id: number[];
     ttl: number;
 }
 
@@ -26,7 +26,9 @@ type ScheduleRespType = (ok: boolean, reason?: string) => Response;
 
 interface SortMessagesType {
     rest: Chat;
-    expired: Record<string, number[]>;
+    expired: {
+        [chat_id: string]: number[];
+    };
 }
 
 const scheduleResp: ScheduleRespType = (ok, reason = '') => {
@@ -57,7 +59,7 @@ async function schedule_detele_message(ENV: any) {
             scheduledData[bot_name] = sortData.rest;
 
             Object.entries(sortData.expired).forEach(([chat_id, messages]) => {
-                log.info(`Start delete: ${chat_id} - ${messages}`);
+                log.info(`Start delete: chat: ${chat_id}, message ids: ${messages}`);
                 // 每次最多只能删除100条
                 for (let i = 0; i < messages.length; i += 100) {
                     taskPromises.push(api.deleteMessages({ chat_id, message_ids: messages.slice(i, i + 100) }));
@@ -116,11 +118,8 @@ function sortDeleteMessages(chats: Chat): SortMessagesType {
 
         sortedMessages.expired[chat_id] = messages
             .filter(msg => msg.ttl <= Date.now())
-            .map(msg => Number(msg.id))
+            .map(msg => msg.id)
             .flat();
-
-        if (sortedMessages.expired[chat_id].length === 0)
-            continue;
 
         sortedMessages.rest[chat_id] = messages.filter(msg => msg.ttl > Date.now());
     }

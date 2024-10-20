@@ -65,7 +65,7 @@ export class OpenAI extends OpenAIBase implements ChatAgent {
         if (this.type === 'tool' && ctx.FUNCTION_CALL_MODEL) {
             return ctx.FUNCTION_CALL_MODEL;
         }
-        return params?.images ? ctx.OPENAI_VISION_MODEL : ctx.OPENAI_CHAT_MODEL;
+        return params?.model || params?.images ? ctx.OPENAI_VISION_MODEL : ctx.OPENAI_CHAT_MODEL;
     };
 
     constructor(type: string = 'chat') {

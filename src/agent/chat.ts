@@ -70,18 +70,22 @@ export async function requestCompletionsFromLLM(params: LLMChatParams, context: 
         params.message = modifierData.message || '';
     }
 
-    const extra_params = params.extra_params || {};
-    let prompt = context.USER_CONFIG.SYSTEM_INIT_MESSAGE;
-    if (extra_params.prompt) {
-        prompt = context.USER_CONFIG.PROMPT[extra_params.prompt] || extra_params.prompt;
+    let { message, images, audio, prompt, model, extra_params } = params;
+
+    if (prompt) {
+        prompt = context.USER_CONFIG.PROMPT[prompt] || prompt;
+    } else {
+        prompt = context.USER_CONFIG.SYSTEM_INIT_MESSAGE;
     }
 
     const llmParams = {
-        message: params.message,
-        images: params.images,
+        message,
+        images,
+        audio,
         prompt,
-        model: extra_params.model,
+        model,
         history,
+        extra_params,
     };
     const answer = await agent.request(llmParams, context.USER_CONFIG, onStream);
     context.MIDDEL_CONTEXT.history.push({ role: 'assistant', ...answer });

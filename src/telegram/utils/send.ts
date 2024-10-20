@@ -41,9 +41,6 @@ class MessageContext implements Record<string, any> {
         } else {
             this.reply_to_message_id = null;
         }
-        if (ENV.EXPIRED_TIME > 0) {
-            sentMessageIds.set(message, []);
-        }
     }
 }
 
@@ -360,7 +357,11 @@ async function checkIsNeedTagIds(context: MessageContext, resp: Promise<Response
             = (isGroup && ENV.SCHEDULE_GROUP_DELETE_TYPE.includes(msgType))
             || (!isGroup && ENV.SCHEDULE_PRIVATE_DELETE_TYPE.includes(msgType));
         if (isNeedTag) {
+            if (!sentMessageIds.has(context.message)) {
+                sentMessageIds.set(context.message, []);
+            }
             message_id.forEach(id => sentMessageIds.get(context.message)?.push(id));
+            log.debug('taged message id', sentMessageIds.get(context.message));
         }
     } while (false);
 

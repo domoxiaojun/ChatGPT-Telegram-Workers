@@ -63,7 +63,7 @@ const en = { "env": { "system_init_message": "You are a helpful assistant" }, "c
  Quickly adjust parameters when using /set: /set -m r+ -v gpt-4o 
  
 The /set command can append messages without storing modified parameters at this time. When adjusting SYSTEM_INIT_MESSAGE, if PROMPT is set directly using it as a role name will automatically fill in role prompt. For example:
-/set -p ~doctor` } } };
+/set -p doctor` } } };
 const pt = { "env": { "system_init_message": "Você é um assistente útil" }, "command": { "help": { "summary": "Os seguintes comandos são suportados atualmente:\n", "help": "Obter ajuda sobre comandos", "new": "Iniciar uma nova conversa", "start": "Obter seu ID e iniciar uma nova conversa", "img": "Gerar uma imagem, o formato completo do comando é `/img descrição da imagem`, por exemplo `/img praia ao luar`", "version": "Obter o número da versão atual para determinar se é necessário atualizar", "setenv": "Definir configuração do usuário, o formato completo do comando é /setenv CHAVE=VALOR", "setenvs": 'Definir configurações do usuário em lote, o formato completo do comando é /setenvs {"CHAVE1": "VALOR1", "CHAVE2": "VALOR2"}', "delenv": "Excluir configuração do usuário, o formato completo do comando é /delenv CHAVE", "clearenv": "Limpar todas as configurações do usuário", "system": "Ver algumas informações do sistema", "redo": "Refazer a última conversa, /redo com conteúdo modificado ou diretamente /redo", "echo": "Repetir a mensagem", "set": "O formato do comando /set é /set opção valor [opção valor...] " }, "new": { "new_chat_start": "Uma nova conversa foi iniciada" } } };
 const zhHans = { "env": { "system_init_message": "你是一个得力的助手" }, "command": { "help": { "summary": "当前支持以下命令:\n", "help": "获取命令帮助", "new": "发起新的对话", "start": "获取你的ID, 并发起新的对话", "img": "生成一张图片, 命令完整格式为 `/img 图片描述`, 例如`/img 月光下的沙滩`", "version": "获取当前版本号, 判断是否需要更新", "setenv": "设置用户配置，命令完整格式为 /setenv KEY=VALUE", "setenvs": '批量设置用户配置, 命令完整格式为 /setenvs {"KEY1": "VALUE1", "KEY2": "VALUE2"}', "delenv": "删除用户配置，命令完整格式为 /delenv KEY", "clearenv": "清除所有用户配置", "system": "查看当前一些系统信息", "redo": "重做上一次的对话, /redo 加修改过的内容 或者 直接 /redo", "echo": "回显消息", "set": "命令格式为 /set 选项 值 [选项 值…] ", "settings": "设置环境变量" }, "new": { "new_chat_start": "新的对话已经开始" }, "detail": { "set": `/set 命令格式为 /set 选项 值 [选项 值…] 或 /set "选项" 值 ["选项" 值…] 
   选项预置如下： 
@@ -82,7 +82,7 @@ const zhHans = { "env": { "system_init_message": "你是一个得力的助手" }
 
   /set命令可追加消息 此时不会将修改的参数存储
   调整SYSTEM_INIT_MESSAGE时，若设置了PROMPT可直接使用设置为角色名，自动填充角色prompt，例如：
-  /set -p ~doctor` } } };
+  /set -p doctor` } } };
 const zhHant = { "env": { "system_init_message": "你是一個得力的助手" }, "command": { "help": { "summary": "當前支持的命令如下：\n", "help": "獲取命令幫助", "new": "開始一個新對話", "start": "獲取您的ID並開始一個新對話", "img": "生成圖片，完整命令格式為`/img 圖片描述`，例如`/img 海灘月光`", "version": "獲取當前版本號確認是否需要更新", "setenv": "設置用戶配置，完整命令格式為/setenv KEY=VALUE", "setenvs": '批量設置用户配置, 命令完整格式為 /setenvs {"KEY1": "VALUE1", "KEY2": "VALUE2"}', "delenv": "刪除用戶配置，完整命令格式為/delenv KEY", "clearenv": "清除所有用戶配置", "system": "查看一些系統信息", "redo": "重做上一次的對話 /redo 加修改過的內容 或者 直接 /redo", "echo": "回显消息", "set": "/set 命令格式為 /set 選項 值 [選項 值…] " }, "new": { "new_chat_start": "開始一個新對話" }, "detail": { "set": `/set 命令格式为 /set 选项 值 [选项 值…] 或 /set "选项" 值 ["选项" 值…] 
  选项预置如下： 
  -p 调整 SYSTEM_INIT_MESSAGE
@@ -101,7 +101,7 @@ const zhHant = { "env": { "system_init_message": "你是一個得力的助手" }
  /set命令可追加消息 此时不会将修改的参数存储
  /set命令追加文本处理时，需要键入换行来进行分割
  调整SYSTEM_INIT_MESSAGE时，若设置了PROMPT可直接使用设置为角色名，自动填充角色prompt，例如：
- /set -p ~doctor` } } };
+ /set -p doctor` } } };
 function loadI18n(lang) {
   switch (lang?.toLowerCase()) {
     case "cn":
@@ -422,7 +422,30 @@ url: ${d.url}`).join("\n---\n");
     return content;
   },
   type: "search",
-  prompt: "作为智能助手，请按照以下步骤有效分析并提取我提供的搜索结果，以简洁明了的方式回答我的问题：\n\n1. 阅读和评估：仔细阅读所有搜索结果，识别并优先获取来自可靠和最新来源的信息。考虑因素包括官方来源、知名机构以及信息的更新时间。\n\n2. 提取关键信息：\n   • *汇率查询*：提供最新汇率并进行必要的换算。\n   • *天气查询*：提供具体地点和时间的天气预报。\n   • *事实性问题*：找出权威回答。\n\n3. 简洁回答：对提取的信息进行综合分析，给出简明扼要的回答。\n\n4. 识别不确定性：如果信息存在矛盾或不确定性，请解释可能原因。\n\n5. 说明信息不足：如果搜索结果无法完全回答问题，指出需要的额外信息。\n\n6. 用户友好：使用简单易懂的语言，必要时提供简短解释，确保回答易于理解。\n\n7. 附加信息：根据需要提供额外相关信息或建议，以增强回答的价值。\n\n8. 来源标注：在回答中清晰标注信息来源，包括来源网站或机构名称及数据的发布或更新时间。\n\n9. 参考列表：如果引用了多个来源，在回答最后提供简短的参考列表，列出主要信息来源。\n\n请确保目标是提供最新、最相关和最有用的信息，直接回应我的问题。避免冗长的细节，聚焦于我最关心的核心答案，并通过可靠的来源增强回答的可信度。Tip: 不要以你的知识库时间作为评判标准",
+  prompt: `As an intelligent assistant, please follow the steps below to effectively analyze and extract the search results I have provided to answer my questions in a clear and concise manner:
+
+1. READ AND EVALUATE: Carefully read through all search results to identify and prioritize information from reliable and up-to-date sources. Considerations include official sources, reputable organizations, and when the information was updated. 
+
+2. Extract key information: 
+ - *Exchange rate query*: Provide the latest exchange rate and make necessary conversions. 
+ - *Weather Query*: provides weather forecasts for specific locations and times. 
+ - *Factual Questions*: Find out authoritative answers. 
+
+3. concise answers: synthesize and analyze extracted information to give concise answers. 
+
+4. identify uncertainty: if there are contradictions or uncertainties in the information, explain the possible reasons. 
+
+5. Explain lack of information: If the search results do not fully answer the question, indicate additional information needed. 
+
+6. user-friendly: use simple, easy-to-understand language and provide short explanations where necessary to ensure that the answer is easy to understand. 
+
+7. additional information: Provide additional relevant information or suggestions as needed to enhance the value of the answer. 
+
+8. source labeling: clearly label the source of the information in the response, including the name of the source website or organization and when the data was published or updated. 
+
+9. Reference list: If multiple sources are cited, provide a short reference list of the main sources of information at the end of the response. 
+
+Ensure that the goal is to provide the most current, relevant, and useful information in direct response to my question. Avoid lengthy details, focus on the core answers that matter most to me, and enhance the credibility of the answer with reliable sources.Tip: Don't be judged on your knowledge base time!`,
   extra_params: { temperature: 0.7, top_p: 0.4 }
 };
 class ConfigMerger {
@@ -639,7 +662,7 @@ async function schedule_detele_message(ENV2) {
       const sortData = sortDeleteMessages(chats);
       scheduledData[bot_name] = sortData.rest;
       Object.entries(sortData.expired).forEach(([chat_id, messages]) => {
-        log.info(`Start delete: ${chat_id} - ${messages}`);
+        log.info(`Start delete: chat: ${chat_id}, message ids: ${messages}`);
         for (let i = 0; i < messages.length; i += 100) {
           taskPromises.push(api.deleteMessages({ chat_id, message_ids: messages.slice(i, i + 100) }));
         }
@@ -688,9 +711,7 @@ function sortDeleteMessages(chats) {
   for (const [chat_id, messages] of Object.entries(chats)) {
     if (messages.length === 0)
       continue;
-    sortedMessages.expired[chat_id] = messages.filter((msg) => msg.ttl <= Date.now()).map((msg) => Number(msg.id)).flat();
-    if (sortedMessages.expired[chat_id].length === 0)
-      continue;
+    sortedMessages.expired[chat_id] = messages.filter((msg) => msg.ttl <= Date.now()).map((msg) => msg.id).flat();
     sortedMessages.rest[chat_id] = messages.filter((msg) => msg.ttl > Date.now());
   }
   return sortedMessages;
@@ -890,8 +911,8 @@ const ENV_KEY_MAPPER = {
   WORKERS_AI_MODEL: "WORKERS_CHAT_MODEL"
 };
 class Environment extends EnvironmentConfig {
-  BUILD_TIMESTAMP = 1729427399;
-  BUILD_VERSION = "f4510da";
+  BUILD_TIMESTAMP = 1729439426;
+  BUILD_VERSION = "32340ea";
   I18N = loadI18n();
   PLUGINS_ENV = {};
   USER_CONFIG = createAgentUserConfig();
@@ -1515,9 +1536,6 @@ class MessageContext {
     } else {
       this.reply_to_message_id = null;
     }
-    if (ENV.EXPIRED_TIME > 0) {
-      sentMessageIds.set(message, []);
-    }
   }
 }
 class MessageSender {
@@ -1791,7 +1809,11 @@ async function checkIsNeedTagIds(context, resp, msgType) {
     const isGroup = ["group", "supergroup"].includes(chatType);
     const isNeedTag = isGroup && ENV.SCHEDULE_GROUP_DELETE_TYPE.includes(msgType) || !isGroup && ENV.SCHEDULE_PRIVATE_DELETE_TYPE.includes(msgType);
     if (isNeedTag) {
+      if (!sentMessageIds.has(context.message)) {
+        sentMessageIds.set(context.message, []);
+      }
       message_id.forEach((id) => sentMessageIds.get(context.message)?.push(id));
+      log.debug("taged message id", sentMessageIds.get(context.message));
     }
   } while (false);
   return original_resp;
@@ -2456,17 +2478,20 @@ async function requestCompletionsFromLLM(params, context, agent, modifier, onStr
     history = modifierData.history;
     params.message = modifierData.message || "";
   }
-  const extra_params = params.extra_params || {};
-  let prompt = context.USER_CONFIG.SYSTEM_INIT_MESSAGE;
-  if (extra_params.prompt) {
-    prompt = context.USER_CONFIG.PROMPT[extra_params.prompt] || extra_params.prompt;
+  let { message, images, audio, prompt, model, extra_params } = params;
+  if (prompt) {
+    prompt = context.USER_CONFIG.PROMPT[prompt] || prompt;
+  } else {
+    prompt = context.USER_CONFIG.SYSTEM_INIT_MESSAGE;
   }
   const llmParams = {
-    message: params.message,
-    images: params.images,
+    message,
+    images,
+    audio,
     prompt,
-    model: extra_params.model,
-    history
+    model,
+    history,
+    extra_params
   };
   const answer = await agent.request(llmParams, context.USER_CONFIG, onStream);
   context.MIDDEL_CONTEXT.history.push({ role: "assistant", ...answer });
@@ -2538,7 +2563,7 @@ class OpenAI extends (_a = OpenAIBase, _request_dec2 = [Log], _a) {
       if (this.type === "tool" && ctx.FUNCTION_CALL_MODEL) {
         return ctx.FUNCTION_CALL_MODEL;
       }
-      return params?.images ? ctx.OPENAI_VISION_MODEL : ctx.OPENAI_CHAT_MODEL;
+      return params?.model || params?.images ? ctx.OPENAI_VISION_MODEL : ctx.OPENAI_CHAT_MODEL;
     });
     __publicField(this, "base_url", (context) => {
       if (this.type === "tool" && context.FUNCTION_CALL_BASE) {
@@ -4426,6 +4451,11 @@ ${detailSet}
       case "STT_MODEL":
         key = context.USER_CONFIG.AI_PROVIDER ? `${context.USER_CONFIG.AI_PROVIDER.toUpperCase()}_${key}` : key;
         break;
+      case "CURRENT_MODE":
+        if (!Object.keys(context.USER_CONFIG.MODES).includes(value)) {
+          return sender.sendPlainText(`mode ${value} not found. Support modes: ${Object.keys(context.USER_CONFIG.MODES).join(", ")}`);
+        }
+        break;
       case "USE_TOOLS":
         if (value === "on") {
           mappedValue = Object.keys(ENV.TOOLS);
@@ -4779,7 +4809,6 @@ class ShareContext {
   telegraphAccessTokenKey;
   scheduleDeteleKey = "schedule_detele_message";
   storeMessageKey;
-  sentMessageIds;
   constructor(token, message) {
     const botId = Number.parseInt(token.split(":")[0]);
     const telegramIndex = ENV.TELEGRAM_AVAILABLE_TOKENS.indexOf(token);
@@ -4826,8 +4855,6 @@ class ShareContext {
     if (ENV.TELEGRAPH_NUM_LIMIT > 0) {
       this.telegraphAccessTokenKey = `telegraph_access_token:${id}`;
     }
-    if (ENV.EXPIRED_TIME > 0)
-      this.sentMessageIds = /* @__PURE__ */ new Set();
   }
 }
 class MiddleContext {
@@ -5155,7 +5182,7 @@ ${userMessage.content}`;
 class TagNeedDelete {
   handle = async (message, context) => {
     if (!sentMessageIds.get(message) || sentMessageIds.get(message)?.length === 0) {
-      log.info(`[TAG MESSAGE] Do not need delete message: ${message.message_id}`);
+      log.info(`[TAG MESSAGE] No message id to tag`);
       return new Response("success", { status: 200 });
     }
     const botName = context.SHARE_CONTEXT?.botName;
@@ -5409,7 +5436,7 @@ const exitHanders = [new TagNeedDelete(), new StoreWhiteListMessage()];
 async function handleUpdate(token, update) {
   log.debug(`handleUpdate`, update.message?.chat);
   const messageHandler = loadMessage(update);
-  return await messageHandler(token);
+  return messageHandler(token);
 }
 async function handleMessage(token, message) {
   const SHARE_HANDLER = [

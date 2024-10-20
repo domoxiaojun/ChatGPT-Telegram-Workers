@@ -149,7 +149,7 @@ export class TagNeedDelete implements MessageHandler<WorkerContext> {
     handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | null> => {
         // 未记录消息
         if (!sentMessageIds.get(message) || sentMessageIds.get(message)?.length === 0) {
-            log.info(`[TAG MESSAGE] Do not need delete message: ${message.message_id}`);
+            log.info(`[TAG MESSAGE] No message id to tag`);
             return new Response('success', { status: 200 });
         }
         const botName = context.SHARE_CONTEXT?.botName;

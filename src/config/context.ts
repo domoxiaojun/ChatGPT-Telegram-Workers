@@ -19,7 +19,6 @@ export class ShareContext {
     telegraphAccessTokenKey?: string;
     readonly scheduleDeteleKey: string = 'schedule_detele_message';
     storeMessageKey?: string;
-    sentMessageIds?: Set<number>; // 已发送的消息id
 
     constructor(token: string, message: Telegram.Message) {
         const botId = Number.parseInt(token.split(':')[0]);
@@ -88,9 +87,6 @@ export class ShareContext {
         if (ENV.TELEGRAPH_NUM_LIMIT > 0) {
             this.telegraphAccessTokenKey = `telegraph_access_token:${id}`;
         }
-
-        if (ENV.EXPIRED_TIME > 0)
-            this.sentMessageIds = new Set();
     };
 }
 interface Llmlogs {

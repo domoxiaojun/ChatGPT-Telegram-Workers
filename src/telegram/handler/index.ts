@@ -46,7 +46,7 @@ const exitHanders: MessageHandler<any>[] = [new TagNeedDelete(), new StoreWhiteL
 export async function handleUpdate(token: string, update: Telegram.Update): Promise<Response | null> {
     log.debug(`handleUpdate`, update.message?.chat);
     const messageHandler = loadMessage(update);
-    return await messageHandler(token);
+    return messageHandler(token);
 }
 
 async function handleMessage(token: string, message: Telegram.Message) {

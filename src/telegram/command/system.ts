@@ -500,11 +500,11 @@ export class SetCommandHandler implements CommandHandler {
                     ? `${context.USER_CONFIG.AI_PROVIDER.toUpperCase()}_${key}`
                     : key;
                 break;
-            // case 'CURRENT_MODE':
-            //     if (!Object.keys(context.USER_CONFIG.MODES).includes(value)) {
-            //         return sender.sendPlainText(`mode ${value} not found`);
-            //     }
-            //     break;
+            case 'CURRENT_MODE':
+                if (!Object.keys(context.USER_CONFIG.MODES).includes(value)) {
+                    return sender.sendPlainText(`mode ${value} not found. Support modes: ${Object.keys(context.USER_CONFIG.MODES).join(', ')}`);
+                }
+                break;
             case 'USE_TOOLS':
                 if (value === 'on') {
                     mappedValue = Object.keys(ENV.TOOLS);
