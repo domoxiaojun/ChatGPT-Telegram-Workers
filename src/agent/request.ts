@@ -1,4 +1,6 @@
+import type { CoreMessage, LanguageModelV1 } from 'ai';
 import type { ChatStreamTextHandler } from './types';
+import { generateText, streamText } from 'ai';
 import { ENV } from '../config/env';
 import { Stream } from './stream';
 
@@ -41,12 +43,40 @@ export function isEventStreamResponse(resp: Response): boolean {
     return false;
 }
 
+
+async function streamHandler(textStream: AsyncIterable<string>, onStream: (text: string) => Promise<any>): Promise<string> {
+    let contentFull = '';
+    let lengthDelta = 0;
+    let updateStep = 50;
+    let lastUpdateTime = Date.now();
+    try {
+        for await (const textPart of textStream) {
+            lengthDelta += textPart.length;
+            contentFull = contentFull + textPart;
+            if (lengthDelta > updateStep) {
+                if (ENV.TELEGRAM_MIN_STREAM_INTERVAL > 0) {
+                    const delta = Date.now() - lastUpdateTime;
+                    if (delta < ENV.TELEGRAM_MIN_STREAM_INTERVAL) {
+                        continue;
+                    }
+                    lastUpdateTime = Date.now();
+                }
+                lengthDelta = 0;
+                updateStep += 20;
+                await onStream(`${contentFull}\n...`);
+            }
+        }
+    } catch (e) {
+        contentFull += `\nError: ${(e as Error).message}`;
+    }
+    return contentFull;
+}
+
 export async function requestChatCompletions(url: string, header: Record<string, string>, body: any, onStream: ChatStreamTextHandler | null, onResult: ChatStreamTextHandler | null = null, options: SseChatCompatibleOptions | null = null): Promise<string> {
     const controller = new AbortController();
     const { signal } = controller;
 
     let timeoutID = null;
-    let lastUpdateTime = Date.now();
     if (ENV.CHAT_COMPLETE_API_TIMEOUT > 0) {
         timeoutID = setTimeout(() => controller.abort(), ENV.CHAT_COMPLETE_API_TIMEOUT);
     }
@@ -69,34 +99,7 @@ export async function requestChatCompletions(url: string, header: Record<string,
         if (!stream) {
             throw new Error('Stream builder error');
         }
-        let contentFull = '';
-        let lengthDelta = 0;
-        let updateStep = 50;
-        try {
-            for await (const data of stream) {
-                const c = options.contentExtractor?.(data) || '';
-                if (c === '') {
-                    continue;
-                }
-                lengthDelta += c.length;
-                contentFull = contentFull + c;
-                if (lengthDelta > updateStep) {
-                    if (ENV.TELEGRAM_MIN_STREAM_INTERVAL > 0) {
-                        const delta = Date.now() - lastUpdateTime;
-                        if (delta < ENV.TELEGRAM_MIN_STREAM_INTERVAL) {
-                            continue;
-                        }
-                        lastUpdateTime = Date.now();
-                    }
-                    lengthDelta = 0;
-                    updateStep += 20;
-                    await onStream(`${contentFull}\n...`);
-                }
-            }
-        } catch (e) {
-            contentFull += `\nERROR: ${(e as Error).message}`;
-        }
-        return contentFull;
+        return streamHandler(stream, onStream);
     }
 
     if (!isJsonResponse(resp)) {
@@ -119,5 +122,26 @@ export async function requestChatCompletions(url: string, header: Record<string,
     } catch (e) {
         console.error(e);
         throw new Error(JSON.stringify(result));
+    }
+}
+
+export async function requestChatCompletionV2(params: { model: LanguageModelV1; prompt: string; messages: CoreMessage[] }, onStream: ChatStreamTextHandler | null, onResult: ChatStreamTextHandler | null = null): Promise<string> {
+    if (onStream !== null) {
+        const { textStream } = await streamText({
+            model: params.model,
+            prompt: params.prompt,
+            messages: params.messages,
+        });
+        const contentFull = await streamHandler(textStream, onStream);
+        onResult?.(contentFull);
+        return contentFull;
+    } else {
+        const { text } = await generateText({
+            model: params.model,
+            prompt: params.prompt,
+            messages: params.messages,
+        });
+        onResult?.(text);
+        return text;
     }
 }
