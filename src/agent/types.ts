@@ -1,31 +1,27 @@
+import type { CoreAssistantMessage, CoreMessage, CoreToolMessage, CoreUserMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 
-export interface HistoryItem {
-    role: string;
-    content?: string | null;
-    images?: string[] | null;
-}
+export type HistoryItem = CoreMessage;
 
 export interface HistoryModifierResult {
     history: HistoryItem[];
-    message: string | null;
+    message: CoreUserMessage;
 }
 
-export type HistoryModifier = (history: HistoryItem[], message: string | null) => HistoryModifierResult;
+export type HistoryModifier = (history: HistoryItem[], message: CoreUserMessage) => HistoryModifierResult;
 
 export type ChatStreamTextHandler = (text: string) => Promise<any>;
 
-export interface LLMChatRequestParams {
-    message?: string | null;
-    images?: string[];
+export type LLMChatRequestParams = CoreUserMessage;
+
+export interface LLMChatParams {
+    prompt?: string;
+    messages: CoreMessage[];
 }
 
-export interface LLMChatParams extends LLMChatRequestParams {
-    prompt?: string | null;
-    history?: HistoryItem[];
-}
+export type ResponseMessage = CoreAssistantMessage | CoreToolMessage;
 
-export type ChatAgentRequest = (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null) => Promise<string>;
+export type ChatAgentRequest = (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null) => Promise<ResponseMessage[]>;
 
 export interface ChatAgent {
     name: string;

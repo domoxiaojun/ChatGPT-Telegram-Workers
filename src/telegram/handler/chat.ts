@@ -65,7 +65,20 @@ export async function chatWithLLM(message: Telegram.Message, params: LLMChatRequ
         if (nextEnableTime !== null && nextEnableTime > Date.now()) {
             await new Promise(resolve => setTimeout(resolve, (nextEnableTime ?? 0) - Date.now()));
         }
-        return sender.sendRichText(answer);
+        if (answer.length === 0) {
+            return sender.sendPlainText('No response');
+        }
+        const lastMessage = answer[answer.length - 1];
+        if (typeof lastMessage.content === 'string') {
+            return sender.sendPlainText(lastMessage.content);
+        } else if (Array.isArray(lastMessage.content)) {
+            for (const part of lastMessage.content) {
+                if (Object.prototype.hasOwnProperty.call(part, 'text')) {
+                    return sender.sendPlainText((part as any).text);
+                }
+            }
+        }
+        return sender.sendPlainText('Unknown response');
     } catch (e) {
         let errMsg = `Error: ${(e as Error).message}`;
         if (errMsg.length > 2048) {
@@ -89,8 +102,10 @@ function findPhotoFileID(photos: Telegram.PhotoSize[], offset: number): string {
 
 export class ChatHandler implements MessageHandler {
     handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | null> => {
+        const text = message.text || message.caption;
         const params: LLMChatRequestParams = {
-            message: message.text || message.caption || '',
+            role: 'user',
+            content: text || '',
         };
 
         if (message.photo && message.photo.length > 0) {
@@ -99,7 +114,17 @@ export class ChatHandler implements MessageHandler {
             const file = await api.getFileWithReturns({ file_id: id });
             const url = file.result.file_path;
             if (url) {
-                params.images = [url];
+                params.content = [];
+                if (text) {
+                    params.content.push({
+                        type: 'text',
+                        text,
+                    });
+                }
+                params.content.push({
+                    type: 'image',
+                    image: url,
+                });
             }
         }
         return chatWithLLM(message, params, context, null);

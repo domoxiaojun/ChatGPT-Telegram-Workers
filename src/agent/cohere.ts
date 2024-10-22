@@ -1,9 +1,7 @@
 import type { AgentUserConfig } from '../config/env';
-import type { SseChatCompatibleOptions } from './request';
-import type { SSEMessage, SSEParserResult } from './stream';
-import type { ChatAgent, ChatStreamTextHandler, HistoryItem, LLMChatParams } from './types';
-import { requestChatCompletions } from './request';
-import { Stream } from './stream';
+import type { ChatAgent, ChatStreamTextHandler, LLMChatParams, ResponseMessage } from './types';
+import { createCohere } from '@ai-sdk/cohere';
+import { requestChatCompletionsV2 } from './request';
 
 export class Cohere implements ChatAgent {
     readonly name = 'cohere';
@@ -22,70 +20,16 @@ export class Cohere implements ChatAgent {
         return ctx.COHERE_CHAT_MODEL;
     };
 
-    private render = (item: HistoryItem): any => {
-        return {
-            role: Cohere.COHERE_ROLE_MAP[item.role] || 'USER',
-            content: item.content,
-        };
-    };
-
-    static parser(sse: SSEMessage): SSEParserResult {
-        // example:
-        //      event: text-generation
-        //      data: {"is_finished":false,"event_type":"text-generation","text":"?"}
-        //
-        //      event: stream-end
-        //      data: {"is_finished":true,...}
-        switch (sse.event) {
-            case 'text-generation':
-                try {
-                    return { data: JSON.parse(sse.data || '') };
-                } catch (e) {
-                    console.error(e, sse.data);
-                    return {};
-                }
-            case 'stream-start':
-                return {};
-            case 'stream-end':
-                return { finish: true };
-            default:
-                return {};
-        }
-    }
-
-    readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<string> => {
-        const { message, prompt, history } = params;
-        const url = `${context.COHERE_API_BASE}/chat`;
-        const header = {
-            'Authorization': `Bearer ${context.COHERE_API_KEY}`,
-            'Content-Type': 'application/json',
-            'Accept': onStream !== null ? 'text/event-stream' : 'application/json',
-        };
-
-        const body = {
-            message,
-            model: context.COHERE_CHAT_MODEL,
-            stream: onStream != null,
-            preamble: prompt,
-            chat_history: history?.map(this.render),
-        };
-        if (!body.preamble) {
-            delete body.preamble;
-        }
-
-        const options: SseChatCompatibleOptions = {};
-        options.streamBuilder = function (r, c) {
-            return new Stream(r, c, Cohere.parser);
-        };
-        options.contentExtractor = function (data: any) {
-            return data?.text;
-        };
-        options.fullContentExtractor = function (data: any) {
-            return data?.text;
-        };
-        options.errorExtractor = function (data: any) {
-            return data?.message;
-        };
-        return requestChatCompletions(url, header, body, onStream, null, options);
+    readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<ResponseMessage[]> => {
+        const provider = createCohere({
+            baseURL: context.COHERE_API_BASE,
+            apiKey: context.COHERE_API_KEY || undefined,
+        });
+        const languageModelV1 = provider.languageModel(this.model(context), undefined);
+        return requestChatCompletionsV2({
+            model: languageModelV1,
+            prompt: params.prompt,
+            messages: params.messages,
+        }, onStream);
     };
 }

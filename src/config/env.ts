@@ -172,6 +172,10 @@ class Environment extends EnvironmentConfig {
         if (!this.USER_CONFIG.SYSTEM_INIT_MESSAGE) {
             this.USER_CONFIG.SYSTEM_INIT_MESSAGE = this.I18N?.env?.system_init_message || 'You are a helpful assistant';
         }
+
+        // TODO: 兼容旧版 GOOGLE_COMPLETIONS_API
+        // // Google Gemini API: Cloudflare AI gateway: https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_name}/google-ai-studio/v1/models
+        // GOOGLE_COMPLETIONS_API = 'https://generativelanguage.googleapis.com/v1beta/models/';
     }
 }
 

@@ -1,7 +1,7 @@
 import type { AgentUserConfig } from '../config/env';
-import type { ChatAgent, ChatStreamTextHandler, ImageAgent, LLMChatParams } from './types';
-import { renderOpenAIMessage } from './openai';
-import { requestChatCompletions } from './request';
+import type { ChatAgent, ChatStreamTextHandler, ImageAgent, LLMChatParams, ResponseMessage } from './types';
+import { createAzure } from '@ai-sdk/azure';
+import { requestChatCompletionsV2 } from './request';
 
 class AzureBase {
     readonly name = 'azure';
@@ -29,29 +29,27 @@ export class AzureChatAI extends AzureBase implements ChatAgent {
         return this.modelFromURI(ctx.AZURE_COMPLETIONS_API);
     };
 
-    readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<string> => {
-        const { message, images, prompt, history } = params;
-        const url = context.AZURE_COMPLETIONS_API;
-        if (!url || !context.AZURE_API_KEY) {
-            throw new Error('Azure Completions API is not set');
+    readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<ResponseMessage[]> => {
+        const url = context.AZURE_COMPLETIONS_API || '';
+        // RESOURCE_NAME.openai.azure.com/openai/deployments/MODEL_NAME/chat/completions
+        // get RESOURCE_NAME  MODEL_NAME from the url with regex
+        const regex = /(?<resource>[^/]+)\/openai\/deployments\/(?<model>[^/]+)\/chat\/completions/;
+        const match = url.match(regex);
+        if (!match) {
+            throw new Error('Invalid Azure Chat API URL');
         }
-        const header = {
-            'Content-Type': 'application/json',
-            'api-key': context.AZURE_API_KEY,
-        };
+        const [, resource, model] = match;
 
-        const messages = [...(history || []), { role: 'user', content: message, images }];
-        if (prompt) {
-            messages.unshift({ role: context.SYSTEM_INIT_MESSAGE_ROLE, content: prompt });
-        }
-
-        const body = {
-            ...context.OPENAI_API_EXTRA_PARAMS,
-            messages: await Promise.all(messages.map(renderOpenAIMessage)),
-            stream: onStream != null,
-        };
-
-        return requestChatCompletions(url, header, body, onStream);
+        const provider = createAzure({
+            resourceName: resource,
+            apiKey: context.AZURE_API_KEY || undefined,
+        });
+        const languageModelV1 = provider.languageModel(model, undefined);
+        return requestChatCompletionsV2({
+            model: languageModelV1,
+            prompt: params.prompt,
+            messages: params.messages,
+        }, onStream);
     };
 }
 

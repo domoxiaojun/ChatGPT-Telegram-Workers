@@ -1,5 +1,5 @@
 import type { CoreMessage, LanguageModelV1 } from 'ai';
-import type { ChatStreamTextHandler } from './types';
+import type { ChatStreamTextHandler, ResponseMessage } from './types';
 import { generateText, streamText } from 'ai';
 import { ENV } from '../config/env';
 import { Stream } from './stream';
@@ -43,14 +43,17 @@ export function isEventStreamResponse(resp: Response): boolean {
     return false;
 }
 
-
-async function streamHandler(textStream: AsyncIterable<string>, onStream: (text: string) => Promise<any>): Promise<string> {
+async function streamHandler<T>(stream: AsyncIterable<T>, contentExtractor: (data: T) => string | null, onStream: (text: string) => Promise<any>): Promise<string> {
     let contentFull = '';
     let lengthDelta = 0;
     let updateStep = 50;
     let lastUpdateTime = Date.now();
     try {
-        for await (const textPart of textStream) {
+        for await (const part of stream) {
+            const textPart = contentExtractor(part);
+            if (textPart === null) {
+                continue;
+            }
             lengthDelta += textPart.length;
             contentFull = contentFull + textPart;
             if (lengthDelta > updateStep) {
@@ -99,7 +102,7 @@ export async function requestChatCompletions(url: string, header: Record<string,
         if (!stream) {
             throw new Error('Stream builder error');
         }
-        return streamHandler(stream, onStream);
+        return streamHandler<object>(stream, options.contentExtractor!, onStream);
     }
 
     if (!isJsonResponse(resp)) {
@@ -125,23 +128,23 @@ export async function requestChatCompletions(url: string, header: Record<string,
     }
 }
 
-export async function requestChatCompletionV2(params: { model: LanguageModelV1; prompt: string; messages: CoreMessage[] }, onStream: ChatStreamTextHandler | null, onResult: ChatStreamTextHandler | null = null): Promise<string> {
+export async function requestChatCompletionsV2(params: { model: LanguageModelV1; prompt?: string; messages: CoreMessage[] }, onStream: ChatStreamTextHandler | null, onResult: ChatStreamTextHandler | null = null): Promise<ResponseMessage[]> {
     if (onStream !== null) {
-        const { textStream } = await streamText({
+        const stream = await streamText({
             model: params.model,
             prompt: params.prompt,
             messages: params.messages,
         });
-        const contentFull = await streamHandler(textStream, onStream);
+        const contentFull = await streamHandler(stream.textStream, t => t, onStream);
         onResult?.(contentFull);
-        return contentFull;
+        return stream.responseMessages;
     } else {
-        const { text } = await generateText({
+        const result = await generateText({
             model: params.model,
             prompt: params.prompt,
             messages: params.messages,
         });
-        onResult?.(text);
-        return text;
+        onResult?.(result.text);
+        return result.responseMessages;
     }
 }

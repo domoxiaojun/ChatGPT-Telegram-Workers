@@ -1,35 +1,7 @@
 import type { AgentUserConfig } from '../config/env';
-import type { ChatAgent, ChatStreamTextHandler, HistoryItem, ImageAgent, LLMChatParams } from './types';
-import { ENV } from '../config/env';
-import { imageToBase64String, renderBase64DataURI } from '../utils/image';
-import { requestChatCompletions } from './request';
-
-export async function renderOpenAIMessage(item: HistoryItem): Promise<any> {
-    const res: any = {
-        role: item.role,
-        content: item.content,
-    };
-    if (item.images && item.images.length > 0) {
-        res.content = [];
-        if (item.content) {
-            res.content.push({ type: 'text', text: item.content });
-        }
-        for (const image of item.images) {
-            switch (ENV.TELEGRAM_IMAGE_TRANSFER_MODE) {
-                case 'base64':
-                    res.content.push({ type: 'image_url', image_url: {
-                        url: renderBase64DataURI(await imageToBase64String(image)),
-                    } });
-                    break;
-                case 'url':
-                default:
-                    res.content.push({ type: 'image_url', image_url: { url: image } });
-                    break;
-            }
-        }
-    }
-    return res;
-}
+import type { ChatAgent, ChatStreamTextHandler, ImageAgent, LLMChatParams, ResponseMessage } from './types';
+import { createOpenAI } from '@ai-sdk/openai';
+import { requestChatCompletionsV2 } from './request';
 
 class OpenAIBase {
     readonly name = 'openai';
@@ -50,31 +22,17 @@ export class OpenAI extends OpenAIBase implements ChatAgent {
         return ctx.OPENAI_CHAT_MODEL;
     };
 
-    private render = async (item: HistoryItem): Promise<any> => {
-        return renderOpenAIMessage(item);
-    };
-
-    readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<string> => {
-        const { message, images, prompt, history } = params;
-        const url = `${context.OPENAI_API_BASE}/chat/completions`;
-        const header = {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.apikey(context)}`,
-        };
-
-        const messages = [...(history || []), { role: 'user', content: message, images }];
-        if (prompt) {
-            messages.unshift({ role: context.SYSTEM_INIT_MESSAGE_ROLE, content: prompt });
-        }
-
-        const body = {
-            model: context.OPENAI_CHAT_MODEL,
-            ...context.OPENAI_API_EXTRA_PARAMS,
-            messages: await Promise.all(messages.map(this.render)),
-            stream: onStream != null,
-        };
-
-        return requestChatCompletions(url, header, body, onStream);
+    readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<ResponseMessage[]> => {
+        const provider = createOpenAI({
+            baseURL: context.OPENAI_API_BASE,
+            apiKey: this.apikey(context),
+        });
+        const languageModelV1 = provider.languageModel(this.model(context), undefined);
+        return requestChatCompletionsV2({
+            model: languageModelV1,
+            prompt: params.prompt,
+            messages: params.messages,
+        }, onStream);
     };
 }
 

@@ -1,6 +1,7 @@
 import type { AgentUserConfig } from '../config/env';
-import type { ChatAgent, ChatStreamTextHandler, HistoryItem, LLMChatParams } from './types';
-import { requestChatCompletions } from './request';
+import type { ChatAgent, ChatStreamTextHandler, LLMChatParams, ResponseMessage } from './types';
+import { createMistral } from '@ai-sdk/mistral';
+import { requestChatCompletionsV2 } from './request';
 
 export class Mistral implements ChatAgent {
     readonly name = 'mistral';
@@ -14,32 +15,16 @@ export class Mistral implements ChatAgent {
         return ctx.MISTRAL_CHAT_MODEL;
     };
 
-    private render = (item: HistoryItem): any => {
-        return {
-            role: item.role,
-            content: item.content,
-        };
-    };
-
-    readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<string> => {
-        const { message, prompt, history } = params;
-        const url = `${context.MISTRAL_API_BASE}/chat/completions`;
-        const header = {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${context.MISTRAL_API_KEY}`,
-        };
-
-        const messages = [...(history || []), { role: 'user', content: message }];
-        if (prompt) {
-            messages.unshift({ role: context.SYSTEM_INIT_MESSAGE_ROLE, content: prompt });
-        }
-
-        const body = {
-            model: context.MISTRAL_CHAT_MODEL,
-            messages: messages.map(this.render),
-            stream: onStream != null,
-        };
-
-        return requestChatCompletions(url, header, body, onStream);
+    readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<ResponseMessage[]> => {
+        const provider = createMistral({
+            baseURL: context.MISTRAL_API_BASE,
+            apiKey: context.MISTRAL_API_KEY || undefined,
+        });
+        const languageModelV1 = provider.languageModel(this.model(context), undefined);
+        return requestChatCompletionsV2({
+            model: languageModelV1,
+            prompt: params.prompt,
+            messages: params.messages,
+        }, onStream);
     };
 }

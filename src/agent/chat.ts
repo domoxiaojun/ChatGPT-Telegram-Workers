@@ -1,5 +1,12 @@
 import type { WorkerContext } from '../config/context';
-import type { ChatAgent, HistoryItem, HistoryModifier, LLMChatRequestParams } from './types';
+import type {
+    ChatAgent,
+    HistoryItem,
+    HistoryModifier,
+    LLMChatParams,
+    LLMChatRequestParams,
+    ResponseMessage,
+} from './types';
 import { ENV } from '../config/env';
 
 /**
@@ -37,7 +44,15 @@ async function loadHistory(key: string): Promise<HistoryItem[]> {
                 const historyItem = list[i];
                 let length = 0;
                 if (historyItem.content) {
-                    length = counter(historyItem.content);
+                    if (typeof historyItem.content === 'string') {
+                        length = counter(historyItem.content);
+                    } else if (Array.isArray(historyItem.content)) {
+                        for (const content of historyItem.content) {
+                            if (Object.prototype.hasOwnProperty.call(content, 'text')) {
+                                length += counter((content as any).text as string);
+                            }
+                        }
+                    }
                 } else {
                     historyItem.content = '';
                 }
@@ -62,7 +77,7 @@ async function loadHistory(key: string): Promise<HistoryItem[]> {
 
 export type StreamResultHandler = (text: string) => Promise<any>;
 
-export async function requestCompletionsFromLLM(params: LLMChatRequestParams, context: WorkerContext, agent: ChatAgent, modifier: HistoryModifier | null, onStream: StreamResultHandler | null): Promise<string> {
+export async function requestCompletionsFromLLM(params: LLMChatRequestParams, context: WorkerContext, agent: ChatAgent, modifier: HistoryModifier | null, onStream: StreamResultHandler | null): Promise<ResponseMessage[]> {
     const historyDisable = ENV.AUTO_TRIM_HISTORY && ENV.MAX_HISTORY_LENGTH <= 0;
     const historyKey = context.SHARE_CONTEXT.chatHistoryKey;
     if (!historyKey) {
@@ -70,24 +85,23 @@ export async function requestCompletionsFromLLM(params: LLMChatRequestParams, co
     }
     let history = await loadHistory(historyKey);
     if (modifier) {
-        const modifierData = modifier(history, params.message || null);
+        const modifierData = modifier(history, params || null);
         history = modifierData.history;
-        params.message = modifierData.message;
+        params = modifierData.message;
     }
-    const llmParams = {
-        ...params,
-        history,
-        prompt: context.USER_CONFIG.SYSTEM_INIT_MESSAGE,
+    const messages = [...history, params];
+    if (context.USER_CONFIG.SYSTEM_INIT_MESSAGE) {
+        messages.unshift({
+            role: 'system',
+            content: context.USER_CONFIG.SYSTEM_INIT_MESSAGE,
+        });
+    }
+    const llmParams: LLMChatParams = {
+        messages,
     };
     const answer = await agent.request(llmParams, context.USER_CONFIG, onStream);
     if (!historyDisable) {
-        const userMessage = { role: 'user', content: params.message || '', images: params.images };
-        if (ENV.HISTORY_IMAGE_PLACEHOLDER && userMessage.images && userMessage.images.length > 0) {
-            delete userMessage.images;
-            userMessage.content = `${ENV.HISTORY_IMAGE_PLACEHOLDER}\n${userMessage.content}`;
-        }
-        history.push(userMessage);
-        history.push({ role: 'assistant', content: answer });
+        messages.push(...answer);
         await ENV.DATABASE.put(historyKey, JSON.stringify(history)).catch(console.error);
     }
     return answer;
