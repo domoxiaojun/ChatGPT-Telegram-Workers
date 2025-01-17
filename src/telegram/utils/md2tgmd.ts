@@ -173,11 +173,12 @@ export function chunkDocument(text: string, chunkSize: number = 4000): string[] 
                     chunks[chunkIndex].push(...chunks[chunkIndex - 1].slice(-codeStack.length));
                     // 将上一个块中的末尾行取出
                     chunks[chunkIndex - 1].length -= codeStack.length;
+                } else {
+                    // 插入结尾标记
+                    chunks[chunkIndex - 1].push(...Array.from({ length: codeStack.length }).fill('```') as string[]);
+                    // 插入开头标记
+                    chunks[chunkIndex].unshift(...codeStack);
                 }
-                // 插入结尾标记
-                chunks[chunkIndex - 1].push(...Array.from({ length: codeStack.length }).fill('```') as string[]);
-                // 插入开头标记
-                chunks[chunkIndex].unshift(...codeStack);
                 // 存在冗余, 不考虑以下情况: 新块代码行加line超出限制
                 // if (chunks[chunkIndex].join('\n').length + line.length > chunkSize) {
                 // // 插入结尾标记
