@@ -139,7 +139,11 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
                 } else {
                     params.content.push({
                         type: 'text',
-                        text: type === 'sticker' ? 'User sent a sticker to respond to you' : `Please explain the ${type}`,
+                        text: type === 'sticker'
+                            ? 'User sent a sticker to respond to you'
+                            : ['audio', 'voice'].includes(type)
+                                    ? 'Please answer the question from the audio clip'
+                                    : `Please explain the ${type}`,
                     });
                 }
                 switch (type) {
