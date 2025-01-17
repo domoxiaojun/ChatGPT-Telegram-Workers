@@ -9,6 +9,7 @@ import type { MessageSender } from '../utils/send';
 import type { CommandHandler, InlineItem, ScopeType } from './types';
 import { authChecker } from '.';
 import { CHAT_AGENTS, customInfo, IMAGE_AGENTS, loadASRLLM, loadChatLLM, loadImageGen, loadTTSLLM } from '../../agent';
+import { loadHistory } from '../../agent/chat';
 import { KlingAI } from '../../agent/kling';
 import { ENV, ENV_KEY_MAPPER } from '../../config/env';
 import { ConfigMerger } from '../../config/merger';
@@ -785,5 +786,16 @@ export class KlingAICommandHandler implements CommandHandler {
             token: resp.data.token,
             domain: resp.data.httpEndpoints[0],
         };
+    };
+}
+
+export class HistoryCommandHandler implements CommandHandler {
+    command = '/history';
+    scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
+    needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
+    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
+        const length = Number.parseInt(subcommand.trim()) || context.USER_CONFIG.HISTORY_LENGTH;
+        const history = await loadHistory(context.SHARE_CONTEXT.chatHistoryKey, length);
+        return sender.sendDocument(new File([JSON.stringify(history, null, 2)], 'history.json', { type: 'application/json' }));
     };
 }

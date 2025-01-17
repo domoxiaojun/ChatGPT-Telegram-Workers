@@ -13,6 +13,7 @@ import {
     DelEnvCommandHandler,
     EchoCommandHandler,
     HelpCommandHandler,
+    HistoryCommandHandler,
     ImgCommandHandler,
     InlineCommandHandler,
     KlingAICommandHandler,
@@ -43,6 +44,7 @@ const SYSTEM_COMMANDS: CommandHandler[] = [
     new PerplexityCommandHandler(),
     new InlineCommandHandler(),
     new KlingAICommandHandler(),
+    new HistoryCommandHandler(),
 ];
 
 // const commandHanders: any[] = [
