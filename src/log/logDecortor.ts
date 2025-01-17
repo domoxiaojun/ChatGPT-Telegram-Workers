@@ -112,7 +112,7 @@ export function getLog(context: AgentUserConfig, onlyModel: boolean = false, isP
     if (!logObj)
         return '';
     if (onlyModel) {
-        return logObj.chat.model?.at(-1) || logObj.tool.model || 'UNKNOWN';
+        return logObj.chat.model || logObj.tool.model || 'UNKNOWN';
     }
     const logList: string[] = [];
     const show = {

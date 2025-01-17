@@ -72,7 +72,7 @@ export function AIMiddleware({ config, activeTools, onStream, toolChoice, messag
                     isThinkingStart = false;
                     chunk.textDelta = `**Thinking**\n${chunk.textDelta}`;
                 }
-                if (/\.\S/.test(chunk.textDelta)) {
+                if (/\.[a-z\u4E00-\u9FA5]/i.test(chunk.textDelta)) {
                     const [thinking, ...answer] = chunk.textDelta.split(/\.([a-z\u4E00-\u9FA5])/i);
                     // chunk.textDelta = `${thinking.replace(/\n/g, '\n>')}.\n\n${answer.join('')}`;
                     chunk.textDelta = `${thinking}.\n\n${answer.join('')}`;
