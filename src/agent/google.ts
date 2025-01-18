@@ -76,14 +76,14 @@ function extractUrls(str: string): { data?: { type: string; url: string; mimeTyp
         md: 'text/markdown',
     };
     const urlRegex = new RegExp(`https?://\\S+\\.(${Object.keys(supportTypes).join('|')})`, 'g');
-    const matches = urlRegex.exec(str) || [];
+    const matches = [...str.matchAll(urlRegex)];
 
     return {
         data: matches.map((i) => {
             const type = i[1] as keyof typeof supportTypes;
             return {
                 mimeType: supportTypes[type],
-                url: i,
+                url: i[0],
                 type: supportTypes[type]?.startsWith('image') ? 'image' : 'file',
             };
         }),
