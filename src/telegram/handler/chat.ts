@@ -134,7 +134,7 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
                 if (message.text || message.caption) {
                     params.content.push({
                         type: 'text',
-                        text: message.text || message.caption || '',
+                        text: message.text || message.caption as string,
                     });
                 } else {
                     params.content.push({

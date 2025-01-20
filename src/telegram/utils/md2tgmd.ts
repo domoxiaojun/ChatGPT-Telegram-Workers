@@ -175,8 +175,12 @@ export function chunkDocument(text: string, chunkSize: number = 4000): string[] 
                 //     // 将上一个块中的末尾行取出
                 //     chunks[chunkIndex - 1].length -= codeStack.length;
                 // }
+
+                const lastLineIsCodeStart = chunks[chunkIndex - 1].at(-1)?.trimStart()?.startsWith('```');
+                lastLineIsCodeStart && chunks[chunkIndex - 1].pop();
                 // 插入结尾标记
-                chunks[chunkIndex - 1].push(...Array.from({ length: codeStack.length }).fill('```') as string[]);
+                chunks[chunkIndex - 1].push(...Array.from({ length: lastLineIsCodeStart ? codeStack.length - 1 : codeStack.length }, () => '```'));
+
                 if (line.trim() === '```') {
                     codeStack.pop();
                     // 插入开头标记
