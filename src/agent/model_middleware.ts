@@ -66,21 +66,6 @@ export function AIMiddleware({ config, activeTools, onStream, toolChoice, messag
                 onStream?.send(`${messageReferencer.join('')}...\n` + `tool call will start: ${chunk.toolName}`);
                 sendToolCall = true;
                 log.info(`will start tool: ${chunk.toolName}`);
-            } else if (isThinking && chunk.type === 'text-delta' && !thinkingEnd) {
-                // ai sdk doesn't expose chunk's text property, so we need to handle it manually
-                if (isThinkingStart) {
-                    isThinkingStart = false;
-                    chunk.textDelta = `**Thinking**\n${chunk.textDelta}`;
-                }
-                if (/\.[a-z\u4E00-\u9FA5]/i.test(chunk.textDelta)) {
-                    const [thinking, ...answer] = chunk.textDelta.split(/\.([a-z\u4E00-\u9FA5])/i);
-                    // chunk.textDelta = `${thinking.replace(/\n/g, '\n>')}.\n\n${answer.join('')}`;
-                    chunk.textDelta = `${thinking}.\n\n${answer.join('')}`;
-                    thinkingEnd = true;
-                }
-                // else {
-                //     chunk.textDelta = chunk.textDelta.replace(/\n/g, '\n>');
-                // }
             }
         },
 

@@ -402,7 +402,7 @@ export class ExtraUserConfig {
     // function call temperature
     FUNCTION_CALL_TEMPERATURE: number | undefined = undefined;
     // chat max tokens
-    MAX_TOKENS = 4096;
+    MAX_TOKENS: number | undefined = undefined;
     // chat agent max steps
     MAX_STEPS = 3;
     // chat agent max retries
@@ -427,7 +427,7 @@ export class ExtraUserConfig {
     // Audio contains text
     AUDIO_CONTAINS_TEXT = true;
     // Drop openai params, the key is the model name, separated by commas, and the value is the parameters to be dropped, separated by commas.
-    // example: DROPS_PARAMS = { 'o1-mini,o1-preview': 'max_tokens,temperature,stream' };
+    // example: DROPS_OPENAI_PARAMS = { 'o1-mini,o1-preview': 'max_tokens,temperature,stream' };
     DROPS_OPENAI_PARAMS: Record<string, string> = {};
     // Cover message role, the key is the model name, separated by commas, and the value is overridden_role:new_role.
     // example: COVER_MESSAGE_ROLE = { 'o1-mini,o1-preview': 'system:user' };
