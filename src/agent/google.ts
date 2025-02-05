@@ -33,9 +33,9 @@ export class Google implements ChatAgent {
     };
 }
 
-export function handleUrl(messages: CoreUserMessage): CoreUserMessage {
+export function handleUrl(messages: CoreUserMessage, isVertex: boolean = false): CoreUserMessage {
     if (typeof messages.content === 'string') {
-        const { data = [], text } = extractUrls(messages.content);
+        const { data = [], text } = extractUrls(messages.content, isVertex);
         if (data.length > 0) {
             const newMessage: UserContent = [];
             newMessage.push({
@@ -53,7 +53,7 @@ export function handleUrl(messages: CoreUserMessage): CoreUserMessage {
     return messages;
 }
 
-function extractUrls(str: string): { data?: { type: string; url: string; mimeType: string }[]; text: string } {
+function extractUrls(str: string, isVertex = false): { data?: { type: string; url: string; mimeType: string }[]; text: string } {
     const supportTypes = {
         pdf: 'application/pdf',
         mp3: 'audio/mpeg',
@@ -77,12 +77,15 @@ function extractUrls(str: string): { data?: { type: string; url: string; mimeTyp
     };
     const urlRegex = new RegExp(`https?://\\S+\\.(${Object.keys(supportTypes).join('|')})`, 'g');
     const matches = [...str.matchAll(urlRegex)];
+    if (isVertex) {
+        matches.push(...str.matchAll(/https?:\/\/(youtu\.be|www\.youtube\.com)\/.+/g));
+    }
 
     return {
         data: matches.map((i) => {
             const type = i[1] as keyof typeof supportTypes;
             return {
-                mimeType: supportTypes[type],
+                mimeType: supportTypes[type] || 'video/webm',
                 url: i[0],
                 type: supportTypes[type]?.startsWith('image') ? 'image' : 'file',
             };
