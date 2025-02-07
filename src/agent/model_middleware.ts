@@ -4,7 +4,7 @@ import type { LanguageModelV1ToolCallPart, LanguageModelV1ToolResultPart } from 
 import type {
     LanguageModelV1,
     LanguageModelV1CallOptions,
-    Experimental_LanguageModelV1Middleware as LanguageModelV1Middleware,
+    LanguageModelV1Middleware,
     LanguageModelV1Prompt,
     StepResult,
 } from 'ai';
@@ -22,14 +22,10 @@ export function AIMiddleware({ config, activeTools, onStream, toolChoice, messag
     let sendToolCall = false;
     let step = 0;
     let rawSystemPrompt: string | undefined;
-    let isThinking = false;
-    let thinkingEnd = false;
-    let isThinkingStart = true;
     return {
         wrapGenerate: async ({ doGenerate, params, model }) => {
             warpModel(model, config, activeTools, (params.mode as any).toolChoice, chatModel);
             log.info(`modelId: ${model.modelId}`);
-            isThinking = model.modelId.includes('thinking');
             recordModelLog(config, model, activeTools, (params.mode as any).toolChoice);
             const result = await doGenerate();
             log.debug(`doGenerate result: ${JSON.stringify(result)}`);
@@ -39,7 +35,6 @@ export function AIMiddleware({ config, activeTools, onStream, toolChoice, messag
         wrapStream: async ({ doStream, params, model }) => {
             warpModel(model, config, activeTools, (params.mode as any).toolChoice, chatModel);
             log.info(`modelId: ${model.modelId}`);
-            isThinking = model.modelId.includes('thinking');
             recordModelLog(config, model, activeTools, (params.mode as any).toolChoice);
             return doStream();
         },

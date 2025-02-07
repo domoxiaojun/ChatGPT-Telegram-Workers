@@ -17,8 +17,7 @@ async function convertOgaToMp3(file: Blob | Response, target: 'base64' | 'blob' 
 }
 
 function uint8ArrayToBase64(uint8Array: Uint8Array) {
-    const binaryString = new TextDecoder().decode(uint8Array);
-    return btoa(binaryString);
+    return Buffer.from(uint8Array).toString('base64');
 }
 
 function base64ToBlob(base64File: string, format: 'oga' | 'mp3' = 'oga') {

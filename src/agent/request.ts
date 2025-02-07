@@ -1,8 +1,9 @@
 import type { CoreMessage, LanguageModelV1, StepResult, ToolCallPart, ToolResultPart } from 'ai';
+import type { ToolChoice } from '.';
 import type { AgentUserConfig } from '../config/env';
 import type { ChatStreamTextHandler, OpenAIFuncCallData, ResponseMessage } from './types';
-import { generateText, streamText, TypeValidationError, experimental_wrapLanguageModel as wrapLanguageModel } from 'ai';
-import { createLlmModel, type ToolChoice } from '.';
+import { generateText, streamText, TypeValidationError, wrapLanguageModel } from 'ai';
+import { createLlmModel } from '.';
 import { ENV } from '../config/env';
 import { log } from '../log/logger';
 import { manualRequestTool } from '../tools';
@@ -31,26 +32,26 @@ function fixOpenAICompatibleOptions(options: SseChatCompatibleOptions | null): S
     };
     options.functionCallExtractor
         = options.functionCallExtractor
-        || function (d: any, call_list: OpenAIFuncCallData[]) {
-            const chunck = d?.choices?.[0]?.delta?.tool_calls;
-            if (!Array.isArray(chunck))
-                return;
-            for (const a of chunck) {
-                if (!Object.hasOwn(a, 'index')) {
-                    throw new Error(`The function chunck don't have index: ${JSON.stringify(chunck)}`);
+            || function (d: any, call_list: OpenAIFuncCallData[]) {
+                const chunck = d?.choices?.[0]?.delta?.tool_calls;
+                if (!Array.isArray(chunck))
+                    return;
+                for (const a of chunck) {
+                    if (!Object.hasOwn(a, 'index')) {
+                        throw new Error(`The function chunck don't have index: ${JSON.stringify(chunck)}`);
+                    }
+                    if (a?.type === 'function') {
+                        call_list[a.index] = { id: a.id, type: a.type, function: a.function };
+                    } else {
+                        call_list[a.index].function.arguments += a.function.arguments;
+                    }
                 }
-                if (a?.type === 'function') {
-                    call_list[a.index] = { id: a.id, type: a.type, function: a.function };
-                } else {
-                    call_list[a.index].function.arguments += a.function.arguments;
-                }
-            }
-        };
+            };
     options.fullFunctionCallExtractor
         = options.fullFunctionCallExtractor
-        || function (d: any) {
-            return d?.choices?.[0]?.message?.tool_calls;
-        };
+            || function (d: any) {
+                return d?.choices?.[0]?.message?.tool_calls;
+            };
     options.errorExtractor = options.errorExtractor || function (d: any) {
         return d.error?.message;
     };

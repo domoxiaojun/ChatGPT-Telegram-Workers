@@ -28,7 +28,7 @@ const packageJson = `
     "@ai-sdk/anthropic": "^1.1.6",
     "@ai-sdk/azure": "^1.1.9",
     "@ai-sdk/cohere": "^1.1.6",
-    "@ai-sdk/google": "^1.1.9",
+    "@ai-sdk/google": "1.1.6",
     "@ai-sdk/google-vertex": "^2.1.9",
     "@ai-sdk/mistral": "^1.1.6",
     "@ai-sdk/openai": "^1.1.9",

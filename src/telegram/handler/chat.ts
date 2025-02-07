@@ -1,4 +1,5 @@
 /* eslint-disable unused-imports/no-unused-vars */
+import type { FilePart, TextPart, ToolResultPart } from 'ai';
 import type * as Telegram from 'telegram-bot-api-types';
 import type { ChatStreamTextHandler, HistoryModifier, ImageResult, LLMChatRequestParams } from '../../agent/types';
 import type { WorkerContext } from '../../config/context';
@@ -6,7 +7,7 @@ import type { AgentUserConfig } from '../../config/env';
 import type { ChosenInlineSender } from '../utils/send';
 import type { UnionData } from '../utils/utils';
 import type { MessageHandler } from './types';
-import { APICallError, type FilePart, type TextPart, type ToolResultPart } from 'ai';
+import { APICallError } from 'ai';
 import { loadASRLLM, loadChatLLM, loadImageGen, loadTTSLLM } from '../../agent';
 import { loadHistory, requestCompletionsFromLLM } from '../../agent/chat';
 import { ENV } from '../../config/env';

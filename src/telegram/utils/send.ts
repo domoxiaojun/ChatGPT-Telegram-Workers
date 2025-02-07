@@ -452,7 +452,7 @@ export async function checkIsNeedTagIds(context: { chatType: string; message: Te
         const isGroup = ['group', 'supergroup'].includes(chatType);
         const isNeedTag
             = (isGroup && ENV.SCHEDULE_GROUP_DELETE_TYPE.includes(msgType))
-            || (!isGroup && ENV.SCHEDULE_PRIVATE_DELETE_TYPE.includes(msgType));
+                || (!isGroup && ENV.SCHEDULE_PRIVATE_DELETE_TYPE.includes(msgType));
         if (isNeedTag) {
             if (!tagMessageIds.has(message)) {
                 tagMessageIds.set(message, new Set());
