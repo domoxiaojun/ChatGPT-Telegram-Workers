@@ -248,7 +248,7 @@ export async function requestChatCompletionsV2(params: { model: LanguageModelV1;
             }],
         });
     }
-    metadata = metaDataExtractor(metadata, params.model.provider);
+
     return {
         messages,
         content: contentFull + metadata,

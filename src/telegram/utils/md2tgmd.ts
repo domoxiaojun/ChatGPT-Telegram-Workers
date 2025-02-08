@@ -26,7 +26,7 @@ const escapedRegexp = /\\[*_~|`\\()[\]{}>#+\-=.!]/g;
 const logRegexp = /^>?LOGSTART\\>([\s\S]*?)LOGEND$/m;
 const reverseCodeRegexp = /\\`\\`\\`([\s\S]+)\\`\\`\\`$/g;
 const inlineCodeRegexp = /`[^\n]*?`/g;
-const linkRegexp = /\\\[([^\n]+?)\\\]\\\((.+?)\\\)/g;
+const linkRegexp = /\\\[([^\]\n]+?)\\\]\\\((.+?)\\\)/g;
 const escapeRegexpMatch = [
     // bold
     {
@@ -244,11 +244,11 @@ function lineSegment(text: string, chunkSize: number = 4000): string[] {
 }
 
 function markData(text: string, markd: Record<string, string>, type: 'INCODE' | 'LINK' = 'INCODE') {
-    const isincode = type === 'INCODE';
-    const matches = text.matchAll(isincode ? inlineCodeRegexp : linkRegexp);
+    const isIncode = type === 'INCODE';
+    const matches = text.matchAll(isIncode ? inlineCodeRegexp : linkRegexp);
     let i = 0;
     for (const match of matches) {
-        markd[`${type} ${i}`] = isincode ? match[0] : `[${match[1]}](${match[2]})`;
+        markd[`${type} ${i}`] = isIncode ? match[0] : `[${match[1]}](${match[2]})`;
         text = text.replace(match[0], `${type} ${i}`);
         i++;
     }
