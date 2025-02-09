@@ -230,15 +230,16 @@ export async function requestChatCompletionsV2(params: { model: LanguageModelV1;
                         thinkingStart = true;
                         thinkingStartTime = Date.now();
                         // thinking转为引用
-                        return thinkingTag + data.textDelta.replace(/\n/g, '\n>');
+                        return thinkingTag + data.textDelta.trimStart().replace(/\n/g, '\n>');
                     }
                     return data.textDelta.replace(/\n/g, '\n>');
                 } else if (data.type === 'text-delta') {
                     if (thinkingStart && !thinkingEnd) {
                         thinkingEnd = true;
                         const thinkingTime = ((Date.now() - thinkingStartTime!) / 1e3).toFixed(1);
-                        messageInfo.content = messageInfo.content.replace(/^>`Thinking[^\n]+/, `>\`Thinking about ${thinkingTime}s\``);
-                        return `\n>✹\n\n${data.textDelta}`;
+                        messageInfo.content = messageInfo.content
+                            .replace(/^>`Thinking[^\n]+/, `>\`Thinking about ${thinkingTime}s\``);
+                        return `\n>✹\n${data.textDelta.trim()}`;
                     }
                     return data.textDelta;
                 }

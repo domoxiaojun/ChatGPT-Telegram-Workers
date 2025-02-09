@@ -1,13 +1,14 @@
 /* eslint-disable no-case-declarations */
 /* eslint-disable unused-imports/no-unused-vars */
 import type { LanguageModelV1ToolCallPart, LanguageModelV1ToolResultPart } from '@ai-sdk/provider';
-import type {
-    LanguageModelV1,
-    LanguageModelV1CallOptions,
-    LanguageModelV1Middleware,
-    LanguageModelV1Prompt,
-    StepResult,
-    TextStreamPart,
+import {
+    extractReasoningMiddleware,
+    type LanguageModelV1,
+    type LanguageModelV1CallOptions,
+    type LanguageModelV1Middleware,
+    type LanguageModelV1Prompt,
+    type StepResult,
+    type TextStreamPart
 } from 'ai';
 import type { ToolChoice } from '.';
 import type { AgentUserConfig } from '../config/env';
@@ -27,12 +28,13 @@ export function AIMiddleware({ config, activeTools, onStream, toolChoice, messag
     let sendToolCall = false;
     let step = 0;
     let rawSystemPrompt: string | undefined;
+    const extractReasoning = extractReasoningMiddleware({ tagName: 'think' });
     return {
         wrapGenerate: async ({ doGenerate, params, model }) => {
             warpModel(model, config, activeTools, (params.mode as any).toolChoice, chatModel);
             log.info(`modelId: ${model.modelId}`);
             recordModelLog(config, model, activeTools, (params.mode as any).toolChoice);
-            const result = await doGenerate();
+            const result = await extractReasoning.wrapGenerate!({ doGenerate, params, model });
             log.debug(`doGenerate result: ${JSON.stringify(result)}`);
             return result;
         },
@@ -41,7 +43,7 @@ export function AIMiddleware({ config, activeTools, onStream, toolChoice, messag
             warpModel(model, config, activeTools, (params.mode as any).toolChoice, chatModel);
             log.info(`modelId: ${model.modelId}`);
             recordModelLog(config, model, activeTools, (params.mode as any).toolChoice);
-            return doStream();
+            return extractReasoning.wrapStream!({ doStream, params, model });
         },
 
         transformParams: async ({ type, params }) => {

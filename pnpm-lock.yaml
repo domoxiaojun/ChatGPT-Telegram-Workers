@@ -22,7 +22,7 @@ importers:
         version: 1.1.10(zod@3.24.1)
       '@ai-sdk/google-vertex':
         specifier: ^2.1.11
-        version: 2.1.11(encoding@0.1.13)(zod@3.24.1)
+        version: 2.1.12(encoding@0.1.13)(zod@3.24.1)
       '@ai-sdk/mistral':
         specifier: ^1.1.7
         version: 1.1.7(zod@3.24.1)
@@ -45,14 +45,11 @@ importers:
         specifier: ^0.13.1
         version: 0.13.1
       ai:
-        specifier: ^4.1.26
+        specifier: 4.1.26
         version: 4.1.26(react@18.3.1)(zod@3.24.1)
       cf-worker-adapter:
         specifier: ^1.4.0
         version: 1.4.0
-      msw:
-        specifier: ^2.7.0
-        version: 2.7.0(@types/node@22.13.1)(typescript@5.7.3)
       node-cron:
         specifier: ^3.0.3
         version: 3.0.3
@@ -144,14 +141,20 @@ packages:
     peerDependencies:
       zod: ^3.0.0
 
-  '@ai-sdk/google-vertex@2.1.11':
-    resolution: {integrity: sha512-sVNg/tm3pmuNKvm7fg2v6ao9scZf4mesaRw1E9tcL9N3TVNWoGBYzwngSE0s6s8wbPdkoY4at56Js6bS3zalAw==}
+  '@ai-sdk/google-vertex@2.1.12':
+    resolution: {integrity: sha512-zHCpgrPdUeBwy4VLN8Agl31O2gIfiqnXwc954MjMJx7Pp9Ypiwj13zHtGq0UPPbOi53pIWK3V7UPcYsvZN+8+Q==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.0.0
 
   '@ai-sdk/google@1.1.10':
     resolution: {integrity: sha512-g65cKrs2ZjpNMOD9OvE9J/Xt1SxPu00IsWn4npYe56nU4YqVydsPBG4PyUKgDr9KXdrnFEoXYmWxkJeTe/m4hA==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.0.0
+
+  '@ai-sdk/google@1.1.11':
+    resolution: {integrity: sha512-EcK20MTA3zNJKNOo3r52Y0N960lGL6UxUimt13HFk2RJ4dXPMWl7ZhWFgjwFXwW2QwdSPKqlMHYjne3xvKTBcQ==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.0.0
@@ -4163,10 +4166,10 @@ snapshots:
       '@ai-sdk/provider-utils': 2.1.6(zod@3.24.1)
       zod: 3.24.1
 
-  '@ai-sdk/google-vertex@2.1.11(encoding@0.1.13)(zod@3.24.1)':
+  '@ai-sdk/google-vertex@2.1.12(encoding@0.1.13)(zod@3.24.1)':
     dependencies:
       '@ai-sdk/anthropic': 1.1.6(zod@3.24.1)
-      '@ai-sdk/google': 1.1.10(zod@3.24.1)
+      '@ai-sdk/google': 1.1.11(zod@3.24.1)
       '@ai-sdk/provider': 1.0.7
       '@ai-sdk/provider-utils': 2.1.6(zod@3.24.1)
       google-auth-library: 9.15.0(encoding@0.1.13)
@@ -4176,6 +4179,12 @@ snapshots:
       - supports-color
 
   '@ai-sdk/google@1.1.10(zod@3.24.1)':
+    dependencies:
+      '@ai-sdk/provider': 1.0.7
+      '@ai-sdk/provider-utils': 2.1.6(zod@3.24.1)
+      zod: 3.24.1
+
+  '@ai-sdk/google@1.1.11(zod@3.24.1)':
     dependencies:
       '@ai-sdk/provider': 1.0.7
       '@ai-sdk/provider-utils': 2.1.6(zod@3.24.1)
@@ -4312,15 +4321,18 @@ snapshots:
   '@bundled-es-modules/cookie@2.0.1':
     dependencies:
       cookie: 0.7.2
+    optional: true
 
   '@bundled-es-modules/statuses@1.0.1':
     dependencies:
       statuses: 2.0.1
+    optional: true
 
   '@bundled-es-modules/tough-cookie@0.1.6':
     dependencies:
       '@types/tough-cookie': 4.0.5
       tough-cookie: 4.1.4
+    optional: true
 
   '@clack/core@0.4.1':
     dependencies:
@@ -4708,6 +4720,7 @@ snapshots:
       '@inquirer/type': 3.0.4(@types/node@22.13.1)
     optionalDependencies:
       '@types/node': 22.13.1
+    optional: true
 
   '@inquirer/core@10.1.6(@types/node@22.13.1)':
     dependencies:
@@ -4721,12 +4734,15 @@ snapshots:
       yoctocolors-cjs: 2.1.2
     optionalDependencies:
       '@types/node': 22.13.1
+    optional: true
 
-  '@inquirer/figures@1.0.10': {}
+  '@inquirer/figures@1.0.10':
+    optional: true
 
   '@inquirer/type@3.0.4(@types/node@22.13.1)':
     optionalDependencies:
       '@types/node': 22.13.1
+    optional: true
 
   '@ioredis/commands@1.2.0': {}
 
@@ -4808,6 +4824,7 @@ snapshots:
       is-node-process: 1.2.0
       outvariant: 1.4.3
       strict-event-emitter: 0.5.1
+    optional: true
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
@@ -4833,14 +4850,17 @@ snapshots:
       rimraf: 3.0.2
     optional: true
 
-  '@open-draft/deferred-promise@2.2.0': {}
+  '@open-draft/deferred-promise@2.2.0':
+    optional: true
 
   '@open-draft/logger@0.3.0':
     dependencies:
       is-node-process: 1.2.0
       outvariant: 1.4.3
+    optional: true
 
-  '@open-draft/until@2.1.0': {}
+  '@open-draft/until@2.1.0':
+    optional: true
 
   '@opentelemetry/api@1.9.0': {}
 
@@ -4998,7 +5018,8 @@ snapshots:
 
   '@types/argparse@1.0.38': {}
 
-  '@types/cookie@0.6.0': {}
+  '@types/cookie@0.6.0':
+    optional: true
 
   '@types/debug@4.1.12':
     dependencies:
@@ -5046,9 +5067,11 @@ snapshots:
 
   '@types/resolve@1.20.2': {}
 
-  '@types/statuses@2.0.5': {}
+  '@types/statuses@2.0.5':
+    optional: true
 
-  '@types/tough-cookie@4.0.5': {}
+  '@types/tough-cookie@4.0.5':
+    optional: true
 
   '@types/unist@3.0.3': {}
 
@@ -5636,7 +5659,8 @@ snapshots:
   clean-stack@2.2.0:
     optional: true
 
-  cli-width@4.1.0: {}
+  cli-width@4.1.0:
+    optional: true
 
   client-only@0.0.1: {}
 
@@ -6476,7 +6500,8 @@ snapshots:
 
   graphemer@1.4.0: {}
 
-  graphql@16.10.0: {}
+  graphql@16.10.0:
+    optional: true
 
   gtoken@7.1.0(encoding@0.1.13):
     dependencies:
@@ -6500,7 +6525,8 @@ snapshots:
 
   he@1.2.0: {}
 
-  headers-polyfill@4.0.3: {}
+  headers-polyfill@4.0.3:
+    optional: true
 
   hosted-git-info@2.8.9: {}
 
@@ -6620,7 +6646,8 @@ snapshots:
 
   is-module@1.0.0: {}
 
-  is-node-process@1.2.0: {}
+  is-node-process@1.2.0:
+    optional: true
 
   is-number@7.0.0: {}
 
@@ -7263,12 +7290,14 @@ snapshots:
       typescript: 5.7.3
     transitivePeerDependencies:
       - '@types/node'
+    optional: true
 
   muggle-string@0.4.1: {}
 
   mustache@4.2.0: {}
 
-  mute-stream@2.0.0: {}
+  mute-stream@2.0.0:
+    optional: true
 
   nanoid@3.3.8: {}
 
@@ -7381,7 +7410,8 @@ snapshots:
       type-check: 0.4.0
       word-wrap: 1.2.5
 
-  outvariant@1.4.3: {}
+  outvariant@1.4.3:
+    optional: true
 
   p-limit@2.3.0:
     dependencies:
@@ -7529,6 +7559,7 @@ snapshots:
   psl@1.15.0:
     dependencies:
       punycode: 2.3.1
+    optional: true
 
   pump@3.0.2:
     dependencies:
@@ -7537,7 +7568,8 @@ snapshots:
 
   punycode@2.3.1: {}
 
-  querystringify@2.2.0: {}
+  querystringify@2.2.0:
+    optional: true
 
   queue-microtask@1.2.3: {}
 
@@ -7609,7 +7641,8 @@ snapshots:
 
   require-from-string@2.0.2: {}
 
-  requires-port@1.0.0: {}
+  requires-port@1.0.0:
+    optional: true
 
   resolve-from@4.0.0: {}
 
@@ -7727,7 +7760,8 @@ snapshots:
 
   signal-exit@4.0.2: {}
 
-  signal-exit@4.1.0: {}
+  signal-exit@4.1.0:
+    optional: true
 
   simple-concat@1.0.1: {}
 
@@ -7819,13 +7853,15 @@ snapshots:
 
   standard-as-callback@2.1.0: {}
 
-  statuses@2.0.1: {}
+  statuses@2.0.1:
+    optional: true
 
   std-env@3.8.0: {}
 
   stoppable@1.1.0: {}
 
-  strict-event-emitter@0.5.1: {}
+  strict-event-emitter@0.5.1:
+    optional: true
 
   string-argv@0.3.2: {}
 
@@ -7957,6 +7993,7 @@ snapshots:
       punycode: 2.3.1
       universalify: 0.2.0
       url-parse: 1.5.10
+    optional: true
 
   tr46@0.0.3: {}
 
@@ -8024,7 +8061,8 @@ snapshots:
 
   type-fest@0.8.1: {}
 
-  type-fest@4.34.0: {}
+  type-fest@4.34.0:
+    optional: true
 
   typescript@4.9.5: {}
 
@@ -8079,7 +8117,8 @@ snapshots:
       unist-util-is: 6.0.0
       unist-util-visit-parents: 6.0.1
 
-  universalify@0.2.0: {}
+  universalify@0.2.0:
+    optional: true
 
   universalify@2.0.1: {}
 
@@ -8097,6 +8136,7 @@ snapshots:
     dependencies:
       querystringify: 2.2.0
       requires-port: 1.0.0
+    optional: true
 
   use-sync-external-store@1.4.0(react@18.3.1):
     dependencies:
@@ -8319,6 +8359,7 @@ snapshots:
       ansi-styles: 4.3.0
       string-width: 4.2.3
       strip-ansi: 6.0.1
+    optional: true
 
   wrap-ansi@7.0.0:
     dependencies:
@@ -8371,7 +8412,8 @@ snapshots:
 
   yocto-queue@0.1.0: {}
 
-  yoctocolors-cjs@2.1.2: {}
+  yoctocolors-cjs@2.1.2:
+    optional: true
 
   youch@3.3.4:
     dependencies:
