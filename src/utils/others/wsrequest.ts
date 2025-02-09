@@ -1,3 +1,4 @@
+import type { MessageInfo } from '../../agent/model_middleware';
 import { streamHandler } from '../../agent/request';
 import { log } from '../../log/logger';
 import { AsyncIter } from './readable';
@@ -62,7 +63,10 @@ export async function WssRequest(url: string, protocols: string | string[] | nul
         let streamIter: AsyncIter<any> | null = null;
         if (onStream) {
             streamIter = new AsyncIter();
-            streamSender = streamHandler(streamIter as unknown as AsyncIterable<any>, extractor, onStream);
+            const messageInfo: MessageInfo = {
+                content: '',
+            };
+            streamSender = streamHandler(streamIter as unknown as AsyncIterable<any>, extractor, onStream, messageInfo);
         }
 
         ws.on('open', () => {

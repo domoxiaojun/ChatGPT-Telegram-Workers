@@ -1,6 +1,7 @@
-import type { CoreMessage, LanguageModelV1, StepResult, ToolCallPart, ToolResultPart } from 'ai';
+import type { CoreMessage, LanguageModelV1, StepResult, TextStreamPart, ToolCallPart, ToolResultPart } from 'ai';
 import type { ToolChoice } from '.';
 import type { AgentUserConfig } from '../config/env';
+import type { MessageInfo } from './model_middleware';
 import type { ChatStreamTextHandler, OpenAIFuncCallData, ResponseMessage } from './types';
 import { generateText, streamText, TypeValidationError, wrapLanguageModel } from 'ai';
 import { createLlmModel } from '.';
@@ -78,6 +79,9 @@ type OnResult = ((result: any) => Promise<any>) | null;
 export async function requestChatCompletions(url: string, header: Record<string, string>, body: any, onStream: ChatStreamTextHandler | null, onResult: OnResult = null, options: SseChatCompatibleOptions | null = null): Promise<string> {
     const controller = new AbortController();
     const { signal } = controller;
+    const messageInfo: MessageInfo = {
+        content: '',
+    };
 
     let timeoutID = null;
     if (ENV.CHAT_COMPLETE_API_TIMEOUT > 0 && !body?.model?.includes('o1')) {
@@ -103,7 +107,7 @@ export async function requestChatCompletions(url: string, header: Record<string,
         if (!stream) {
             throw new Error('Stream builder error');
         }
-        return streamHandler(stream, options.contentExtractor!, onStream);
+        return streamHandler(stream, options.contentExtractor!, onStream, messageInfo);
     }
 
     if (!isJsonResponse(resp)) {
@@ -134,10 +138,9 @@ function clearTimeoutID(timeoutID: any) {
         clearTimeout(timeoutID);
 }
 
-export async function streamHandler(stream: AsyncIterable<any>, contentExtractor: (data: any) => string | null, onStream: ChatStreamTextHandler, messageReferencer?: string[], errorReferencer: boolean[] = [false]): Promise<string> {
+export async function streamHandler(stream: AsyncIterable<any>, contentExtractor: (data: any) => string | null, onStream: ChatStreamTextHandler, messageInfo: MessageInfo, errorReferencer: boolean[] = [false]): Promise<string> {
     log.info(`start handle stream`);
 
-    let contentFull = '';
     let lengthDelta = 0;
     let updateStep = 5;
     let lastChunk = '';
@@ -152,20 +155,19 @@ export async function streamHandler(stream: AsyncIterable<any>, contentExtractor
             // 已有delta + 上次chunk的长度
             lengthDelta += lastChunk.length;
             // 当前内容为上次迭代后的数据 （减少一次迭代）
-            contentFull += lastChunk;
-            messageReferencer?.push(lastChunk);
+            messageInfo.content += lastChunk;
             // 更新chunk
             lastChunk = textPart;
 
             if (lastChunk && lengthDelta > updateStep) {
                 lengthDelta = 0;
                 updateStep = Math.min(updateStep + 40, maxLength);
-                onStream.send(`${contentFull.trimEnd()}●`);
+                onStream.send(`${messageInfo.content.trimEnd()}●`);
             }
         }
-        contentFull += lastChunk;
+        messageInfo.content += lastChunk;
     } catch (e) {
-        if (contentFull === '') {
+        if (messageInfo.content === '') {
             throw e;
         }
         console.error((e as Error).message, (e as Error).stack);
@@ -173,22 +175,24 @@ export async function streamHandler(stream: AsyncIterable<any>, contentExtractor
         if (e instanceof TypeValidationError) {
             content = (e.value as any)?.choices?.[0]?.delta?.content;
         }
-        contentFull += (content ?? `\n\n\`\`\`Error\n${(e as Error).message}\n\`\`\``);
+        messageInfo.content += (content ?? `\n\n\`\`\`Error\n${(e as Error).message}\n\`\`\``);
         errorReferencer[0] = true;
     }
 
-    return contentFull;
+    return messageInfo.content;
 }
 
 export async function requestChatCompletionsV2(params: { model: LanguageModelV1; toolModel?: LanguageModelV1; prompt?: string; messages: CoreMessage[]; tools?: any; activeTools?: string[]; toolChoice?: ToolChoice[] | undefined; context: AgentUserConfig }, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> {
-    const messageReferencer = [] as string[];
+    const messageInfo: MessageInfo = {
+        content: '',
+    };
     const middleware = AIMiddleware({
         config: params.context,
         activeTools: params.activeTools || [],
         onStream,
         toolChoice: params.toolChoice || [],
         chatModel: params.model.modelId,
-        messageReferencer,
+        messageInfo,
     });
     const hander_params = {
         model: wrapLanguageModel({
@@ -215,12 +219,39 @@ export async function requestChatCompletionsV2(params: { model: LanguageModelV1;
             ...hander_params,
             onChunk: middleware.onChunk as (data: any) => void,
         });
-        contentFull = await streamHandler(stream.textStream, t => t, onStream, messageReferencer, errorReferencer);
+        const contentExtractor = (() => {
+            let thinkingStart = false;
+            let thinkingEnd = false;
+            let thinkingStartTime: undefined | number;
+            const thinkingTag = '>`Thinking`\n>';
+            return (data: TextStreamPart<any>) => {
+                if (data.type === 'reasoning') {
+                    if (!thinkingStart) {
+                        thinkingStart = true;
+                        thinkingStartTime = Date.now();
+                        // thinking转为引用
+                        return thinkingTag + data.textDelta.replace(/\n/g, '\n>');
+                    }
+                    return data.textDelta.replace(/\n/g, '\n>');
+                } else if (data.type === 'text-delta') {
+                    if (thinkingStart && !thinkingEnd) {
+                        thinkingEnd = true;
+                        const thinkingTime = ((Date.now() - thinkingStartTime!) / 1e3).toFixed(1);
+                        messageInfo.content = messageInfo.content.replace(/^>`Thinking[^\n]+/, `>\`Thinking about ${thinkingTime}s\``);
+                        return `\n>✹\n\n${data.textDelta}`;
+                    }
+                    return data.textDelta;
+                }
+                return '';
+            };
+        })();
+
+        contentFull = await streamHandler(stream.fullStream, contentExtractor, onStream, messageInfo, errorReferencer);
         messages = errorReferencer[0] ? [{ role: 'assistant', content: contentFull }] : (await stream.response).messages;
         metadata = errorReferencer[0] ? '' : metaDataExtractor(await stream.experimental_providerMetadata, params.model.provider);
     } else {
         const result = await generateText(hander_params);
-        contentFull = result.text;
+        contentFull = `${result.reasoning ? `>\`Thinking\`\n>${result.reasoning.replace(/\n/g, '\n>')}\n\n` : ''}${result.text}`;
         messages = result.response.messages;
         metadata = metaDataExtractor(await result.experimental_providerMetadata, params.model.provider);
     }

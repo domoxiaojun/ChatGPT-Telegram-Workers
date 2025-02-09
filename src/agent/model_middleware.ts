@@ -7,6 +7,7 @@ import type {
     LanguageModelV1Middleware,
     LanguageModelV1Prompt,
     StepResult,
+    TextStreamPart,
 } from 'ai';
 import type { ToolChoice } from '.';
 import type { AgentUserConfig } from '../config/env';
@@ -16,8 +17,12 @@ import { log } from '../log/logger';
 import { tools } from '../tools';
 
 type Writeable<T> = { -readonly [P in keyof T]: T[P] };
+export interface MessageInfo {
+    content: string;
+    // reasoning: string;
+};
 
-export function AIMiddleware({ config, activeTools, onStream, toolChoice, messageReferencer, chatModel }: { config: AgentUserConfig; activeTools: string[]; onStream: ChatStreamTextHandler | null; toolChoice: ToolChoice[] | []; messageReferencer: string[]; chatModel: string }): LanguageModelV1Middleware & { onChunk: (data: any) => void; onStepFinish: (data: StepResult<any>, context: AgentUserConfig) => void } {
+export function AIMiddleware({ config, activeTools, onStream, toolChoice, messageInfo, chatModel }: { config: AgentUserConfig; activeTools: string[]; onStream: ChatStreamTextHandler | null; toolChoice: ToolChoice[] | []; messageInfo: MessageInfo; chatModel: string }): LanguageModelV1Middleware & { onChunk: (data: any) => void; onStepFinish: (data: StepResult<any>, context: AgentUserConfig) => void } {
     let startTime: number | undefined;
     let sendToolCall = false;
     let step = 0;
@@ -56,9 +61,9 @@ export function AIMiddleware({ config, activeTools, onStream, toolChoice, messag
             return params;
         },
 
-        onChunk: ({ chunk }: { chunk: any }) => {
+        onChunk: ({ chunk }: { chunk: Extract<TextStreamPart<any>, { type: 'reasoning' | 'tool-call' | 'tool-call-streaming-start' | 'tool-call-delta' | 'tool-result' }> }) => {
             if (chunk.type === 'tool-call' && !sendToolCall) {
-                onStream?.send(`${messageReferencer.join('')}...\n` + `tool call will start: ${chunk.toolName}`);
+                onStream?.send(`${messageInfo.content}...\n` + `tool call will start: ${chunk.toolName}`);
                 sendToolCall = true;
                 log.info(`will start tool: ${chunk.toolName}`);
             }
@@ -92,7 +97,7 @@ export function AIMiddleware({ config, activeTools, onStream, toolChoice, messag
                 const toolNames = [...new Set(toolResults.map(i => i.toolName))];
                 activeTools = trimActiveTools(activeTools, toolNames);
                 log.info(`finish ${toolNames}`);
-                onStream?.send(`${messageReferencer.join('')}...\n` + `finish ${toolNames}`);
+                onStream?.send(`${messageInfo.content}...\n` + `finish ${toolNames}`);
             } else {
                 activeTools.length > 0 && toolChoice[step]?.type !== 'none' ? logs.tool.time.push(time) : logs.chat.time.push(time);
             }

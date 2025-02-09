@@ -47,6 +47,7 @@
         "@ai-sdk/google-vertex": "^2.1.11",
         "@ai-sdk/mistral": "^1.1.7",
         "@ai-sdk/openai": "^1.1.9",
+        "@ai-sdk/openai-compatible": "^0.1.8",
         "@ai-sdk/provider": "^1.0.7",
         "@ai-sdk/xai": "^1.1.8",
         "@ffmpeg.wasm/core-st": "^0.13.2",

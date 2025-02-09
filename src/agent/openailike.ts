@@ -1,7 +1,7 @@
 import type { CoreUserMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ASRAgent, ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
-import { createOpenAI } from '@ai-sdk/openai';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { Log } from '../log/logDecortor';
 import { log } from '../log/logger';
 import { requestText2Image } from './chat';
@@ -34,10 +34,10 @@ export class OpenAILike extends OpenAILikeBase implements ChatAgent {
     };
 
     readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> => {
-        const provider = createOpenAI({
+        const provider = createOpenAICompatible({
             name: 'oailike',
-            baseURL: context.OAILIKE_API_BASE || undefined,
-            apiKey: context.OAILIKE_API_KEY || undefined,
+            baseURL: context.OAILIKE_API_BASE,
+            apiKey: context.OAILIKE_API_KEY || '',
         });
         const userMessage = params.messages.at(-1) as CoreUserMessage;
         const languageModelV1 = provider.languageModel(this.model(context, userMessage), undefined);
