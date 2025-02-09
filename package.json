@@ -54,7 +54,6 @@
         "@ffmpeg.wasm/main": "^0.13.1",
         "ai": "^4.1.26",
         "cf-worker-adapter": "^1.4.0",
-        "msw": "^2.7.0",
         "node-cron": "^3.0.3"
     },
     "devDependencies": {
