@@ -211,7 +211,6 @@ export async function requestChatCompletionsV2(params: { model: LanguageModelV1;
     };
     let messages: ResponseMessage[] = [];
     let contentFull = '';
-    let metadata = '';
     const errorReferencer = [false];
 
     if (onStream !== null /* && params.model.modelId !== 'gpt-4o-audio-preview' */) {
@@ -249,12 +248,12 @@ export async function requestChatCompletionsV2(params: { model: LanguageModelV1;
 
         contentFull = await streamHandler(stream.fullStream, contentExtractor, onStream, messageInfo, errorReferencer);
         messages = errorReferencer[0] ? [{ role: 'assistant', content: contentFull }] : (await stream.response).messages;
-        metadata = errorReferencer[0] ? '' : metaDataExtractor(await stream.experimental_providerMetadata, params.model.provider);
+        contentFull = errorReferencer[0] ? contentFull : metaDataExtractor(await stream.experimental_providerMetadata, params.model.provider, contentFull);
     } else {
         const result = await generateText(hander_params);
         contentFull = `${result.reasoning ? `>\`Thinking\`\n>${result.reasoning.replace(/\n/g, '\n>')}\n\n` : ''}${result.text}`;
         messages = result.response.messages;
-        metadata = metaDataExtractor(await result.experimental_providerMetadata, params.model.provider);
+        contentFull = metaDataExtractor(await result.experimental_providerMetadata, params.model.provider, contentFull);
     }
     try {
         // when last message is tool, avoid ai message not sent complete
@@ -283,6 +282,6 @@ export async function requestChatCompletionsV2(params: { model: LanguageModelV1;
 
     return {
         messages,
-        content: contentFull + metadata,
+        content: contentFull,
     };
 }

@@ -1,10 +1,11 @@
 import type { CoreUserMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ASRAgent, ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { OpenAICompatibleChatLanguageModel } from '@ai-sdk/openai-compatible';
 import { Log } from '../log/logDecortor';
 import { log } from '../log/logger';
 import { requestText2Image } from './chat';
+import { extraMetadataExtractor } from './model_middleware';
 import { requestChatCompletionsV2 } from './request';
 
 export class OpenAILikeBase {
@@ -34,15 +35,18 @@ export class OpenAILike extends OpenAILikeBase implements ChatAgent {
     };
 
     readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> => {
-        const provider = createOpenAICompatible({
-            name: 'oailike',
-            baseURL: context.OAILIKE_API_BASE,
-            apiKey: context.OAILIKE_API_KEY || '',
-        });
         const userMessage = params.messages.at(-1) as CoreUserMessage;
-        const languageModelV1 = provider.languageModel(this.model(context, userMessage), undefined);
+        const model = new OpenAICompatibleChatLanguageModel(this.model(context, userMessage), {}, {
+            provider: 'oailike',
+            url: ({ path }: { path: string }) => `${context.OAILIKE_API_BASE}${path}`,
+            headers: () => ({
+                Authorization: `Bearer ${context.OAILIKE_API_KEY}`,
+            }),
+            defaultObjectGenerationMode: 'json',
+            metadataExtractor: extraMetadataExtractor(this.model(context, userMessage)),
+        });
         return requestChatCompletionsV2({
-            model: languageModelV1,
+            model,
             messages: params.messages,
             context,
         }, onStream);

@@ -1,18 +1,14 @@
 /* eslint-disable no-case-declarations */
 /* eslint-disable unused-imports/no-unused-vars */
+import type { MetadataExtractor } from '@ai-sdk/openai-compatible';
 import type { LanguageModelV1ToolCallPart, LanguageModelV1ToolResultPart } from '@ai-sdk/provider';
-import {
-    extractReasoningMiddleware,
-    type LanguageModelV1,
-    type LanguageModelV1CallOptions,
-    type LanguageModelV1Middleware,
-    type LanguageModelV1Prompt,
-    type StepResult,
-    type TextStreamPart
-} from 'ai';
+import type { LanguageModelV1, LanguageModelV1CallOptions, LanguageModelV1Middleware, LanguageModelV1Prompt, StepResult, TextStreamPart } from 'ai';
 import type { ToolChoice } from '.';
 import type { AgentUserConfig } from '../config/env';
 import type { ChatStreamTextHandler } from './types';
+import {
+    extractReasoningMiddleware,
+} from 'ai';
 import { getLogSingleton } from '../log/logDecortor';
 import { log } from '../log/logger';
 import { tools } from '../tools';
@@ -28,7 +24,7 @@ export function AIMiddleware({ config, activeTools, onStream, toolChoice, messag
     let sendToolCall = false;
     let step = 0;
     let rawSystemPrompt: string | undefined;
-    const extractReasoning = extractReasoningMiddleware({ tagName: 'think' });
+    const extractReasoning = extractReasoningMiddleware({ tagName: 'think', separator: '' });
     return {
         wrapGenerate: async ({ doGenerate, params, model }) => {
             warpModel(model, config, activeTools, (params.mode as any).toolChoice, chatModel);
@@ -207,21 +203,69 @@ function recordModelLog(config: AgentUserConfig, model: LanguageModelV1, activeT
     }
 }
 
-export function metaDataExtractor(metadata: any, provider: string) {
+export function metaDataExtractor(metadata: any, provider: string, content: string) {
+    const replacer = (content: string, urls: string[]) => {
+        for (const [i, url] of Object.entries(urls)) {
+            content = content.replace(new RegExp(`\\[(${+i + 1})\\]`, 'g'), `[[$1\\]](${url})`);
+        }
+        return content;
+    };
     switch (provider) {
         case 'google.generative-ai':
         case 'google.vertex.chat':
         {
             const { groundingChunks, webSearchQueries } = metadata?.google?.groundingMetadata || {};
             if (!groundingChunks) {
-                return '';
+                return content;
             }
+
             const sources = groundingChunks
-                ?.map(({ web: { title, uri } }: { web: { title: string; uri: string } }, i: number) => `[${i + 1}] [${title}](${uri})`)
+                ?.map((chunk: any, i: number) => {
+                    const web = chunk?.web as { title?: string; uri?: string } | undefined;
+                    return `[${i + 1}] [${web?.title ?? ''}](${web?.uri ?? ''})`;
+                })
                 .join('\n');
-            return `\n## Sources:\n${sources}\n## Search Query:\n${webSearchQueries || ''}`;
+            content = `${replacer(content, groundingChunks.map((chunk: any) => chunk?.web?.url ?? ''))}\n## Sources:\n${sources}\n## Search Query:\n${webSearchQueries || ''}`;
+            return content;
+        }
+        case 'oailike':
+        {
+            const sources = metadata?.pplx?.citations?.map((citation: string, i: number) => `[[${i + 1}\\]](${citation})`).join(' ');
+            // content = `${replacer(content, metadata?.pplx?.citations)}\n\n## Sources:\n${sources}`;
+            return replacer(content, metadata?.pplx?.citations);
         }
         default:
-            return '';
+            return content;
+    }
+}
+
+export function extraMetadataExtractor(modelId: string): MetadataExtractor | undefined {
+    const pplxModelPerfix = 'sonar';
+    if (modelId.startsWith(pplxModelPerfix)) {
+        return {
+            extractMetadata: ({ parsedBody }: { parsedBody: unknown }) => {
+                const body = parsedBody as Record<string, any>;
+                return {
+                    pplx: {
+                        citations: body.citations,
+                    },
+                };
+            },
+            createStreamExtractor: () => {
+                const citations: string[] = [];
+                return {
+                    processChunk: (parsedChunk: Record<string, string>) => {
+                        if (parsedChunk.citations && citations.length === 0) {
+                            citations.push(...parsedChunk.citations);
+                        }
+                    },
+                    buildMetadata: () => ({
+                        pplx: {
+                            citations,
+                        },
+                    }),
+                };
+            },
+        };
     }
 }
