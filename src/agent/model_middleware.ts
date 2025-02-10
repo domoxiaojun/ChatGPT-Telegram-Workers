@@ -204,6 +204,9 @@ function recordModelLog(config: AgentUserConfig, model: LanguageModelV1, activeT
 }
 
 export function metaDataExtractor(metadata: any, provider: string, content: string) {
+    if (!metadata) {
+        return content;
+    }
     const replacer = (content: string, urls: string[]) => {
         for (const [i, url] of Object.entries(urls)) {
             content = content.replace(new RegExp(`\\[(${+i + 1})\\]`, 'g'), `[[$1\\]](${url})`);
@@ -230,6 +233,9 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
         }
         case 'oailike':
         {
+            if (!metadata?.pplx?.citations) {
+                return content;
+            }
             const sources = metadata?.pplx?.citations?.map((citation: string, i: number) => `[[${i + 1}\\]](${citation})`).join(' ');
             // content = `${replacer(content, metadata?.pplx?.citations)}\n\n## Sources:\n${sources}`;
             return replacer(content, metadata?.pplx?.citations);
