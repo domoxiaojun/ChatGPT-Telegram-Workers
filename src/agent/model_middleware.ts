@@ -222,13 +222,13 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
                 return content;
             }
 
-            const insertTextByByteIndex = (text: string, byteIndex: number, text2Insert: string) => {
-                const encoder = new TextEncoder();
-                const decoder = new TextDecoder();
-                const bytes = encoder.encode(text);
-                const newBytes = new Uint8Array([...bytes.slice(0, byteIndex), ...encoder.encode(text2Insert), ...bytes.slice(byteIndex)]);
-                return decoder.decode(newBytes);
-            };
+            // const insertTextByByteIndex = (text: string, byteIndex: number, text2Insert: string) => {
+            //     const encoder = new TextEncoder();
+            //     const decoder = new TextDecoder();
+            //     const bytes = encoder.encode(text);
+            //     const newBytes = new Uint8Array([...bytes.slice(0, byteIndex), ...encoder.encode(text2Insert), ...bytes.slice(byteIndex)]);
+            //     return decoder.decode(newBytes);
+            // };
 
             const addSupportSource = (content: string) => {
                 // const sources = groundingChunks
@@ -238,10 +238,11 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
                 //     })
                 //     .join('\n');
 
-                const sortedGroundingSupports = (groundingSupports as any[]).sort((a, b) => b.segment.endIndex - a.segment.endIndex);
-                for (const { segment, groundingChunkIndices } of sortedGroundingSupports) {
+                // const sortedGroundingSupports = (groundingSupports as any[]).sort((a, b) => b.segment.endIndex - a.segment.endIndex);
+                for (const { segment, groundingChunkIndices } of groundingSupports) {
                     const tag = groundingChunkIndices?.map((i: number) => `[[${i + 1}\\]](${groundingChunks[i].web.uri})`).join('');
-                    content = insertTextByByteIndex(content, segment.endIndex, tag);
+                    // content = insertTextByByteIndex(content, segment.endIndex, tag);
+                    content = content.replace(segment.text, `$&${tag}`);
                 }
                 // return `${content}\n## Sources:\n${sources}\n## Search Query:\n${webSearchQueries || ''}`;
                 return content;
