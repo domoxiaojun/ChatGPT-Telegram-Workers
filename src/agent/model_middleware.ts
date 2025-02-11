@@ -222,6 +222,14 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
                 return content;
             }
 
+            const insertTextByByteIndex = (text: string, byteIndex: number, text2Insert: string) => {
+                const encoder = new TextEncoder();
+                const decoder = new TextDecoder();
+                const bytes = encoder.encode(text);
+                const newBytes = new Uint8Array([...bytes.slice(0, byteIndex), ...encoder.encode(text2Insert), ...bytes.slice(byteIndex)]);
+                return decoder.decode(newBytes);
+            };
+
             const addSupportSource = (content: string) => {
                 // const sources = groundingChunks
                 //     ?.map((chunk: any, i: number) => {
@@ -230,9 +238,10 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
                 //     })
                 //     .join('\n');
 
-                for (const { segment, groundingChunkIndices } of (groundingSupports as any[]).reverse()/* .sort((a, b) => b.segment.endIndex - a.segment.endIndex) */) {
+                const sortedGroundingSupports = (groundingSupports as any[]).sort((a, b) => b.segment.endIndex - a.segment.endIndex);
+                for (const { segment, groundingChunkIndices } of sortedGroundingSupports) {
                     const tag = groundingChunkIndices?.map((i: number) => `[[${i + 1}\\]](${groundingChunks[i].web.uri})`).join('');
-                    content = `${content.slice(0, segment?.startIndex ?? 0)}${segment.text}${tag}${content.slice(segment.endIndex)}`;
+                    content = insertTextByByteIndex(content, segment.endIndex, tag);
                 }
                 // return `${content}\n## Sources:\n${sources}\n## Search Query:\n${webSearchQueries || ''}`;
                 return content;
