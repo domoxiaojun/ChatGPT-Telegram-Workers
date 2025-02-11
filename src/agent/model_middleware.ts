@@ -217,19 +217,28 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
         case 'google.generative-ai':
         case 'google.vertex.chat':
         {
-            const { groundingChunks, webSearchQueries } = metadata?.google?.groundingMetadata || {};
+            const { groundingChunks, webSearchQueries, groundingSupports } = metadata?.google?.groundingMetadata || {};
             if (!groundingChunks) {
                 return content;
             }
 
-            const sources = groundingChunks
-                ?.map((chunk: any, i: number) => {
-                    const web = chunk?.web as { title?: string; uri?: string } | undefined;
-                    return `[${i + 1}] [${web?.title ?? ''}](${web?.uri ?? ''})`;
-                })
-                .join('\n');
-            content = `${replacer(content, groundingChunks.map((chunk: any) => chunk?.web?.url ?? ''))}\n## Sources:\n${sources}\n## Search Query:\n${webSearchQueries || ''}`;
-            return content;
+            const addSupportSource = (content: string) => {
+                // const sources = groundingChunks
+                //     ?.map((chunk: any, i: number) => {
+                //         const web = chunk?.web as { title?: string; uri?: string } | undefined;
+                //         return `[${i + 1}] [${web?.title ?? ''}](${web?.uri ?? ''})`;
+                //     })
+                //     .join('\n');
+
+                for (const { segment, groundingChunkIndices } of (groundingSupports as any[]).reverse()/* .sort((a, b) => b.segment.endIndex - a.segment.endIndex) */) {
+                    const tag = groundingChunkIndices?.map((i: number) => `[[${i + 1}\\]](${groundingChunks[i].web.uri})`).join('');
+                    content = `${content.slice(0, segment?.startIndex ?? 0)}${segment.text}${tag}${content.slice(segment.endIndex)}`;
+                }
+                // return `${content}\n## Sources:\n${sources}\n## Search Query:\n${webSearchQueries || ''}`;
+                return content;
+            };
+
+            return addSupportSource(content);
         }
         case 'oailike':
         {
