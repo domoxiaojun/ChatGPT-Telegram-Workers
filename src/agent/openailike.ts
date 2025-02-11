@@ -62,7 +62,7 @@ export class OpenAILikeImage extends OpenAILikeBase implements ImageAgent {
 
     @Log
     request = async (prompt: string, context: AgentUserConfig): Promise<ImageResult> => {
-        const url = `${context.OAILIKE_API_BASE}/image/generations`;
+        const url = `${context.OAILIKE_API_BASE}/images/generations`;
         const header = {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${context.OAILIKE_API_KEY}`,
