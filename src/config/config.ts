@@ -189,6 +189,8 @@ export class AgentShareConfig {
     AI_TTS_PROVIDER = 'openai';
     // 全局默认初始化消息
     SYSTEM_INIT_MESSAGE: string | null = null;
+    // 音频提示词
+    AUDIO_PROMPT = 'Please listen to the audio file. Identify and understand the question being asked in the audio. Then, provide a detailed explanation and answer to this question. Ensure your answer is helpful and explains the solution or information clearly.';
 }
 
 // -- Open AI 配置 --

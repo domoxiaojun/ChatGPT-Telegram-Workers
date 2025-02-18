@@ -143,7 +143,7 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
                         text: type === 'sticker'
                             ? 'User sent a sticker to respond to you'
                             : ['audio', 'voice'].includes(type)
-                                    ? 'Please answer the question from the audio clip'
+                                    ? context.USER_CONFIG.AUDIO_PROMPT
                                     : `Please explain the ${type}`,
                     });
                 }
