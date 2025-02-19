@@ -22,13 +22,13 @@ import { ChosenInlineSender } from '../utils/send';
 import { chunckArray } from '../utils/utils';
 import { CallbackQueryContext, ChosenInlineWorkerContext, InlineQueryContext } from './context';
 
-interface answerInlineQuery {
+interface AnswerInlineQueryType {
     type: string;
     handler: (chosenInline: Telegram.ChosenInlineResult, context: ChosenInlineWorkerContext) => Promise<Response>;
     handlerQuestion: (chosenInline: Telegram.ChosenInlineResult, context: ChosenInlineWorkerContext, sender: MessageSender) => Promise<string>;
 }
 
-export class AnswerChatInlineQuery implements answerInlineQuery {
+export class AnswerChatInlineQuery implements AnswerInlineQueryType {
     type = ':c';
     handler = async (chosenInline: Telegram.ChosenInlineResult, context: ChosenInlineWorkerContext): Promise<Response> => {
         const sender = ChosenInlineSender.from(context.botToken, chosenInline);

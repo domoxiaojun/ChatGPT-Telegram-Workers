@@ -1,3 +1,4 @@
+import { escapedChars, escapedCharsReverseMap, escapedRegexp } from './md2tgmd';
 /* eslint-disable no-cond-assign */
 /* eslint-disable style/brace-style */
 interface Node {
@@ -13,6 +14,12 @@ interface Node {
  * @return {object[]}
  */
 function markdownToTelegraphNodes(markdown: string): Node[] {
+    // const replacerReg = new RegExp(Object.keys(escapedChars).join('|'), 'g');
+    // let match;
+    // while (match = replacerReg.exec(markdown)) {
+    //     markdown = markdown.split(match[0]).join(escapedChars[match[0] as keyof typeof escapedChars]);
+    // }
+    markdown = markdown.replace(escapedRegexp, match => escapedChars[match as keyof typeof escapedChars]);
     const lines = markdown.split('\n');
     const nodes = [];
     // let currentList = null;
@@ -122,8 +129,34 @@ function markdownToTelegraphNodes(markdown: string): Node[] {
             ],
         });
     }
+    return revertEscapedChar(nodes);
+}
 
-    return nodes;
+function revertEscapedChar(nodes: Node[]): Node[] {
+    const revertEscapeReg = new RegExp(Object.values(escapedChars).join('|'), 'g');
+    return nodes.map((node): Node => {
+        // if (!node.children)
+        //     return node;
+        return JSON.parse(JSON.stringify(node).replace(revertEscapeReg, p1 => escapedCharsReverseMap.get(p1)?.substring(1) ?? p1));
+
+        // {
+        // ...node,
+        // ...(node.attrs && {
+        //     attrs: JSON.parse(
+        //         JSON.stringify(node.attrs)
+        //             .replace(revertEscapeReg, p1 => escapedCharsReverseMap.get(p1) ?? p1),
+        //     ),
+        // }),
+        // children: node.children.map((i) => {
+        //     if (typeof i === 'string') {
+        //         return i.replace(revertEscapeReg, match => escapedCharsReverseMap.get(match) ?? match);
+        //     } else if (i) {
+        //         return revertEscapedChar([i])[0];
+        //     }
+        //     return i;
+        // }),
+        // };
+    });
 }
 
 function processInlineElementsHelper(text: string) {

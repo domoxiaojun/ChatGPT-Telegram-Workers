@@ -360,7 +360,7 @@ async function sendTelegraph(sendContext: {
     }
     const prefix = `#Question\n\`\`\`\n${question}\n\`\`\`\n---`;
 
-    const telegraph_prefix = `${prefix}\n#Answer\n🤖 **${getLog(context.USER_CONFIG, true)}**\n`;
+    const telegraph_prefix = `${prefix}\n#Answer\n🤖 **${getLog(context.USER_CONFIG, true, true)}**\n`;
     const debug_info = `${getLog(context.USER_CONFIG, false, true)}`;
     const telegraph_suffix = `\n---\n\`\`\`\n${debug_info}\n\`\`\``;
     try {

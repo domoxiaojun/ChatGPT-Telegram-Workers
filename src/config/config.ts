@@ -264,9 +264,9 @@ export class GeminiConfig {
     // Google Gemini API: Cloudflare AI gateway: https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_name}/google-ai-studio/v1/models
     GOOGLE_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
     // Google Gemini Model
-    GOOGLE_CHAT_MODEL = 'gemini-1.5-flash';
+    GOOGLE_CHAT_MODEL = 'gemini-2.0-flash';
     // Google Gemini Vision Model
-    GOOGLE_VISION_MODEL = 'gemini-1.5-flash';
+    GOOGLE_VISION_MODEL = 'gemini-2.0-flash';
     // Google Embedding Model
     GOOGLE_EMBEDDING_MODEL = 'text-embedding-004';
 }
@@ -298,9 +298,9 @@ export class AnthropicConfig {
     // Anthropic api base
     ANTHROPIC_API_BASE = 'https://api.anthropic.com/v1';
     // Anthropic api model
-    ANTHROPIC_CHAT_MODEL = 'claude-3-haiku-20240307';
+    ANTHROPIC_CHAT_MODEL = 'claude-3-5-haiku';
     // Anthropic vision model
-    ANTHROPIC_VISION_MODEL = 'claude-3-haiku-20240307';
+    ANTHROPIC_VISION_MODEL = 'claude-3-5-haiku';
 }
 
 export class OpenAILikeConfig {
@@ -338,9 +338,9 @@ export class VertexConfig {
     VERTEX_CREDENTIALS: Record<string, any> = {};
 
     // Vertex Model
-    VERTEX_CHAT_MODEL = 'gemini-1.5-flash-002';
+    VERTEX_CHAT_MODEL = 'gemini-2.0-flash';
     // Vertex Vision Model
-    VERTEX_VISION_MODEL = 'gemini-1.5-flash-002';
+    VERTEX_VISION_MODEL = 'gemini-2.0-flash';
     // when use search grounding, do not use other tools at the same time, otherwise errors occur.
     SEARCH_GROUNDING = false;
     // Vertex Image Model
@@ -415,7 +415,7 @@ export class ExtraUserConfig {
     // Jina Rerank Model
     JINA_RERANK_MODEL = 'jina-colbert-v2';
     // Rerank Models
-    RERANK_MODELS: string[] = ['gpt-4o-mini', 'gpt-4o-2024-08-06', 'chatgpt-4o-latest', 'o1-mini', 'o1-preview', 'claude-3-5-sonnet-20241012', 'gemini-1.5-flash-latest', 'gemini-1.5-pro-latest', 'gemini-exp-1206', 'gemini-2.0-flash-exp', 'gemini-2.0-flash-thinking-exp'];
+    RERANK_MODELS: string[] = ['gpt-4o-mini', 'gpt-4o-2024-08-06', 'chatgpt-4o-latest', 'o1-mini', 'o1', 'o3-mini', 'claude-3-5-sonnet-20241012', 'gemini-2.0-flash-latest', 'gemini-2.0-pro-exp', 'gemini-2.0-flash-exp', 'gemini-2.0-flash-thinking-exp'];
     // Whether to enable intelligent model processing
     ENABLE_INTELLIGENT_MODEL = false;
     // text handle type, to 'tts' or 'text' to chat with llm, or 'chat' by using audio-preview (default: text)
@@ -435,7 +435,7 @@ export class ExtraUserConfig {
     // example: COVER_MESSAGE_ROLE = { 'o1-mini,o1-preview': 'system:user' };
     COVER_MESSAGE_ROLE: Record<string, string> = {};
     // 最大历史记录长度 默认12 超过时会自动裁剪
-    MAX_HISTORY_LENGTH = 12;
+    MAX_HISTORY_LENGTH = 10;
     // 是否生成长文本(受MAX_STEPS限制)
     CONTINUE_STEP = false;
 }

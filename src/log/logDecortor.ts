@@ -106,7 +106,7 @@ export function getLogSingleton(config: AgentUserConfig): Logs {
 
 // 获取日志
 export function getLog(context: AgentUserConfig, onlyModel: boolean = false, isParagraph = false) {
-    if (!context.ENABLE_SHOWINFO)
+    if (!context.ENABLE_SHOWINFO && !isParagraph)
         return '';
     const logObj = logSingleton.get(context);
     if (!logObj)

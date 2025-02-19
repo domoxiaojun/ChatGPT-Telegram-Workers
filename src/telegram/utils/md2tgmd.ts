@@ -1,6 +1,6 @@
 /* eslint-disable regexp/no-super-linear-backtracking */
 const escapeChars = /[_*[\]()\\~`>#+\-=|{}.!]/g;
-const escapedChars = {
+export const escapedChars = {
     '\\*': 'ESCAPEASTERISK',
     '\\_': 'ESCAPEUNDERSCORE',
     '\\~': 'ESCAPETILDE',
@@ -22,7 +22,7 @@ const escapedChars = {
     '\\!': 'ESCAPEEXCLAMATION',
     '\\?': 'ESCAPEQUESTION',
 };
-const escapedRegexp = /\\[*_~|`\\()[\]{}>#+\-=.!]/g;
+export const escapedRegexp = /\\[*_~|`\\()[\]{}>#+\-=.!]/g;
 const logRegexp = /^>?LOGSTART\\>([\s\S]*?)LOGEND$/m;
 const reverseCodeRegexp = /\\`\\`\\`([\s\S]+)\\`\\`\\`$/g;
 const inlineCodeRegexp = /`[^\n]*?`/g;
@@ -75,7 +75,7 @@ const escapeRegexpMatch = [
     },
 ];
 
-const escapedCharsReverseMap = new Map(Object.entries(escapedChars).map(([key, value]) => [value, key]));
+export const escapedCharsReverseMap = new Map(Object.entries(escapedChars).map(([key, value]) => [value, key]));
 
 export function escape(text: string, expandParams: ExpandParams = { addQuote: false, quoteExpandable: false }): string {
     const lines = text.split('\n');
