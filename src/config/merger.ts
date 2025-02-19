@@ -33,12 +33,17 @@ export class ConfigMerger {
 
     static merge(target: Record<string, any>, source: Record<string, any>, exclude?: string[]) {
         const sourceKeys = new Set(Object.keys(source));
+        const numberKeys = ['CHAT_TEMPERATURE', 'FUNCTION_CALL_TEMPERATURE', 'MAX_TOKENS'];
         for (const key of Object.keys(target)) {
             // 不存在的key直接跳过
             if (!sourceKeys.has(key)) {
                 continue;
             }
             if (exclude?.includes(key)) {
+                continue;
+            }
+            if (numberKeys.includes(key)) {
+                target[key] = source[key] && +source[key];
                 continue;
             }
             // 默认为字符串类型

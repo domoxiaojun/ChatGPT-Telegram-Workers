@@ -449,16 +449,16 @@ export class SetCommandHandler implements CommandHandler {
         return { keys, values };
     }
 
-    private tokenizeSubcommand(subcommand: string): { flags: { flag: string; value: string }[]; remainingText: string } {
-        const regex = /^\s*(-\w+)\s+("[^"]*"|'[^']*'|\S+|$)/;
-        const flags: { flag: string; value: string }[] = [];
+    private tokenizeSubcommand(subcommand: string): { flags: { flag: string; value: string | undefined }[]; remainingText: string } {
+        const regex = /^\s*(-\w+)(?:\s+("[^"]*"|'[^']*'|\S+|$)|$)/;
+        const flags: { flag: string; value: string | undefined }[] = [];
         let text = subcommand;
         let match: RegExpExecArray | null;
 
         while ((match = regex.exec(text)) !== null) {
             const flag = match[1];
             let value = match[2];
-            if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith('\'') && value.endsWith('\''))) {
+            if ((value?.startsWith('"') && value?.endsWith('"')) || (value?.startsWith('\'') && value?.endsWith('\''))) {
                 value = value.slice(1, -1);
             }
             flags.push({ flag, value });
@@ -472,7 +472,7 @@ export class SetCommandHandler implements CommandHandler {
 
     private async processSubcommand(
         flag: string,
-        value: string,
+        value: string | undefined,
         keys: Record<string, string>,
         values: Record<string, any>,
         context: WorkerContext,
@@ -483,7 +483,7 @@ export class SetCommandHandler implements CommandHandler {
                 || Object.keys(context.USER_CONFIG).includes(flag.slice(1))
                 ? flag.slice(1)
                 : null);
-        let mappedValue = values[value] ?? value;
+        let mappedValue = value && (values[value] ?? value);
 
         if (!key) {
             throw new Error(`Mapping Key ${flag} not found`);
@@ -495,7 +495,7 @@ export class SetCommandHandler implements CommandHandler {
 
         switch (key) {
             case 'SYSTEM_INIT_MESSAGE':
-                mappedValue = context.USER_CONFIG.PROMPT[value] || value;
+                mappedValue = value && (context.USER_CONFIG.PROMPT[value] || value);
                 break;
             case 'CHAT_MODEL':
             case 'VISION_MODEL':
@@ -520,14 +520,14 @@ export class SetCommandHandler implements CommandHandler {
             return sender.sendPlainText(`Key ${key} not found`);
         }
 
-        // 设置的值为空，则使用默认值
+        // 设置的值为空，则使用全局默认值
         ConfigMerger.merge(context.USER_CONFIG, { [key]: mappedValue || ENV.USER_CONFIG[key] });
         if (!context.USER_CONFIG.DEFINE_KEYS.includes(key) && mappedValue) {
             context.USER_CONFIG.DEFINE_KEYS.push(key);
         } else if (!mappedValue) {
             context.USER_CONFIG.DEFINE_KEYS = context.USER_CONFIG.DEFINE_KEYS.filter(k => k !== key);
         }
-        log.info(`/set ${key} ${(JSON.stringify(mappedValue) || value).substring(0, 100)}...`);
+        log.info(`/set ${key} ${(JSON.stringify(mappedValue) || value || '').substring(0, 100)}...`);
         return key;
     }
 
