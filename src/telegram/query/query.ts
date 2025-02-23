@@ -15,8 +15,8 @@ import { loadChatRoleWithContext } from '../command/auth';
 import { COMMAND_AUTH_CHECKER, InlineCommandHandler, SetCommandHandler } from '../command/system';
 import { catchError } from '../handler';
 import { OnStreamHander } from '../handler/chat';
-import { SubstituteWords } from '../handler/group';
 import { EnvChecker, InitUserConfig, WhiteListFilter } from '../handler/handlers';
+import { substituteMessage } from '../handler/replacer';
 import { escape } from '../utils/md2tgmd';
 import { ChosenInlineSender } from '../utils/send';
 import { chunckArray } from '../utils/utils';
@@ -65,7 +65,7 @@ export class AnswerChatInlineQuery implements AnswerInlineQueryType {
         const question = chosenInline.query.substring(0, chosenInline.query.length - 1).trim();
         // simulate message and substitute words
         const message = { text: question } as unknown as Telegram.Message;
-        SubstituteWords(message);
+        substituteMessage(message, context.USER_CONFIG.MESSAGE_REPLACER);
         if (message.text?.startsWith('/set ')) {
             const resp = await new SetCommandHandler().handle(message, message.text.substring(5).trim(), context as unknown as WorkerContext, sender);
             if (resp instanceof Response) {

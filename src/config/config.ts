@@ -441,4 +441,6 @@ export class ExtraUserConfig {
     MAX_HISTORY_LENGTH = 10;
     // 是否生成长文本(受MAX_STEPS限制)
     CONTINUE_STEP = false;
+    // 消息替换
+    MESSAGE_REPLACER: Record<string, string> = {};
 }

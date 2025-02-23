@@ -28,10 +28,15 @@ const reverseCodeRegexp = /\\`\\`\\`([\s\S]+)\\`\\`\\`$/g;
 const inlineCodeRegexp = /`[^\n]*?`/g;
 const linkRegexp = /\\\[([^\]\n]+?)\\\]\\\((.+?)\\\)/g;
 const escapeRegexpMatch = [
+    // bold & italic
+    {
+        regex: /(\\\*\\\*\\\*)(\S|\S[^\n]*?\S)\1/g,
+        value: '*_$2_*',
+    },
     // bold
     {
-        regex: /\\\*\\\*(\S|\S[^\n]*?\S)\\\*\\\*/g,
-        value: '*$1*',
+        regex: /(\\\*\\\*)(\S|\S[^\n]*?\S)\1/g,
+        value: '*$2*',
     },
     // underline
     {

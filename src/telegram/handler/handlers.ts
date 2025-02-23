@@ -11,6 +11,7 @@ import { createTelegramBotAPI } from '../api';
 import { handleCommandMessage } from '../command';
 import { MessageSender } from '../utils/send';
 import { extractMessageInfo, isTelegramChatTypeGroup } from '../utils/utils';
+import { substituteMessage } from './replacer';
 
 export class SaveLastMessage implements MessageHandler<WorkerContextBase> {
     handle = async (message: Telegram.Message, context: WorkerContextBase): Promise<Response | null> => {
@@ -128,6 +129,16 @@ export class CommandHandler implements MessageHandler<WorkerContext> {
 export class InitUserConfig implements MessageHandler<WorkerContextBase> {
     handle = async (message: Telegram.Message, context: WorkerContextBase): Promise<Response | null> => {
         Object.assign(context, { USER_CONFIG: (await WorkerContext.from(context.SHARE_CONTEXT, context.MIDDLE_CONTEXT)).USER_CONFIG });
+        return null;
+    };
+}
+
+export class SubstituteHandler implements MessageHandler<WorkerContext> {
+    handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | null> => {
+        if (!context.USER_CONFIG.MESSAGE_REPLACER || !(message.text || message.caption)) {
+            return null;
+        }
+        substituteMessage(message, context.USER_CONFIG.MESSAGE_REPLACER);
         return null;
     };
 }

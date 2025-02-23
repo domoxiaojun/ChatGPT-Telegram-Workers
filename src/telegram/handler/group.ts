@@ -51,7 +51,7 @@ function checkMention(content: string, entities: Telegram.MessageEntity[], botNa
  * @param {Telegram.Message} message
  * @returns {boolean} 如果找到触发词，返回 true；否则 false
  */
-export function SubstituteWords(message: Telegram.Message): boolean {
+export function CheckTrigger(message: Telegram.Message): boolean {
     // 旧的触发逻辑
     const oldTrigger = ENV.CHAT_MESSAGE_TRIGGER;
     if (Object.keys(oldTrigger).length > 0) {
@@ -65,33 +65,14 @@ export function SubstituteWords(message: Telegram.Message): boolean {
         }
     }
 
-    let replacedString = '';
     const textBefore = message.text || message.caption || '';
-    let text = textBefore.replace(new RegExp(`^${ENV.CHAT_TRIGGER_PERFIX}`), '').trim();
-    const isTrigger = text !== textBefore;
-    const replacer = { ...ENV.MESSAGE_REPLACER };
-    do {
-        const triggerKey = Object.keys(replacer).find(key =>
-            // adjust the order of trigger words with the same prefix by yourself.
-            text.startsWith(key),
-        );
-        if (triggerKey) {
-            replacedString += `${replacer[triggerKey]} `;
-            text = text.substring(triggerKey.length).trim();
-            // remove the trigger key from replacer to avoid replace again
-            delete replacer[triggerKey];
-        } else {
-            break;
-        }
-    } while (true);
-    // log.info(`replacedString: ${replacedString || 'null'}, text: ${text}`);
-    message.text ? (message.text = replacedString + text) : (message.caption = replacedString + text);
-    return isTrigger;
+    const text = textBefore.replace(new RegExp(`^${ENV.CHAT_TRIGGER_PERFIX}`), '').trim();
+    return text !== textBefore;
 }
 
 export class GroupMention implements MessageHandler {
     handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | null> => {
-        const substituteMention = SubstituteWords(message);
+        const isTriggered = CheckTrigger(message);
         // 非群组消息不作判断，交给下一个中间件处理
         if (!isTelegramChatTypeGroup(message.chat.type)) {
             this.mergeMessage(false, message);
@@ -136,7 +117,7 @@ export class GroupMention implements MessageHandler {
             message.caption = res.content.trim();
         }
         // substituteMention
-        if ((substituteMention || context.SHARE_CONTEXT.isForwarding) && !isMention) {
+        if (isTriggered && !isMention) {
             isMention = true;
         }
         // mediaGroupMessage & chunkMessage

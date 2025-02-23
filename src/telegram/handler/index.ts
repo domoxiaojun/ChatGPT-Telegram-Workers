@@ -14,6 +14,7 @@ import {
     MessageFilter,
     OldMessageFilter,
     SaveLastMessage,
+    SubstituteHandler,
     TagNeedDelete,
     WhiteListFilter,
 } from './handlers';
@@ -63,6 +64,8 @@ async function handleMessage(token: string, message: Telegram.Message, isForward
         new SaveLastMessage(),
         // 初始化用户配置
         new InitUserConfig(),
+        // 替换消息
+        new SubstituteHandler(),
         // 动态模型处理
         new IntelligentModelProcess(),
         // 处理命令消息
