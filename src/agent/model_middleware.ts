@@ -24,7 +24,7 @@ export function AIMiddleware({ config, activeTools, onStream, toolChoice, messag
     let sendToolCall = false;
     let step = 0;
     let rawSystemPrompt: string | undefined;
-    const extractReasoning = extractReasoningMiddleware({ tagName: 'think', startWithReasoning: true });
+    const extractReasoning = extractReasoningMiddleware({ tagName: 'think' });
     return {
         wrapGenerate: async ({ doGenerate, params, model }) => {
             warpModel(model, config, activeTools, (params.mode as any).toolChoice, chatModel);
