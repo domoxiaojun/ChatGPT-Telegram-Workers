@@ -60,17 +60,17 @@ const escapeRegexpMatch = [
     // },
     // quote
     {
-        regex: /^ *\\> *([^\n]*)$/gm,
+        regex: /^\x20*\\>\x20*([^\n]*)$/gm,
         value: '>$1',
     },
     // item
     {
-        regex: /^(>? *)\\(?:-|\*)\s+([^\n]*)$/gm,
-        value: '$1• $2',
+        regex: /^(>?\x20*)\\(?:-|\*)\s+([^\n]*)$/gm,
+        value: '$1•\x20$2',
     },
     // number sign
     {
-        regex: /^((?:\\#){1,6} )([^\n]+)$/g,
+        regex: /^((?:\\#){1,6}\x20)([^\n]+)$/g,
         value: '$1*$2*',
     },
 ];

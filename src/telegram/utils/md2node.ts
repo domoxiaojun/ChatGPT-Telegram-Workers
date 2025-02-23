@@ -80,7 +80,7 @@ function markdownToTelegraphNodes(markdown: string): Node[] {
             // nodes.push({ tag: `h${level}`, children: [text] }); // 简化处理
         }
         // 引用
-        else if (_line.startsWith('> ')) {
+        else if (_line.startsWith('>')) {
             const text = line.slice(2);
             nodes.push({ tag: 'blockquote', children: processInlineElements(text) });
         }
@@ -110,7 +110,7 @@ function markdownToTelegraphNodes(markdown: string): Node[] {
         else {
             const matches = /^(\s*)(?:-|\*)\s/.exec(line);
             if (matches) {
-                line = `${matches[1]}• ${line.slice(matches[0].length)}`;
+                line = `${matches[1]}•\x20${line.slice(matches[0].length)}`;
             }
             nodes.push({ tag: 'p', children: processInlineElements(line) });
         }
@@ -159,7 +159,7 @@ function revertEscapedChar(nodes: Node[]): Node[] {
     });
 }
 
-function processInlineElementsHelper(text: string) {
+function processInlineElements(text: string) {
     const children = [];
 
     // 处理链接
@@ -193,20 +193,28 @@ function processInlineElementsHelper(text: string) {
 function processInlineStyles(text: string): (string | { tag: string; children: any[] })[] {
     const children = [];
 
-    // 处理粗体 下划线 斜体 删除线
-    const styleRegex = /(^|[^\\])(\*\*|__|_|~~)(.*?[^\\]?)\2/g;
+    // 处理行内代码 粗体 下划线 斜体 删除线
+    const styleRegex = /(`|\*\*|\*|__|_|~~|~)(.+?)\1/g;
     let lastIndex = 0;
     let match;
     while (true) {
         match = styleRegex.exec(text);
         if (match === null)
             break;
+        // 粗体后可能紧跟斜体的情况
+        if (match[1] === '**' && match[2].startsWith('*') && text.substring(styleRegex.lastIndex).startsWith('*')) {
+            match[2] += '*';
+            styleRegex.lastIndex += 1;
+        }
 
-        if (match.index + match[1].length > lastIndex) {
-            children.push(text.slice(lastIndex, match.index + match[1].length));
+        if (match.index > lastIndex) {
+            children.push(text.slice(lastIndex, match.index));
         }
         let tag = '';
-        switch (match[2]) {
+        switch (match[1]) {
+            case '`':
+                tag = 'code';
+                break;
             case '**':
                 tag = 'strong';
                 break;
@@ -214,9 +222,11 @@ function processInlineStyles(text: string): (string | { tag: string; children: a
                 tag = 'u';
                 break;
             case '_':
+            case '*':
                 tag = 'i';
                 break;
             case '~~':
+            case '~':
                 tag = 's';
                 break;
             default:
@@ -225,9 +235,9 @@ function processInlineStyles(text: string): (string | { tag: string; children: a
         }
         children.push({
             tag,
-            children: [...processInlineStyles(match[3])],
+            children: tag === 'code' ? [match[2]] : processInlineStyles(match[2]),
         });
-        lastIndex = match.index + match[0].length;
+        lastIndex = styleRegex.lastIndex;
     }
     if (lastIndex < text.length) {
         children.push(text.slice(lastIndex));
@@ -236,28 +246,28 @@ function processInlineStyles(text: string): (string | { tag: string; children: a
     return children;
 }
 
-function processInlineElements(text: string) {
-    const children = [];
-    const codeRegex = /(^|[^\\])`(.*?[^\\]?)`/g;
-    let codeMatch: RegExpExecArray | null;
-    let lastIndex = 0;
+// function processInlineElements(text: string) {
+//     const children = [];
+//     const codeRegex = /`(.*?)`/g;
+//     let codeMatch: RegExpExecArray | null;
+//     let lastIndex = 0;
 
-    while ((codeMatch = codeRegex.exec(text)) !== null) {
-        if (codeMatch.index + codeMatch[1].length > lastIndex) {
-            children.push(...processInlineElementsHelper(text.slice(lastIndex, codeMatch.index + codeMatch[1].length)));
-        }
-        children.push({
-            tag: 'code',
-            children: [codeMatch[2]],
-        });
-        lastIndex = codeMatch.index + codeMatch[0].length;
-    }
+//     while ((codeMatch = codeRegex.exec(text)) !== null) {
+//         if (codeMatch.index + codeMatch[0].length > lastIndex) {
+//             children.push(...processInlineElementsHelper(text.slice(lastIndex, codeMatch.index + codeMatch[0].length)));
+//         }
+//         children.push({
+//             tag: 'code',
+//             children: [codeMatch[1]],
+//         });
+//         lastIndex = codeMatch.index + codeMatch[0].length;
+//     }
 
-    if (lastIndex < text.length) {
-        children.push(...processInlineElementsHelper(text.slice(lastIndex)));
-    }
+//     if (lastIndex < text.length) {
+//         children.push(...processInlineElementsHelper(text.slice(lastIndex)));
+//     }
 
-    return children;
-}
+//     return children;
+// }
 
 export default markdownToTelegraphNodes;
