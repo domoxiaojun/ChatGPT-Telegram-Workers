@@ -51,7 +51,7 @@ export type ToolHandler =
 
 export interface FuncTool {
     schema: SchemaData<Record<string, any>>;
-    func?: (params: Record<string, any>, options?: { signal?: AbortSignal;[key: string]: any }, config?: AgentUserConfig) => Promise<ToolResult>;
+    func?: (params: Record<string, any>, options?: { signal?: AbortSignal; [key: string]: any }, config?: AgentUserConfig) => Promise<ToolResult>;
     prompt?: string;
     extra_params?: Record<string, any>;
     type?: 'search' | 'web_crawler' | 'command' | 'text2image';

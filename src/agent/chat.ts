@@ -44,7 +44,7 @@ export async function loadHistory(key: string, length: number): Promise<HistoryI
 
 export async function requestCompletionsFromLLM(params: LLMChatRequestParams | null, context: WorkerContext, agent: ChatAgent, modifier: HistoryModifier | null, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> {
     let history = context.MIDDLE_CONTEXT.history;
-    const historyDisable = context.USER_CONFIG.MAX_HISTORY_LENGTH <= 0;
+    const historyDisable = ENV.STORE_HISTORY_LENGTH <= 0;
     if (modifier) {
         const modifierData = modifier(history, params);
         history = modifierData.history;
@@ -53,7 +53,15 @@ export async function requestCompletionsFromLLM(params: LLMChatRequestParams | n
     if (params === null) {
         throw new Error('Message is null');
     }
-    const messages = [...history, params];
+
+    const trimer = (list: HistoryItem[], maxLength: number) => {
+        if (list.length > 0 && list.length > maxLength) {
+            return list.slice(list.length - maxLength);
+        }
+        return list;
+    };
+    const messages = [...trimer(history, context.USER_CONFIG.MAX_HISTORY_LENGTH), params];
+
     if (context.USER_CONFIG.SYSTEM_INIT_MESSAGE) {
         messages.unshift({
             role: 'system',

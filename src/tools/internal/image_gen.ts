@@ -52,7 +52,7 @@ export const image_gen: FuncTool = {
         },
     },
 
-    func: async (args: Record<string, any>, options?: { signal?: AbortSignal;[key: string]: any }, config?: AgentUserConfig): Promise<ToolResult> => {
+    func: async (args: Record<string, any>, options?: { signal?: AbortSignal; [key: string]: any }, config?: AgentUserConfig): Promise<ToolResult> => {
         if (!config) {
             throw new Error('Missing config');
         }

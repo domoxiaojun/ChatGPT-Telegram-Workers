@@ -105,9 +105,8 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
         if (!historyKey) {
             throw new Error('History key not found');
         }
-        const length = context.USER_CONFIG.MAX_HISTORY_LENGTH;
-        if (length > 0) {
-            context.MIDDLE_CONTEXT.history = await loadHistory(historyKey, length);
+        if (ENV.STORE_HISTORY_LENGTH > 0) {
+            context.MIDDLE_CONTEXT.history = await loadHistory(historyKey, ENV.STORE_HISTORY_LENGTH);
         }
     }
 

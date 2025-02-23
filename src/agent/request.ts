@@ -252,12 +252,12 @@ export async function requestChatCompletionsV2(params: { model: LanguageModelV1;
 
         contentFull = await streamHandler(stream.fullStream, contentExtractor, onStream, messageInfo, errorReferencer);
         messages = errorReferencer[0] ? [{ role: 'assistant', content: contentFull }] : (await stream.response).messages;
-        contentFull = errorReferencer[0] ? contentFull : metaDataExtractor(await stream.experimental_providerMetadata, params.model.provider, contentFull);
+        contentFull = errorReferencer[0] ? contentFull : metaDataExtractor(await stream.providerMetadata, params.model.provider, contentFull);
     } else {
         const result = await generateText(hander_params);
         contentFull = `${result.reasoning ? `>\`Thinking\`\n>${result.reasoning.replace(/\n/g, '\n>')}\n\n` : ''}${result.text}`;
         messages = result.response.messages;
-        contentFull = metaDataExtractor(await result.experimental_providerMetadata, params.model.provider, contentFull);
+        contentFull = metaDataExtractor(await result.providerMetadata, params.model.provider, contentFull);
     }
     try {
         // when last message is tool, avoid ai message not sent complete

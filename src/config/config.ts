@@ -175,6 +175,9 @@ export class EnvironmentConfig {
     QUOTE_EXPANDABLE = false;
     // whether log position on top, default is true
     LOG_POSITION_ON_TOP = true;
+
+    // Store history message length
+    STORE_HISTORY_LENGTH = 64;
 }
 
 // -- 通用配置 --
@@ -434,7 +437,7 @@ export class ExtraUserConfig {
     // Cover message role, the key is the model name, separated by commas, and the value is overridden_role:new_role.
     // example: COVER_MESSAGE_ROLE = { 'o1-mini,o1-preview': 'system:user' };
     COVER_MESSAGE_ROLE: Record<string, string> = {};
-    // 最大历史记录长度 默认12 超过时会自动裁剪
+    // 最大上下文长度 默认10
     MAX_HISTORY_LENGTH = 10;
     // 是否生成长文本(受MAX_STEPS限制)
     CONTINUE_STEP = false;

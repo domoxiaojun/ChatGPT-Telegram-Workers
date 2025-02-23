@@ -324,7 +324,7 @@ export class SystemCommandHandler implements CommandHandler {
 export class RedoCommandHandler implements CommandHandler {
     command = '/redo';
     scopes: ScopeType[] = ['all_private_chats', 'all_group_chats', 'all_chat_administrators'];
-    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext): Promise< Response> => {
+    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext): Promise<Response> => {
         const mf = (history: HistoryItem[], message: CoreUserMessage | null): any => {
             let nextMessage = message;
             if (!(history && Array.isArray(history) && history.length > 0)) {
@@ -794,7 +794,7 @@ export class HistoryCommandHandler implements CommandHandler {
     scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
     needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
-        const length = Number.parseInt(subcommand.trim()) || context.USER_CONFIG.HISTORY_LENGTH;
+        const length = Number.parseInt(subcommand.trim()) || ENV.STORE_HISTORY_LENGTH;
         const history = await loadHistory(context.SHARE_CONTEXT.chatHistoryKey, length);
         return sender.sendDocument(new File([JSON.stringify(history, null, 2)], 'history.json', { type: 'application/json' }));
     };
