@@ -1,10 +1,10 @@
 /* eslint-disable unused-imports/no-unused-vars */
 
 import type { ToolCallPart, ToolResultPart } from 'ai';
-import type { ResponseMessage } from '../agent/types';
+import type { ImageResult, ResponseMessage } from '../agent/types';
 import type { AgentUserConfig } from '../config/env';
 import type { MessageSender } from '../telegram/utils/send';
-import type { FuncTool, ToolHandler, ToolResult } from './types';
+import type { FuncTool, ToolHandler } from './types';
 
 import { jsonSchema, tool } from 'ai';
 import { ENV } from '../config/env';
@@ -143,9 +143,9 @@ export async function sendToolResult(toolResult: ToolResultPart[], sender: Messa
     const resultType = tools[toolResult.at(-1)?.toolName || '']?.result_type || 'text';
     switch (resultType) {
         case 'text':
-            return sender.sendRichText(toolResult.map(r => (r.result as ToolResult).result).join('\n'));
+            return sender.sendRichText(toolResult.map(r => r.result).join('\n'));
         case 'image': {
-            const images = toolResult.map(r => (r.result as ToolResult).result).flat();
+            const images = toolResult.map(r => r.result as ImageResult).flat();
             const type = images.some(r => r.raw) ? 'raw' : 'url';
             return sendImages({
                 type: 'image',
