@@ -178,6 +178,8 @@ export class EnvironmentConfig {
 
     // Store history message length
     STORE_HISTORY_LENGTH = 64;
+    // File size limit, when enabled folding, the file size limit is effective
+    FILE_SIZE_LIMIT = 4096 * 2;
 }
 
 // -- 通用配置 --

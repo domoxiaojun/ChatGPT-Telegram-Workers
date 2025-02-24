@@ -167,7 +167,7 @@ export function getLog(context: AgentUserConfig, onlyModel: boolean = false, isP
     }
 
     return isParagraph
-        ? logList.filter(Boolean).join()
+        ? logList.filter(Boolean).join(' ')
         : `LOGSTART${logList.filter(Boolean).map(entry => `>\`${entry}\``).join('\n')}LOGEND`;
 }
 

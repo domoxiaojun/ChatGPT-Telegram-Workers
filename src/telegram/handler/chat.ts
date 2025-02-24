@@ -236,12 +236,17 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
             ? ENV.TELEGRAPH_SCOPE.includes(sender.context.chatType) && ENV.TELEGRAPH_NUM_LIMIT > 0 && text.length > ENV.TELEGRAPH_NUM_LIMIT
             : sender.context.inline_message_id && text.length > 4096;
     };
+
+    const isSendDocument = (text: string) => {
+        return ENV.FILE_SIZE_LIMIT > 0 && ENV.QUOTE_EXPANDABLE && text.length > ENV.ADD_QUOTE_LIMIT && text.length > ENV.FILE_SIZE_LIMIT;
+    };
     const addQuotePrerequisites = ENV.ADD_QUOTE_LIMIT > 0 && ENV.ADD_QUOTE_SCOPE.includes(sender.context.chatType);
     const expandParams = { addQuote: false, quoteExpandable: ENV.QUOTE_EXPANDABLE };
     const botName = context?.SHARE_CONTEXT?.botName || 'AI';
     const telegraphAccessTokenKey = context?.SHARE_CONTEXT?.telegraphAccessTokenKey || '';
     const telegraphSender = new TelegraphSender(botName, telegraphAccessTokenKey);
     let hasSentTelegraphLink = false;
+    let isSendDocumentTip = false;
     const telegraphContext = (isEnd: boolean, containRaw: boolean) => {
         return {
             context: context!,
@@ -267,7 +272,7 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
                 log.info(`Need await: ${(nextEnableTime || 0) - Date.now()}ms`);
                 return;
             }
-            // 防止最后可能存在两个sendPromise
+            // 未完成不发送
             if (sentPromise && (await Promise.race([sentPromise, immediatePromise]) === '[PROMISE DONE]')) {
                 return;
             }
@@ -275,6 +280,13 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
             // 设置最小流间隔
             if (sendInterval > 0) {
                 nextEnableTime = Date.now() + sendInterval;
+            }
+            if (isSendDocument(text)) {
+                if (isSendDocumentTip) {
+                    return;
+                }
+                isSendDocumentTip = true;
+                text += '\n\n>**Hold on, answer will be sent as a document.**';
             }
 
             if (isSendTelegraph(text)) {
@@ -312,6 +324,9 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
     streamSender.end = async (text: string, needLog = true): Promise<any> => {
         log.info('--- start end ---');
         await sentPromise;
+        if (isSendDocument(text)) {
+            return sendDocument(sender as MessageSender, { question: question || 'Redo Question', answer: text, log: getLog(context?.USER_CONFIG || {} as AgentUserConfig, false, true) });
+        }
         if (isSendTelegraph(text)) {
             return sendTelegraph(telegraphContext(true, false), question || 'Redo Question', text);
         }
@@ -354,18 +369,19 @@ async function sendTelegraph(sendContext: {
 }, question: string, text: string) {
     log.info(`start send telegraph`);
     const { context, textSender, telegraphSender, hasSentTelegraphLink, isEnd, containRaw } = sendContext;
+    let trimedQuestion = question;
     if (question.length > 600) {
-        question = `${question.slice(0, 300)}...${question.slice(-300)}`;
+        trimedQuestion = `${question.slice(0, 300)}...${question.slice(-300)}`;
     }
-    const prefix = `#Question\n\`\`\`\n${question}\n\`\`\`\n---`;
+    const prefix = `#Question\n\`\`\`\n${trimedQuestion}\n\`\`\`\n---`;
 
     const telegraph_prefix = `${prefix}\n#Answer\n🤖 **${getLog(context.USER_CONFIG, true, true)}**\n`;
     const debug_info = `${getLog(context.USER_CONFIG, false, true)}`;
     const telegraph_suffix = `\n---\n\`\`\`\n${debug_info}\n\`\`\``;
+    const textLength = (telegraph_prefix + text + telegraph_suffix).length;
     try {
-        if ((telegraph_prefix + text + telegraph_suffix).length >= 10917 * 6) {
-            const file = new File([text], 'answer.txt', { type: 'text/plain' });
-            return (textSender as MessageSender).sendDocument(file, getLog(context.USER_CONFIG), 'MarkdownV2');
+        if (textLength >= 10917 * 6) {
+            throw new Error('Telegraph message too long');
         }
         const resp = await telegraphSender.send(
             'Daily Q&A',
@@ -375,17 +391,28 @@ async function sendTelegraph(sendContext: {
 
         if (!hasSentTelegraphLink) {
             const url = `https://telegra.ph/${telegraphSender.teleph_path}`;
-            const msg = `${containRaw ? '由于渲染出现错误 ' : ''}回答已经转换成完整文章。\n[🔗点击进行查看](${url})`.trim();
+            const msg = `${containRaw ? '由于渲染出现错误 ' : ''}回答已经转换成文章。\n[🔗点击进行查看](${url})`.trim();
             log.info(`send telegraph message: ${msg}`);
             return textSender.sendRichText(msg);
         }
         return resp;
     } catch (error) {
         if (isEnd) {
-            const file = new File([text], 'answer.txt', { type: 'text/plain' });
-            return (textSender as MessageSender).sendDocument(file, getLog(context.USER_CONFIG), 'MarkdownV2');
+            return sendDocument(textSender as MessageSender, { question, answer: text, log: debug_info });
         }
     }
+}
+interface DocumentText {
+    question: string;
+    answer: string;
+    log: string;
+}
+
+async function sendDocument(textSender: MessageSender, document: DocumentText) {
+    const { question, answer, log } = document;
+    const text = `🆀 ${question}\n🅻 ${log}\n\n🅰${answer}\n`;
+    const file = new File([text], 'answer.md', { type: 'text/markdown' });
+    return textSender.sendDocument(file, '>`Answer is cooked, check the document`', 'MarkdownV2');
 }
 
 type WorkflowHandler = (
