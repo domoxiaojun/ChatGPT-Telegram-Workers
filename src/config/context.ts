@@ -130,7 +130,7 @@ export class WorkerContext implements WorkerContextBase {
     }
 
     static async from(SHARE_CONTEXT: ShareContext, MIDDLE_CONTEXT: MiddleContext): Promise<WorkerContext> {
-        const USER_CONFIG = { ...ENV.USER_CONFIG };
+        const USER_CONFIG = JSON.parse(JSON.stringify(ENV.USER_CONFIG));
         try {
             const userConfig: AgentUserConfig = JSON.parse(await ENV.DATABASE.get(SHARE_CONTEXT.configStoreKey));
             ConfigMerger.merge(USER_CONFIG, ConfigMerger.trim(userConfig, ENV.LOCK_USER_CONFIG_KEYS) || {});
