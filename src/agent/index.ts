@@ -121,7 +121,7 @@ export function customInfo(config: AgentUserConfig): string {
         USE_TOOLS: config.USE_TOOLS.join(','),
         SUPPORT_PLUGINS: Object.keys({ ...ENV.PLUGINS_FUNCTION, ...tools }).join('|'),
         CHAT_TRIGGER_PERFIX: ENV.CHAT_TRIGGER_PERFIX,
-        MESSAGE_REPLACER: Object.keys(ENV.MESSAGE_REPLACER).join('|'),
+        MESSAGE_REPLACER: Object.keys(config.MESSAGE_REPLACER).join('|'),
         MAX_STEPS: config.MAX_STEPS,
         MAX_RETRIES: config.MAX_RETRIES,
         SEND_IMAGE_AS_FILE: ENV.SEND_IMAGE_AS_FILE,

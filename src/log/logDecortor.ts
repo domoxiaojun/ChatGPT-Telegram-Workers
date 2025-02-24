@@ -127,10 +127,10 @@ export function getLog(context: AgentUserConfig, onlyModel: boolean = false, isP
     if (logObj.tool.model && show.model) {
         let toolsLog = logObj.tool.model;
         if (logObj.tool.time.length > 0 && show.model_time) {
-            toolsLog += ` c_t: ${logObj.tool.time.join('s ')}s`;
+            toolsLog += ` ct: ${logObj.tool.time.join('s ')}s`;
         }
         if (logObj.functionTime.length > 0 && show.tool_time) {
-            toolsLog += ` f_t: ${logObj.functionTime.join('s ')}s`;
+            toolsLog += ` ft: ${logObj.functionTime.join('s ')}s`;
         }
         logList.push(toolsLog);
     }
@@ -139,7 +139,7 @@ export function getLog(context: AgentUserConfig, onlyModel: boolean = false, isP
     if (logObj.functions.length > 0 && show.tool) {
         const functionLogs = logObj.functions.map((log) => {
             const args = Object.values(log.arguments).join(', ');
-            return `${log.name}: ${args}`.substring(0, 80);
+            return `${log.name}: ${log.error ? `error: ${log.error}` : args}`.substring(0, 80);
         });
         logList.push(...functionLogs);
     }
@@ -193,7 +193,7 @@ function handleLlmLog(logs: Logs, result: CompletionData, time: string, type: 't
 }
 
 interface Logs {
-    functions: { name: string; arguments: any }[];
+    functions: { name: string; arguments: any; error?: string }[];
     functionTime: string[];
     tool: { model: string; time: string[] };
     chat: { model: string; time: string[] };

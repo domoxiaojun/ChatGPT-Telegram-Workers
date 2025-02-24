@@ -285,7 +285,16 @@ export async function requestChatCompletionsV2(params: { model: LanguageModelV1;
     }
 
     return {
-        messages,
+        messages: messages.map(({ role, content }) => {
+            if (role === 'tool') {
+                content.forEach((i) => {
+                    if (i.type === 'tool-result') {
+                        i.result = (i.result as { result: any }).result;
+                    }
+                });
+            }
+            return { role, content };
+        }) as ResponseMessage[],
         content: contentFull,
     };
 }

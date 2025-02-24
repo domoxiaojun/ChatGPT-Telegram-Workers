@@ -80,12 +80,13 @@ export function AIMiddleware({ config, activeTools, onStream, toolChoice, messag
                     throw new Error('Function result is empty');
                 }
                 let maxFuncTime = 0;
-                const func_logs = toolResults.map((i) => {
-                    logs.functionTime.push(i.result.time);
-                    maxFuncTime = Math.max(maxFuncTime, i.result.time);
+                const func_logs = toolResults.map(({ toolName, args, result }) => {
+                    logs.functionTime.push(result.time);
+                    maxFuncTime = Math.max(maxFuncTime, result.time);
                     return {
-                        name: i.toolName,
-                        arguments: Object.values(i.args),
+                        name: toolName,
+                        arguments: Object.values(args),
+                        ...(result.error && { error: result.error }),
                     };
                 });
                 log.info(`func logs: ${JSON.stringify(func_logs, null, 2)}`);

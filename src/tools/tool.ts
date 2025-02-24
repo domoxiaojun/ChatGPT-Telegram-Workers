@@ -20,7 +20,7 @@ export const tools = {
     ...internalTools,
 } as unknown as Record<string, FuncTool>;
 export function executeTool(toolName: string) {
-    return async (args: any, options: Record<string, any> & { signal?: AbortSignal }): Promise<{ result: any; time: string }> => {
+    return async (args: any, options: Record<string, any> & { signal?: AbortSignal }): Promise<{ result: any; time: string; error?: string }> => {
         const { signal } = options;
         let filledPayload = JSON.stringify(tools[toolName].payload)
             .replace(/\{\{([^}]+)\}\}/g, (match, p1) => args[p1] || match);
@@ -52,7 +52,7 @@ export function executeTool(toolName: string) {
         if (!result.ok) {
             const text = await result.text();
             log.error(`Tool call error: ${result.statusText} ${text}`);
-            return { result: `Tool call error: ${result.statusText}`, time: ((Date.now() - startTime) / 1e3).toFixed(1) };
+            return { result: `Tool call error: ${result.statusText}`, time: ((Date.now() - startTime) / 1e3).toFixed(1), error: result.statusText };
         }
         try {
             result = await result.clone().json();

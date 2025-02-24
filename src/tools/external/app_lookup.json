@@ -38,8 +38,7 @@
                 "app_name",
                 "country",
                 "entity"
-            ],
-            "additionalProperties": false
+            ]
         }
     },
     "payload": {

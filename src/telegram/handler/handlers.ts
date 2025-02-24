@@ -135,10 +135,9 @@ export class InitUserConfig implements MessageHandler<WorkerContextBase> {
 
 export class SubstituteHandler implements MessageHandler<WorkerContext> {
     handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | null> => {
-        if (!context.USER_CONFIG.MESSAGE_REPLACER || !(message.text || message.caption)) {
-            return null;
+        if (context.USER_CONFIG.MESSAGE_REPLACER && (message.text || message.caption)) {
+            substituteMessage(message, context.USER_CONFIG.MESSAGE_REPLACER);
         }
-        substituteMessage(message, context.USER_CONFIG.MESSAGE_REPLACER);
         return null;
     };
 }

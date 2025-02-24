@@ -28,8 +28,7 @@
             "required": [
                 "base_currency",
                 "exchange_currencies"
-            ],
-            "additionalProperties": false
+            ]
         }
     },
     "payload": {
