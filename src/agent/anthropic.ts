@@ -2,7 +2,8 @@ import type { CoreUserMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
 import { createAnthropic } from '@ai-sdk/anthropic';
-import { warpLLMParams } from '.';
+import { createLlmModel, warpLLMParams } from '.';
+import { mockFetch } from '../utils';
 import { requestChatCompletionsV2 } from './request';
 
 export class Anthropic implements ChatAgent {
@@ -25,14 +26,10 @@ export class Anthropic implements ChatAgent {
     };
 
     readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> => {
-        const provider = createAnthropic({
-            baseURL: context.ANTHROPIC_API_BASE,
-            apiKey: context.ANTHROPIC_API_KEY || undefined,
-        });
-        const userMessage = params.messages.at(-1) as CoreUserMessage;
-        const languageModelV1 = provider.languageModel(this.model(context, userMessage), undefined);
+        const modelId = this.model(context, params.messages.at(-1) as CoreUserMessage);
+        const model = await createLlmModel(modelId, context);
         return requestChatCompletionsV2(await warpLLMParams({
-            model: languageModelV1,
+            model,
             messages: params.messages,
         }, context), onStream);
     };

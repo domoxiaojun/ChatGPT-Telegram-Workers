@@ -31,9 +31,9 @@ export class Vertex extends VertexBase implements ChatAgent {
 
     readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> => {
         const userMessage = handleUrl(params.messages.at(-1) as CoreUserMessage, true);
-        const languageModelV1 = await createLlmModel(this.model(context, userMessage), context);
+        const model = await createLlmModel(this.model(context, userMessage), context);
         return requestChatCompletionsV2(await warpLLMParams({
-            model: languageModelV1,
+            model,
             messages: params.messages,
         }, context), onStream);
     };

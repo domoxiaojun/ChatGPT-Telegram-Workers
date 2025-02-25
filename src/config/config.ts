@@ -206,8 +206,9 @@ export class OpenAIConfig {
     OPENAI_CHAT_MODEL = 'gpt-4o-mini';
     // OpenAI API BASE ``
     OPENAI_API_BASE = 'https://api.openai.com/v1';
-    // OpenAI API Extra Params
-    OPENAI_API_EXTRA_PARAMS: Record<string, any> = {};
+    // OpenAI API Extra Params, key is model id, separated by commas, value is extra params
+    // for example: OPENAI_API_EXTRA_PARAMS = { 'gpt-4o-mini,gpt-4o-2024-08-06': { 'temperature': 0.5 } };
+    OPENAI_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
     // OpenAI STT Model
     OPENAI_STT_MODEL = 'whisper-1';
     // OpenAI Vision Model
@@ -221,8 +222,12 @@ export class OpenAIConfig {
      */
     OPENAI_NEED_TRANSFORM_MODEL: string[] = ['o1-mini-all', 'o1-mini-preview-all'];
     OPENAI_EMBEDDING_MODEL = 'text-embedding-3-small';
-    // OpenAI Reasoning Effort, only for starts with 'o1'
-    // reasoning_effort: 'low', 'medium', 'high'
+
+    /**
+     * OpenAI Reasoning Effort, only for starts with 'o1'
+     * reasoning_effort: 'low', 'medium', 'high'
+     * @deprecated use OPENAI_API_EXTRA_PARAMS instead
+     */
     OPENAI_REASONING_EFFORT: 'low' | 'medium' | 'high' | undefined = undefined;
 }
 
@@ -274,6 +279,9 @@ export class GeminiConfig {
     GOOGLE_VISION_MODEL = 'gemini-2.0-flash';
     // Google Embedding Model
     GOOGLE_EMBEDDING_MODEL = 'text-embedding-004';
+    // OpenAI API Extra Params, key is model id, separated by commas, value is extra Params
+    // for example: GOOGLE_API_EXTRA_PARAMS = { 'gemini-2.0-flash,gemini-2.0-flash-exp': { 'temperature': 0.5 } };
+    GOOGLE_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
 }
 
 // -- Mistral 配置 --
@@ -303,9 +311,19 @@ export class AnthropicConfig {
     // Anthropic api base
     ANTHROPIC_API_BASE = 'https://api.anthropic.com/v1';
     // Anthropic api model
-    ANTHROPIC_CHAT_MODEL = 'claude-3-5-haiku';
+    ANTHROPIC_CHAT_MODEL = 'claude-3-5-haiku-20241022';
     // Anthropic vision model
-    ANTHROPIC_VISION_MODEL = 'claude-3-5-haiku';
+    ANTHROPIC_VISION_MODEL = 'claude-3-5-haiku-20241022';
+    // OpenAI API Extra Params, key is model id, separated by commas, value is extra Params
+    // for example: ANTHROPIC_API_EXTRA_PARAMS = { 'claude-3-5-haiku-20241022,claude-3-5-sonnet': { 'temperature': 0.5 } };
+    ANTHROPIC_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {
+        'claude-3-7-sonnet-20250219': {
+            thinking: {
+                type: 'enabled',
+                budget_tokens: 16000,
+            },
+        },
+    };
 }
 
 export class OpenAILikeConfig {
@@ -333,6 +351,9 @@ export class OpenAILikeConfig {
     OAILIKE_TTS_MODEL = 'fishaudio/fish-speech-1.4';
     // oailike tts voice
     OAILIKE_TTS_VOICE = 'fishaudio/fish-speech-1.4:alex';
+    // OAILIKE API Extra Params, key is model id, separated by commas, value is extra Params
+    // for example: OAILIKE_API_EXTRA_PARAMS = { 'gpt-4o-mini,gpt-4o-2024-08-06': { 'temperature': 0.5 } };
+    OAILIKE_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
 }
 
 export class VertexConfig {
@@ -433,16 +454,25 @@ export class ExtraUserConfig {
     AUDIO_OUTPUT: 'audio' | 'text' = 'text';
     // Audio contains text
     AUDIO_CONTAINS_TEXT = true;
-    // Drop openai params, the key is the model name, separated by commas, and the value is the parameters to be dropped, separated by commas.
+    // Drop openai params, the key is the model name,
+    // separated by commas, and the value is the parameters to be dropped, separated by commas.
     // example: DROPS_OPENAI_PARAMS = { 'o1-mini,o1-preview': 'max_tokens,temperature,stream' };
+    /**
+     * @deprecated Use PARAMS_MODIFIER instead
+     */
     DROPS_OPENAI_PARAMS: Record<string, string> = {};
     // Cover message role, the key is the model name, separated by commas, and the value is overridden_role:new_role.
     // example: COVER_MESSAGE_ROLE = { 'o1-mini,o1-preview': 'system:user' };
     COVER_MESSAGE_ROLE: Record<string, string> = {};
-    // 最大上下文长度 默认10
+    // max history length, default is 10
     MAX_HISTORY_LENGTH = 10;
-    // 是否生成长文本(受MAX_STEPS限制)
+    // whether to generate long text (limited by MAX_STEPS)
     CONTINUE_STEP = false;
-    // 消息替换
+    // message substituter, split by :, key is trigger word, value is replacement word
     MESSAGE_REPLACER: Record<string, string> = {};
+    // Parameter modifier; string array; separated by colons, the key is the model name, separated by commas;
+    // the value is the parameter modification value, modification values starting with '+' indicates addition, with the value after '=' and separated by '|'; starting with '-' indicates addition indicate deletion.
+    // for example: PARAMS_MODIFIER = ['o1-mini,o3-mini:-temperature|max_tokens|+max_tokens=1000'];
+    // priority is higher than EXTRA_PARAMS
+    PARAMS_MODIFIER: string[] = [];
 }

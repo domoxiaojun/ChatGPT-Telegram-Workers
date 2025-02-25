@@ -5,6 +5,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { warpLLMParams } from '.';
 import { Log } from '../log/logDecortor';
 import { log } from '../log/logger';
+import { paramsModifier } from '../utils';
 import { requestText2Image } from './chat';
 import { requestChatCompletionsV2 } from './request';
 
@@ -68,14 +69,7 @@ export class OpenAI extends OpenAIBase implements ChatAgent {
     };
 
     readonly paramsHandle = (model: string, body: any, context: AgentUserConfig): any => {
-        if (Object.keys(context.DROPS_OPENAI_PARAMS).length > 0) {
-            for (const [model_perfix, params] of Object.entries(context.DROPS_OPENAI_PARAMS)) {
-                if (model_perfix.split(',').some(p => model.startsWith(p))) {
-                    params.split(',').forEach(p => delete body[p]);
-                    break;
-                }
-            }
-        }
+        paramsModifier(model, body, context.PARAMS_MODIFIER, context.OPENAI_API_EXTRA_PARAMS);
         // cover message role
         if (context.COVER_MESSAGE_ROLE) {
             for (const [models, roles] of Object.entries(context.COVER_MESSAGE_ROLE)) {
@@ -92,10 +86,6 @@ export class OpenAI extends OpenAIBase implements ChatAgent {
         if (context.OPENAI_REASONING_EFFORT && body.model.startsWith('o1')) {
             body.reasoning_effort = context.OPENAI_REASONING_EFFORT;
         }
-        // add extra params
-        Object.entries(context.OPENAI_API_EXTRA_PARAMS).forEach(([key, value]) => {
-            body[key] = value;
-        });
     };
 
     readonly fetch = (context: AgentUserConfig) =>

@@ -1,7 +1,7 @@
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, LLMChatParams, ResponseMessage } from './types';
 import { createCohere } from '@ai-sdk/cohere';
-import { warpLLMParams } from '.';
+import { createLlmModel, warpLLMParams } from '.';
 import { requestChatCompletionsV2 } from './request';
 
 export class Cohere implements ChatAgent {
@@ -17,13 +17,9 @@ export class Cohere implements ChatAgent {
     };
 
     readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> => {
-        const provider = createCohere({
-            baseURL: context.COHERE_API_BASE,
-            apiKey: context.COHERE_API_KEY || undefined,
-        });
-        const languageModelV1 = provider.languageModel(this.model(context), undefined);
+        const model = await createLlmModel(this.model(context), context);
         return requestChatCompletionsV2(await warpLLMParams({
-            model: languageModelV1,
+            model,
             messages: params.messages,
         }, context), onStream);
     };

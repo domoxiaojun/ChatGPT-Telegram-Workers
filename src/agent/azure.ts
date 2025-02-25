@@ -2,8 +2,9 @@ import type { CoreUserMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
 import { createAzure } from '@ai-sdk/azure';
-import { warpLLMParams } from '.';
+import { createLlmModel, warpLLMParams } from '.';
 import { Log } from '../log/logDecortor';
+import { mockFetch } from '../utils';
 import { requestText2Image } from './chat';
 import { requestChatCompletionsV2 } from './request';
 
@@ -28,14 +29,10 @@ export class AzureChatAI implements ChatAgent {
     };
 
     readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> => {
-        const provider = createAzure({
-            resourceName: context.AZURE_RESOURCE_NAME || undefined,
-            apiKey: context.AZURE_API_KEY || undefined,
-        });
-        const userMessage = params.messages.at(-1) as CoreUserMessage;
-        const languageModelV1 = provider.languageModel(this.model(context, userMessage), undefined);
+        const modelId = this.model(context, params.messages.at(-1) as CoreUserMessage);
+        const model = await createLlmModel(modelId, context);
         return requestChatCompletionsV2(await warpLLMParams({
-            model: languageModelV1,
+            model,
             messages: params.messages,
         }, context), onStream);
     };

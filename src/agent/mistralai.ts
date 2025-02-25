@@ -1,7 +1,7 @@
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, LLMChatParams, ResponseMessage } from './types';
 import { createMistral } from '@ai-sdk/mistral';
-import { warpLLMParams } from '.';
+import { createLlmModel, warpLLMParams } from '.';
 import { requestChatCompletionsV2 } from './request';
 
 export class Mistral implements ChatAgent {
@@ -17,13 +17,9 @@ export class Mistral implements ChatAgent {
     };
 
     readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> => {
-        const provider = createMistral({
-            baseURL: context.MISTRAL_API_BASE,
-            apiKey: context.MISTRAL_API_KEY || undefined,
-        });
-        const languageModelV1 = provider.languageModel(this.model(context), undefined);
+        const model = await createLlmModel(this.model(context), context);
         return requestChatCompletionsV2(await warpLLMParams({
-            model: languageModelV1,
+            model,
             messages: params.messages,
         }, context), onStream);
     };

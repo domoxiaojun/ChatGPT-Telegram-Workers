@@ -2,9 +2,10 @@ import type { CoreUserMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ASRAgent, ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
 import { OpenAICompatibleChatLanguageModel } from '@ai-sdk/openai-compatible';
-import { warpLLMParams } from '.';
+import { createLlmModel, warpLLMParams } from '.';
 import { Log } from '../log/logDecortor';
 import { log } from '../log/logger';
+import { mockFetch } from '../utils';
 import { requestText2Image } from './chat';
 import { extraMetadataExtractor } from './model_middleware';
 import { requestChatCompletionsV2 } from './request';
@@ -36,16 +37,8 @@ export class OpenAILike extends OpenAILikeBase implements ChatAgent {
     };
 
     readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> => {
-        const userMessage = params.messages.at(-1) as CoreUserMessage;
-        const model = new OpenAICompatibleChatLanguageModel(this.model(context, userMessage), {}, {
-            provider: 'oailike',
-            url: ({ path }: { path: string }) => `${context.OAILIKE_API_BASE}${path}`,
-            headers: () => ({
-                Authorization: `Bearer ${context.OAILIKE_API_KEY}`,
-            }),
-            defaultObjectGenerationMode: 'json',
-            metadataExtractor: extraMetadataExtractor(this.model(context, userMessage)),
-        });
+        const modelId = this.model(context, params.messages.at(-1) as CoreUserMessage);
+        const model = await createLlmModel(modelId, context);
         return requestChatCompletionsV2(await warpLLMParams({
             model,
             messages: params.messages,
