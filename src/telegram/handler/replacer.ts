@@ -3,18 +3,19 @@ import type { Message } from 'telegram-bot-api-types';
 export function substituteMessage(message: Message, replacer: Record<string, string>): void {
     let replacedString = '';
     let text = message.text || message.caption || '';
+    const substituter = { ...replacer };
     do {
-        const triggerKey = Object.keys(replacer).find(key =>
+        const triggerKey = Object.keys(substituter).find(key =>
         // adjust the order of trigger words with the same prefix by yourself.
             text.trim().startsWith(key),
         );
         if (triggerKey) {
             text = text.replace(new RegExp(`(\\s*)${triggerKey}`), (_, p1) => {
-                replacedString += `${p1}${replacer[triggerKey]}`;
+                replacedString += `${p1}${substituter[triggerKey]}`;
                 return '';
             });
             // remove the trigger key from replacer to avoid replace again
-            delete replacer[triggerKey];
+            delete substituter[triggerKey];
         } else {
             break;
         }
