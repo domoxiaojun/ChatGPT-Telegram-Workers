@@ -163,7 +163,7 @@ async function workflow(agent: ChatAgent, llmParams: LLMChatParams, context: Age
 function extractResultText(result: { messages: ResponseMessage[]; content: string }, llmParams: LLMChatParams) {
     const lastMessage = result.messages.at(-1)!;
     if (Array.isArray(lastMessage.content)) {
-        return lastMessage.content.map(c => c.type === 'text' ? c.text : '').join()
+        return lastMessage.content.map(c => c.type === 'text' ? c.text : '').join('')
             || result.content.slice(llmParams.cache?.join().length || 0);
     }
     return lastMessage.content;
