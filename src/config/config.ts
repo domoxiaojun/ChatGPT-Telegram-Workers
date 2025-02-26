@@ -279,7 +279,7 @@ export class GeminiConfig {
     GOOGLE_VISION_MODEL = 'gemini-2.0-flash';
     // Google Embedding Model
     GOOGLE_EMBEDDING_MODEL = 'text-embedding-004';
-    // OpenAI API Extra Params, key is model id, separated by commas, value is extra Params
+    // Google API Extra Params, key is model id, separated by commas, value is extra Params
     // for example: GOOGLE_API_EXTRA_PARAMS = { 'gemini-2.0-flash,gemini-2.0-flash-exp': { 'temperature': 0.5 } };
     GOOGLE_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
 }
@@ -314,13 +314,14 @@ export class AnthropicConfig {
     ANTHROPIC_CHAT_MODEL = 'claude-3-5-haiku-20241022';
     // Anthropic vision model
     ANTHROPIC_VISION_MODEL = 'claude-3-5-haiku-20241022';
-    // OpenAI API Extra Params, key is model id, separated by commas, value is extra Params
+    // Anthropic API Extra Params, key is model id, separated by commas, value is extra Params
     // for example: ANTHROPIC_API_EXTRA_PARAMS = { 'claude-3-5-haiku-20241022,claude-3-5-sonnet': { 'temperature': 0.5 } };
     ANTHROPIC_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {
         'claude-3-7-sonnet-20250219': {
+            temperature: 1,
             thinking: {
                 type: 'enabled',
-                budget_tokens: 16000,
+                budget_tokens: 4096,
             },
         },
     };
@@ -388,7 +389,7 @@ export class DefineKeys {
 }
 
 export class ExtraUserConfig {
-    MAPPING_KEY = '-p:SYSTEM_INIT_MESSAGE|-n:MAX_HISTORY_LENGTH|-a:AI_PROVIDER|-ai:AI_IMAGE_PROVIDER|-m:CHAT_MODEL|-md:CURRENT_MODE|-v:VISION_MODEL|-t:OPENAI_TTS_MODEL|-ex:OPENAI_API_EXTRA_PARAMS|-mk:MAPPING_KEY|-mv:MAPPING_VALUE|-asap:FUNCTION_REPLY_ASAP|-tm:TOOL_MODEL|-tool:USE_TOOLS|-oli:IMAGE_MODEL|-th:TEXT_HANDLE_TYPE|-to:TEXT_OUTPUT|-ah:AUDIO_HANDLE_TYPE|-ao:AUDIO_OUTPUT|-act:AUDIO_CONTAINS_TEXT|-as:AI_ASR_PROVIDER|-at:AI_TTS_PROVIDER|-ra:RERANK_AGENT';
+    MAPPING_KEY = '-p:SYSTEM_INIT_MESSAGE|-n:MAX_HISTORY_LENGTH|-a:AI_PROVIDER|-ai:AI_IMAGE_PROVIDER|-m:CHAT_MODEL|-md:CURRENT_MODE|-v:VISION_MODEL|-t:OPENAI_TTS_MODEL|-ex:OPENAI_API_EXTRA_PARAMS|-mk:MAPPING_KEY|-mv:MAPPING_VALUE|-tm:TOOL_MODEL|-tool:USE_TOOLS|-oli:IMAGE_MODEL|-th:TEXT_HANDLE_TYPE|-to:TEXT_OUTPUT|-ah:AUDIO_HANDLE_TYPE|-ao:AUDIO_OUTPUT|-act:AUDIO_CONTAINS_TEXT|-as:AI_ASR_PROVIDER|-at:AI_TTS_PROVIDER|-ra:RERANK_AGENT|-ew:ENABLE_WORKFLOW|-tp:CHAT_TEMPERATURE';
     // /set command mapping value, separated by |, : separates multiple relationships
     MAPPING_VALUE = '';
     // MAPPING_VALUE = "cson:claude-3-5-sonnet-20240620|haiku:claude-3-haiku-20240307|g4m:gpt-4o-mini|g4:gpt-4o|rp+:command-r-plus";
@@ -475,4 +476,26 @@ export class ExtraUserConfig {
     // for example: PARAMS_MODIFIER = ['o1-mini,o3-mini:-temperature|max_tokens|+max_tokens=1000'];
     // priority is higher than EXTRA_PARAMS
     PARAMS_MODIFIER: string[] = [];
+    // start with @key to trigger workflow, support agent, model, temperature, max_tokens;
+    // next is the next step prompt: {{result}} is the result of the current step result, {{question}} is user input
+    WORKFLOW: {
+        [key: string]: {
+            agent: string;
+            model: string;
+            temperature: number;
+            max_tokens: number;
+            next: string;
+        }[];
+    } = {
+            think: [{
+                agent: 'oailike',
+                model: 'deepseek-reasoner',
+                temperature: 0.3,
+                max_tokens: 1,
+                next: `思考内容: {{result}}\n\n基于以上思考回答问题: {{question}}`,
+            }],
+        };
+
+    // whether to enable workflow
+    ENABLE_WORKFLOW = false;
 }

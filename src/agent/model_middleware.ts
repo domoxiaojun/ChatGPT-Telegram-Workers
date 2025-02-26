@@ -198,9 +198,9 @@ function recordModelLog(config: AgentUserConfig, model: LanguageModelV1, activeT
     const logs = getLogSingleton(config);
     log.info(`provider: ${model.provider}, modelId: ${model.modelId} `);
     if (activeTools.length > 0 && toolChoice?.type !== 'none') {
-        logs.tool.model = model.modelId;
+        logs.tool.model.add(model.modelId);
     } else {
-        logs.chat.model = model.modelId;
+        logs.chat.model.add(model.modelId);
     }
 }
 

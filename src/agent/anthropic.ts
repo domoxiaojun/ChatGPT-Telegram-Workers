@@ -1,9 +1,7 @@
 import type { CoreUserMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
-import { createAnthropic } from '@ai-sdk/anthropic';
 import { createLlmModel, warpLLMParams } from '.';
-import { mockFetch } from '../utils';
 import { requestChatCompletionsV2 } from './request';
 
 export class Anthropic implements ChatAgent {
@@ -31,6 +29,7 @@ export class Anthropic implements ChatAgent {
         return requestChatCompletionsV2(await warpLLMParams({
             model,
             messages: params.messages,
+            cache: params.cache,
         }, context), onStream);
     };
 }

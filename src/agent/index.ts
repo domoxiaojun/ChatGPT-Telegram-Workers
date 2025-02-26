@@ -140,7 +140,7 @@ export function customInfo(config: AgentUserConfig): string {
     return JSON.stringify(other_info, null, 2);
 }
 
-export async function warpLLMParams(params: { messages: CoreMessage[]; model: LanguageModelV1 }, context: AgentUserConfig) {
+export async function warpLLMParams(params: { messages: CoreMessage[]; model: LanguageModelV1; cache?: string[] }, context: AgentUserConfig) {
     const tool_envs: Record<string, any> = { ...(context.JINA_API_KEY && { JINA_API_KEY: context.JINA_API_KEY[Math.floor(Math.random() * context.JINA_API_KEY.length)] }) };
 
     const env_perfix = 'TOOL_ENV_';
@@ -173,6 +173,7 @@ export async function warpLLMParams(params: { messages: CoreMessage[]; model: La
     return {
         model: params.model,
         messages: params.messages,
+        cache: params.cache,
         tools: tool?.tools,
         activeTools,
         toolChoice,

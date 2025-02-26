@@ -1,6 +1,8 @@
 import type { CoreMessage } from 'ai';
 import type { WorkerContext } from '../config/context';
+import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, HistoryItem, HistoryModifier, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
+import { loadChatLLM } from '.';
 import { ENV } from '../config/env';
 import { log } from '../log/logger';
 
@@ -70,21 +72,16 @@ export async function requestCompletionsFromLLM(params: LLMChatRequestParams | n
     }
     const llmParams: LLMChatParams = {
         messages,
+        cache: [],
     };
-    const answer = await agent.request(llmParams, context.USER_CONFIG, onStream);
+    const answer = await workflow(agent, llmParams, context.USER_CONFIG, onStream);
     const { messages: raw_messages } = answer;
 
-    if (answer.content.trim() === '' && raw_messages.at(-1)?.role === 'assistant') {
-        throw new Error('Response is empty');
-    }
-
-    if (!historyDisable) {
+    if (!historyDisable && raw_messages.at(-1)?.role === 'assistant') {
         // only push valid chat history
-        if (raw_messages.at(-1)?.role === 'assistant') {
-            history.push(params);
-            history.push(...raw_messages);
-            await storeHistory(history, context);
-        }
+        history.push(params);
+        history.push(...raw_messages.filter(i => i.content !== ''));
+        await storeHistory(history, context);
     }
     return answer;
 }
@@ -112,3 +109,62 @@ export async function storeHistory(history: CoreMessage[], context: WorkerContex
     await ENV.DATABASE.put(historyKey, JSON.stringify(history)).catch(console.error);
     log.info(`[STORE HISTORY] DONE`);
 }
+
+async function workflow(agent: ChatAgent, llmParams: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null) {
+    const question = llmParams.messages.at(-1)?.content;
+    if (!context.ENABLE_WORKFLOW || typeof question !== 'string') {
+        return agent.request(llmParams, context, onStream);
+    }
+
+    const key = Object.keys(context.WORKFLOW).find(key => question.startsWith(`@${key}`));
+    if (!key) {
+        return agent.request(llmParams, context, onStream);
+    }
+
+    llmParams.messages.at(-1)!.content = question.substring(key.length + 1).trimStart();
+    const backup = { ...context };
+    const updater = (context: AgentUserConfig, { agent, model, temperature, max_tokens }: { agent: string; model: string; temperature: number; max_tokens: number; next: string }) => {
+        agent && (context.AI_PROVIDER = agent);
+        model && (context[`${agent.toUpperCase()}_CHAT_MODEL`] = model);
+        temperature && (context.CHAT_TEMPERATURE = temperature);
+        max_tokens && (context.MAX_TOKENS = max_tokens);
+    };
+    const renderNext = (result: string, { next }: { next: string }) => {
+        llmParams.messages.pop();
+        llmParams.messages.push({
+            role: 'user',
+            content: next.replace('{{question}}', question).replace('{{result}}', result) || `question: ${question}\nresult: ${result}`,
+        });
+    };
+
+    for (const workflow of context.WORKFLOW[key]) {
+        updater(context, workflow);
+        const agent = loadChatLLM(context);
+        if (!agent) {
+            throw new Error(`Agent ${workflow.agent} not found`);
+        }
+        const result = await agent.request(llmParams, context, onStream);
+        // 不发送给ai的消息
+        if (result.messages.at(-1)?.role === 'tool') {
+            return result;
+        }
+        const text = extractResultText(result, llmParams);
+        if (text.trim() === '') {
+            throw new Error('Response is empty');
+        }
+        llmParams.cache!.push(`${text}\n▲\n`);
+        await onStream?.send(result.content);
+        renderNext(text, workflow);
+    }
+    Object.assign(context, backup);
+    return agent.request(llmParams, context, onStream);
+}
+
+function extractResultText(result: { messages: ResponseMessage[]; content: string }, llmParams: LLMChatParams) {
+    const lastMessage = result.messages.at(-1)!;
+    if (Array.isArray(lastMessage.content)) {
+        return lastMessage.content.map(c => c.type === 'text' ? c.text : '').join()
+            || result.content.slice(llmParams.cache?.join().length || 0);
+    }
+    return lastMessage.content;
+};

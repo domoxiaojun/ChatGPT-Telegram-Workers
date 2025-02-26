@@ -1,6 +1,5 @@
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, LLMChatParams, ResponseMessage } from './types';
-import { createCohere } from '@ai-sdk/cohere';
 import { createLlmModel, warpLLMParams } from '.';
 import { requestChatCompletionsV2 } from './request';
 
@@ -21,6 +20,7 @@ export class Cohere implements ChatAgent {
         return requestChatCompletionsV2(await warpLLMParams({
             model,
             messages: params.messages,
+            cache: params.cache,
         }, context), onStream);
     };
 }

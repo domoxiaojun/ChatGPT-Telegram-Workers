@@ -1,10 +1,8 @@
 import type { CoreUserMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
-import { createAzure } from '@ai-sdk/azure';
 import { createLlmModel, warpLLMParams } from '.';
 import { Log } from '../log/logDecortor';
-import { mockFetch } from '../utils';
 import { requestText2Image } from './chat';
 import { requestChatCompletionsV2 } from './request';
 
@@ -34,6 +32,7 @@ export class AzureChatAI implements ChatAgent {
         return requestChatCompletionsV2(await warpLLMParams({
             model,
             messages: params.messages,
+            cache: params.cache,
         }, context), onStream);
     };
 }

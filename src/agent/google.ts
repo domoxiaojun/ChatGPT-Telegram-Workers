@@ -29,6 +29,7 @@ export class Google implements ChatAgent {
         return requestChatCompletionsV2(await warpLLMParams({
             model,
             messages: params.messages,
+            cache: params.cache,
         }, context), onStream);
     };
 }

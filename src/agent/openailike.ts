@@ -1,13 +1,10 @@
 import type { CoreUserMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ASRAgent, ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
-import { OpenAICompatibleChatLanguageModel } from '@ai-sdk/openai-compatible';
 import { createLlmModel, warpLLMParams } from '.';
 import { Log } from '../log/logDecortor';
 import { log } from '../log/logger';
-import { mockFetch } from '../utils';
 import { requestText2Image } from './chat';
-import { extraMetadataExtractor } from './model_middleware';
 import { requestChatCompletionsV2 } from './request';
 
 export class OpenAILikeBase {
@@ -42,6 +39,7 @@ export class OpenAILike extends OpenAILikeBase implements ChatAgent {
         return requestChatCompletionsV2(await warpLLMParams({
             model,
             messages: params.messages,
+            cache: params.cache,
         }, context), onStream);
     };
 }

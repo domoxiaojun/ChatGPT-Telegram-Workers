@@ -57,6 +57,7 @@ export type LLMChatRequestParams = CoreUserMessage;
 export interface LLMChatParams {
     prompt?: string;
     messages: CoreMessage[];
+    cache?: string[];
 }
 
 export type ResponseMessage = CoreAssistantMessage | CoreToolMessage;

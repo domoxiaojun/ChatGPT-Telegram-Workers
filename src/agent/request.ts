@@ -182,34 +182,35 @@ export async function streamHandler(stream: AsyncIterable<any>, contentExtractor
     return messageInfo.content;
 }
 
-export async function requestChatCompletionsV2(params: { model: LanguageModelV1; toolModel?: LanguageModelV1; prompt?: string; messages: CoreMessage[]; tools?: any; activeTools?: string[]; toolChoice?: ToolChoice[] | undefined; context: AgentUserConfig }, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> {
+export async function requestChatCompletionsV2({ model, messages, tools, activeTools, toolChoice, context, cache }: { model: LanguageModelV1; toolModel?: LanguageModelV1; prompt?: string; messages: CoreMessage[]; tools?: any; activeTools?: string[]; toolChoice?: ToolChoice[] | undefined; context: AgentUserConfig; cache?: string[] }, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> {
+    // 引入多轮对话 拼接提示
     const messageInfo: MessageInfo = {
-        content: '',
+        content: cache?.join() ?? '',
     };
     const middleware = AIMiddleware({
-        config: params.context,
-        activeTools: params.activeTools || [],
+        config: context,
+        activeTools: activeTools || [],
         onStream,
-        toolChoice: params.toolChoice || [],
-        chatModel: params.model.modelId,
+        toolChoice: toolChoice || [],
+        chatModel: model.modelId,
         messageInfo,
     });
     const hander_params = {
         model: wrapLanguageModel({
-            model: params.activeTools?.length ? await createLlmModel(params.context.TOOL_MODEL, params.context) : params.model,
+            model: activeTools?.length ? await createLlmModel(context.TOOL_MODEL, context) : model,
             middleware,
         }),
-        messages: params.messages,
-        maxSteps: params.context.MAX_STEPS,
-        experimental_continueSteps: params.context.CONTINUE_STEP,
-        maxRetries: params.context.MAX_RETRIES,
-        temperature: (params.activeTools?.length || 0) > 0 ? params.context.FUNCTION_CALL_TEMPERATURE : params.context.CHAT_TEMPERATURE,
-        tools: params.tools,
-        maxTokens: params.context.MAX_TOKENS,
-        activeTools: params.activeTools,
+        messages,
+        maxSteps: context.MAX_STEPS,
+        experimental_continueSteps: context.CONTINUE_STEP,
+        maxRetries: context.MAX_RETRIES,
+        temperature: (activeTools?.length || 0) > 0 ? context.FUNCTION_CALL_TEMPERATURE : context.CHAT_TEMPERATURE,
+        tools,
+        maxTokens: context.MAX_TOKENS,
+        activeTools,
         onStepFinish: middleware.onStepFinish as (data: StepResult<any>) => void,
     };
-    let messages: ResponseMessage[] = [];
+    let responseMessages: ResponseMessage[] = [];
     let contentFull = '';
     const errorReferencer = [false];
 
@@ -223,7 +224,7 @@ export async function requestChatCompletionsV2(params: { model: LanguageModelV1;
             let thinkingStart = false;
             let thinkingEnd = false;
             let thinkingStartTime: undefined | number;
-            const thinkingTag = '>`Thinking`\n>';
+            const thinkingTag = '>`Thinking\\.\\.\\.`\n>';
             return (data: TextStreamPart<any>) => {
                 switch (data.type) {
                     case 'reasoning':
@@ -235,14 +236,16 @@ export async function requestChatCompletionsV2(params: { model: LanguageModelV1;
                         }
                         return data.textDelta.replace(/\n/g, '\n>');
                     case 'text-delta':
+                    case 'step-finish':
+                    case 'finish':
                         if (thinkingStart && !thinkingEnd) {
                             thinkingEnd = true;
                             const thinkingTime = ((Date.now() - thinkingStartTime!) / 1e3).toFixed(1);
                             messageInfo.content = messageInfo.content
-                                .replace(/^>`Thinking[^\n]+/, `>\`Thinking about ${thinkingTime}s\``);
-                            return `\n>✹\n${data.textDelta.trim()}`;
+                                .replace(/^>`Thinking\\.\\.\\.[^\n]+/m, `>\`Thought for ${thinkingTime} seconds\``);
+                            return `\n>✹\n${data.type === 'text-delta' ? data.textDelta.trim() : ''}`;
                         }
-                        return data.textDelta;
+                        return data.type === 'text-delta' ? data.textDelta.trim() : '';
                     case 'error':
                         throw data.error;
                     default:
@@ -252,27 +255,27 @@ export async function requestChatCompletionsV2(params: { model: LanguageModelV1;
         })();
 
         contentFull = await streamHandler(stream.fullStream, contentExtractor, onStream, messageInfo, errorReferencer);
-        messages = errorReferencer[0] ? [{ role: 'assistant', content: contentFull }] : (await stream.response).messages;
-        contentFull = errorReferencer[0] ? contentFull : metaDataExtractor(await stream.providerMetadata, params.model.provider, contentFull);
+        responseMessages = errorReferencer[0] ? [{ role: 'assistant', content: contentFull }] : (await stream.response).messages;
+        contentFull = errorReferencer[0] ? contentFull : metaDataExtractor(await stream.providerMetadata, model.provider, contentFull);
     } else {
         const result = await generateText(hander_params);
         contentFull = `${result.reasoning ? `>\`Thinking\`\n>${result.reasoning.replace(/\n/g, '\n>')}\n\n` : ''}${result.text}`;
-        messages = result.response.messages;
-        contentFull = metaDataExtractor(await result.providerMetadata, params.model.provider, contentFull);
+        responseMessages = result.response.messages;
+        contentFull = metaDataExtractor(await result.providerMetadata, model.provider, contentFull);
     }
     try {
         // when last message is tool, avoid ai message not sent complete
-        const lastMessageContent = messages.at(-1)?.content;
+        const lastMessageContent = responseMessages.at(-1)?.content;
         if (contentFull.trim() !== '' && Array.isArray(lastMessageContent) && (lastMessageContent as (ToolCallPart | ToolResultPart)[]).some(c => c.type === 'tool-call') && onStream) {
             await onStream.end?.(contentFull);
         }
-        await manualRequestTool(messages, params.context);
+        await manualRequestTool(responseMessages, context);
     } catch (e) {
         if (contentFull.trim() === '') {
             throw e;
         }
         log.error((e as Error).message, (e as Error).stack);
-        messages.push({
+        responseMessages.push({
             role: 'tool',
             content: [{
                 type: 'tool-result',
@@ -286,7 +289,7 @@ export async function requestChatCompletionsV2(params: { model: LanguageModelV1;
     }
 
     return {
-        messages: messages.map(({ role, content }) => {
+        messages: responseMessages.map(({ role, content }) => {
             if (role === 'tool') {
                 content.forEach((i) => {
                     if (i.type === 'tool-result') {

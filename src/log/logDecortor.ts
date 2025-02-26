@@ -29,9 +29,9 @@ export function Log(
                     try {
                         model = args[0]?.model || this.model(config, args[0]);
                         if (this.type === 'tool') {
-                            logs.tool.model = model;
+                            logs.tool.model.add(model);
                         } else {
-                            logs.chat.model = model;
+                            logs.chat.model.add(model);
                         }
 
                         const result: CompletionData = await initialValue.apply(this, args);
@@ -89,11 +89,11 @@ export function getLogSingleton(config: AgentUserConfig): Logs {
             functions: [],
             functionTime: [],
             tool: {
-                model: '',
+                model: new Set(),
                 time: [],
             },
             chat: {
-                model: '',
+                model: new Set(),
                 time: [],
             },
             tokens: [],
@@ -112,7 +112,7 @@ export function getLog(context: AgentUserConfig, onlyModel: boolean = false, isP
     if (!logObj)
         return '';
     if (onlyModel) {
-        return logObj.chat.model || logObj.tool.model || 'UNKNOWN';
+        return [...logObj.tool.model, ...logObj.chat.model].join(', ') || 'UNKNOWN';
     }
     const logList: string[] = [];
     const show = {
@@ -124,8 +124,8 @@ export function getLog(context: AgentUserConfig, onlyModel: boolean = false, isP
     };
 
     // tool
-    if (logObj.tool.model && show.model) {
-        let toolsLog = logObj.tool.model;
+    if (logObj.tool.model.size > 0 && show.model) {
+        let toolsLog = [...logObj.tool.model].join(', ');
         if (logObj.tool.time.length > 0 && show.model_time) {
             toolsLog += ` ct: ${logObj.tool.time.join('s ')}s`;
         }
@@ -150,8 +150,8 @@ export function getLog(context: AgentUserConfig, onlyModel: boolean = false, isP
     }
 
     // chat
-    if (logObj.chat.model.length > 0 && show.model) {
-        const chatLogs = `${logObj.chat.model}${logObj.chat.time.length > 0 && show.model_time ? ` ${logObj.chat.time.join('s ')}s` : ''}`;
+    if (logObj.chat.model.size > 0 && show.model) {
+        const chatLogs = `${[...logObj.chat.model].join('|')}${logObj.chat.time.length > 0 && show.model_time ? ` ${logObj.chat.time.join('s ')}s` : ''}`;
         logList.push(chatLogs);
     }
 
@@ -195,8 +195,8 @@ function handleLlmLog(logs: Logs, result: CompletionData, time: string, type: 't
 interface Logs {
     functions: { name: string; arguments: any; error?: string }[];
     functionTime: string[];
-    tool: { model: string; time: string[] };
-    chat: { model: string; time: string[] };
+    tool: { model: Set<string>; time: string[] };
+    chat: { model: Set<string>; time: string[] };
     tokens: string[];
     ongoingFunctions: { name: string; startTime: number }[];
     error: string;
