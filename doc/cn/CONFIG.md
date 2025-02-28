@@ -81,7 +81,7 @@ OPENAI_API_BASE,GOOGLE_API_BASE,MISTRAL_API_BASE,COHERE_API_BASE,ANTHROPIC_API_B
 
 | KEY                      | 名称          | 默认值         | 描述                                                                     |
 |--------------------------|-------------|-------------|------------------------------------------------------------------------|
-| AI_PROVIDER              | AI提供商       | `auto`      | 可选值 `auto, openai, azure, workers, google, vertex, mistral, cohere, anthropic` |
+| AI_CHAT_PROVIDER              | AI提供商       | `auto`      | 可选值 `auto, openai, azure, workers, google, vertex, mistral, cohere, anthropic` |
 | AI_IMAGE_PROVIDER        | AI图片提供商     | `auto`      | 可选值 `auto, openai, azure, workers`                                     |
 | SYSTEM_INIT_MESSAGE      | 全局默认初始化消息   | `你是一个得力的助手` | 根据绑定的语言自动选择默认值                                                         |
 
@@ -174,25 +174,25 @@ cloudflare workers 暂时不支持访问
 
 除了上述系统定义的指令，你也可以自定义快捷指令， 可以将某些较长的指令简化为一个单词的指令。
 
-自定义指令使用环境变量设置 `CUSTOM_COMMAND_XXX`，其中XXX为指令名，比如`CUSTOM_COMMAND_azure`，值为指令内容，比如`/setenvs {"AI_PROVIDER": "azure"}`。 这样就可以使用`/azure`来代替`/setenvs {"AI_PROVIDER": "azure"}`实现快速切换AI提供商。
+自定义指令使用环境变量设置 `CUSTOM_COMMAND_XXX`，其中XXX为指令名，比如`CUSTOM_COMMAND_azure`，值为指令内容，比如`/setenvs {"AI_CHAT_PROVIDER": "azure"}`。 这样就可以使用`/azure`来代替`/setenvs {"AI_CHAT_PROVIDER": "azure"}`实现快速切换AI提供商。
 
 下面是一些自定义指令例子
 
 | 指令                     | 值                                                                          |
 |------------------------|----------------------------------------------------------------------------|
-| CUSTOM_COMMAND_azure   | `/setenvs {"AI_PROVIDER": "azure"}`                                        |
-| CUSTOM_COMMAND_workers | `/setenvs {"AI_PROVIDER": "workers"}`                                      |
-| CUSTOM_COMMAND_gpt3    | `/setenvs {"AI_PROVIDER": "openai", "OPENAI_CHAT_MODEL": "gpt-3.5-turbo"}` |
-| CUSTOM_COMMAND_gpt4    | `/setenvs {"AI_PROVIDER": "openai", "OPENAI_CHAT_MODEL": "gpt-4"}`         |
+| CUSTOM_COMMAND_azure   | `/setenvs {"AI_CHAT_PROVIDER": "azure"}`                                        |
+| CUSTOM_COMMAND_workers | `/setenvs {"AI_CHAT_PROVIDER": "workers"}`                                      |
+| CUSTOM_COMMAND_gpt3    | `/setenvs {"AI_CHAT_PROVIDER": "openai", "OPENAI_CHAT_MODEL": "gpt-3.5-turbo"}` |
+| CUSTOM_COMMAND_gpt4    | `/setenvs {"AI_CHAT_PROVIDER": "openai", "OPENAI_CHAT_MODEL": "gpt-4"}`         |
 | CUSTOM_COMMAND_cn2en   | `/setenvs {"SYSTEM_INIT_MESSAGE": "你是一个翻译下面将我说的话都翻译成英文"}`                  |
 
 如果你是用toml进行配置，可以使用下面的方式：
 
 ```toml
-CUSTOM_COMMAND_azure= '/setenvs {"AI_PROVIDER": "azure"}'
-CUSTOM_COMMAND_workers = '/setenvs {"AI_PROVIDER": "workers"}'
-CUSTOM_COMMAND_gpt3 = '/setenvs {"AI_PROVIDER": "openai", "OPENAI_CHAT_MODEL": "gpt-3.5-turbo"}'
-CUSTOM_COMMAND_gpt4 = '/setenvs {"AI_PROVIDER": "openai", "OPENAI_CHAT_MODEL": "gpt-4"}'
+CUSTOM_COMMAND_azure= '/setenvs {"AI_CHAT_PROVIDER": "azure"}'
+CUSTOM_COMMAND_workers = '/setenvs {"AI_CHAT_PROVIDER": "workers"}'
+CUSTOM_COMMAND_gpt3 = '/setenvs {"AI_CHAT_PROVIDER": "openai", "OPENAI_CHAT_MODEL": "gpt-3.5-turbo"}'
+CUSTOM_COMMAND_gpt4 = '/setenvs {"AI_CHAT_PROVIDER": "openai", "OPENAI_CHAT_MODEL": "gpt-4"}'
 CUSTOM_COMMAND_cn2en = '/setenvs {"SYSTEM_INIT_MESSAGE": "你是一个翻译下面将我说的话都翻译成英文"}'
 ```
 

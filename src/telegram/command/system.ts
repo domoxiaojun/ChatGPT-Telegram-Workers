@@ -21,7 +21,7 @@ import { createTelegramBotAPI } from '../api';
 import { chatWithLLM, OnStreamHander, sendImages } from '../handler/chat';
 import { escape } from '../utils/md2tgmd';
 import { checkIsNeedTagIds, sendAction } from '../utils/send';
-import { chunckArray, isCfWorker, isTelegramChatTypeGroup, UUIDv4 } from '../utils/utils';
+import { chunkArray, isCfWorker, isTelegramChatTypeGroup, UUIDv4 } from '../utils/utils';
 
 export const COMMAND_AUTH_CHECKER = {
     default(chatType: string): string[] | null {
@@ -285,8 +285,8 @@ export class SystemCommandHandler implements CommandHandler {
         const asrAgent = loadASRLLM(context.USER_CONFIG);
         const ttsAgent = loadTTSLLM(context.USER_CONFIG);
         const agent = {
-            AI_PROVIDER: chatAgent?.name,
-            [chatAgent?.modelKey || 'AI_PROVIDER_NOT_FOUND']: chatAgent?.model ? chatAgent.model(context.USER_CONFIG) : 'AI_PROVIDER_NOT_FOUND',
+            AI_CHAT_PROVIDER: chatAgent?.name,
+            [chatAgent?.modelKey || 'AI_CHAT_PROVIDER_NOT_FOUND']: chatAgent?.model ? chatAgent.model(context.USER_CONFIG) : 'AI_CHAT_PROVIDER_NOT_FOUND',
             TOOL_MODEL: context.USER_CONFIG.TOOL_MODEL || 'same as chat model',
             AI_IMAGE_PROVIDER: imageAgent?.name,
             [imageAgent?.modelKey || 'AI_IMAGE_PROVIDER_NOT_FOUND']: imageAgent?.model ? imageAgent.model(context.USER_CONFIG) : 'AI_IMAGE_PROVIDER_NOT_FOUND',
@@ -388,8 +388,8 @@ export class SetCommandHandler implements CommandHandler {
             let msg = '';
             const updatedKeys: string[] = [];
 
-            if (context.USER_CONFIG.AI_PROVIDER === 'auto') {
-                context.USER_CONFIG.AI_PROVIDER = 'openai';
+            if (context.USER_CONFIG.AI_CHAT_PROVIDER === 'auto') {
+                context.USER_CONFIG.AI_CHAT_PROVIDER = 'openai';
             }
 
             for (const { flag, value } of flags) {
@@ -501,8 +501,8 @@ export class SetCommandHandler implements CommandHandler {
             case 'VISION_MODEL':
             case 'STT_MODEL':
             case 'TTS_MODEL':
-                key = context.USER_CONFIG.AI_PROVIDER
-                    ? `${context.USER_CONFIG.AI_PROVIDER.toUpperCase()}_${key}`
+                key = context.USER_CONFIG.AI_CHAT_PROVIDER
+                    ? `${context.USER_CONFIG.AI_CHAT_PROVIDER.toUpperCase()}_${key}`
                     : key;
                 break;
             case 'USE_TOOLS':
@@ -608,92 +608,119 @@ export class InlineCommandHandler implements CommandHandler {
     scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
     needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender?: MessageSender): Promise<Response> => {
-        const defaultInlineKeys = this.defaultInlineKeys(context.USER_CONFIG);
-        const currentSettings = this.settingsMessage(context.USER_CONFIG, defaultInlineKeys);
+        const defaultInlines = this.defaultInlines(context.USER_CONFIG);
+        const settingMsg = this.settingsMessage(context.USER_CONFIG, defaultInlines, {});
+        const headKeyboard = [
+            {
+                text: '请选择配置的选项',
+                callback_data: message.from!.id.toString(),
+            },
+        ];
+        const closeKeyboard = [{
+            text: '❌',
+            callback_data: 'CLOSE',
+        }];
 
         return createTelegramBotAPI(context.SHARE_CONTEXT.botToken).sendMessage({
             chat_id: message.chat.id,
             ...(message.chat.type === 'private' ? {} : { reply_to_message_id: message.message_id }),
-            text: escape(currentSettings),
+            text: escape(settingMsg),
             parse_mode: 'MarkdownV2',
             reply_markup: {
-                inline_keyboard: this.inlineKeyboard(context.USER_CONFIG, defaultInlineKeys),
+                inline_keyboard: [headKeyboard, ...this.inlineKeyboard(context.USER_CONFIG, defaultInlines), closeKeyboard],
             },
         });
     };
 
-    defaultInlineKeys = (context: AgentUserConfig): Record<string, InlineItem> => {
-        const chatAgent = loadChatLLM(context);
-        const imageAgent = loadImageGen(context);
-        return {
-            INLINE_AGENTS: {
-                label: 'Agent',
-                data: 'INLINE_AGENTS',
-                config_key: 'AI_PROVIDER',
-                available_values: CHAT_AGENTS.map(agent => agent.name),
-            },
-            INLINE_IMAGE_AGENTS: {
-                label: 'Image Agent',
-                data: 'INLINE_IMAGE_AGENTS',
-                config_key: 'AI_IMAGE_PROVIDER',
-                available_values: IMAGE_AGENTS.map(agent => agent.name),
-            },
-            INLINE_CHAT_MODELS: {
-                label: 'Chat Model',
-                data: 'INLINE_CHAT_MODELS',
-                config_key: chatAgent?.modelKey || 'None',
-                available_values: context.INLINE_CHAT_MODELS || [context[chatAgent?.modelKey || '']],
-            },
-            INLINE_VISION_MODELS: {
-                label: 'Vision Model',
-                data: 'INLINE_VISION_MODELS',
-                config_key: chatAgent?.name === 'openai' ? 'OPENAI_VISION_MODEL' : chatAgent?.modelKey || 'None',
-                available_values: context.INLINE_VISION_MODELS || [context[chatAgent?.name === 'openai' ? 'OPENAI_VISION_MODEL' : chatAgent?.modelKey || '']],
-            },
-            INLINE_IMAGE_MODELS: {
-                label: 'Image Model',
-                data: 'INLINE_IMAGE_MODELS',
-                config_key: imageAgent?.modelKey || '',
-                available_values: context.INLINE_IMAGE_MODELS || [context[imageAgent?.modelKey || '']],
-            },
-            INLINE_TOOL_MODELS: {
-                label: 'Tool Model',
-                data: 'INLINE_TOOL_MODELS',
-                config_key: chatAgent?.modelKey || 'None',
-                available_values: context.INLINE_TOOL_MODELS || [context[chatAgent?.modelKey || '']],
-            },
-            INLINE_FUNCTION_TOOLS: {
-                label: 'Tools',
-                data: 'INLINE_FUNCTION_TOOLS',
-                config_key: 'USE_TOOLS',
-                available_values: Object.keys({ ...ENV.PLUGINS_FUNCTION, ...tools }),
-            },
-        };
-    };
-
-    settingsMessage = (context: AgentUserConfig, inlineKeys: Record<string, InlineItem>) => {
-        const menu = '\n当前配置:\n';
-        const currentSettings = `${menu}\n${Object.entries(inlineKeys).map(([_, { label, config_key }]) => {
-            return `\`${label}: ${context[config_key] || 'None'}\``;
-        }).join('\n')}`;
-        return currentSettings;
-    };
-
-    inlineKeyboard = (context: AgentUserConfig, inlineKeys: Record<string, InlineItem>) => {
-        const inline_keyboard_list = Object.entries(inlineKeys).reduce<Telegram.InlineKeyboardButton[]>((acc, [key, { available_values, label }]) => {
-            if (available_values.length > 0) {
-                acc.push({
-                    text: label,
-                    callback_data: key,
-                });
+    defaultInlines = (context: AgentUserConfig): InlineItem[] => {
+        const allChatAgents = CHAT_AGENTS.map(agent => agent.name).filter(name => name !== 'kling');
+        const allImageAgents = IMAGE_AGENTS.map(agent => agent.name).filter(name => name !== 'kling');
+        const configKeyHandler = (type: string) => {
+            if (type === 'Tool') {
+                return 'TOOL_MODEL';
             }
-            return acc;
-        }, [] as Telegram.InlineKeyboardButton[]);
-        inline_keyboard_list.push({
-            text: '❌',
-            callback_data: 'CLOSE',
+            const agent = context[`AI_${(type === 'IMAGE' ? 'IMAGE' : 'CHAT')}_PROVIDER`];
+            return `${agent.toUpperCase()}_${type.toUpperCase()}_MODEL`;
+        };
+        const envs = Object.keys(context).filter((key) => {
+            return !ENV.LOCK_USER_CONFIG_KEYS.includes(key) && !key.endsWith('KEY');
         });
-        return chunckArray(inline_keyboard_list, 3);
+        return [
+            {
+                label: 'Chat Agent',
+                config_key: 'AI_CHAT_PROVIDER',
+                type: 'radio',
+                value: allChatAgents,
+            },
+            {
+                label: 'Image Agent',
+                config_key: 'AI_IMAGE_PROVIDER',
+                type: 'radio',
+                value: allImageAgents,
+            },
+            {
+                label: 'Tools',
+                config_key: 'USE_TOOLS',
+                type: 'checkbox',
+                value: Object.keys({ ...ENV.PLUGINS_FUNCTION, ...tools }),
+            },
+            {
+                label: 'Models',
+                config_key: '',
+                value: ['Chat', 'Image', 'Vision', 'Tool'].map((type) => {
+                    const config_key = configKeyHandler(type);
+                    const modleProvider = context[`AI_${type.toUpperCase()}_PROVIDER`] || context.AI_CHAT_PROVIDER;
+                    return {
+                        label: `${type} Model`,
+                        config_key,
+                        type: 'radio',
+                        value: context[`${modleProvider.toUpperCase()}_MODELS`],
+                    };
+                }),
+            },
+            {
+                label: 'Envs',
+                config_key: 'ENVS',
+                type: 'radio',
+                value: envs,
+            },
+        ];
+    };
+
+    settingsMessage = (context: AgentUserConfig, inlines: InlineItem[], { key, callBack }: { key?: string; callBack?: string | InlineItem }) => {
+        let settingMsg = '\n当前配置:\n\n';
+        settingMsg += `${inlines.map(({ label, config_key }) => {
+            return Object.hasOwn(context, config_key) ? `\`${label}: ${context[config_key] || 'Null'}\`` : '';
+        }).filter(Boolean).join('\n')}`;
+        let configValue = '';
+        if (key) {
+            typeof context[key] === 'undefined' && typeof callBack === 'string' && (key = callBack);
+            configValue = context[key];
+            (typeof configValue !== 'string') && (configValue = JSON.stringify(configValue, null, 2));
+            if (key.endsWith('KEY') || key.endsWith('TOKEN') || key.endsWith('SECRET') || key.endsWith('COOKIE') || key.endsWith('ID')) {
+                configValue = `${configValue.slice(0, 5)}********${configValue.slice(-2)}`;
+            } else if (key.endsWith('URL') || key.endsWith('BASE')) {
+                configValue = `${configValue.slice(0, 12)}********${configValue.slice(-3)}`;
+            }
+        }
+
+        if (key === 'ENVS') {
+            settingMsg += `\n\n当前选中的变数为: \`${key as string | undefined || '空'}\``
+                + `\n\n当前值为: \`${configValue ?? '空'}\``
+                + `\n\n**Tip: 请选中需要配置的变数，并直接回复本条消息 需要设置的变数值**\n`;
+        } else if (key) {
+            settingMsg += `\n\n当前配置的选项为: \`${key}\`\n变数值为: \`${configValue}\``;
+        }
+        return settingMsg.replace(/\n/g, '\n>').substring(0, 4000);
+    };
+
+    inlineKeyboard = (_context: AgentUserConfig, inlines: InlineItem[]): Telegram.InlineKeyboardButton[][] => {
+        const inline_keyboard_list = inlines.map(({ label }, index) => ({
+            text: label,
+            callback_data: index.toString(),
+        })) as Telegram.InlineKeyboardButton[];
+
+        return chunkArray(inline_keyboard_list, 3);
     };
 }
 

@@ -222,6 +222,10 @@ class Environment extends EnvironmentConfig {
         if (source.JINA_API_KEY) {
             this.PLUGINS_ENV.JINA_API_KEY = source.JINA_API_KEY.split(',');
         }
+        //  兼容旧的AI_PROVIDER
+        if (source.AI_PROVIDER) {
+            this.USER_CONFIG.AI_CHAT_PROVIDER = source.AI_PROVIDER;
+        }
     }
 }
 

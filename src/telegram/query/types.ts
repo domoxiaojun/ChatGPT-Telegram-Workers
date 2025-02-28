@@ -2,7 +2,7 @@ import type * as Telegram from 'telegram-bot-api-types';
 import type { UnionData } from '../utils/utils';
 
 export interface CallbackQueryHandler<Ctx = any> {
-    handle: (message: Telegram.Message, context: Ctx) => Promise<Response | UnionData | null>;
+    handle: (message: Telegram.CallbackQuery, context: Ctx) => Promise<Response | UnionData | null>;
 }
 
 export interface InlineQueryHandler<Ctx = any> {

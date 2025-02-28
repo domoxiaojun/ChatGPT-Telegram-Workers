@@ -6,12 +6,13 @@ import { createTelegramBotAPI } from '../telegram/api';
 
 export class KlingAI implements ImageAgent {
     readonly name = 'kling';
+    readonly modelKey = 'kling';
     readonly enable = (context: AgentUserConfig): boolean => {
         return context.KLINGAI_COOKIE.length > 0;
     };
 
     model = (_ctx: AgentUserConfig): string => {
-        return 'kling';
+        return this.modelKey;
     };
 
     @Log

@@ -171,7 +171,7 @@ export class GroupMention implements MessageHandler {
     };
 }
 
-// async function chunckMessageCheck(message: Telegram.Message, context: WorkerContext, isMention: boolean) {
+// async function chunkMessageCheck(message: Telegram.Message, context: WorkerContext, isMention: boolean) {
 //     const chunkMessageKeyPrefix = context.SHARE_CONTEXT?.chunkMessageKeyPrefix;
 //     if (!chunkMessageKeyPrefix) {
 //         return isMention;
@@ -193,9 +193,9 @@ export class GroupMention implements MessageHandler {
 //         await new Promise(resolve => setTimeout(resolve, 100));
 //         const messageKeys = await ENV.DATABASE.list(`${chunkMessageKeyPrefix}:*`);
 //         if (messageKeys.length > 0) {
-//             const chuncks = await ENV.DATABASE.get(messageKeys.sort());
-//             if (chuncks.length > 0) {
-//                 message.text = chuncks.join('') + message.text;
+//             const chunks = await ENV.DATABASE.get(messageKeys.sort());
+//             if (chunks.length > 0) {
+//                 message.text = chunks.join('') + message.text;
 //                 log.info(`[CHUNK MESSAGE] Merged message chunk, text: ${message.text}`);
 //             }
 //         }
@@ -254,9 +254,9 @@ class HandleChunkMessage extends Lock {
         // 异步会同时接收多条消息 等待50ms
         await new Promise(resolve => setTimeout(resolve, 50));
         log.info(`[CHUNK MESSAGE] handle chunk message, key: ${chunkMessageKey}`);
-        const chuncks = JSON.parse(await ENV.DATABASE.get(chunkMessageKey) || '[]');
-        if (chuncks.length > 0) {
-            message.text = chuncks
+        const chunks = JSON.parse(await ENV.DATABASE.get(chunkMessageKey) || '[]');
+        if (chunks.length > 0) {
+            message.text = chunks
                 .sort((a: { message_id: number }, b: { message_id: number }) => a.message_id - b.message_id)
                 .map(({ text }: { text: string }) => text)
                 .join('\n') + message.text;

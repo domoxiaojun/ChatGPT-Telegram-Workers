@@ -186,7 +186,7 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
                     {
                         const isChat = context.USER_CONFIG.AUDIO_HANDLE_TYPE === 'chat';
                         let audioData = urls[0];
-                        if (isChat && context.USER_CONFIG.AI_PROVIDER === 'openai') {
+                        if (isChat && context.USER_CONFIG.AI_CHAT_PROVIDER === 'openai') {
                             const response = await fetch(urls[0]);
                             if (!response.body) {
                                 throw new Error('Failed to fetch audio data');

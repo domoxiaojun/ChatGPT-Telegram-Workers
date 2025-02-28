@@ -66,7 +66,7 @@ export type ChatAgentRequest = (params: LLMChatParams, context: AgentUserConfig,
 
 export interface Agent<AgentRequest> {
     name: string;
-    modelKey?: string;
+    modelKey: string;
     enable: (context: AgentUserConfig) => boolean;
     request: AgentRequest;
     model?: (ctx: AgentUserConfig, params?: LLMChatRequestParams) => string;

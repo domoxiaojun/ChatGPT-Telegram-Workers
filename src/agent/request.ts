@@ -34,12 +34,12 @@ function fixOpenAICompatibleOptions(options: SseChatCompatibleOptions | null): S
     options.functionCallExtractor
         = options.functionCallExtractor
             || function (d: any, call_list: OpenAIFuncCallData[]) {
-                const chunck = d?.choices?.[0]?.delta?.tool_calls;
-                if (!Array.isArray(chunck))
+                const chunk = d?.choices?.[0]?.delta?.tool_calls;
+                if (!Array.isArray(chunk))
                     return;
-                for (const a of chunck) {
+                for (const a of chunk) {
                     if (!Object.hasOwn(a, 'index')) {
-                        throw new Error(`The function chunck don't have index: ${JSON.stringify(chunck)}`);
+                        throw new Error(`The function chunk don't have index: ${JSON.stringify(chunk)}`);
                     }
                     if (a?.type === 'function') {
                         call_list[a.index] = { id: a.id, type: a.type, function: a.function };

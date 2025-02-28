@@ -95,8 +95,6 @@ export class EnvironmentConfig {
     CHAT_MESSAGE_TRIGGER = {};
     // Chat trigger prefix, it will trigger group message and be deleted
     CHAT_TRIGGER_PERFIX = '';
-    // message replacer, you can use it to replace message text in the middle of the message, multiple words can be replaced at the same time
-    MESSAGE_REPLACER: Record<string, string> = {};
     // Ask AI to call function times
     FUNC_LOOP_TIMES = 1;
     // Show call info
@@ -180,12 +178,13 @@ export class EnvironmentConfig {
     STORE_HISTORY_LENGTH = 64;
     // File size limit, when enabled folding, the file size limit is effective
     FILE_SIZE_LIMIT = 4096 * 2;
+    CALLBACK_QUERY_RC = '6x2';
 }
 
 // -- 通用配置 --
 export class AgentShareConfig {
     // AI提供商: openai, anthropic, azure, workers, google, vertex, mistral
-    AI_PROVIDER = 'openai';
+    AI_CHAT_PROVIDER = 'openai';
     // AI图片提供商: openai, azure, workers
     AI_IMAGE_PROVIDER = 'openai';
     // AI ASR 提供商: openai, oailike
@@ -229,6 +228,8 @@ export class OpenAIConfig {
      * @deprecated use OPENAI_API_EXTRA_PARAMS instead
      */
     OPENAI_REASONING_EFFORT: 'low' | 'medium' | 'high' | undefined = undefined;
+    OPENAI_MODELS = ['gpt-4o-mini', 'chatgpt-4o-latest', 'o1-mini', 'o1', 'o3-mini'];
+    OPENAI_MODELS_API = 'https://api.openai.com/v1/models';
 }
 
 // -- DALLE 配置 --
@@ -253,6 +254,7 @@ export class AzureConfig {
     // Azure DallE API
     // https://RESOURCE_NAME.openai.azure.com/openai/deployments/MODEL_NAME/images/generations?api-version=VERSION_NAME
     AZURE_DALLE_API: string | null = null;
+    AZURE_MODELS = ['gpt-4o-mini', 'chatgpt-4o-latest', 'o1-mini', 'o1', 'o3-mini'];
 }
 
 // -- Workers 配置 --
@@ -265,6 +267,7 @@ export class WorkersConfig {
     WORKERS_CHAT_MODEL = '@cf/mistral/mistral-7b-instruct-v0.1 ';
     // Text-to-Image Model
     WORKERS_IMAGE_MODEL = '@cf/stabilityai/stable-diffusion-xl-base-1.0';
+    WORKERS_MODELS = ['mistral-7b-instruct-v0.1', 'stability-diffusion-xl-base-1.0'];
 }
 
 // -- Gemini 配置 --
@@ -282,6 +285,8 @@ export class GeminiConfig {
     // Google API Extra Params, key is model id, separated by commas, value is extra Params
     // for example: GOOGLE_API_EXTRA_PARAMS = { 'gemini-2.0-flash,gemini-2.0-flash-exp': { 'temperature': 0.5 } };
     GOOGLE_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
+    GOOGLE_MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-exp', 'gemini-2.0-flash-thinking-exp', 'gemini-2.0-pro-exp'];
+    GOOGLE_MODELS_API = 'https://generativelanguage.googleapis.com/v1beta/models';
 }
 
 // -- Mistral 配置 --
@@ -292,6 +297,7 @@ export class MistralConfig {
     MISTRAL_API_BASE = 'https://api.mistral.ai/v1';
     // mistral api model
     MISTRAL_CHAT_MODEL = 'mistral-tiny';
+    MISTRAL_MODELS = ['mistral-tiny'];
 }
 
 // -- Cohere 配置 --
@@ -302,6 +308,8 @@ export class CohereConfig {
     COHERE_API_BASE = 'https://api.cohere.com/v1';
     // cohere api model
     COHERE_CHAT_MODEL = 'command-r-plus';
+    COHERE_MODELS = ['command-r-plus'];
+    COHERE_MODELS_API = 'https://api.cohere.com/v1/models';
 }
 
 // -- Anthropic 配置 --
@@ -325,6 +333,9 @@ export class AnthropicConfig {
             },
         },
     };
+
+    ANTHROPIC_MODELS = ['claude-3-5-haiku-20241022', 'claude-3-5-sonnet-20241022', 'claude-3-7-sonnet-20250219'];
+    ANTHROPIC_MODELS_API = 'https://api.anthropic.com/v1/models';
 }
 
 export class OpenAILikeConfig {
@@ -340,8 +351,6 @@ export class OpenAILikeConfig {
     OAILIKE_VISION_MODEL = '';
     // oailike image size
     OAILIKE_IMAGE_SIZE = '512x512';
-    // oailike extra params
-    OAILIKE_EXTRA_PARAMS: Record<string, any> = {};
     // oailike embedding model
     OAILIKE_EMBEDDING_MODEL = 'BAAI/bge-m3';
     // oailike rerank model
@@ -355,6 +364,8 @@ export class OpenAILikeConfig {
     // OAILIKE API Extra Params, key is model id, separated by commas, value is extra Params
     // for example: OAILIKE_API_EXTRA_PARAMS = { 'gpt-4o-mini,gpt-4o-2024-08-06': { 'temperature': 0.5 } };
     OAILIKE_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
+    OAILIKE_MODELS = ['deepseek-reasoner'];
+    OAILIKE_MODELS_API = '';
 }
 
 export class VertexConfig {
@@ -372,6 +383,8 @@ export class VertexConfig {
     SEARCH_GROUNDING = false;
     // Vertex Image Model
     VERTEX_IMAGE_MODEL = 'imagen-3.0-fast-generate-001';
+    VERTEX_MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-exp', 'gemini-2.0-flash-thinking-exp', 'gemini-2.0-pro-exp'];
+    VERTEX_MODELS_API = '';
 }
 
 export class XAIConfig {
@@ -382,6 +395,8 @@ export class XAIConfig {
     // XAI api model
     XAI_CHAT_MODEL = 'grok-beta';
     XAI_VISION_MODEL = 'grok-vision-beta';
+    XAI_MODELS = ['grok-2', 'grok-3'];
+    XAI_MODELS_API = 'https://api.x.ai/v1/models';
 }
 
 export class DefineKeys {
@@ -389,7 +404,7 @@ export class DefineKeys {
 }
 
 export class ExtraUserConfig {
-    MAPPING_KEY = '-p:SYSTEM_INIT_MESSAGE|-n:MAX_HISTORY_LENGTH|-a:AI_PROVIDER|-ai:AI_IMAGE_PROVIDER|-m:CHAT_MODEL|-md:CURRENT_MODE|-v:VISION_MODEL|-t:OPENAI_TTS_MODEL|-ex:OPENAI_API_EXTRA_PARAMS|-mk:MAPPING_KEY|-mv:MAPPING_VALUE|-tm:TOOL_MODEL|-tool:USE_TOOLS|-oli:IMAGE_MODEL|-th:TEXT_HANDLE_TYPE|-to:TEXT_OUTPUT|-ah:AUDIO_HANDLE_TYPE|-ao:AUDIO_OUTPUT|-act:AUDIO_CONTAINS_TEXT|-as:AI_ASR_PROVIDER|-at:AI_TTS_PROVIDER|-ra:RERANK_AGENT|-ew:ENABLE_WORKFLOW|-tp:CHAT_TEMPERATURE';
+    MAPPING_KEY = '-p:SYSTEM_INIT_MESSAGE|-n:MAX_HISTORY_LENGTH|-a:AI_CHAT_PROVIDER|-ai:AI_IMAGE_PROVIDER|-m:CHAT_MODEL|-md:CURRENT_MODE|-v:VISION_MODEL|-t:OPENAI_TTS_MODEL|-ex:OPENAI_API_EXTRA_PARAMS|-mk:MAPPING_KEY|-mv:MAPPING_VALUE|-tm:TOOL_MODEL|-tool:USE_TOOLS|-oli:IMAGE_MODEL|-th:TEXT_HANDLE_TYPE|-to:TEXT_OUTPUT|-ah:AUDIO_HANDLE_TYPE|-ao:AUDIO_OUTPUT|-act:AUDIO_CONTAINS_TEXT|-as:AI_ASR_PROVIDER|-at:AI_TTS_PROVIDER|-ra:RERANK_AGENT|-ew:ENABLE_WORKFLOW|-tp:CHAT_TEMPERATURE';
     // /set command mapping value, separated by |, : separates multiple relationships
     MAPPING_VALUE = '';
     // MAPPING_VALUE = "cson:claude-3-5-sonnet-20240620|haiku:claude-3-haiku-20240307|g4m:gpt-4o-mini|g4:gpt-4o|rp+:command-r-plus";
@@ -406,19 +421,6 @@ export class ExtraUserConfig {
     // Keep empty to use the current agent chat model as function call model.
     TOOL_MODEL = '';
     PROMPT: Record<string, string> = prompts_default;
-
-    // INLINE_AGENTS
-    // INLINE_AGENTS = ['openai', 'claude', 'google', 'vertex', 'cohere', 'workersai'];
-    // INLINE_IMAGE_AGENTS
-    // INLINE_IMAGE_AGENTS = ['openai', 'silicon'];
-    // INLINE_CHAT_MODELS
-    INLINE_CHAT_MODELS: string[] = [];
-    // INLINE_VISION_MODELS
-    INLINE_VISION_MODELS: string[] = [];
-    // INLINE_IMAGE_MODELS
-    INLINE_IMAGE_MODELS: string[] = [];
-    // INLINE_FUNCTION_TOOLS
-    // INLINE_FUNCTION_TOOLS: string[] = [];
     // KlingAI Cookie
     KLINGAI_COOKIE: string[] = [];
     // KlingAI Image Count
@@ -469,7 +471,7 @@ export class ExtraUserConfig {
     MAX_HISTORY_LENGTH = 10;
     // whether to generate long text (limited by MAX_STEPS)
     CONTINUE_STEP = false;
-    // message substituter, split by :, key is trigger word, value is replacement word
+    // message replacer, you can use it to replace message text in the middle of the message, multiple words can be replaced at the same time
     MESSAGE_REPLACER: Record<string, string> = {};
     // Parameter modifier; string array; separated by colons, the key is the model name, separated by commas;
     // the value is the parameter modification value, modification values starting with '+' indicates addition, with the value after '=' and separated by '|'; starting with '-' indicates addition indicate deletion.

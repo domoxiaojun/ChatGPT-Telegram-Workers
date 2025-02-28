@@ -39,10 +39,10 @@ export const CHAT_AGENTS: ChatAgent[] = [
     new XAI(),
 ];
 
-export function loadChatLLM(context: AgentUserConfig): ChatAgent | null {
+export function loadChatLLM(context: AgentUserConfig): ChatAgent {
     // let CHAT_AGENTS = CHAT_AGENTS_ITER();
     for (const llm of CHAT_AGENTS) {
-        if (llm.name === context.AI_PROVIDER) {
+        if (llm.name === context.AI_CHAT_PROVIDER) {
             return llm;
         }
     }
@@ -53,7 +53,7 @@ export function loadChatLLM(context: AgentUserConfig): ChatAgent | null {
             return llm;
         }
     }
-    return null;
+    throw new Error(`Chat agent not found: ${context.AI_CHAT_PROVIDER}\nAvailable: ${CHAT_AGENTS.map(i => i.name).join(', ')}`);
 }
 
 export const IMAGE_AGENTS: ImageAgent[] = [
@@ -182,7 +182,7 @@ export async function warpLLMParams(params: { messages: CoreMessage[]; model: La
 }
 
 export async function createLlmModel(model: string, context: AgentUserConfig) {
-    let [agent, model_id] = model.includes(':') ? model.trim().split(':') : [context.AI_PROVIDER, model];
+    let [agent, model_id] = model.includes(':') ? model.trim().split(':') : [context.AI_CHAT_PROVIDER, model];
     if (agent === 'auto') {
         throw new Error('Auto mode is not supported, please specify the agent');
     }

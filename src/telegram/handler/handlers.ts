@@ -9,6 +9,7 @@ import { log } from '../../log/logger';
 import { Rerank } from '../../utils/data_calculation/rerank';
 import { createTelegramBotAPI } from '../api';
 import { handleCommandMessage } from '../command';
+import { isAuthorized } from '../query';
 import { MessageSender } from '../utils/send';
 import { extractMessageInfo, isTelegramChatTypeGroup } from '../utils/utils';
 import { substituteMessage } from './replacer';
@@ -294,5 +295,26 @@ export class IntelligentModelProcess implements MessageHandler<WorkerContext> {
             }],
         };
         return createTelegramBotAPI(context.SHARE_CONTEXT.botToken).editMessageText(editParams);
+    };
+}
+
+export class ReplyInlineHandler implements MessageHandler<WorkerContext> {
+    handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | null> => {
+        const isMyInlineSetMessage = this.isMyInlineSetMessage(message, context);
+        const authorized = isAuthorized(message?.from?.id ?? 0, message.reply_to_message?.reply_markup?.inline_keyboard ?? []);
+        if (isMyInlineSetMessage && authorized) {
+            const inlineKeyboard = message.reply_to_message!.reply_markup!.inline_keyboard.flat();
+            const variable = inlineKeyboard.find(i => i.text.startsWith('✅'))?.text.split('✅')[1];
+            if (variable) {
+                message.text = `/set -${variable} ${message.text}`;
+            }
+        }
+        return null;
+    };
+
+    isMyInlineSetMessage = (message: Telegram.Message, context: WorkerContext) => {
+        const isMyMessage = message.reply_to_message?.from?.id === Number(context.SHARE_CONTEXT.botId);
+        const isInlineSetMessage = (message.reply_to_message?.reply_markup?.inline_keyboard?.[0]?.[0]?.callback_data ?? '').endsWith(':set');
+        return isMyMessage && isInlineSetMessage;
     };
 }

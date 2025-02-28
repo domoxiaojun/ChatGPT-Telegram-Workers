@@ -124,7 +124,7 @@ async function workflow(agent: ChatAgent, llmParams: LLMChatParams, context: Age
     llmParams.messages.at(-1)!.content = question.substring(key.length + 1).trimStart();
     const backup = { ...context };
     const updater = (context: AgentUserConfig, { agent, model, temperature, max_tokens }: { agent: string; model: string; temperature: number; max_tokens: number; next: string }) => {
-        agent && (context.AI_PROVIDER = agent);
+        agent && (context.AI_CHAT_PROVIDER = agent);
         model && (context[`${agent.toUpperCase()}_CHAT_MODEL`] = model);
         temperature && (context.CHAT_TEMPERATURE = temperature);
         max_tokens && (context.MAX_TOKENS = max_tokens);

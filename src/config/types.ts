@@ -33,3 +33,7 @@ export type FlowStruct = {
 };
 
 export type LogLevelType = 'debug' | 'info' | 'warn' | 'error';
+
+export type { WorkerContext } from './context';
+
+export type { AgentUserConfig } from './env';

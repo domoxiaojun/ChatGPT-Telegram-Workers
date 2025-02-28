@@ -2,7 +2,7 @@ import type * as Telegram from 'telegram-bot-api-types';
 import type { MessageHandler } from './types';
 import { WorkerContextBase } from '../../config/context';
 import { log } from '../../log/logger';
-import { handleCallbackQuery, handleChosenInline, handleInlineQuery } from '../query';
+import { handleCallbackQuery, handleChosenInlineQuery, handleInlineQuery } from '../query';
 import { ChatHandler } from './chat';
 import { GroupMention } from './group';
 import {
@@ -13,6 +13,7 @@ import {
     IntelligentModelProcess,
     MessageFilter,
     OldMessageFilter,
+    ReplyInlineHandler,
     SaveLastMessage,
     SubstituteHandler,
     TagNeedDelete,
@@ -28,7 +29,7 @@ function loadMessage(body: Telegram.Update, isForwarding: boolean) {
         case !!body.callback_query:
             return (token: string) => handleCallbackQuery(token, body.callback_query!);
         case !!body.chosen_inline_result:
-            return (token: string) => handleChosenInline(token, body.chosen_inline_result!);
+            return (token: string) => handleChosenInlineQuery(token, body.chosen_inline_result!);
         case !!body.edited_message:
             log.info('Ignore edited message');
             return null;
@@ -41,7 +42,7 @@ function loadMessage(body: Telegram.Update, isForwarding: boolean) {
 const exitHanders: MessageHandler<any>[] = [new TagNeedDelete()];
 
 export async function handleUpdate(token: string, update: Telegram.Update, headers?: Headers): Promise<Response | null> {
-    log.debug(`handleUpdate`, update.message?.chat);
+    log.debug(`handleUpdate`, update.message?.chat ?? `callback_query: ${JSON.stringify(update.callback_query?.from, null, 2)}`);
     const isForwarding = headers?.get('User-Agent') === 'Upstash-QStash';
     const messageHandler = loadMessage(update, isForwarding);
     return messageHandler ? messageHandler(token) : null;
@@ -68,6 +69,8 @@ async function handleMessage(token: string, message: Telegram.Message, isForward
         new SubstituteHandler(),
         // 动态模型处理
         new IntelligentModelProcess(),
+        // 处理回复内联消息
+        new ReplyInlineHandler(),
         // 处理命令消息
         new CommandHandler(),
         // 检查是否是转发消息

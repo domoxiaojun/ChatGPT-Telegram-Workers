@@ -5,14 +5,12 @@ import { ENV } from '../../config/env';
 import { ConfigMerger } from '../../config/merger';
 
 export class CallbackQueryContext {
-    data: string;
     query_id: string;
     from: Telegram.User;
     USER_CONFIG: AgentUserConfig;
     SHARE_CONTEXT: ShareContext;
 
     constructor(callbackQuery: Telegram.CallbackQuery, workContext: WorkerContext) {
-        this.data = callbackQuery.data!;
         this.query_id = callbackQuery.id;
         this.from = callbackQuery.from!;
         this.USER_CONFIG = workContext.USER_CONFIG;

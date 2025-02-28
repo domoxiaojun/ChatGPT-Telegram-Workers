@@ -26,7 +26,7 @@ export interface CommandHandler {
 
 export interface InlineItem {
     label: string;
-    data: string;
     config_key: string;
-    available_values: string[];
+    type?: 'radio' | 'checkbox';
+    value: (string | InlineItem)[];
 }
