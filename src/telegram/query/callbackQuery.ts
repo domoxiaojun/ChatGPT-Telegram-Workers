@@ -5,6 +5,7 @@ import type { InlineItem } from '../command/types';
 import type { MessageHandler } from '../handler/types';
 import type { CallbackQueryHandler } from './types';
 import { loadChatLLM } from '../../agent';
+import { getModels } from '../../agent/models';
 import { WorkerContextBase } from '../../config/context';
 import { ENV } from '../../config/env';
 import { log } from '../../log/logger';
@@ -15,7 +16,6 @@ import { EnvChecker, InitUserConfig } from '../handler/handlers';
 import { escape } from '../utils/md2tgmd';
 import { chunkArray } from '../utils/utils';
 import { CallbackQueryContext } from './context';
-import { getModels } from '../../agent/models';
 
 class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext> {
     handle = async (query: Telegram.CallbackQuery, context: CallbackQueryContext): Promise<Response | null> => {
@@ -37,14 +37,14 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
             return new Response('success', { status: 200 });
         }
 
-        if (query.data === 'CLOSE') {
+        if (query.data === 'close') {
             return this.closeInlineKeyboard(api, message);
         }
         // 移除set
         const pathData = keyboard[0]?.[0]?.callback_data?.replace(':set', '');
         const path = pathData ? pathData.split('.').map(Number) : [query.from.id];
 
-        (query.data === 'BACK') && path.pop();
+        (query.data === 'back') && path.pop();
         const queryHandler = new InlineCommandHandler();
         let data = queryHandler.defaultInlines(context.USER_CONFIG);
         let currentLevel;
@@ -79,28 +79,36 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
         let [pageIndex, pageNum] = [0, 1];
         let callbackData = query.data as unknown;
         let nextLevel;
-        if (query.data !== 'BACK') {
-            checkCurrentLevel(currentLevel);
-            const pageInfo = keyboard.flat().find(i => i.callback_data?.startsWith('PAGE_INDEX:'))?.callback_data ?? '';
-            ({ data, pageIndex, pageNum } = paging(data, pageInfo));
-            callbackData = (Number.isNaN(Number(query.data)) ? query.data : Number(query.data));
-            // 顶层或包含子选项
-            if (!currentLevel?.type) {
-                nextLevel = data[callbackData as number];
-                await this.updateModels(context, api, nextLevel);
-                checkCurrentLevel(nextLevel);
-                path.push(callbackData as number);
-                // 进入下一级
-                ({ data, pageIndex, pageNum } = paging(nextLevel.value as InlineItem[], `PAGE_INDEX:${pageIndex}`));
-            } else if (['prev', 'next'].includes(callbackData as string)) {
-                pageIndex = callbackData === 'prev' ? pageIndex - 1 : pageIndex + 1;
+        try {
+            if (query.data === 'fresh') {
                 await this.updateModels(context, api, currentLevel);
-                ({ data, pageIndex, pageNum } = paging(currentLevel?.value as InlineItem[], `PAGE_INDEX:${pageIndex}`));
-            } else if (currentLevel?.type && currentLevel?.config_key !== 'ENVS') {
-                await this.updateConfig(context, api, currentLevel, (pageIndex * pageLength) + (callbackData as number));
+                this.sendAlert(api, context.query_id, '✅ 模型更新成功', false);
+                ({ data, pageIndex, pageNum } = paging(currentLevel?.value as InlineItem[], `PAGE_INDEX:0`));
+            } else if (query.data !== 'back') {
+                checkCurrentLevel(currentLevel);
+                const pageInfo = keyboard.flat().find(i => i.callback_data?.startsWith('PAGE_INDEX:'))?.callback_data ?? '';
+                ({ data, pageIndex, pageNum } = paging(data, pageInfo));
+                callbackData = (Number.isNaN(Number(query.data)) ? query.data : Number(query.data));
+                // 顶层或包含子选项
+                if (!currentLevel?.type) {
+                    nextLevel = data[callbackData as number];
+                    await this.updateModels(context, api, nextLevel);
+                    checkCurrentLevel(nextLevel);
+                    path.push(callbackData as number);
+                    // 进入下一级
+                    ({ data, pageIndex, pageNum } = paging(nextLevel.value as InlineItem[], `PAGE_INDEX:${pageIndex}`));
+                } else if (['prev', 'next'].includes(callbackData as string)) {
+                    pageIndex = callbackData === 'prev' ? pageIndex - 1 : pageIndex + 1;
+                    ({ data, pageIndex, pageNum } = paging(currentLevel?.value as InlineItem[], `PAGE_INDEX:${pageIndex}`));
+                } else if (currentLevel?.type && currentLevel?.config_key !== 'ENVS') {
+                    await this.updateConfig(context, api, currentLevel, (pageIndex * pageLength) + (callbackData as number));
+                }
             }
+        } catch (e) {
+            return this.sendAlert(api, context.query_id, `❌ 获取模型失败: ${(e as Error).message}`, true);
         }
-        if (nextLevel !== undefined || query.data === 'BACK') {
+
+        if (nextLevel !== undefined || query.data === 'back') {
             callbackData = undefined;
         }
         let inlineKeyboard: Telegram.InlineKeyboardButton[][] = [];
@@ -126,7 +134,7 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
     };
 
     // private async checkInlineKey(api: TelegramBotAPI, context: CallbackQueryContext, key: string, index: string, inlineKeys: Record<string, any>) {
-    //     if (key === 'BACK') {
+    //     if (key === 'back') {
     //         return;
     //     }
     //     if ((index && inlineKeys[key]?.available.value?.[index]) || (!index && inlineKeys[key])) {
@@ -187,22 +195,17 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
         }
         if (level?.config_key?.endsWith('_MODEL') && level.value.length === 0) {
             const chatAgent = loadChatLLM(context.USER_CONFIG);
-            try {
-                const models = await getModels(context.USER_CONFIG);
-                if (models.length > 0) {
-                    const modelKey = `${chatAgent.name.toUpperCase()}_MODELS`;
-                    level.value.push(...models);
-                    context.USER_CONFIG[modelKey] = level.value;
-                    if (!context.USER_CONFIG.DEFINE_KEYS.includes(modelKey)) {
-                        context.USER_CONFIG.DEFINE_KEYS.push(modelKey);
-                    }
-                    await ENV.DATABASE.put(context.SHARE_CONTEXT.configStoreKey, JSON.stringify(context.USER_CONFIG)).catch(console.error);
-                } else {
-                    throw new Error('No models found');
+            const models = await getModels(context.USER_CONFIG);
+            if (models.length > 0) {
+                const modelKey = `${chatAgent.name.toUpperCase()}_MODELS`;
+                level.value.push(...models);
+                context.USER_CONFIG[modelKey] = level.value;
+                if (!context.USER_CONFIG.DEFINE_KEYS.includes(modelKey)) {
+                    context.USER_CONFIG.DEFINE_KEYS.push(modelKey);
                 }
-            } catch (e) {
-                await this.sendAlert(api, context.query_id, `❌ 获取模型失败: ${(e as Error).message}`, true);
-                throw new Error(`❌ 获取模型失败: ${(e as Error).message}`);
+                await ENV.DATABASE.put(context.SHARE_CONTEXT.configStoreKey, JSON.stringify(context.USER_CONFIG)).catch(console.error);
+            } else {
+                throw new Error('No models found');
             }
         }
     }
@@ -275,17 +278,24 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
             chunkedList.push(page);
         }
 
-        const footer: Telegram.InlineKeyboardButton[] = [];
-        footer.push({
+        const footer: Telegram.InlineKeyboardButton[] = [{
             text: '❌',
-            callback_data: 'CLOSE',
-        });
+            callback_data: 'close',
+        }];
+
+        if (key?.endsWith('_MODEL')) {
+            footer.unshift({
+                text: '🔄',
+                callback_data: 'fresh',
+            });
+        }
         if (path.length > 1) {
             footer.unshift({
                 text: '↩️',
-                callback_data: 'BACK',
+                callback_data: 'back',
             });
         }
+
         chunkedList.push(footer);
 
         return chunkedList;

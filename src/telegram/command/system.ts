@@ -618,7 +618,7 @@ export class InlineCommandHandler implements CommandHandler {
         ];
         const closeKeyboard = [{
             text: '❌',
-            callback_data: 'CLOSE',
+            callback_data: 'close',
         }];
 
         return createTelegramBotAPI(context.SHARE_CONTEXT.botToken).sendMessage({
