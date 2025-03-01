@@ -70,6 +70,7 @@ export interface Agent<AgentRequest> {
     enable: (context: AgentUserConfig) => boolean;
     request: AgentRequest;
     model?: (ctx: AgentUserConfig, params?: LLMChatRequestParams) => string;
+    models?: (ctx: AgentUserConfig) => Promise<string[]>;
     render?: (result: Response | GeneratedImage[] | string[], prompt: string) => Promise<ImageResult>;
 }
 

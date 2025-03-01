@@ -41,7 +41,8 @@ export class EnvironmentConfig {
         'ANTHROPIC_API_BASE',
         'AZURE_COMPLETIONS_API',
         'AZURE_DALLE_API',
-        'GOOGLEAI_STUDIO_API_BASE',
+        'GOOGLE_API_BASE',
+        'VERTEX_CREDENTIALS',
         'OAILIKE_API_BASE',
         'XAI_API_BASE',
     ];
@@ -178,7 +179,8 @@ export class EnvironmentConfig {
     STORE_HISTORY_LENGTH = 64;
     // File size limit, when enabled folding, the file size limit is effective
     FILE_SIZE_LIMIT = 4096 * 2;
-    CALLBACK_QUERY_RC = '6x2';
+    // inline keyboard callback row count x column count
+    CALLBACK_QUERY_RC = '7x2';
 }
 
 // -- 通用配置 --
@@ -228,8 +230,8 @@ export class OpenAIConfig {
      * @deprecated use OPENAI_API_EXTRA_PARAMS instead
      */
     OPENAI_REASONING_EFFORT: 'low' | 'medium' | 'high' | undefined = undefined;
-    OPENAI_MODELS = ['gpt-4o-mini', 'chatgpt-4o-latest', 'o1-mini', 'o1', 'o3-mini'];
-    OPENAI_MODELS_API = 'https://api.openai.com/v1/models';
+    OPENAI_MODELS = [];
+    OPENAI_MODELS_API = '/models';
 }
 
 // -- DALLE 配置 --
@@ -254,7 +256,8 @@ export class AzureConfig {
     // Azure DallE API
     // https://RESOURCE_NAME.openai.azure.com/openai/deployments/MODEL_NAME/images/generations?api-version=VERSION_NAME
     AZURE_DALLE_API: string | null = null;
-    AZURE_MODELS = ['gpt-4o-mini', 'chatgpt-4o-latest', 'o1-mini', 'o1', 'o3-mini'];
+    AZURE_MODELS = [];
+    AZURE_MODELS_API = '';
 }
 
 // -- Workers 配置 --
@@ -267,7 +270,10 @@ export class WorkersConfig {
     WORKERS_CHAT_MODEL = '@cf/mistral/mistral-7b-instruct-v0.1 ';
     // Text-to-Image Model
     WORKERS_IMAGE_MODEL = '@cf/stabilityai/stable-diffusion-xl-base-1.0';
-    WORKERS_MODELS = ['mistral-7b-instruct-v0.1', 'stability-diffusion-xl-base-1.0'];
+    WORKERS_MODELS = [];
+
+    // https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/ai/models/search
+    WORKERS_MODELS_API = '';
 }
 
 // -- Gemini 配置 --
@@ -285,8 +291,8 @@ export class GeminiConfig {
     // Google API Extra Params, key is model id, separated by commas, value is extra Params
     // for example: GOOGLE_API_EXTRA_PARAMS = { 'gemini-2.0-flash,gemini-2.0-flash-exp': { 'temperature': 0.5 } };
     GOOGLE_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
-    GOOGLE_MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-exp', 'gemini-2.0-flash-thinking-exp', 'gemini-2.0-pro-exp'];
-    GOOGLE_MODELS_API = 'https://generativelanguage.googleapis.com/v1beta/models';
+    GOOGLE_MODELS = [];
+    GOOGLE_MODELS_API = '/models';
 }
 
 // -- Mistral 配置 --
@@ -297,7 +303,8 @@ export class MistralConfig {
     MISTRAL_API_BASE = 'https://api.mistral.ai/v1';
     // mistral api model
     MISTRAL_CHAT_MODEL = 'mistral-tiny';
-    MISTRAL_MODELS = ['mistral-tiny'];
+    MISTRAL_MODELS = [];
+    MISTRAL_MODELS_API = '/models';
 }
 
 // -- Cohere 配置 --
@@ -308,8 +315,8 @@ export class CohereConfig {
     COHERE_API_BASE = 'https://api.cohere.com/v1';
     // cohere api model
     COHERE_CHAT_MODEL = 'command-r-plus';
-    COHERE_MODELS = ['command-r-plus'];
-    COHERE_MODELS_API = 'https://api.cohere.com/v1/models';
+    COHERE_MODELS = [];
+    COHERE_MODELS_API = '/models';
 }
 
 // -- Anthropic 配置 --
@@ -334,8 +341,8 @@ export class AnthropicConfig {
         },
     };
 
-    ANTHROPIC_MODELS = ['claude-3-5-haiku-20241022', 'claude-3-5-sonnet-20241022', 'claude-3-7-sonnet-20250219'];
-    ANTHROPIC_MODELS_API = 'https://api.anthropic.com/v1/models';
+    ANTHROPIC_MODELS = [];
+    ANTHROPIC_MODELS_API = '/models';
 }
 
 export class OpenAILikeConfig {
@@ -364,8 +371,8 @@ export class OpenAILikeConfig {
     // OAILIKE API Extra Params, key is model id, separated by commas, value is extra Params
     // for example: OAILIKE_API_EXTRA_PARAMS = { 'gpt-4o-mini,gpt-4o-2024-08-06': { 'temperature': 0.5 } };
     OAILIKE_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
-    OAILIKE_MODELS = ['deepseek-reasoner'];
-    OAILIKE_MODELS_API = '';
+    OAILIKE_MODELS = [];
+    OAILIKE_MODELS_API = '/models';
 }
 
 export class VertexConfig {
@@ -383,7 +390,11 @@ export class VertexConfig {
     SEARCH_GROUNDING = false;
     // Vertex Image Model
     VERTEX_IMAGE_MODEL = 'imagen-3.0-fast-generate-001';
-    VERTEX_MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-exp', 'gemini-2.0-flash-thinking-exp', 'gemini-2.0-pro-exp'];
+    VERTEX_MODELS = [];
+
+    // https://{service-endpoint}/v1/{parent}/models
+    // Where {service-endpoint} is one of the [supported service endpoints](https://cloud.google.com/vertex-ai/docs/reference/rest#rest_endpoints).
+    // parent: Required. The resource name of the Location to list the Models from. Format: projects/{project}/locations/{location}
     VERTEX_MODELS_API = '';
 }
 
@@ -395,8 +406,8 @@ export class XAIConfig {
     // XAI api model
     XAI_CHAT_MODEL = 'grok-beta';
     XAI_VISION_MODEL = 'grok-vision-beta';
-    XAI_MODELS = ['grok-2', 'grok-3'];
-    XAI_MODELS_API = 'https://api.x.ai/v1/models';
+    XAI_MODELS = [];
+    XAI_MODELS_API = '/models';
 }
 
 export class DefineKeys {

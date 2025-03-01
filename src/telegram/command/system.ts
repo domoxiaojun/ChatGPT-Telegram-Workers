@@ -609,7 +609,7 @@ export class InlineCommandHandler implements CommandHandler {
     needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender?: MessageSender): Promise<Response> => {
         const defaultInlines = this.defaultInlines(context.USER_CONFIG);
-        const settingMsg = this.settingsMessage(context.USER_CONFIG, defaultInlines, {});
+        const settingMsg = this.settingsMessage(context.USER_CONFIG, defaultInlines, { callBack: '' });
         const headKeyboard = [
             {
                 text: '请选择配置的选项',
@@ -624,7 +624,7 @@ export class InlineCommandHandler implements CommandHandler {
         return createTelegramBotAPI(context.SHARE_CONTEXT.botToken).sendMessage({
             chat_id: message.chat.id,
             ...(message.chat.type === 'private' ? {} : { reply_to_message_id: message.message_id }),
-            text: escape(settingMsg),
+            text: escape(settingMsg, { quoteExpandable: true, addQuote: true }),
             parse_mode: 'MarkdownV2',
             reply_markup: {
                 inline_keyboard: [headKeyboard, ...this.inlineKeyboard(context.USER_CONFIG, defaultInlines), closeKeyboard],
@@ -633,8 +633,8 @@ export class InlineCommandHandler implements CommandHandler {
     };
 
     defaultInlines = (context: AgentUserConfig): InlineItem[] => {
-        const allChatAgents = CHAT_AGENTS.map(agent => agent.name).filter(name => name !== 'kling');
-        const allImageAgents = IMAGE_AGENTS.map(agent => agent.name).filter(name => name !== 'kling');
+        const allChatAgents = CHAT_AGENTS.map(agent => agent.name);
+        const allImageAgents = IMAGE_AGENTS.map(agent => agent.name);
         const configKeyHandler = (type: string) => {
             if (type === 'Tool') {
                 return 'TOOL_MODEL';
@@ -664,54 +664,64 @@ export class InlineCommandHandler implements CommandHandler {
                 type: 'checkbox',
                 value: Object.keys({ ...ENV.PLUGINS_FUNCTION, ...tools }),
             },
-            {
-                label: 'Models',
-                config_key: '',
-                value: ['Chat', 'Image', 'Vision', 'Tool'].map((type) => {
-                    const config_key = configKeyHandler(type);
-                    const modleProvider = context[`AI_${type.toUpperCase()}_PROVIDER`] || context.AI_CHAT_PROVIDER;
-                    return {
-                        label: `${type} Model`,
-                        config_key,
-                        type: 'radio',
-                        value: context[`${modleProvider.toUpperCase()}_MODELS`],
-                    };
-                }),
-            },
+            ...['Chat', 'Image', 'Vision', 'Tool'].map((type) => {
+                const config_key = configKeyHandler(type);
+                const modleProvider = context[`AI_${type.toUpperCase()}_PROVIDER`] || context.AI_CHAT_PROVIDER;
+                return {
+                    label: `${type} Model`,
+                    config_key,
+                    type: 'radio' as const,
+                    value: context[`${modleProvider.toUpperCase()}_MODELS`],
+                };
+            }),
             {
                 label: 'Envs',
                 config_key: 'ENVS',
-                type: 'radio',
+                type: 'radio' as const,
                 value: envs,
             },
+            // {
+            //     label: 'Models',
+            //     config_key: '',
+            //     value: ['Chat', 'Image', 'Vision', 'Tool'].map((type) => {
+            //         const config_key = configKeyHandler(type);
+            //         const modleProvider = context[`AI_${type.toUpperCase()}_PROVIDER`] || context.AI_CHAT_PROVIDER;
+            //         return {
+            //             label: `${type} Model`,
+            //             config_key,
+            //             type: 'radio',
+            //             value: context[`${modleProvider.toUpperCase()}_MODELS`],
+            //         };
+            //     }),
+            // },
         ];
     };
 
-    settingsMessage = (context: AgentUserConfig, inlines: InlineItem[], { key, callBack }: { key?: string; callBack?: string | InlineItem }) => {
-        let settingMsg = '\n当前配置:\n\n';
+    settingsMessage = (context: AgentUserConfig, inlines: InlineItem[], { key, callBack }: { key?: string; callBack: string | InlineItem }) => {
+        let settingMsg = '当前配置:\n\n';
         settingMsg += `${inlines.map(({ label, config_key }) => {
             return Object.hasOwn(context, config_key) ? `\`${label}: ${context[config_key] || 'Null'}\`` : '';
         }).filter(Boolean).join('\n')}`;
         let configValue = '';
-        if (key) {
-            typeof context[key] === 'undefined' && typeof callBack === 'string' && (key = callBack);
-            configValue = context[key];
-            (typeof configValue !== 'string') && (configValue = JSON.stringify(configValue, null, 2));
-            if (key.endsWith('KEY') || key.endsWith('TOKEN') || key.endsWith('SECRET') || key.endsWith('COOKIE') || key.endsWith('ID')) {
+        if (key && typeof callBack === 'string') {
+            configValue = context[key] || context[callBack] || '';
+            const newKey = key === 'ENVS' ? callBack : key;
+            (typeof configValue !== 'string') && (configValue = Array.isArray(configValue) ? `[${(configValue as any[]).join(', ')}]` : JSON.stringify(configValue));
+            if (newKey.endsWith('KEY') || newKey.endsWith('TOKEN') || newKey.endsWith('SECRET') || newKey.endsWith('COOKIE') || newKey.endsWith('ID') || newKey.endsWith('API') || newKey.endsWith('CREDENTIALS')) {
                 configValue = `${configValue.slice(0, 5)}********${configValue.slice(-2)}`;
-            } else if (key.endsWith('URL') || key.endsWith('BASE')) {
+            } else if (newKey.endsWith('URL') || newKey.endsWith('BASE')) {
                 configValue = `${configValue.slice(0, 12)}********${configValue.slice(-3)}`;
             }
         }
 
-        if (key === 'ENVS') {
-            settingMsg += `\n\n当前选中的变数为: \`${key as string | undefined || '空'}\``
+        if (key === 'ENVS' && typeof callBack === 'string') {
+            settingMsg += `\n\n当前选中的变数为: \`${callBack || '空'}\``
                 + `\n\n当前值为: \`${configValue ?? '空'}\``
                 + `\n\n**Tip: 请选中需要配置的变数，并直接回复本条消息 需要设置的变数值**\n`;
         } else if (key) {
             settingMsg += `\n\n当前配置的选项为: \`${key}\`\n变数值为: \`${configValue}\``;
         }
-        return settingMsg.replace(/\n/g, '\n>').substring(0, 4000);
+        return `${settingMsg.substring(0, 4000)}`;
     };
 
     inlineKeyboard = (_context: AgentUserConfig, inlines: InlineItem[]): Telegram.InlineKeyboardButton[][] => {

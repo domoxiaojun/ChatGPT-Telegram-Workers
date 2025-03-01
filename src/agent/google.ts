@@ -32,6 +32,12 @@ export class Google implements ChatAgent {
             cache: params.cache,
         }, context), onStream);
     };
+
+    readonly models = async (context: AgentUserConfig): Promise<string[]> => {
+        const url = `${context.GOOGLE_MODELS_API}?key=${context.GOOGLE_API_KEY}`;
+        const { models } = await fetch(url).then(res => res.json());
+        return models.map((model: any) => model.name.split('/').pop());
+    };
 }
 
 export function handleUrl(messages: CoreUserMessage, isVertex: boolean = false): CoreUserMessage {

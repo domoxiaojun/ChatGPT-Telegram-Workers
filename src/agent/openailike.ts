@@ -42,6 +42,18 @@ export class OpenAILike extends OpenAILikeBase implements ChatAgent {
             cache: params.cache,
         }, context), onStream);
     };
+
+    readonly models = async (context: AgentUserConfig): Promise<string[]> => {
+        const headers = {
+            Authorization: `Bearer ${context.OAILIKE_API_KEY ?? ''}`,
+        };
+        const result = await fetch(context.OAILIKE_MODELS_API, { headers });
+        if (!result.ok) {
+            throw new Error(result.statusText);
+        }
+        const { data } = await result.json();
+        return data.map((model: any) => model.id);
+    };
 }
 
 export class OpenAILikeImage extends OpenAILikeBase implements ImageAgent {

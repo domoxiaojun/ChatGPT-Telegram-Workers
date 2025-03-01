@@ -23,4 +23,12 @@ export class Mistral implements ChatAgent {
             cache: params.cache,
         }, context), onStream);
     };
+
+    readonly models = async (context: AgentUserConfig): Promise<string[]> => {
+        const headers = {
+            Authorization: `Bearer ${context.MISTRAL_API_KEY ?? ''}`,
+        };
+        const models = await fetch(context.MISTRAL_MODELS_API, { headers }).then(res => res.json());
+        return models.data.map((model: any) => model.id);
+    };
 }

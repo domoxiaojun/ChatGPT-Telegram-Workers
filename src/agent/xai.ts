@@ -23,4 +23,12 @@ export class XAI implements ChatAgent {
             cache: params.cache,
         }, context), onStream);
     };
+
+    readonly models = async (context: AgentUserConfig): Promise<string[]> => {
+        const headers = {
+            Authorization: `Bearer ${context.XAI_API_KEY ?? ''}`,
+        };
+        const models = await fetch(context.XAI_MODELS_API, { headers }).then(res => res.json());
+        return models.data.map((model: any) => model.id);
+    };
 }

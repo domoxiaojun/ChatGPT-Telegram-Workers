@@ -38,6 +38,11 @@ export class Vertex extends VertexBase implements ChatAgent {
             cache: params.cache,
         }, context), onStream);
     };
+
+    readonly models = async (context: AgentUserConfig): Promise<string[]> => {
+        const { models } = await fetch(context.VERTEX_MODELS_API).then(res => res.json());
+        return models.map((model: any) => model.baseModelId);
+    };
 }
 
 export class VertexImage extends VertexBase implements ImageAgent {

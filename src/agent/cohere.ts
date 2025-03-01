@@ -23,4 +23,12 @@ export class Cohere implements ChatAgent {
             cache: params.cache,
         }, context), onStream);
     };
+
+    readonly models = async (context: AgentUserConfig): Promise<string[]> => {
+        const headers = {
+            Authorization: `Bearer ${context.COHERE_API_KEY ?? ''}`,
+        };
+        const models = await fetch(context.COHERE_MODELS_API, { headers }).then(res => res.json());
+        return models.data.filter((model: any) => model.type === 'model').map((model: any) => model.id);
+    };
 }

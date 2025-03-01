@@ -306,7 +306,9 @@ export class ReplyInlineHandler implements MessageHandler<WorkerContext> {
             const inlineKeyboard = message.reply_to_message!.reply_markup!.inline_keyboard.flat();
             const variable = inlineKeyboard.find(i => i.text.startsWith('✅'))?.text.split('✅')[1];
             if (variable) {
-                message.text = `/set -${variable} ${message.text}`;
+                message.text = `/set -${variable} ${message.text?.split('\n>')[0]}`;
+            } else {
+                throw new Error('选中变数后再进行回复');
             }
         }
         return null;

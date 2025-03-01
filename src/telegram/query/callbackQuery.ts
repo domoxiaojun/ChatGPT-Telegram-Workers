@@ -4,6 +4,7 @@ import type { TelegramBotAPI } from '../api';
 import type { InlineItem } from '../command/types';
 import type { MessageHandler } from '../handler/types';
 import type { CallbackQueryHandler } from './types';
+import { loadChatLLM } from '../../agent';
 import { WorkerContextBase } from '../../config/context';
 import { ENV } from '../../config/env';
 import { log } from '../../log/logger';
@@ -17,6 +18,16 @@ import { CallbackQueryContext } from './context';
 
 class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext> {
     handle = async (query: Telegram.CallbackQuery, context: CallbackQueryContext): Promise<Response | null> => {
+        const api = createTelegramBotAPI(context.SHARE_CONTEXT.botToken);
+        const message = query.message as Telegram.Message;
+        const keyboard = message.reply_markup?.inline_keyboard ?? [];
+        const authorized = isAuthorized(query.from?.id ?? 0, keyboard);
+
+        if (!authorized) {
+            log.error(`[CALLBACK QUERY] User ${context.from.first_name}, id: ${context.from.id} not in the white list`);
+            return this.sendAlert(api, context.query_id, `⚠️ This is NOT your operation.`, true);
+        }
+
         if (!query.data || !(query.message as Telegram.Message)?.reply_markup) {
             return new Response('success', { status: 200 });
         }
@@ -25,15 +36,6 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
             return new Response('success', { status: 200 });
         }
 
-        const message = query.message as Telegram.Message;
-        const keyboard = message.reply_markup?.inline_keyboard ?? [];
-        const api = createTelegramBotAPI(context.SHARE_CONTEXT.botToken);
-
-        // const authorized = isAuthorized(query.from?.id ?? 0, keyboard);
-        // if (!authorized) {
-        //     log.error(`[CALLBACK QUERY] User ${context.from.first_name}, id: ${context.from.id} not in the white list`);
-        //     return this.sendAlert(api, context.query_id, `⚠️ You don't have permission to operate`, true);
-        // }
         if (query.data === 'CLOSE') {
             return this.closeInlineKeyboard(api, message);
         }
@@ -74,27 +76,30 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
         };
 
         let [pageIndex, pageNum] = [0, 1];
-        let callbackData;
+        let callbackData = query.data as unknown;
+        let nextLevel;
         if (query.data !== 'BACK') {
             checkCurrentLevel(currentLevel);
             const pageInfo = keyboard.flat().find(i => i.callback_data?.startsWith('PAGE_INDEX:'))?.callback_data ?? '';
             ({ data, pageIndex, pageNum } = paging(data, pageInfo));
             callbackData = (Number.isNaN(Number(query.data)) ? query.data : Number(query.data));
             // 顶层或包含子选项
-            if (!currentLevel?.config_key && typeof callbackData === 'number') {
-                currentLevel = data[callbackData];
-                checkCurrentLevel(currentLevel);
-                path.push(callbackData);
+            if (!currentLevel?.type) {
+                nextLevel = data[callbackData as number];
+                await this.updateModels(context, api, nextLevel);
+                checkCurrentLevel(nextLevel);
+                path.push(callbackData as number);
                 // 进入下一级
-                ({ data, pageIndex, pageNum } = paging(currentLevel.value as InlineItem[], `PAGE_INDEX:${pageIndex}`));
+                ({ data, pageIndex, pageNum } = paging(nextLevel.value as InlineItem[], `PAGE_INDEX:${pageIndex}`));
             } else if (['prev', 'next'].includes(callbackData as string)) {
                 pageIndex = callbackData === 'prev' ? pageIndex - 1 : pageIndex + 1;
+                await this.updateModels(context, api, currentLevel);
                 ({ data, pageIndex, pageNum } = paging(currentLevel?.value as InlineItem[], `PAGE_INDEX:${pageIndex}`));
-            } else if (currentLevel?.config_key) {
-                await this.updateConfig(context, api, currentLevel, callbackData as number);
+            } else if (currentLevel?.type && currentLevel?.config_key !== 'ENVS') {
+                await this.updateConfig(context, api, currentLevel, (pageIndex * pageLength) + (callbackData as number));
             }
         }
-        if ((currentLevel?.config_key && currentLevel?.config_key !== 'ENVS') || query.data === 'BACK') {
+        if (nextLevel !== undefined || query.data === 'BACK') {
             callbackData = undefined;
         }
         let inlineKeyboard: Telegram.InlineKeyboardButton[][] = [];
@@ -105,15 +110,15 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
                 pageIndex,
                 pageNum,
                 col,
-                label: currentLevel?.label,
-                key: currentLevel?.config_key,
+                label: (nextLevel || currentLevel)?.label,
+                key: (nextLevel || currentLevel)?.config_key,
                 config: context.USER_CONFIG,
-                callbackData: callbackData ?? '',
+                callbackData: callbackData as number | string,
             },
         );
         const settingMessage = queryHandler.settingsMessage(context.USER_CONFIG, queryHandler.defaultInlines(context.USER_CONFIG), {
-            key: currentLevel?.config_key,
-            callBack: typeof callbackData === 'number' ? data[callbackData] : undefined,
+            key: (nextLevel || currentLevel)?.config_key,
+            callBack: typeof callbackData === 'number' ? data[callbackData] : '',
         });
 
         return this.sendCallBackMessage(api, message, settingMessage, inlineKeyboard);
@@ -175,6 +180,32 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
         this.sendAlert(api, context.query_id, '✅ Data update successful', false);
     }
 
+    private async updateModels(context: CallbackQueryContext, api: TelegramBotAPI, level: InlineItem | undefined) {
+        if (!level) {
+            return;
+        }
+        if (level?.config_key?.endsWith('_MODEL') && level.value.length === 0) {
+            const chatAgent = loadChatLLM(context.USER_CONFIG);
+            try {
+                const models = await chatAgent?.models!(context.USER_CONFIG);
+                if (models.length > 0) {
+                    const modelKey = `${chatAgent.name.toUpperCase()}_MODELS`;
+                    level.value.push(...models);
+                    context.USER_CONFIG[modelKey] = level.value;
+                    if (!context.USER_CONFIG.DEFINE_KEYS.includes(modelKey)) {
+                        context.USER_CONFIG.DEFINE_KEYS.push(modelKey);
+                    }
+                    await ENV.DATABASE.put(context.SHARE_CONTEXT.configStoreKey, JSON.stringify(context.USER_CONFIG)).catch(console.error);
+                } else {
+                    throw new Error('No models found');
+                }
+            } catch (e) {
+                await this.sendAlert(api, context.query_id, `❌ 获取模型失败: ${(e as Error).message}`, true);
+                throw new Error(`❌ 获取模型失败: ${(e as Error).message}`);
+            }
+        }
+    }
+
     private async closeInlineKeyboard(api: TelegramBotAPI, message: Telegram.Message) {
         return api.deleteMessage({
             chat_id: message.chat.id,
@@ -187,7 +218,7 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
             chat_id: message.chat.id,
             message_id: message.message_id,
             ...(message.chat.type === 'private' ? {} : { reply_to_message_id: message.message_id }),
-            text: escape(text),
+            text: escape(text, { quoteExpandable: true, addQuote: true }),
             parse_mode: 'MarkdownV2',
             reply_markup: { inline_keyboard },
         });
@@ -218,7 +249,7 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
 
         const chunkedList = chunkArray(inlineList, realCol) as Telegram.InlineKeyboardButton[][];
         chunkedList.unshift([{
-            text: `请选择 ${label ?? '需要配置的选项'}`,
+            text: `请选择 ${key || label || '需要配置的选项'}`,
             callback_data: path.join('.') + (key === 'ENVS' ? ':set' : ''),
         }]);
 
@@ -268,9 +299,9 @@ export async function handleCallbackQuery(token: string, callbackQuery: Telegram
             throw new Error('Not supported callback query type');
         }
 
-        if (!isAuthorized(callbackQuery.from?.id ?? 0, message.reply_markup.inline_keyboard)) {
-            return new Response('Not authorized', { status: 403 });
-        }
+        // if (!isAuthorized(callbackQuery.from?.id ?? 0, message.reply_markup.inline_keyboard)) {
+        //     return new Response('Not authorized', { status: 403 });
+        // }
 
         const workContext = new WorkerContextBase(token, message);
 
