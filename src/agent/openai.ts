@@ -104,18 +104,6 @@ export class OpenAI extends OpenAIBase implements ChatAgent {
                 body: JSON.stringify(body),
             });
         };
-
-    readonly models = async (context: AgentUserConfig): Promise<string[]> => {
-        const headers = {
-            Authorization: `Bearer ${context.OPENAI_API_KEY ?? ''}`,
-        };
-        const result = await fetch(context.OPENAI_MODELS_API, { headers });
-        if (!result.ok) {
-            throw new Error(result.statusText);
-        }
-        const { data } = await result.json();
-        return data.map((model: any) => model.id);
-    };
 }
 
 export class Dalle extends OpenAIBase implements ImageAgent {

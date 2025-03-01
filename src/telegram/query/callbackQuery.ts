@@ -15,6 +15,7 @@ import { EnvChecker, InitUserConfig } from '../handler/handlers';
 import { escape } from '../utils/md2tgmd';
 import { chunkArray } from '../utils/utils';
 import { CallbackQueryContext } from './context';
+import { getModels } from '../../agent/models';
 
 class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext> {
     handle = async (query: Telegram.CallbackQuery, context: CallbackQueryContext): Promise<Response | null> => {
@@ -187,7 +188,7 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
         if (level?.config_key?.endsWith('_MODEL') && level.value.length === 0) {
             const chatAgent = loadChatLLM(context.USER_CONFIG);
             try {
-                const models = await chatAgent?.models!(context.USER_CONFIG);
+                const models = await getModels(context.USER_CONFIG);
                 if (models.length > 0) {
                     const modelKey = `${chatAgent.name.toUpperCase()}_MODELS`;
                     level.value.push(...models);

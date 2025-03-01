@@ -32,17 +32,4 @@ export class Anthropic implements ChatAgent {
             cache: params.cache,
         }, context), onStream);
     };
-
-    readonly models = async (context: AgentUserConfig): Promise<string[]> => {
-        const headers = {
-            'x-api-key': context.ANTHROPIC_API_KEY ?? '',
-            'anthropic-version': '2023-06-01',
-        };
-        const result = await fetch(context.ANTHROPIC_MODELS_API, { headers });
-        if (!result.ok) {
-            throw new Error(`error: ${result.statusText}`);
-        }
-        const { models } = await result.json();
-        return models.filter((model: any) => model.type === 'model').map((model: any) => model.id);
-    };
 }
