@@ -76,8 +76,8 @@ export class GroupMention implements MessageHandler {
         const isTriggered = CheckTrigger(message);
         // 非群组消息不作判断，交给下一个中间件处理
         if (!isTelegramChatTypeGroup(message.chat.type)) {
-            // 私聊中回复bot，会一直包含引用消息
-            this.mergeMessage(false, message);
+            // 私聊中回复bot，不会包含引用消息
+            this.mergeMessage(true, message);
             const noneMessage = await this.noneMessage(message, context);
             if (noneMessage instanceof Response) {
                 return noneMessage;

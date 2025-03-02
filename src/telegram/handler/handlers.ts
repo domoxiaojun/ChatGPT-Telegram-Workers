@@ -132,9 +132,11 @@ export class InitUserConfig implements MessageHandler<WorkerContextBase> {
         Object.assign(context, { USER_CONFIG: (await WorkerContext.from(context.SHARE_CONTEXT, context.MIDDLE_CONTEXT)).USER_CONFIG });
 
         // 兼容旧的DROPS_OPENAI_PARAMS
+        const paramsModifier = new Set((context as WorkerContext).USER_CONFIG.PARAMS_MODIFIER);
         for (const [model, params] of Object.entries((context as WorkerContext).USER_CONFIG.DROPS_OPENAI_PARAMS)) {
-            (context as WorkerContext).USER_CONFIG.PARAMS_MODIFIER.push(`${model}:${params.split(',').map(param => `-${param}`).join('|')}`);
+            paramsModifier.add(`${model}:${params.split(',').map(param => `-${param}`).join('|')}`);
         }
+        (context as WorkerContext).USER_CONFIG.PARAMS_MODIFIER = Array.from(paramsModifier);
         return null;
     };
 }
@@ -306,9 +308,13 @@ export class ReplyInlineHandler implements MessageHandler<WorkerContext> {
             const inlineKeyboard = message.reply_to_message!.reply_markup!.inline_keyboard.flat();
             const variable = inlineKeyboard.find(i => i.text.startsWith('✅'))?.text.split('✅')[1];
             if (variable) {
-                message.text = `/set -${variable} ${message.text?.split('\n>')[0]}`;
+                message.text = `/set -${variable} ${message.text}`;
             } else {
-                throw new Error('选中变数后再进行回复');
+                return createTelegramBotAPI(context.SHARE_CONTEXT.botToken).sendMessage({
+                    chat_id: message.chat.id,
+                    text: '```Tip\n选中变量后再进行回复\n```',
+                    parse_mode: 'MarkdownV2',
+                });
             }
         }
         return null;

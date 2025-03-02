@@ -57,6 +57,8 @@ async function handleMessage(token: string, message: Telegram.Message, isForward
         new WhiteListFilter(),
         // 过滤不支持的消息(抛出异常结束消息处理) 忽略的消息
         new MessageFilter(),
+        // 处理回复内联消息
+        new ReplyInlineHandler(),
         // 处理群消息，判断是否需要响应此条消息
         new GroupMention(),
         // 忽略旧消息
@@ -69,8 +71,6 @@ async function handleMessage(token: string, message: Telegram.Message, isForward
         new SubstituteHandler(),
         // 动态模型处理
         new IntelligentModelProcess(),
-        // 处理回复内联消息
-        new ReplyInlineHandler(),
         // 处理命令消息
         new CommandHandler(),
         // 检查是否是转发消息

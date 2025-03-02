@@ -494,6 +494,10 @@ export class SetCommandHandler implements CommandHandler {
         }
 
         switch (key) {
+            // 兼容旧版命令
+            case 'AI_PROVIDER':
+                key = 'AI_CHAT_PROVIDER';
+                break;
             case 'SYSTEM_INIT_MESSAGE':
                 mappedValue = value && (context.USER_CONFIG.PROMPT[value] || value);
                 break;
@@ -715,9 +719,9 @@ export class InlineCommandHandler implements CommandHandler {
         }
 
         if (key === 'ENVS' && typeof callBack === 'string') {
-            settingMsg += `\n\n当前选中的变数为: \`${callBack || '空'}\``
-                + `\n\n当前值为: \`${configValue ?? '空'}\``
-                + `\n\n**Tip: 请选中需要配置的变数，并直接回复本条消息 需要设置的变数值**\n`;
+            settingMsg += `\n\n当前选中的变量: \`${callBack || '空'}\``
+                + `\n\n当前值: \`${configValue ?? '空'}\``
+                + `\n\n**Tip: 选中需要配置的变量，并回复 配置值 给本条消息**\n`;
         } else if (key) {
             settingMsg += `\n\n当前配置的选项为: \`${key}\`\n变数值为: \`${configValue}\``;
         }

@@ -76,6 +76,7 @@
         "ai": "4.1.47",
         "eslint": "^9.21.0",
         "eslint-plugin-format": "^1.0.1",
+        "msw": "^2.7.3",
         "rollup-plugin-cleanup": "^3.2.1",
         "rollup-plugin-node-externals": "^8.0.0",
         "telegram-bot-api-types": "^8.3.0",
