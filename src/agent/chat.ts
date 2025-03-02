@@ -1,3 +1,4 @@
+/* eslint-disable unused-imports/no-unused-vars */
 import type { CoreMessage } from 'ai';
 import type { WorkerContext } from '../config/context';
 import type { AgentUserConfig } from '../config/env';
@@ -148,13 +149,14 @@ async function workflow(agent: ChatAgent, llmParams: LLMChatParams, context: Age
         if (result.messages.at(-1)?.role === 'tool') {
             return result;
         }
-        const text = extractResultText(result, llmParams);
-        if (text.trim() === '') {
+        // const text = extractResultText(result, llmParams);
+        const stepText = result.content.slice(llmParams.cache?.join().length || 0);
+        if (stepText.trim() === '') {
             throw new Error('Response is empty');
         }
-        llmParams.cache!.push(`${text}\n▲\n`);
+        llmParams.cache!.push(`${stepText}\n▲\n`);
         await onStream?.send(result.content);
-        renderNext(text, workflow);
+        renderNext(stepText, workflow);
     }
     Object.assign(context, backup);
     return agent.request(llmParams, context, onStream);
@@ -163,7 +165,7 @@ async function workflow(agent: ChatAgent, llmParams: LLMChatParams, context: Age
 function extractResultText(result: { messages: ResponseMessage[]; content: string }, llmParams: LLMChatParams) {
     const lastMessage = result.messages.at(-1)!;
     if (Array.isArray(lastMessage.content)) {
-        return lastMessage.content.map(c => c.type === 'text' ? c.text : '').join('')
+        return lastMessage.content.map(c => ['text', 'reasoning'].includes(c.type) ? (c as any).text || '' : '').join('\n')
             || result.content.slice(llmParams.cache?.join().length || 0);
     }
     return lastMessage.content;
