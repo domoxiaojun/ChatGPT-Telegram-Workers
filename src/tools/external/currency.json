@@ -7,22 +7,11 @@
             "properties": {
                 "base_currency": {
                     "type": "string",
-                    "description": "The base currency, needs English lowercase.",
-                    "default": "cny",
-                    "examples": [
-                        "usd",
-                        "cny"
-                    ]
+                    "description": "The base currency, needs English lowercase. Default value is 'cny'"
                 },
                 "exchange_currencies": {
                     "type": "string",
-                    "description": "Currency names for which exchange rates need to be retrieved, English lowercase. Multiple currencies separated by |",
-                    "default": "usd|try|ngn",
-                    "examples": [
-                        "usd|try",
-                        "ngn|try|twd",
-                        "eur|try|jpy|ars"
-                    ]
+                    "description": "Currency names for which exchange rates need to be retrieved, English lowercase. Multiple currencies separated by |. Default value is 'usd|try|ngn'"
                 }
             },
             "required": [

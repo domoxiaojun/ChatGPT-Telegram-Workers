@@ -54,7 +54,7 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
                 const models = await this.updateModels(context);
                 this.sendAlert(api, context.query_id, '✅ 模型更新成功', false);
                 ({ data, pageNum } = paging(models, 0, pageLength));
-            } else if (typeof newCallBack === 'number') {
+            } else if (typeof newCallBack === 'number' && configKey !== 'ENVS') {
                 await this.updateConfig(context, api, { data: data as unknown as string[], configKey, newCallBack });
             }
         } catch (e) {
@@ -94,6 +94,9 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
 
     private async updateConfig(context: CallbackQueryContext, api: TelegramBotAPI, data: { data: string[]; configKey: string; newCallBack: number }) {
         const { data: dataList, configKey, newCallBack } = data;
+        if (!Object.hasOwn(context.USER_CONFIG, configKey)) {
+            return;
+        }
         const oldValue = context.USER_CONFIG[configKey];
         const newValue = dataList[newCallBack];
         const type = Array.isArray(oldValue) ? 'array' : typeof oldValue;

@@ -8,7 +8,7 @@ export interface SchemaData<T extends Record<string, any>> {
         properties: Record<string, T>;
         $defs?: Record<string, T>;
         required: string[];
-        additionalProperties: boolean;
+        additionalProperties?: boolean;
     };
 }
 

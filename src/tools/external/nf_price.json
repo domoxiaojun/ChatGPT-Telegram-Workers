@@ -7,18 +7,12 @@
             "properties": {
                 "country": {
                     "type": "string",
-                    "description": "The English abbreviation of the countries or regions to be queried, default is US|TR|NG|EG, separated by |",
-                    "examples": [
-                        "TR",
-                        "US|UK",
-                        "NG|IN|EG"
-                    ]
+                    "description": "The English abbreviation of the countries or regions to be queried, default is 'US|TR|NG|EG', separated by |. Example values: 'TR', 'US|UK', 'NG|IN|EG'"
                 }
             },
             "required": [
                 "country"
-            ],
-            "additionalProperties": false
+            ]
         }
     },
     "payload": {

@@ -7,12 +7,7 @@
             "properties": {
                 "countries": {
                     "type": "string",
-                    "description": "Full country/region English Name to query, separated by |.",
-                    "examples": [
-                        "Japan",
-                        "Turkey|China",
-                        "Nigeria|Turkey|India"
-                    ]
+                    "description": "Full country/region English Name to query, separated by |. Example values: 'Japan', 'Turkey|China', 'Nigeria|Turkey|India'"
                 }
             },
             "required": [

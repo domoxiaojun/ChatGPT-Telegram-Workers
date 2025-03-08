@@ -7,13 +7,12 @@
             "properties": {
                 "location": {
                     "type": "string",
-                    "description": "The name of the location to look up. This can be a city name, administrative region, or other geographical name."
+                    "description": "The name of the location to look up. This can be a city name, administrative region, or other geographical name. Example values: 'Tokyo', 'New York', 'Beijing'"
                 }
             },
             "required": [
                 "location"
-            ],
-            "additionalProperties": false
+            ]
         }
     },
     "payload": {

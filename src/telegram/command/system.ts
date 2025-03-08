@@ -708,8 +708,8 @@ export class InlineCommandHandler implements CommandHandler {
         }).filter(Boolean).join('\n')}`;
         let configValue = '';
         if (key && typeof callBack === 'string') {
-            configValue = context[key] || context[callBack] || '';
             const newKey = key === 'ENVS' ? callBack : key;
+            configValue = context[newKey] || '';
             (typeof configValue !== 'string') && (configValue = Array.isArray(configValue) ? `[${(configValue as any[]).join(', ')}]` : JSON.stringify(configValue));
             if (newKey.endsWith('KEY') || newKey.endsWith('TOKEN') || newKey.endsWith('SECRET') || newKey.endsWith('COOKIE') || newKey.endsWith('ID') || newKey.endsWith('API') || newKey.endsWith('CREDENTIALS')) {
                 configValue = `${configValue.slice(0, 5)}********${configValue.slice(-2)}`;

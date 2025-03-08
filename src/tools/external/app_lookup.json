@@ -7,31 +7,15 @@
             "properties": {
                 "app_name": {
                     "type": "string",
-                    "description": "The name of the app to search for in App Store",
-                    "examples": [
-                        "WeChat",
-                        "YouTube"
-                    ]
+                    "description": "The name of the app to search for in App Store. Example values: 'WeChat', 'YouTube'"
                 },
                 "country": {
                     "type": "string",
-                    "description": "The country code for App Store search",
-                    "default": "us",
-                    "examples": [
-                        "us",
-                        "cn",
-                        "jp"
-                    ]
+                    "description": "The country code for App Store search, default value is 'us'"
                 },
                 "entity": {
                     "type": "string",
-                    "description": "Types of search software, software means ios app, iPadSoftware means ipad app, macSoftware means mac app",
-                    "default": "software",
-                    "enum": [
-                        "software",
-                        "iPadSoftware",
-                        "macSoftware"
-                    ]
+                    "description": "Types of search software, software means ios app, iPadSoftware means ipad app, macSoftware means mac app. Default value is 'software'. Enum values: software, iPadSoftware, macSoftware"
                 }
             },
             "required": [

@@ -7,19 +7,11 @@
             "properties": {
                 "country": {
                     "type": "string",
-                    "description": "The country code for App Store search",
-                    "default": "us",
-                    "examples": [
-                        "us",
-                        "cn",
-                        "tr",
-                        "ng"
-                    ]
+                    "description": "The country code for App Store search. Default value is 'us'"
                 },
                 "trackId": {
                     "type": "string",
-                    "description": "The trackId to be queried",
-                    "examples": ["363590051"]
+                    "description": "The trackId to be queried, example value: '363590051'"
                 }
             },
             "required": [

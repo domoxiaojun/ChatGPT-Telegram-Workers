@@ -6,7 +6,7 @@ import { OpenAIBase } from '../../agent/openai';
 import { OpenAILikeBase } from '../../agent/openailike';
 
 export class OpenaiEmbedding extends OpenAIBase {
-    readonly request = async (data: string[], context: AgentUserConfig) => {
+    readonly request = async (data: string[], context: AgentUserConfig): Promise<Array<{ embed: number[]; value: string }>> => {
         const { embeddings, values } = await embedMany({
             model: createOpenAI({
                 baseURL: context.OPENAI_API_BASE,
@@ -49,7 +49,7 @@ export class JinaEmbedding {
 }
 
 export class OpenAILikeEmbedding extends OpenAILikeBase {
-    readonly request = async (data: string[], context: AgentUserConfig) => {
+    readonly request = async (data: string[], context: AgentUserConfig): Promise<Array<{ embed: number[]; value: string }>> => {
         const { embeddings, values } = await embedMany({
             model: createOpenAI({
                 baseURL: context.OAILIKE_API_BASE,
@@ -62,7 +62,7 @@ export class OpenAILikeEmbedding extends OpenAILikeBase {
 }
 
 export class GoogleEmbedding {
-    readonly request = async (data: string[], context: AgentUserConfig) => {
+    readonly request = async (data: string[], context: AgentUserConfig): Promise<Array<{ embed: number[]; value: string }>> => {
         const { embeddings, values } = await embedMany({
             model: createGoogleGenerativeAI({
                 baseURL: context.GOOGLE_API_BASE,

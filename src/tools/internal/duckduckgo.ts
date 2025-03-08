@@ -69,7 +69,7 @@ export const duckduckgo: FuncTool = {
                 },
             },
             required: ['keywords'],
-            additionalProperties: false,
+            // additionalProperties: false,
         },
     },
 

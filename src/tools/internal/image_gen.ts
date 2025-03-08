@@ -14,9 +14,8 @@ export const image_gen: FuncTool = {
             properties: {
                 agent: {
                     type: 'string',
-                    description: 'The agent to use, You can only set values from the following options: \'openai\', \'workers\', \'azure\', \'vertex\', \'oailike\', \'kling\', where openai is aliased as dalle, google is aliased as vertex, and if the information provided by the user is incorrect, please use the most similar option. if user dont specify, use openai',
-                    enum: ['openai', 'workers', 'azure', 'vertex', 'oailike', 'kling'],
-                    default: 'openai',
+                    description: 'The agent to use, You can only set values from the following options: \'openai\', \'workers\', \'azure\', \'vertex\', \'oailike\', \'kling\', where openai is aliased as dalle, google is aliased as vertex, and if the information provided by the user is incorrect, please use the most similar option. if user dont specify, use openai. Default value is openai',
+                    // enum: ['openai', 'workers', 'azure', 'vertex', 'oailike', 'kling'],
                 },
                 prompts: {
                     type: 'array',
@@ -25,30 +24,25 @@ export const image_gen: FuncTool = {
                 },
                 quantity: {
                     type: 'integer',
-                    description: 'The number of images to generate, the maximum is 4. If the user does not specify a specific number of images, set it to 1.',
-                    default: 1,
+                    description: 'The number of images to generate, the maximum is 4. If the user does not specify a specific number of images, set it to 1. Default value is 1',
                 },
                 size: {
                     type: 'string',
-                    enum: ['1024x1024', '1792x1024', '1024x1792'],
-                    description: 'The size of the images to generate, default is 1024x1024',
-                    default: '1024x1024',
+                    // enum: ['1024x1024', '1792x1024', '1024x1792'],
+                    description: 'The size of the images to generate, default is 1024x1024. Enum values: 1024x1024, 1792x1024, 1024x1792',
                 },
                 radio: {
                     type: 'string',
-                    description: 'The raido of the images to generate, default is 1:1',
-                    enum: ['1:1', '16:9', '9:16'],
-                    default: '1:1',
+                    description: 'The raido of the images to generate, default is 1:1. Default value is 1:1. Enum values: 1:1, 16:9, 9:16',
+                    // enum: ['1:1', '16:9', '9:16'],
                 },
                 style: {
                     type: 'string',
-                    description: 'The style of the images to generate, default is vivid',
-                    enum: ['vivid', 'natural'],
-                    default: 'vivid',
+                    description: 'The style of the images to generate, default is vivid. Default value is vivid. Enum values: vivid, natural',
+                    // enum: ['vivid', 'natural'],
                 },
             },
-            required: ['agent', 'prompts', 'quantity', 'size', 'radio'],
-            additionalProperties: false,
+            required: ['agent', 'prompts', 'quantity', 'size', 'radio', 'style'],
         },
     },
 
