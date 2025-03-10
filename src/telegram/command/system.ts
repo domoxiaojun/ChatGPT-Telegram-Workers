@@ -670,12 +670,12 @@ export class InlineCommandHandler implements CommandHandler {
             },
             ...['Chat', 'Image', 'Vision', 'Tool'].map((type) => {
                 const config_key = configKeyHandler(type);
-                const modleProvider = context[`AI_${type.toUpperCase()}_PROVIDER`] || context.AI_CHAT_PROVIDER;
+                const modelProvider = context[`AI_${type.toUpperCase()}_PROVIDER`] || context.AI_CHAT_PROVIDER;
                 return {
                     label: `${type} Model`,
                     config_key,
                     type: 'radio' as const,
-                    value: context[`${modleProvider.toUpperCase()}_MODELS`],
+                    value: context[`${modelProvider.toUpperCase()}_MODELS`],
                 };
             }),
             {
@@ -689,12 +689,12 @@ export class InlineCommandHandler implements CommandHandler {
             //     config_key: '',
             //     value: ['Chat', 'Image', 'Vision', 'Tool'].map((type) => {
             //         const config_key = configKeyHandler(type);
-            //         const modleProvider = context[`AI_${type.toUpperCase()}_PROVIDER`] || context.AI_CHAT_PROVIDER;
+            //         const modelProvider = context[`AI_${type.toUpperCase()}_PROVIDER`] || context.AI_CHAT_PROVIDER;
             //         return {
             //             label: `${type} Model`,
             //             config_key,
             //             type: 'radio',
-            //             value: context[`${modleProvider.toUpperCase()}_MODELS`],
+            //             value: context[`${modelProvider.toUpperCase()}_MODELS`],
             //         };
             //     }),
             // },

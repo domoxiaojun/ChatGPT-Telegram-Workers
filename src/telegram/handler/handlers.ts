@@ -219,7 +219,9 @@ export class CheckForwarding implements MessageHandler<WorkerContext> {
 
 export class IntelligentModelProcess implements MessageHandler<WorkerContext> {
     handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | null> => {
-        if (!context.USER_CONFIG.ENABLE_INTELLIGENT_MODEL) {
+        const agentModelKey = `${context.USER_CONFIG.AI_CHAT_PROVIDER.toUpperCase()}_MODELS`;
+        const models = context.USER_CONFIG[agentModelKey] || [];
+        if (models.length === 0) {
             return null;
         }
         const regex = /^\s*\/\/([cvt])\s*(\S+)/;
@@ -228,7 +230,7 @@ export class IntelligentModelProcess implements MessageHandler<WorkerContext> {
             const rerank = new Rerank();
             const sendTipPromise = this.sendTip(context, message);
             try {
-                const similarityModel = (await rerank.rank(context.USER_CONFIG, [text[2], ...context.USER_CONFIG.RERANK_MODELS], 1))[0].value;
+                const similarityModel = (await rerank.rank(context.USER_CONFIG, [text[2], ...models], 1))[0].value;
                 if (!similarityModel) {
                     return this.editTip(context, (await sendTipPromise).result, 'No similarity model found');
                 }
