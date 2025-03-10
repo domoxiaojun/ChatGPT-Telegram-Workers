@@ -51,7 +51,7 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
 
         try {
             if (query.data === 'fresh' || (configKey.endsWith('_MODEL') && data.length === 0)) {
-                const models = await this.updateModels(context);
+                const models = await this.updateModels(context, configKey);
                 this.sendAlert(api, context.query_id, '✅ 模型更新成功', false);
                 ({ data, pageNum } = paging(models, 0, pageLength));
             } else if (typeof newCallBack === 'number' && configKey !== 'ENVS') {
@@ -129,11 +129,16 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
         this.sendAlert(api, context.query_id, '✅ Data update successful', false);
     }
 
-    private async updateModels(context: CallbackQueryContext) {
-        const chatAgent = loadChatLLM(context.USER_CONFIG);
-        const models = await getModels(context.USER_CONFIG);
+    private async updateModels(context: CallbackQueryContext, modelKey: string) {
+        let agent;
+        if (modelKey === 'TOOL_MODEL') {
+            agent = loadChatLLM(context.USER_CONFIG).name.toUpperCase();
+        } else {
+            agent = modelKey.split('_')[0];
+        }
+        const models = await getModels(context.USER_CONFIG, agent);
         if (models.length > 0) {
-            const modelKey = `${chatAgent.name.toUpperCase()}_MODELS`;
+            const modelKey = `${agent}_MODELS`;
             context.USER_CONFIG[modelKey] = models;
             if (!context.USER_CONFIG.DEFINE_KEYS.includes(modelKey)) {
                 context.USER_CONFIG.DEFINE_KEYS.push(modelKey);
@@ -290,7 +295,6 @@ function getNextpage({ pathDetail, pageIndexData, callbackData, inlineList, page
     (callbackData === 'back') && path.pop();
     let data = inlineList;
     let configKey = '';
-    let newCallBack = Number.isNaN(Number(callbackData)) ? callbackData : Number(callbackData);
     let label;
     let pageNum = 1;
     for (const i of path.slice(1)) {
@@ -311,7 +315,7 @@ function getNextpage({ pathDetail, pageIndexData, callbackData, inlineList, page
             ({ data, pageNum } = paging(data, pageIndex, pageLength));
             break;
         case 'back':
-            newCallBack = '';
+            callbackData = '';
             break;
         case 'fresh':
             pageIndex = 0;
@@ -325,13 +329,13 @@ function getNextpage({ pathDetail, pageIndexData, callbackData, inlineList, page
                 path.push(callbackData);
                 label = data[callbackData].label;
                 configKey = data[callbackData].config_key;
-                data = data[callbackData].value as InlineItem[];
+                data = data[callbackData].value as InlineItem[] || [];
                 pageIndex = 0;
                 ({ data, pageNum } = paging(data, pageIndex, pageLength));
-                newCallBack = '';
+                callbackData = '';
             }
     }
-    return { path, data, pageIndex, pageNum, newCallBack, configKey, label };
+    return { path, data, pageIndex, pageNum, newCallBack: callbackData, configKey, label };
 }
 
 function paging(data: any[], pageIndex: number, pageLength: number) {

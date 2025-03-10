@@ -643,7 +643,7 @@ export class InlineCommandHandler implements CommandHandler {
             if (type === 'Tool') {
                 return 'TOOL_MODEL';
             }
-            const agent = context[`AI_${(type === 'IMAGE' ? 'IMAGE' : 'CHAT')}_PROVIDER`];
+            const agent = context[`AI_${(type === 'Image' ? 'IMAGE' : 'CHAT')}_PROVIDER`];
             return `${agent.toUpperCase()}_${type.toUpperCase()}_MODEL`;
         };
         const envs = Object.keys(context).filter((key) => {
