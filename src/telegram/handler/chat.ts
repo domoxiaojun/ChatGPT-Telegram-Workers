@@ -314,7 +314,7 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
 
             if (!resp.ok) {
                 log.error(`send message failed: ${resp.status} ${await resp.json().then(j => j.description)}`);
-                return sentPromise = sender.sendPlainText(text, 'chat');
+                // return sentPromise = sender.sendPlainText(text, 'chat');
             }
         } catch (e) {
             log.error((e as Error).stack);

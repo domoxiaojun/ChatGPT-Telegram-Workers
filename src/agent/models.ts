@@ -1,5 +1,4 @@
 import type { AgentUserConfig } from '../config/types';
-import { loadChatLLM } from '.';
 
 export async function getModels(context: AgentUserConfig, agent: string) {
     const configKey = `${agent}_MODELS_API`;
