@@ -30,7 +30,7 @@ export function AIMiddleware({ config, activeTools, onStream, toolChoice, messag
             warpModel(model, config, activeTools, (params.mode as any).toolChoice, chatModel);
             log.info(`modelId: ${model.modelId}`);
             recordModelLog(config, model, activeTools, (params.mode as any).toolChoice);
-            const result = await extractReasoning.wrapGenerate!({ doGenerate, params, model });
+            const result = await extractReasoning.wrapGenerate!({ doGenerate: () => doGenerate(), doStream: () => model.doStream(params), params, model });
             log.debug(`doGenerate result: ${JSON.stringify(result)}`);
             return result;
         },
@@ -39,7 +39,7 @@ export function AIMiddleware({ config, activeTools, onStream, toolChoice, messag
             warpModel(model, config, activeTools, (params.mode as any).toolChoice, chatModel);
             log.info(`modelId: ${model.modelId}`);
             recordModelLog(config, model, activeTools, (params.mode as any).toolChoice);
-            return extractReasoning.wrapStream!({ doStream, params, model });
+            return extractReasoning.wrapStream!({ doStream: () => doStream(), doGenerate: () => model.doGenerate(params), params, model });
         },
 
         transformParams: async ({ type, params }) => {
