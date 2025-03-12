@@ -23,7 +23,7 @@ export const escapedChars = {
     '\\?': 'ESCAPEQUESTION',
 };
 export const escapedRegexp = /\\[*_~|`\\()[\]{}>#+\-=.!]/g;
-const logRegexp = /^>?LOGSTART\\>([\s\S]*?)LOGEND$/m;
+const logRegexp = /^>?LOGSTART\n(>[\s\S]*?)\n>?LOGEND$/m;
 const reverseCodeRegexp = /\\`\\`\\`([\s\S]+)\\`\\`\\`$/g;
 const inlineCodeRegexp = /`[^\n]*?`/g;
 const linkRegexp = /\\\[([^\]\n]+?)\\\]\\\((.+?)\\\)/g;
@@ -162,7 +162,7 @@ function handleEscape(text: string, type: 'text' | 'code', { addQuote }: ExpandP
     );
 }
 export function chunkDocument(text: string, chunkSize: number = 4000): string[] {
-    const cleanText = text.replace(/\n\s+\n/g, '\n\n');
+    const cleanText = text.trim();
     const textList = lineSegment(cleanText);
     const chunks: string[][] = [[]];
     let chunkIndex = 0;
@@ -269,19 +269,19 @@ export function addExpandable(text: string, quoteExpandable: boolean): string {
         // can't replace log data directly, because there may be other quote marks after the log data,
         // tg doesn't allow expandable quote to be continuous quote
         // maybe in code block, need to get it out -> (\n)? ... (\n```)?
-        text = text.replace(/(\n)?^>?LOGSTART\\>([\s\S]*?)LOGEND((?:\n>[^\n]*)*)(\n```)?$/m, `$4$1**>$2$3||`);
+        text = text.replace(/^>?LOGSTART\n([\s\S]*?)\n>?LOGEND((?:\n>[^\n]*)*)$/m, `**>$1$2||`);
         // maybe split by log start and log end
-        text = text.replace(/^(>?)LOGSTART/m, '$1').replace(/LOGEND$/m, '');
+        text = text.replace(/^>?LOGSTART$/m, '').replace(/^>?LOGEND$/m, '');
         return text;
     }
     // replace log data to expandable
-    text = text.replace(logRegexp, `>$1`);
+    text = text.replace(logRegexp, `$1`);
     text = text
         // fold quote
         // .replace(/((?:^>[^\n]+(?:\n|$))+)/gm, (match, p1) => `**${p1.trimEnd()}||\n`)
         .replace(/(?:^>[^\n]*(\n|$))+/gm, (match, p1) => `**${match.trimEnd()}||${p1}`);
     // maybe split by log start and log end
-    text = text.replace(/^(>?)LOGSTART/m, '$1').replace(/LOGEND(\|\|)?$/m, '$1');
+    text = text.replace(/^>?LOGSTART/m, '').replace(/^>?LOGEND(\|\|)?$/m, '$1');
     return text;
 }
 

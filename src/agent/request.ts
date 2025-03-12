@@ -224,7 +224,7 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
             let thinkingStart = false;
             let thinkingEnd = false;
             let thinkingStartTime: undefined | number;
-            const thinkingTag = '>`Thinking\\.\\.\\.`\n>';
+            const thinkingTag = '>`Thinking\\.\\.\\.`';
             return (data: TextStreamPart<any>) => {
                 switch (data.type) {
                     case 'reasoning':
@@ -232,7 +232,7 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
                             thinkingStart = true;
                             thinkingStartTime = Date.now();
                             // thinking转为引用
-                            return thinkingTag + data.textDelta.replace(/\n/g, '\n>');
+                            return `${thinkingTag}\n>${data.textDelta.replace(/\n/g, '\n>')}`;
                         }
                         return data.textDelta.replace(/\n/g, '\n>');
                     case 'text-delta':
@@ -242,7 +242,7 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
                             thinkingEnd = true;
                             const thinkingTime = ((Date.now() - thinkingStartTime!) / 1e3).toFixed(1);
                             messageInfo.content = messageInfo.content
-                                .replace(/^>`Thinking\\.\\.\\.[^\n]+/m, `>\`Thought for ${thinkingTime} seconds\``);
+                                .replace(thinkingTag, `>\`Thought for ${thinkingTime} seconds\``);
                             return `\n>✹\n${data.type === 'text-delta' ? data.textDelta : ''}`;
                         }
                         return data.type === 'text-delta' ? data.textDelta : '';

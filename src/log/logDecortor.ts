@@ -168,7 +168,7 @@ export function getLog(context: AgentUserConfig, onlyModel: boolean = false, isP
 
     return isParagraph
         ? logList.filter(Boolean).join(' ')
-        : `LOGSTART${logList.filter(Boolean).map(entry => `>\`${entry}\``).join('\n')}LOGEND`;
+        : `LOGSTART\n${logList.filter(Boolean).map(entry => `>\`${entry}\``).join('\n')}\nLOGEND`;
 }
 
 export function clearLog(context: AgentUserConfig) {
