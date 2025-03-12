@@ -70,13 +70,13 @@ const escapeRegexpMatch = [
     },
     // item
     {
-        regex: /^(>?\x20*)\\(?:-|\*)\s+([^\n]*)$/gm,
+        regex: /^(\x20*)\\(?:-|\*)\s+([^\n]*)$/gm,
         value: '$1•\x20$2',
     },
     // number sign
     {
-        regex: /^((?:\\#){1,6}\x20)([^\n]+)$/g,
-        value: '$1*$2*',
+        regex: /^(\x20*(?:\\#){1,6})\x20+([^\n]+)$/gm,
+        value: '$1\x20*$2*',
     },
 ];
 
@@ -266,8 +266,10 @@ function markData(text: string, markd: Record<string, string>, type: 'INCODE' | 
 export function addExpandable(text: string, quoteExpandable: boolean): string {
     if (!quoteExpandable) {
         // replace log data to expandable
-        // can't replace log data directly, because there may be other quote marks after the log data, tg doesn't allow expandable quote to be continuous quote
-        text = text.replace(/^>?LOGSTART\\>([\s\S]*?)LOGEND((?:\n>[^\n]*)*)$/m, `**>$1$2||`);
+        // can't replace log data directly, because there may be other quote marks after the log data,
+        // tg doesn't allow expandable quote to be continuous quote
+        // maybe in code block, need to get it out -> (\n)? ... (\n```)?
+        text = text.replace(/(\n)?^>?LOGSTART\\>([\s\S]*?)LOGEND((?:\n>[^\n]*)*)(\n```)?$/m, `$4$1**>$2$3||`);
         // maybe split by log start and log end
         text = text.replace(/^(>?)LOGSTART/m, '$1').replace(/LOGEND$/m, '');
         return text;
