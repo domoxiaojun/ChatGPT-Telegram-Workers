@@ -333,26 +333,34 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
         const data = context && needLog ? mergeLogMessages(text, context.USER_CONFIG) : text;
         log.info(`sent message ids: ${isMessageSender ? sender.context.sentMessageIds : sender.context.inline_message_id}`);
         expandParams.addQuote = addQuotePrerequisites && data.length > ENV.ADD_QUOTE_LIMIT;
-        while (true) {
-            const finalResp = await sender.sendRichText(data, undefined, 'chat', expandParams);
-            if (finalResp.status === 429) {
-                const retryAfter = Number.parseInt(finalResp.headers.get('Retry-After') || '');
-                if (retryAfter) {
-                    log.error(`Status 429, need wait: ${retryAfter}s`);
-                    await waitUntil(Date.now() + retryAfter * 1000 + 10);
-                    continue;
-                } else {
-                    await waitUntil(Date.now() + 10_000);
-                    continue;
+        try {
+            while (true) {
+                const finalResp = await sender.sendRichText(data, undefined, 'chat', expandParams);
+                if (finalResp.status === 429) {
+                    const retryAfter = Number.parseInt(finalResp.headers.get('Retry-After') || '');
+                    if (retryAfter) {
+                        log.error(`Status 429, need wait: ${retryAfter}s`);
+                        await waitUntil(Date.now() + retryAfter * 1000 + 10);
+                        continue;
+                    } else {
+                        await waitUntil(Date.now() + 10_000);
+                        continue;
+                    }
                 }
+                if (!finalResp.ok) {
+                    (sender as MessageSender).context.sentMessageIds.length = 0;
+                    log.error(`send message failed: ${finalResp.status} ${await finalResp.json().then(j => j.description)}`);
+                    await sendTelegraph(telegraphContext(true, true), question || 'Redo Question', text);
+                    return;
+                }
+                return finalResp;
             }
-            if (!finalResp.ok) {
-                (sender as MessageSender).context.sentMessageIds.length = 0;
-                log.error(`send message failed: ${finalResp.status} ${await finalResp.json().then(j => j.description)}`);
-                await sendTelegraph(telegraphContext(true, true), question || 'Redo Question', text);
-                return;
+        } catch (e) {
+            log.error((e as Error).stack);
+            if (e instanceof TypeError && e.message.includes('fetch failed')) {
+                return new Response('fetch failed');
             }
-            return finalResp;
+            throw e;
         }
     };
 
