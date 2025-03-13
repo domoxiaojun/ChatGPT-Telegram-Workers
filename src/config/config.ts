@@ -373,6 +373,13 @@ export class OpenAILikeConfig {
     OAILIKE_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
     OAILIKE_MODELS = [];
     OAILIKE_MODELS_API = '/models';
+    // oailike relay
+    OAILIKE_RELAY_TOOLS: Record<string, string[]> = {
+        gemini: ['googleSearch', 'codeExecution'],
+    };
+
+    // use oailike relay tools, support 'googleSearch, codeExecution'
+    USE_OAILIKE_RELAY_TOOLS: string[] = [];
 }
 
 export class VertexConfig {

@@ -668,6 +668,12 @@ export class InlineCommandHandler implements CommandHandler {
                 type: 'checkbox',
                 value: Object.keys({ ...ENV.PLUGINS_FUNCTION, ...tools }),
             },
+            {
+                label: 'Relay Tools',
+                config_key: 'USE_OAILIKE_RELAY_TOOLS',
+                type: 'checkbox',
+                value: Object.values(context.OAILIKE_RELAY_TOOLS).flat(),
+            },
             ...['Chat', 'Image', 'Vision', 'Tool'].map((type) => {
                 const config_key = configKeyHandler(type);
                 const modelProvider = context[`AI_${type.toUpperCase()}_PROVIDER`] || context.AI_CHAT_PROVIDER;

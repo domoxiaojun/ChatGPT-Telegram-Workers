@@ -1,3 +1,4 @@
+/* eslint-disable no-fallthrough */
 /* eslint-disable no-case-declarations */
 import type { CoreMessage, CoreUserMessage, LanguageModelV1 } from 'ai';
 import type { AgentUserConfig } from '../config/env';
@@ -197,6 +198,8 @@ export async function createLlmModel(model: string, context: AgentUserConfig) {
         { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' },
     ];
 
+    const relay: { tools: { type: string; function: { name: string } }[] } = { tools: [] };
+
     switch (agent) {
         case 'openai':
         case 'gpt':
@@ -250,6 +253,14 @@ export async function createLlmModel(model: string, context: AgentUserConfig) {
                 apiKey: context.XAI_API_KEY || undefined,
                 fetch: mockFetch(model_id, context.PARAMS_MODIFIER),
             }).languageModel(model_id);
+        case 'oailike':
+            const relayKey = Object.keys(context.OAILIKE_RELAY_TOOLS).find(key => model_id.startsWith(key));
+            if (relayKey) {
+                relay.tools = context.OAILIKE_RELAY_TOOLS[relayKey].filter(t => context.USE_OAILIKE_RELAY_TOOLS.includes(t)).map(t => ({
+                    type: 'function',
+                    function: { name: t },
+                }));
+            }
         default:
             return new OpenAICompatibleChatLanguageModel(model_id, {}, {
                 provider: 'oailike',
@@ -259,7 +270,7 @@ export async function createLlmModel(model: string, context: AgentUserConfig) {
                 }),
                 defaultObjectGenerationMode: 'json',
                 metadataExtractor: extraMetadataExtractor(model_id),
-                fetch: mockFetch(model_id, context.PARAMS_MODIFIER, context.OAILIKE_API_EXTRA_PARAMS),
+                fetch: mockFetch(model_id, context.PARAMS_MODIFIER, context.OAILIKE_API_EXTRA_PARAMS, relay),
             });
     }
     // if (model.includes(':')) {
