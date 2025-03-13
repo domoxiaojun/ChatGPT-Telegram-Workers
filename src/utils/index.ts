@@ -35,7 +35,7 @@ export function paramsModifier(model: string, body: Record<string, any>, modifie
     // 处理 modifier
     for (const item of modifier) {
         const seperator = item.indexOf(':');
-        if (seperator === -1) {
+        if (seperator < 0) {
             continue;
         }
         const models = item.slice(0, seperator).split(',');
@@ -62,11 +62,14 @@ export function paramsModifier(model: string, body: Record<string, any>, modifie
     return body;
 }
 
-export function mockFetch(model: string, PARAMS_MODIFIER: string[], extraParams: Record<string, Record<string, any>> = {}, relay?: { tools: { type: string; function: { name: string } }[] }) {
+export function mockFetch(model: string, PARAMS_MODIFIER: string[], extraParams: Record<string, Record<string, any>> = {}, relay?: { tools: { type: string; function: { name: string } }[]; params: Record<string, any> }) {
     return (url: RequestInfo | URL, options?: RequestInit) => {
         const body = JSON.parse(options?.body as string);
         if (relay && relay.tools.length > 0) {
             body.tools = relay.tools;
+        }
+        if (relay && Object.keys(relay.params).length > 0) {
+            Object.assign(body, relay.params);
         }
         paramsModifier(model, body, PARAMS_MODIFIER, extraParams);
         return fetch(url, {

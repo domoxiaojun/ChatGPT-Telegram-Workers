@@ -491,9 +491,9 @@ export class ExtraUserConfig {
     MESSAGE_REPLACER: Record<string, string> = {};
     // Parameter modifier; string array; separated by colons, the key is the model name, separated by commas;
     // the value is the parameter modification value, modification values starting with '+' indicates addition, with the value after '=' and separated by '|'; starting with '-' indicates addition indicate deletion.
-    // for example: PARAMS_MODIFIER = ['o1-mini,o3-mini:-temperature|max_tokens|+max_tokens=1000'];
+    // for example: PARAMS_MODIFIER = ['o1-mini,o3-mini:-temperature|+max_tokens=1000'];
     // priority is higher than EXTRA_PARAMS
-    PARAMS_MODIFIER: string[] = [];
+    PARAMS_MODIFIER: string[] = ['o1-mini,o3-mini,gpt-4o-mini-search-preview,gpt-4o-search-preview:-temperature'];
     // start with @key to trigger workflow, support agent, model, temperature, max_tokens;
     // next is the next step prompt: {{result}} is the result of the current step result, {{question}} is user input
     WORKFLOW: {

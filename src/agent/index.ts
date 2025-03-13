@@ -198,7 +198,13 @@ export async function createLlmModel(model: string, context: AgentUserConfig) {
         { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' },
     ];
 
-    const relay: { tools: { type: string; function: { name: string } }[] } = { tools: [] };
+    const relay: { tools: { type: string; function: { name: string } }[]; params: Record<string, any> } = { tools: [], params: {} };
+    const searchModelRegex = /gpt-4o-(?:mini-)?search/;
+    if (searchModelRegex.test(model_id)) {
+        relay.params = {
+            web_search_options: {},
+        };
+    }
 
     switch (agent) {
         case 'openai':
@@ -207,7 +213,7 @@ export async function createLlmModel(model: string, context: AgentUserConfig) {
                 baseURL: context.OPENAI_API_BASE,
                 apiKey: context.OPENAI_API_KEY[Math.floor(Math.random() * context.OPENAI_API_KEY.length)],
                 compatibility: 'strict',
-                fetch: mockFetch(model_id, context.PARAMS_MODIFIER, context.OPENAI_API_EXTRA_PARAMS),
+                fetch: mockFetch(model_id, context.PARAMS_MODIFIER, context.OPENAI_API_EXTRA_PARAMS, relay),
             }).languageModel(model_id);
         case 'claude':
         case 'anthropic':
@@ -254,7 +260,7 @@ export async function createLlmModel(model: string, context: AgentUserConfig) {
                 fetch: mockFetch(model_id, context.PARAMS_MODIFIER),
             }).languageModel(model_id);
         case 'oailike':
-            const relayKey = Object.keys(context.OAILIKE_RELAY_TOOLS).find(key => model_id.startsWith(key));
+            const relayKey = Object.keys(context.OAILIKE_RELAY_TOOLS).find(key => model_id.includes(key));
             if (relayKey) {
                 relay.tools = context.OAILIKE_RELAY_TOOLS[relayKey].filter(t => context.USE_OAILIKE_RELAY_TOOLS.includes(t)).map(t => ({
                     type: 'function',

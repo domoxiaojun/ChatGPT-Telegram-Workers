@@ -208,12 +208,7 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
     if (!metadata) {
         return content;
     }
-    const replacer = (content: string, urls: string[]) => {
-        for (const [i, url] of Object.entries(urls)) {
-            content = content.replace(new RegExp(`\\[(${+i + 1})\\]`, 'g'), `[[$1\\]](${url})`);
-        }
-        return content;
-    };
+
     switch (provider) {
         case 'google.generative-ai':
         case 'google.vertex.chat':
@@ -246,7 +241,7 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
                     // content = insertTextByByteIndex(content, segment.endIndex, tag);
                     content = content.replace(segment.text, `$&${tag}`);
                 }
-                return `${content}\n**Sources:**\x20${sources}`;
+                return `${content.trimEnd()}\n\n**Sources:**\n${sources}`;
                 // return `${content}\n## Sources:\n${sources}\n## Search Query:\n${webSearchQueries || ''}`;
                 // return content;
             };
@@ -255,12 +250,20 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
         }
         case 'oailike':
         {
-            if (!metadata?.pplx?.citations) {
-                return content;
+            if (metadata?.pplx?.citations) {
+                const replacer = (content: string, urls: string[]) => {
+                    for (const [i, url] of Object.entries(urls)) {
+                        content = content.replace(new RegExp(`\\[(${+i + 1})\\]`, 'g'), `[[$1\\]](${url})`);
+                    }
+                    return content;
+                };
+                return replacer(content, metadata?.pplx?.citations);
             }
-            const sources = metadata?.pplx?.citations?.map((citation: string, i: number) => `[[${i + 1}\\]](${citation})`).join(' ');
-            // content = `${replacer(content, metadata?.pplx?.citations)}\n\n## Sources:\n${sources}`;
-            return replacer(content, metadata?.pplx?.citations);
+            if (metadata?.openai?.citations) {
+                const sources = metadata?.openai?.citations?.map(({ url_citation: { title, url } }: { url_citation: { title: string; url: string } }) => `- [${`${title.slice(0, 30)}...`}](${url})`).join('\n');
+                return sources ? `${content.trimEnd()}\n\n**Sources:**\n${sources}` : content;
+            }
+            return content;
         }
         default:
             return content;
@@ -269,31 +272,41 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
 
 export function extraMetadataExtractor(modelId: string): MetadataExtractor | undefined {
     const pplxModelPerfix = 'sonar';
-    if (modelId.startsWith(pplxModelPerfix)) {
-        return {
-            extractMetadata: ({ parsedBody }: { parsedBody: unknown }) => {
-                const body = parsedBody as Record<string, any>;
-                return {
-                    pplx: {
-                        citations: body.citations,
-                    },
-                };
-            },
-            createStreamExtractor: () => {
-                const citations: string[] = [];
-                return {
-                    processChunk: (parsedChunk: Record<string, string>) => {
-                        if (parsedChunk.citations && citations.length === 0) {
-                            citations.push(...parsedChunk.citations);
-                        }
-                    },
-                    buildMetadata: () => ({
-                        pplx: {
-                            citations,
-                        },
-                    }),
-                };
-            },
-        };
+    const openaiSearchModelRegex = /gpt-4o-(?:mini-)?search/;
+    const type = openaiSearchModelRegex.test(modelId)
+        ? 'openai'
+        : modelId.startsWith(pplxModelPerfix)
+            ? 'pplx'
+            : undefined;
+    if (!type) {
+        return;
     }
+    return {
+        extractMetadata: ({ parsedBody }: { parsedBody: unknown }) => {
+            const body = parsedBody as Record<string, any>;
+            return {
+                [type]: {
+                    citations: body.citations || body.choices[0]?.delta?.annotations,
+                },
+            };
+        },
+        createStreamExtractor: () => {
+            const citations: string[] = [];
+            return {
+                processChunk: (parsedChunk: Record<string, any>) => {
+                    const c = type === 'pplx'
+                        ? parsedChunk.citations
+                        : parsedChunk.choices[0]?.delta?.annotations;
+                    if (c && c.length > 0) {
+                        citations.push(...c);
+                    }
+                },
+                buildMetadata: () => ({
+                    [type]: {
+                        citations,
+                    },
+                }),
+            };
+        },
+    };
 }
