@@ -16,10 +16,10 @@ class GoogleBase {
         const msgType = Array.isArray(params?.content) ? params.content.at(-1)?.type : 'text';
         switch (msgType) {
             case 'image':
-                return ctx.VERTEX_VISION_MODEL;
+                return ctx.GOOGLE_VISION_MODEL;
             case 'file':
             default:
-                return ctx.VERTEX_CHAT_MODEL;
+                return ctx.GOOGLE_CHAT_MODEL;
         }
     };
 }
