@@ -82,20 +82,23 @@ export class GoogleImage extends GoogleBase implements ImageAgent {
             const resp = await response.text();
             throw new Error(`${response.status} ${response.statusText}\n${resp}`);
         }
-        const data = await response.json();
+        const data = (await response.json()).candidates?.[0]?.content?.parts || [];
+        if (data?.length === 0) {
+            throw new Error(`Data is null`);
+        }
+        if (data.filter((i: any) => i.inlineData).length === 0) {
+            throw new Error(`Not image: ${JSON.stringify(data)}`);
+        }
         if (data.usageMetadata) {
             const log = getLogSingleton(context);
             log.chat.model.add(data.modelVersion || this.model(context));
             log.tokens.push(`${data.usageMetadata.promptTokenCount},0`);
         }
-        return this.render(data.candidates?.[0]?.content?.parts || [], prompt);
+        return this.render(data, prompt);
     };
 
     readonly render = async (result: Response | GeneratedImage[] | any[], prompt: string): Promise<ImageResult> => {
         const images = result as { inlineData: { mimeType: string; data: string } }[];
-        if (images.length === 0) {
-            throw new Error(`Data is invalid: ${JSON.stringify(images)}`);
-        }
         return {
             type: 'image',
             raw: await Promise.all(images.map(({ inlineData: { data } }) => base64StringToBlob(data))),
