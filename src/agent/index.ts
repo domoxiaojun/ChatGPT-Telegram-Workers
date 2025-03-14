@@ -17,7 +17,7 @@ import { mockFetch } from '../utils';
 import { Anthropic } from './anthropic';
 import { AzureChatAI, AzureImageAI } from './azure';
 import { Cohere } from './cohere';
-import { Google } from './google';
+import { Google, GoogleImage } from './google';
 import { KlingAI } from './kling';
 import { Mistral } from './mistralai';
 import { extraMetadataExtractor } from './model_middleware';
@@ -64,6 +64,7 @@ export const IMAGE_AGENTS: ImageAgent[] = [
     new OpenAILikeImage(),
     new VertexImage(),
     new KlingAI(),
+    new GoogleImage(),
 ];
 
 export function loadImageGen(context: AgentUserConfig): ImageAgent {
@@ -72,13 +73,7 @@ export function loadImageGen(context: AgentUserConfig): ImageAgent {
             return imgGen;
         }
     }
-    // 找不到指定的AI，使用第一个可用的AI
-    // for (const imgGen of IMAGE_AGENTS) {
-    //     if (imgGen.enable(context)) {
-    //         return imgGen;
-    //     }
-    // }
-    // return null;
+
     throw new Error(`Image generator not found: ${context.AI_IMAGE_PROVIDER}\nAvailable: ${IMAGE_AGENTS.map(i => i.name).join(', ')}`);
 }
 

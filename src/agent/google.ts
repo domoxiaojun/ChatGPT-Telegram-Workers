@@ -1,13 +1,13 @@
 import type { CoreUserMessage, FilePart, ImagePart, UserContent } from 'ai';
 import type { AgentUserConfig } from '../config/env';
-import type { ChatAgent, ChatStreamTextHandler, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
+import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
 import { createLlmModel, warpLLMParams } from '.';
+import { getLogSingleton, Log } from '../log/logDecortor';
+import { base64StringToBlob } from '../utils/image';
 import { requestChatCompletionsV2 } from './request';
 
-export class Google implements ChatAgent {
-    readonly name: string = 'google';
-    readonly modelKey = 'GOOGLE_CHAT_MODEL';
-
+class GoogleBase {
+    readonly name = 'google';
     readonly enable = (context: AgentUserConfig): boolean => {
         return !!(context.GOOGLE_API_KEY);
     };
@@ -16,12 +16,16 @@ export class Google implements ChatAgent {
         const msgType = Array.isArray(params?.content) ? params.content.at(-1)?.type : 'text';
         switch (msgType) {
             case 'image':
-                return ctx.GOOGLE_VISION_MODEL;
+                return ctx.VERTEX_VISION_MODEL;
             case 'file':
             default:
-                return ctx.GOOGLE_CHAT_MODEL;
+                return ctx.VERTEX_CHAT_MODEL;
         }
     };
+}
+
+export class Google extends GoogleBase implements ChatAgent {
+    readonly modelKey = 'GOOGLE_CHAT_MODEL';
 
     readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> => {
         const userMessage = handleUrl(params.messages.at(-1) as CoreUserMessage);
@@ -31,6 +35,72 @@ export class Google implements ChatAgent {
             messages: params.messages,
             cache: params.cache,
         }, context), onStream);
+    };
+}
+
+export class GoogleImage extends GoogleBase implements ImageAgent {
+    readonly modelKey = 'GOOGLE_IMAGE_MODEL';
+
+    model = (ctx: AgentUserConfig): string => {
+        return ctx.GOOGLE_IMAGE_MODEL;
+    };
+
+    @Log
+    request = async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
+        if (prompt.trim() === '') {
+            throw new Error('Please provide a prompt.');
+        }
+        const { referenceImage } = extraParams || {};
+        const url = `${context.GOOGLE_API_BASE}/models/${this.model(context)}:generateContent?key=${context.GOOGLE_API_KEY}`;
+        const body = {
+            contents: [{
+                parts: [{
+                    text: prompt,
+                }],
+            }],
+            generation_config: {
+                response_modalities: ['text', 'image'],
+            },
+        } as any;
+
+        if (referenceImage && referenceImage.length > 0) {
+            const isUri = typeof referenceImage[0] === 'string' && referenceImage[0].startsWith('http');
+            const type = isUri ? 'fileUri' : 'data';
+            const dataType = isUri ? 'fileData' : 'inlineData';
+            body.contents[0].parts.push(...referenceImage.map((i: any) => ({
+                [dataType]: {
+                    mimeType: 'image/jpeg',
+                    [type]: i,
+                },
+            })));
+        }
+        const response = await fetch(url, {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+            const resp = await response.text();
+            throw new Error(`${response.status} ${response.statusText}\n${resp}`);
+        }
+        const data = await response.json();
+        if (data.usageMetadata) {
+            const log = getLogSingleton(context);
+            log.chat.model.add(data.modelVersion || this.model(context));
+            log.tokens.push(`${data.usageMetadata.promptTokenCount},0`);
+        }
+        return this.render(data.candidates?.[0]?.content?.parts || [], prompt);
+    };
+
+    readonly render = async (result: Response | GeneratedImage[] | any[], prompt: string): Promise<ImageResult> => {
+        const images = result as { inlineData: { mimeType: string; data: string } }[];
+        if (images.length === 0) {
+            throw new Error(`Data is invalid: ${JSON.stringify(images)}`);
+        }
+        return {
+            type: 'image',
+            raw: await Promise.all(images.map(({ inlineData: { data } }) => base64StringToBlob(data))),
+            text: prompt,
+        };
     };
 }
 

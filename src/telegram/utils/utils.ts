@@ -1,5 +1,6 @@
 import type * as Telegram from 'telegram-bot-api-types';
 import { ENV } from '../../config/env';
+import { createTelegramBotAPI } from '../api';
 import { findPhotoFileID } from '../handler/chat';
 
 export function isTelegramChatTypeGroup(type: string): boolean {
@@ -94,7 +95,8 @@ function extractTypeFromMessage(message: Telegram.Message): UnionData {
 }
 
 function isNeedGetReplyMessage(message: Telegram.Message, currentBotId: number) {
-    return ENV.EXTRA_MESSAGE_CONTEXT && message.reply_to_message && (message.reply_to_message.from?.id !== currentBotId || message.reply_to_message.photo);
+    const replyMsg = message.reply_to_message;
+    return ENV.EXTRA_MESSAGE_CONTEXT && replyMsg && (replyMsg.from?.id !== currentBotId || replyMsg.photo || replyMsg.audio || replyMsg.document || replyMsg.video || replyMsg.voice);
 }
 
 export function UUIDv4() {
@@ -119,6 +121,26 @@ export function chunkArray(arr: any[], size: number): any[][] {
 
 export async function waitUntil(timestamp: number) {
     return new Promise(resolve => setTimeout(resolve, Math.max(0, timestamp - Date.now())));
+}
+
+export async function getTelegramFile(fileIds: string[], botToken: string, type: 'url' | 'blob' | 'base64' = 'url') {
+    const api = createTelegramBotAPI(botToken);
+    const files = await Promise.all(fileIds.map(id => api.getFileWithReturns({ file_id: id })));
+    const paths = files.map(f => f.result?.file_path).filter(Boolean) as string[];
+    const urls = paths.map(p => `https://api.telegram.org/file/bot${botToken}/${p}`);
+
+    console.log(`File URLs:\n${urls.join('\n')}`);
+
+    switch (type) {
+        case 'url':
+            return urls;
+        case 'blob':
+            return await Promise.all(paths.map(p => fetch(`https://api.telegram.org/file/bot${botToken}/${p}`, {
+            }).then(res => res.blob())));
+        case 'base64':
+            return await Promise.all(paths.map(p => fetch(`https://api.telegram.org/file/bot${botToken}/${p}`, {
+            }).then(res => res.arrayBuffer()).then(buffer => Buffer.from(buffer).toString('base64'))));
+    }
 }
 
 // export async function getStoreMediaIds(context: ShareContext, media_group_id: string | undefined): Promise<string[]> {

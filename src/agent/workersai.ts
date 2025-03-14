@@ -2,6 +2,7 @@ import type { AgentUserConfig } from '../config/env';
 import type { SseChatCompatibleOptions } from './request';
 import type { ChatAgent, ChatStreamTextHandler, ImageAgent, ImageResult, LLMChatParams, ResponseMessage } from './types';
 import { Log } from '../log/logDecortor';
+import { base64StringToBlob } from '../utils/image';
 import { isJsonResponse, requestChatCompletions } from './request';
 
 class WorkerBase {
@@ -102,15 +103,4 @@ export class WorkersImage extends WorkerBase implements ImageAgent {
         }
         return { type: 'image', raw: [await raw.blob()], text: prompt };
     };
-}
-
-async function base64StringToBlob(base64String: string): Promise<Blob> {
-    try {
-        const { Buffer } = await import('node:buffer');
-        const buffer = Buffer.from(base64String, 'base64');
-        return new Blob([buffer], { type: 'image/png' });
-    } catch {
-        const uint8Array = Uint8Array.from(atob(base64String), c => c.charCodeAt(0));
-        return new Blob([uint8Array], { type: 'image/png' });
-    }
 }

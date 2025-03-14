@@ -19,7 +19,7 @@ import { convertOgaToMp3 } from '../../utils/others/audio';
 import { createTelegramBotAPI } from '../api';
 import { escape } from '../utils/md2tgmd';
 import { MessageSender, sendAction, TelegraphSender } from '../utils/send';
-import { waitUntil } from '../utils/utils';
+import { getTelegramFile, waitUntil } from '../utils/utils';
 
 async function messageInitialize(sender: MessageSender, context?: WorkerContext, message?: Telegram.Message): Promise<ChatStreamTextHandler> {
     setTimeout(() => sendAction(sender.api.token, sender.context.chat_id, 'typing'), 0);
@@ -121,13 +121,7 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
         };
 
         if (id) {
-            const api = createTelegramBotAPI(context.SHARE_CONTEXT.botToken);
-            const files = await Promise.all(id.map(i => api.getFileWithReturns({ file_id: i })));
-            const paths = files.map(f => f.result?.file_path).filter(Boolean) as string[];
-            if (paths.length === 0) {
-                throw new Error(files.map(f => (f as any).description).join('\n'));
-            }
-            const urls = paths.map(p => `https://api.telegram.org/file/bot${context.SHARE_CONTEXT.botToken}/${p}`);
+            const urls = await getTelegramFile(id, context.SHARE_CONTEXT.botToken, 'url') as string[];
             log.info(`File URLs:\n${urls.join('\n')}`);
             if (urls.length > 0) {
                 params.content = [];

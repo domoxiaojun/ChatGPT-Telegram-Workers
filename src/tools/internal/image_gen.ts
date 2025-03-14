@@ -14,8 +14,8 @@ export const image_gen: FuncTool = {
             properties: {
                 agent: {
                     type: 'string',
-                    description: 'The agent to use, You can only set values from the following options: \'openai\', \'workers\', \'azure\', \'vertex\', \'oailike\', \'kling\', where openai is aliased as dalle, google is aliased as vertex, and if the information provided by the user is incorrect, please use the most similar option. if user dont specify, use openai. Default value is openai',
-                    // enum: ['openai', 'workers', 'azure', 'vertex', 'oailike', 'kling'],
+                    description: 'The agent to use, You can only set values from the following options: \'openai\', \'workers\', \'azure\', \'vertex\', \'oailike\', \'kling\', \'google\', where openai is aliased as dalle, google is aliased as vertex, and if the information provided by the user is incorrect, please use the most similar option. if user dont specify, use openai. Default value is openai',
+                    enum: ['openai', 'workers', 'azure', 'vertex', 'oailike', 'kling', 'google'],
                 },
                 prompts: {
                     type: 'array',

@@ -82,7 +82,7 @@ export class EnvironmentConfig {
      */
     ENABLE_FILE = true;
     // Supported file formats: text, photo, voice, audio, video(based on model support), document(send image、audio、text as file), sticker(gif, jpg, png, webp, webm as video)
-    SUPPORT_FORMAT: string[] = ['text', 'photo', 'voice', 'audio'];
+    SUPPORT_FORMAT: string[] = ['text', 'photo', 'voice', 'audio', 'image'];
     // In group chats, the reply object is the trigger object by default, and when enabled, it is prioritized as the object to be replied to
     ENABLE_REPLY_TO_MENTION = false;
     // Ignore messages starting with specified text
@@ -286,6 +286,8 @@ export class GeminiConfig {
     GOOGLE_CHAT_MODEL = 'gemini-2.0-flash';
     // Google Gemini Vision Model
     GOOGLE_VISION_MODEL = 'gemini-2.0-flash';
+    // Google Gemini Image Model
+    GOOGLE_IMAGE_MODEL = 'gemini-2.0-flash-exp';
     // Google Embedding Model
     GOOGLE_EMBEDDING_MODEL = 'text-embedding-004';
     // Google API Extra Params, key is model id, separated by commas, value is extra Params

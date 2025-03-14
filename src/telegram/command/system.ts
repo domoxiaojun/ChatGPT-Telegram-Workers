@@ -21,7 +21,7 @@ import { createTelegramBotAPI } from '../api';
 import { chatWithLLM, OnStreamHander, sendImages } from '../handler/chat';
 import { escape } from '../utils/md2tgmd';
 import { checkIsNeedTagIds, sendAction } from '../utils/send';
-import { chunkArray, isCfWorker, isTelegramChatTypeGroup, UUIDv4 } from '../utils/utils';
+import { chunkArray, getTelegramFile, isCfWorker, isTelegramChatTypeGroup, UUIDv4 } from '../utils/utils';
 
 export const COMMAND_AUTH_CHECKER = {
     default(chatType: string): string[] | null {
@@ -51,9 +51,13 @@ export class ImgCommandHandler implements CommandHandler {
         }
         try {
             const agent = loadImageGen(context.USER_CONFIG);
-            sendAction(context.SHARE_CONTEXT.botToken, message.chat.id, 'upload_photo');
+            const extraParams: Record<string, any> = {};
+            if (agent.name === 'google' && ['image', 'photo'].includes(context.MIDDLE_CONTEXT.messageInfo?.type) && (context.MIDDLE_CONTEXT.messageInfo?.id?.length || 0) > 0) {
+                extraParams.referenceImage = await getTelegramFile(context.MIDDLE_CONTEXT.messageInfo.id!, context.SHARE_CONTEXT.botToken, ENV.TELEGRAM_IMAGE_TRANSFER_MODE as any);
+            }
             await sender.sendPlainText('Please wait a moment...');
-            const img = await agent.request(subcommand, context.USER_CONFIG);
+            sendAction(context.SHARE_CONTEXT.botToken, message.chat.id, 'upload_photo');
+            const img = await agent.request(subcommand, context.USER_CONFIG, extraParams);
             log.info('img', img);
             const resp = await sendImages(img, ENV.SEND_IMAGE_AS_FILE, sender, context.USER_CONFIG);
 
@@ -793,10 +797,7 @@ export class KlingAICommandHandler implements CommandHandler {
     };
 
     getFileUrl = async (file_id: string, context: WorkerContext, headers: Record<string, string>) => {
-        const api = createTelegramBotAPI(context.SHARE_CONTEXT.botToken);
-        const img_path = (await api.getFileWithReturns({ file_id }).then(res => res.result)).file_path;
-        const img_blob = await fetch(`https://api.telegram.org/file/bot${context.SHARE_CONTEXT.botToken}/${img_path}`, {
-        }).then(res => res.blob());
+        const img_blob = await getTelegramFile([file_id], context.SHARE_CONTEXT.botToken, 'blob') as Blob[];
 
         const { token, domain } = await this.getUploadFileTokenAndEndpoint(headers);
         await fetch(`https://${domain}/api/upload/fragment?upload_token=${token}&fragment_id=0`, {
@@ -805,7 +806,7 @@ export class KlingAICommandHandler implements CommandHandler {
                 ...headers,
                 'Content-Type': 'application/octet-stream',
             },
-            body: img_blob,
+            body: img_blob[0],
         });
 
         await fetch(`https://${domain}/api/upload/complete?fragment_count=1&upload_token=${token}`, {
