@@ -50,6 +50,7 @@ export class GoogleImage extends GoogleBase implements ImageAgent {
         if (prompt.trim() === '') {
             throw new Error('Please provide a prompt.');
         }
+
         const { referenceImage } = extraParams || {};
         const url = `${context.GOOGLE_API_BASE}/models/${this.model(context)}:generateContent?key=${context.GOOGLE_API_KEY}`;
         const body = {
@@ -61,6 +62,13 @@ export class GoogleImage extends GoogleBase implements ImageAgent {
             generation_config: {
                 response_modalities: ['text', 'image'],
             },
+            safety_settings: [
+                { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+                { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' },
+            ],
         } as any;
 
         if (referenceImage && referenceImage.length > 0) {
@@ -82,19 +90,23 @@ export class GoogleImage extends GoogleBase implements ImageAgent {
             const resp = await response.text();
             throw new Error(`${response.status} ${response.statusText}\n${resp}`);
         }
-        const data = (await response.json()).candidates?.[0]?.content?.parts || [];
-        if (data?.length === 0) {
-            throw new Error(`Data is null`);
+        const result = await response.json();
+        const data = result.candidates?.[0]?.content?.parts || [];
+        if (data.length === 0) {
+            throw new Error(`Data is null:\n${JSON.stringify(result)}`);
         }
-        if (data.filter((i: any) => i.inlineData).length === 0) {
-            throw new Error(`Not image: ${JSON.stringify(data)}`);
+        const images = data.filter((i: any) => i.inlineData !== undefined);
+        const text = data.map((i: any) => i.text || '').join('');
+        if (images.length === 0) {
+            throw new Error(`No images found:\n${text || JSON.stringify(data)}`);
         }
+
         if (data.usageMetadata) {
             const log = getLogSingleton(context);
             log.chat.model.add(data.modelVersion || this.model(context));
             log.tokens.push(`${data.usageMetadata.promptTokenCount},0`);
         }
-        return this.render(data, prompt);
+        return this.render(images, text || prompt);
     };
 
     readonly render = async (result: Response | GeneratedImage[] | any[], prompt: string): Promise<ImageResult> => {

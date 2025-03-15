@@ -8,7 +8,7 @@ import { log } from '../../log/logger';
 export const image_gen: FuncTool = {
     schema: {
         name: 'image_gen',
-        description: 'A drawing tool that supports different agents.',
+        description: `A drawing tool that supports different agents. Please comply with the following requirements when using:\nYour role is to:\n   1. Carefully analyze the user's image description.\n 2. Expand on the given details, adding relevant visual elements that enhance the scene.\n 3. Consider lighting, perspective, color palette, and composition to create a vivid mental image.\n 4. Incorporate specific artistic styles or techniques if mentioned or appropriate.\n 5. Ensure all added details are consistent with the user's original vision.\n 6. Translate the expanded description into clear, detailed instructions for image generation. Be creative yet faithful to the original concept.`,
         parameters: {
             type: 'object',
             properties: {
