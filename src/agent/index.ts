@@ -13,7 +13,6 @@ import { ENV } from '../config/env';
 import { log } from '../log/logger';
 import { isCfWorker } from '../telegram/utils/utils';
 import { tools, vaildTools } from '../tools';
-import { mockFetch } from '../utils';
 import { Anthropic } from './anthropic';
 import { AzureChatAI, AzureImageAI } from './azure';
 import { Cohere } from './cohere';
@@ -208,21 +207,18 @@ export async function createLlmModel(model: string, context: AgentUserConfig) {
                 baseURL: context.OPENAI_API_BASE,
                 apiKey: context.OPENAI_API_KEY[Math.floor(Math.random() * context.OPENAI_API_KEY.length)],
                 compatibility: 'strict',
-                fetch: mockFetch(model_id, context.PARAMS_MODIFIER, context.OPENAI_API_EXTRA_PARAMS, relay),
             }).languageModel(model_id);
         case 'claude':
         case 'anthropic':
             return createAnthropic({
                 baseURL: context.ANTHROPIC_API_BASE,
                 apiKey: context.ANTHROPIC_API_KEY || undefined,
-                fetch: mockFetch(model_id, context.PARAMS_MODIFIER, context.ANTHROPIC_API_EXTRA_PARAMS),
             }).languageModel(model_id);
         case 'google':
         case 'gemini':
             return createGoogleGenerativeAI({
                 baseURL: context.GOOGLE_API_BASE,
                 apiKey: context.GOOGLE_API_KEY || undefined,
-                fetch: mockFetch(model_id, context.PARAMS_MODIFIER, context.GOOGLE_API_EXTRA_PARAMS),
             }).languageModel(model_id, {
                 safetySettings: GOOGLE_SAFETY,
                 useSearchGrounding: context.SEARCH_GROUNDING,
@@ -231,7 +227,6 @@ export async function createLlmModel(model: string, context: AgentUserConfig) {
             return createCohere({
                 baseURL: context.COHERE_API_BASE,
                 apiKey: context.COHERE_API_KEY || undefined,
-                fetch: mockFetch(model_id, context.PARAMS_MODIFIER),
             }).languageModel(model_id);
         case 'vertex':
             if (isCfWorker)
@@ -243,7 +238,6 @@ export async function createLlmModel(model: string, context: AgentUserConfig) {
                 googleAuthOptions: {
                     credentials: context.VERTEX_CREDENTIALS,
                 },
-                fetch: mockFetch(model_id, context.PARAMS_MODIFIER, context.GOOGLE_API_EXTRA_PARAMS),
             }).languageModel(model_id, {
                 safetySettings: GOOGLE_SAFETY,
                 useSearchGrounding: context.SEARCH_GROUNDING,
@@ -252,7 +246,6 @@ export async function createLlmModel(model: string, context: AgentUserConfig) {
             return createXai({
                 baseURL: context.XAI_API_BASE,
                 apiKey: context.XAI_API_KEY || undefined,
-                fetch: mockFetch(model_id, context.PARAMS_MODIFIER),
             }).languageModel(model_id);
         case 'oailike':
             const relayKey = Object.keys(context.OAILIKE_RELAY_TOOLS).find(key => model_id.includes(key));
@@ -271,7 +264,6 @@ export async function createLlmModel(model: string, context: AgentUserConfig) {
                 }),
                 defaultObjectGenerationMode: 'json',
                 metadataExtractor: extraMetadataExtractor(model_id),
-                fetch: mockFetch(model_id, context.PARAMS_MODIFIER, context.OAILIKE_API_EXTRA_PARAMS, relay),
             });
     }
     // if (model.includes(':')) {

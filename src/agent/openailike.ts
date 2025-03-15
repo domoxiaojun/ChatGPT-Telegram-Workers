@@ -64,7 +64,7 @@ export class OpenAILikeImage extends OpenAILikeBase implements ImageAgent {
             model: context.OAILIKE_IMAGE_MODEL,
             // num_inference_steps: 10,
             batch_size: 4,
-            ...context.OAILIKE_EXTRA_PARAMS,
+            ...context.OAILIKE_API_EXTRA_PARAMS,
         };
         return requestText2Image(url, header, body, this.render);
     };

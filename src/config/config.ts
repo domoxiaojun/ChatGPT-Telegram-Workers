@@ -338,7 +338,7 @@ export class AnthropicConfig {
             temperature: 1,
             thinking: {
                 type: 'enabled',
-                budget_tokens: 4096,
+                budgetTokens: 4096,
             },
         },
     };

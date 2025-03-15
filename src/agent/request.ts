@@ -8,6 +8,7 @@ import { createLlmModel } from '.';
 import { ENV } from '../config/env';
 import { log } from '../log/logger';
 import { manualRequestTool } from '../tools';
+import { providerOptionsGenerator } from '../utils';
 import { AIMiddleware, metaDataExtractor } from './model_middleware';
 import { Stream } from './stream';
 
@@ -195,6 +196,7 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
         chatModel: model.modelId,
         messageInfo,
     });
+    const providerOptions = providerOptionsGenerator(model, context.PARAMS_MODIFIER, context[`${context.AI_CHAT_PROVIDER.toUpperCase()}_API_EXTRA_PARAMS` as keyof AgentUserConfig]);
     const hander_params = {
         model: wrapLanguageModel({
             model: activeTools?.length ? await createLlmModel(context.TOOL_MODEL, context) : model,
@@ -208,58 +210,27 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
         tools,
         maxTokens: context.MAX_TOKENS,
         activeTools,
+        providerOptions,
         onStepFinish: middleware.onStepFinish as (data: StepResult<any>) => void,
     };
     let responseMessages: ResponseMessage[] = [];
     let contentFull = '';
     const errorReferencer = [false];
 
-    if (onStream !== null /* && params.model.modelId !== 'gpt-4o-audio-preview' */) {
+    if (onStream !== null && providerOptions[model.provider]?.stream !== false) {
         // const stream = streamText({ ...hander_params, ...mockParams(middleware) });
         const stream = streamText({
             ...hander_params,
             onChunk: middleware.onChunk as (data: any) => void,
         });
-        const contentExtractor = (() => {
-            let thinkingStart = false;
-            let thinkingEnd = false;
-            let thinkingStartTime: undefined | number;
-            const thinkingTag = '>`Thinking\\.\\.\\.`';
-            return (data: TextStreamPart<any>) => {
-                switch (data.type) {
-                    case 'reasoning':
-                        if (!thinkingStart) {
-                            thinkingStart = true;
-                            thinkingStartTime = Date.now();
-                            // thinking转为引用
-                            return `${thinkingTag}\n>${data.textDelta.replace(/\n/g, '\n>')}`;
-                        }
-                        return data.textDelta.replace(/\n/g, '\n>');
-                    case 'text-delta':
-                    case 'step-finish':
-                    case 'finish':
-                        if (thinkingStart && !thinkingEnd) {
-                            thinkingEnd = true;
-                            const thinkingTime = ((Date.now() - thinkingStartTime!) / 1e3).toFixed(1);
-                            messageInfo.content = messageInfo.content
-                                .replace(thinkingTag, `>\`Thought for ${thinkingTime} seconds\``);
-                            return `\n>✹\n${data.type === 'text-delta' ? data.textDelta : ''}`;
-                        }
-                        return data.type === 'text-delta' ? data.textDelta : '';
-                    case 'error':
-                        throw data.error;
-                    default:
-                        return '';
-                }
-            };
-        })();
 
+        const contentExtractor = thinkingExtractor(messageInfo);
         contentFull = await streamHandler(stream.fullStream, contentExtractor, onStream, messageInfo, errorReferencer);
         responseMessages = errorReferencer[0] ? [{ role: 'assistant', content: contentFull }] : (await stream.response).messages;
         contentFull = errorReferencer[0] ? contentFull : metaDataExtractor(await stream.providerMetadata, model.provider, contentFull);
     } else {
         const result = await generateText(hander_params);
-        contentFull = `${result.reasoning ? `>\`Thinking\`\n>${result.reasoning.replace(/\n/g, '\n>')}\n\n` : ''}${result.text}`;
+        contentFull = `${result.reasoning ? `>\`Thought for several seconds\`\n>${result.reasoning.replace(/\n/g, '\n>')}\n>✹\n` : ''}${result.text}`;
         responseMessages = result.response.messages;
         contentFull = metaDataExtractor(await result.providerMetadata, model.provider, contentFull);
     }
@@ -271,23 +242,30 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
         }
         await manualRequestTool(responseMessages, context);
     } catch (e) {
-        if (contentFull.trim() === '') {
-            throw e;
-        }
-        log.error((e as Error).message, (e as Error).stack);
-        responseMessages.push({
-            role: 'tool',
-            content: [{
-                type: 'tool-result',
-                toolCallId: 'tool-call-id',
-                toolName: 'tool-name',
-                result: {
-                    result: `\`\`\`Error\n${(e as Error).message}\n\`\`\``,
-                },
-            }],
-        });
+        streamErrorHandler(e as Error, contentFull, responseMessages);
     }
+    return toolResultExtractor(responseMessages, contentFull);
+}
 
+function streamErrorHandler(e: Error, contentFull: string, responseMessages: ResponseMessage[]) {
+    if (contentFull.trim() === '') {
+        throw e;
+    }
+    log.error((e as Error).message, (e as Error).stack);
+    responseMessages.push({
+        role: 'tool',
+        content: [{
+            type: 'tool-result',
+            toolCallId: 'tool-call-id',
+            toolName: 'tool-name',
+            result: {
+                result: `\`\`\`Error\n${(e as Error).message}\n\`\`\``,
+            },
+        }],
+    });
+}
+
+function toolResultExtractor(responseMessages: ResponseMessage[], contentFull: string) {
     return {
         messages: responseMessages.map(({ role, content }) => {
             if (role === 'tool') {
@@ -300,5 +278,39 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
             return { role, content };
         }) as ResponseMessage[],
         content: contentFull,
+    };
+}
+
+function thinkingExtractor(messageInfo: MessageInfo) {
+    let thinkingStart = false;
+    let thinkingEnd = false;
+    let thinkingStartTime: undefined | number;
+    const thinkingTag = '>`Thinking\\.\\.\\.`';
+    return (data: TextStreamPart<any>) => {
+        switch (data.type) {
+            case 'reasoning':
+                if (!thinkingStart) {
+                    thinkingStart = true;
+                    thinkingStartTime = Date.now();
+                    // thinking转为引用
+                    return `${thinkingTag}\n>${data.textDelta.replace(/\n/g, '\n>')}`;
+                }
+                return data.textDelta.replace(/\n/g, '\n>');
+            case 'text-delta':
+            case 'step-finish':
+            case 'finish':
+                if (thinkingStart && !thinkingEnd) {
+                    thinkingEnd = true;
+                    const thinkingTime = ((Date.now() - thinkingStartTime!) / 1e3).toFixed(1);
+                    messageInfo.content = messageInfo.content
+                        .replace(thinkingTag, `>\`Thought for ${thinkingTime} seconds\``);
+                    return `\n>✹\n${data.type === 'text-delta' ? data.textDelta : ''}`;
+                }
+                return data.type === 'text-delta' ? data.textDelta : '';
+            case 'error':
+                throw data.error;
+            default:
+                return '';
+        }
     };
 }

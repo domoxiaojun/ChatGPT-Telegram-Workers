@@ -1,17 +1,19 @@
 /* eslint-disable no-case-declarations */
 
-export function paramsModifier(model: string, body: Record<string, any>, modifier: string[], extraParams: Record<string, Record<string, any>>) {
+import type { LanguageModelV1 } from '@ai-sdk/provider';
+
+export function paramsModifier(model: string, options: Record<string, any>, modifier: string[], extraParams: Record<string, Record<string, any>>) {
     // 处理 extraParams
     for (const [models, params] of Object.entries(extraParams)) {
         if (models.includes(model) || models.includes('*')) {
             Object.entries(params).forEach(([key, value]) => {
-                body[key] = value;
+                options[key] = value;
             });
             break;
         }
     }
     if (modifier.length === 0) {
-        return body;
+        return options;
     }
 
     const valueParser = (text: string) => {
@@ -45,13 +47,13 @@ export function paramsModifier(model: string, body: Record<string, any>, modifie
                 switch (text[0]) {
                     case '+':
                         const [key, value] = text.slice(1).split('=');
-                        body[key] = valueParser(value);
+                        options[key] = valueParser(value);
                         break;
                     case '-':
-                        delete body[text.slice(1)];
+                        options[text.slice(1)] = undefined;
                         break;
                     default:
-                        // delete body[text];
+                        // options[text] = undefined;
                         break;
                 }
             });
@@ -59,22 +61,17 @@ export function paramsModifier(model: string, body: Record<string, any>, modifie
         }
     }
 
-    return body;
+    return options;
 }
 
-export function mockFetch(model: string, PARAMS_MODIFIER: string[], extraParams: Record<string, Record<string, any>> = {}, relay?: { tools: { type: string; function: { name: string } }[]; params: Record<string, any> }) {
-    return (url: RequestInfo | URL, options?: RequestInit) => {
-        const body = JSON.parse(options?.body as string);
-        if (relay && relay.tools.length > 0) {
-            body.tools = relay.tools;
-        }
-        if (relay && Object.keys(relay.params).length > 0) {
-            Object.assign(body, relay.params);
-        }
-        paramsModifier(model, body, PARAMS_MODIFIER, extraParams);
-        return fetch(url, {
-            ...options,
-            body: JSON.stringify(body),
-        });
-    };
+export function providerOptionsGenerator(model: LanguageModelV1, PARAMS_MODIFIER: string[], EXTRA_PARAMS: Record<string, Record<string, any>>, relay?: { tools: { type: string; function: { name: string } }[]; params: Record<string, any> }) {
+    const options: Record<string, any> = {};
+    if (relay && relay.tools.length > 0) {
+        options.tools = relay.tools;
+    }
+    if (relay && Object.keys(relay.params).length > 0) {
+        Object.assign(options, relay.params);
+    }
+    paramsModifier(model.modelId, options, PARAMS_MODIFIER, EXTRA_PARAMS);
+    return { [model.provider.split('.')[0]]: options };
 }

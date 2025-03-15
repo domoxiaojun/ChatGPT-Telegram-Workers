@@ -1,11 +1,9 @@
 import type { CoreUserMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ASRAgent, ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage, TTSAgent } from './types';
-import { createOpenAI } from '@ai-sdk/openai';
-import { warpLLMParams } from '.';
+import { createLlmModel, warpLLMParams } from '.';
 import { Log } from '../log/logDecortor';
 import { log } from '../log/logger';
-import { paramsModifier } from '../utils';
 import { requestText2Image } from './chat';
 import { requestChatCompletionsV2 } from './request';
 
@@ -38,72 +36,14 @@ export class OpenAI extends OpenAIBase implements ChatAgent {
     };
 
     readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> => {
-        const userMessage = params.messages.at(-1) as CoreUserMessage;
-        const originalModel = this.model(context, userMessage);
-        const provider = createOpenAI({
-            baseURL: context.OPENAI_API_BASE,
-            apiKey: this.apikey(context),
-            compatibility: 'strict',
-            fetch: this.fetch(context),
-        });
-
-        const languageModelV1 = provider.languageModel(originalModel, undefined);
-        const newOnStream = this.streamHandle(originalModel, context, onStream);
+        const modelId = this.model(context, params.messages.at(-1) as CoreUserMessage);
+        const model = await createLlmModel(modelId, context);
 
         return requestChatCompletionsV2(await warpLLMParams({
-            model: languageModelV1,
+            model,
             messages: params.messages,
-        }, context), newOnStream);
+        }, context), onStream);
     };
-
-    readonly streamHandle = (model: string, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): any => {
-        if (Object.keys(context.DROPS_OPENAI_PARAMS).length > 0) {
-            for (const [model_perfix, params] of Object.entries(context.DROPS_OPENAI_PARAMS)) {
-                if (model_perfix.split(',').some(p => model.startsWith(p))) {
-                    params.split(',').includes('stream') && (onStream = null);
-                    break;
-                }
-            }
-        }
-        return onStream;
-    };
-
-    readonly paramsHandle = (model: string, body: any, context: AgentUserConfig): any => {
-        paramsModifier(model, body, context.PARAMS_MODIFIER, context.OPENAI_API_EXTRA_PARAMS);
-        // cover message role
-        if (context.COVER_MESSAGE_ROLE) {
-            for (const [models, roles] of Object.entries(context.COVER_MESSAGE_ROLE)) {
-                const [oldRole, newRole] = roles.split(':');
-                if (models.split(',').some(p => model.startsWith(p))) {
-                    body.messages = body.messages.map((m: any) => {
-                        m.role = m.role === oldRole ? newRole : m.role;
-                        return m;
-                    });
-                }
-            }
-        }
-        // add reasoning effort
-        if (context.OPENAI_REASONING_EFFORT && body.model.startsWith('o1')) {
-            body.reasoning_effort = context.OPENAI_REASONING_EFFORT;
-        }
-    };
-
-    readonly fetch = (context: AgentUserConfig) =>
-        async (url: RequestInfo | URL, options?: RequestInit): Promise<Response> => {
-            const body = JSON.parse(options?.body as string);
-            // if (body?.model.startsWith(OpenAI.transformModelPerfix)) {
-            //     body.model = body.model.slice(OpenAI.transformModelPerfix.length);
-            // }
-            // if (body.model === 'gpt-4o-audio-preview') {
-            //     body.modalities = ['text', 'audio'];
-            //     body.audio = { voice: 'alloy', format: 'opus' };
-            // }
-            this.paramsHandle(body.model, body, context);
-            return fetch(url, {
-                ...options,
-                body: JSON.stringify(body),
-            });
-        };
 }
 
 export class Dalle extends OpenAIBase implements ImageAgent {
