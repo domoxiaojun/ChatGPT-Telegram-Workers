@@ -32,21 +32,21 @@ export async function createLlmModel(model: string, context: AgentUserConfig) {
                 baseURL: context.OPENAI_API_BASE,
                 apiKey: context.OPENAI_API_KEY[Math.floor(Math.random() * context.OPENAI_API_KEY.length)],
                 compatibility: 'strict',
-                fetch: mockFetch(model_id, context),
+                fetch: mockFetch(model_id, context, agent),
             }).languageModel(model_id);
         case 'claude':
         case 'anthropic':
             return createAnthropic({
                 baseURL: context.ANTHROPIC_API_BASE,
                 apiKey: context.ANTHROPIC_API_KEY || undefined,
-                fetch: mockFetch(model_id, context),
+                fetch: mockFetch(model_id, context, agent),
             }).languageModel(model_id);
         case 'google':
         case 'gemini':
             return createGoogleGenerativeAI({
                 baseURL: context.GOOGLE_API_BASE,
                 apiKey: context.GOOGLE_API_KEY || undefined,
-                fetch: mockFetch(model_id, context),
+                fetch: mockFetch(model_id, context, agent),
             }).languageModel(model_id, {
                 safetySettings: GOOGLE_SAFETY,
                 useSearchGrounding: context.SEARCH_GROUNDING,
@@ -55,7 +55,7 @@ export async function createLlmModel(model: string, context: AgentUserConfig) {
             return createCohere({
                 baseURL: context.COHERE_API_BASE,
                 apiKey: context.COHERE_API_KEY || undefined,
-                fetch: mockFetch(model_id, context),
+                fetch: mockFetch(model_id, context, agent),
             }).languageModel(model_id);
         case 'vertex':
             if (isCfWorker)
@@ -67,7 +67,7 @@ export async function createLlmModel(model: string, context: AgentUserConfig) {
                 googleAuthOptions: {
                     credentials: context.VERTEX_CREDENTIALS,
                 },
-                fetch: mockFetch(model_id, context),
+                fetch: mockFetch(model_id, context, agent),
             }).languageModel(model_id, {
                 safetySettings: GOOGLE_SAFETY,
                 useSearchGrounding: context.SEARCH_GROUNDING,
@@ -76,7 +76,7 @@ export async function createLlmModel(model: string, context: AgentUserConfig) {
             return createXai({
                 baseURL: context.XAI_API_BASE,
                 apiKey: context.XAI_API_KEY || undefined,
-                fetch: mockFetch(model_id, context),
+                fetch: mockFetch(model_id, context, agent),
             }).languageModel(model_id);
         case 'oailike':
         default:
@@ -88,7 +88,7 @@ export async function createLlmModel(model: string, context: AgentUserConfig) {
                 }),
                 defaultObjectGenerationMode: 'json',
                 metadataExtractor: extraMetadataExtractor(model_id),
-                fetch: mockFetch(model_id, context),
+                fetch: mockFetch(model_id, context, agent),
             });
     }
     // if (model.includes(':')) {
@@ -216,32 +216,35 @@ export function paramsModifier(model: string, options: Record<string, any>, modi
     return options;
 }
 
-function mockParams(modelId: string, config: AgentUserConfig) {
+function mockParams(modelId: string, config: AgentUserConfig, provider: string) {
     const extraParams = config[`${config.AI_CHAT_PROVIDER.toUpperCase()}_API_EXTRA_PARAMS` as keyof AgentUserConfig];
     const { PARAMS_MODIFIER: modifier, OAILIKE_RELAY_TOOLS: relayTools, USE_OAILIKE_RELAY_TOOLS: relayToolsList } = config;
 
     const options: Record<string, any> = {};
-    const relayKey = Object.keys(relayTools).find(key => modelId.includes(key));
-    if (relayKey) {
-        options.tools = relayTools[relayKey].filter(t => relayToolsList.includes(t)).map(t => ({
-            type: 'function',
-            function: { name: t },
-        }));
+    if (provider === 'oailike') {
+        const relayKey = Object.keys(relayTools).find(key => modelId.includes(key));
+        if (relayKey) {
+            options.tools = relayTools[relayKey].filter(t => relayToolsList.includes(t)).map(t => ({
+                type: 'function',
+                function: { name: t },
+            }));
+        }
     }
-
-    const searchModelRegex = /gpt-4o-(?:mini-)?search/;
-    if (searchModelRegex.test(modelId)) {
-        options.web_search_options = {};
+    if (provider === 'openai') {
+        const searchModelRegex = /gpt-4o-(?:mini-)?search/;
+        if (searchModelRegex.test(modelId)) {
+            options.web_search_options = {};
+        }
     }
 
     paramsModifier(modelId, options, modifier, extraParams);
     return options;
 }
 
-function mockFetch(modelId: string, context: AgentUserConfig) {
+function mockFetch(modelId: string, context: AgentUserConfig, provider: string) {
     return (url: RequestInfo | URL, options?: RequestInit) => {
         const body = JSON.parse(options?.body as string) || {};
-        const params = mockParams(modelId, context);
+        const params = mockParams(modelId, context, provider);
         Object.assign(body, params);
         return fetch(url, {
             ...options,
