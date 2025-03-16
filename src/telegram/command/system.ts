@@ -21,7 +21,7 @@ import { createTelegramBotAPI } from '../api';
 import { chatWithLLM, OnStreamHander, sendImages } from '../handler/chat';
 import { escape } from '../utils/md2tgmd';
 import { checkIsNeedTagIds, sendAction } from '../utils/send';
-import { chunkArray, getTelegramFile, isCfWorker, isTelegramChatTypeGroup, UUIDv4 } from '../utils/utils';
+import { chunkArray, getTelegramFile, isCfWorker, isTelegramChatTypeGroup, UUIDv4 } from '../utils/tg_utils';
 
 export const COMMAND_AUTH_CHECKER = {
     default(chatType: string): string[] | null {

@@ -8,7 +8,7 @@ import { log } from '../../log/logger';
 import { createTelegramBotAPI } from '../api';
 import md2node from './md2node';
 import { chunkDocument, escape } from './md2tgmd';
-import { waitUntil } from './utils';
+import { waitUntil } from './tg_utils';
 
 class MessageContext implements Record<string, any> {
     chat_id: number;

@@ -1,9 +1,7 @@
 /* eslint-disable no-case-declarations */
 /* eslint-disable unused-imports/no-unused-vars */
-import type { MetadataExtractor } from '@ai-sdk/openai-compatible';
 import type { LanguageModelV1ToolCallPart, LanguageModelV1ToolResultPart } from '@ai-sdk/provider';
-import type { LanguageModelV1, LanguageModelV1CallOptions, LanguageModelV1Middleware, LanguageModelV1Prompt, StepResult, TextStreamPart } from 'ai';
-import type { ToolChoice } from '.';
+import type { CoreMessage, CoreUserMessage, LanguageModelV1, LanguageModelV1CallOptions, LanguageModelV1Middleware, LanguageModelV1Prompt, StepResult, TextStreamPart } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ChatStreamTextHandler } from './types';
 import {
@@ -11,7 +9,7 @@ import {
 } from 'ai';
 import { getLogSingleton } from '../log/logDecortor';
 import { log } from '../log/logger';
-import { tools } from '../tools';
+import { tools, vaildTools } from '../tools';
 
 type Writeable<T> = { -readonly [P in keyof T]: T[P] };
 export interface MessageInfo {
@@ -190,6 +188,78 @@ function warpModel(model: LanguageModelV1, config: AgentUserConfig, activeTools:
     }
 }
 
+export async function warpLLMParams(params: { messages: CoreMessage[]; model: LanguageModelV1; cache?: string[] }, context: AgentUserConfig) {
+    const tool_envs: Record<string, any> = { ...(context.JINA_API_KEY && { JINA_API_KEY: context.JINA_API_KEY[Math.floor(Math.random() * context.JINA_API_KEY.length)] }) };
+
+    const env_perfix = 'TOOL_ENV_';
+    Object.keys(context).forEach(i => i.startsWith(env_perfix) && (tool_envs[i.substring(env_perfix.length - 1)] = context[i]));
+
+    const messages = params.messages.at(-1) as CoreUserMessage;
+    let tool = typeof messages.content === 'string'
+        ? await vaildTools(context.USE_TOOLS)
+        : undefined;
+
+    const activeTools = tool?.activeToolAlias.map(t => tools[t].schema.name) || [];
+    // if vertex use search grounding, do not use other tools
+    if (params.model.provider === 'google-vertex' && context.SEARCH_GROUNDING) {
+        activeTools.length = 0;
+        tool = undefined;
+        // only use first system message and last user message
+        params.messages = [params.messages.find(p => p.role === 'system')!, params.messages.findLast(p => p.role === 'user')!];
+    }
+
+    let toolChoice;
+    if (tool?.activeToolAlias && tool?.activeToolAlias.length > 0) {
+        const userMessageIsString = typeof messages.content === 'string';
+        const choiceResult = wrapToolChoice(tool?.activeToolAlias, userMessageIsString ? messages.content as string : '');
+        userMessageIsString && (messages.content = choiceResult.message);
+        toolChoice = choiceResult.toolChoices;
+    }
+
+    log.info(`[warpLLMParams] activeTools: ${activeTools}`);
+
+    return {
+        model: params.model,
+        messages: params.messages,
+        cache: params.cache,
+        tools: tool?.tools,
+        activeTools,
+        toolChoice,
+        context,
+    };
+}
+
+export type ToolChoice = { type: 'auto' | 'none' | 'required' } | { type: 'tool'; toolName: string };
+
+function wrapToolChoice(activeToolAlias: string[], message: string): {
+    message: string;
+    toolChoices: ToolChoice[] | [];
+} {
+    const tool_perfix = '/t-';
+    let text = message.trim();
+    const choices = ['auto', 'none', 'required', ...activeToolAlias];
+    const toolChoices = [];
+    while (true) {
+        const toolAlias = choices.find(t => text.startsWith(`${tool_perfix}${t}`)) || '';
+        if (toolAlias) {
+            text = text.substring(tool_perfix.length + toolAlias.length).trim();
+            const choice = ['auto', 'none', 'required'].includes(toolAlias)
+                ? { type: toolAlias as 'auto' | 'none' | 'required' }
+                : { type: 'tool', toolName: tools[toolAlias].schema.name };
+            toolChoices.push(choice);
+        } else {
+            break;
+        }
+    }
+
+    log.info(`All RealtoolChoices: ${JSON.stringify(toolChoices)}`);
+
+    return {
+        message: text,
+        toolChoices: toolChoices as ToolChoice[],
+    };
+}
+
 function trimActiveTools(activeTools: string[], toolNames: string[]) {
     return activeTools.length > 0 ? activeTools.filter(name => !toolNames.includes(name)) : [];
 }
@@ -268,45 +338,4 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
         default:
             return content;
     }
-}
-
-export function extraMetadataExtractor(modelId: string): MetadataExtractor | undefined {
-    const pplxModelPerfix = 'sonar';
-    const openaiSearchModelRegex = /gpt-4o-(?:mini-)?search/;
-    const type = openaiSearchModelRegex.test(modelId)
-        ? 'openai'
-        : modelId.startsWith(pplxModelPerfix)
-            ? 'pplx'
-            : undefined;
-    if (!type) {
-        return;
-    }
-    return {
-        extractMetadata: ({ parsedBody }: { parsedBody: unknown }) => {
-            const body = parsedBody as Record<string, any>;
-            return {
-                [type]: {
-                    citations: body.citations || body.choices[0]?.delta?.annotations,
-                },
-            };
-        },
-        createStreamExtractor: () => {
-            const citations: string[] = [];
-            return {
-                processChunk: (parsedChunk: Record<string, any>) => {
-                    const c = type === 'pplx'
-                        ? parsedChunk.citations
-                        : parsedChunk.choices[0]?.delta?.annotations;
-                    if (c && c.length > 0) {
-                        citations.push(...c);
-                    }
-                },
-                buildMetadata: () => ({
-                    [type]: {
-                        citations,
-                    },
-                }),
-            };
-        },
-    };
 }

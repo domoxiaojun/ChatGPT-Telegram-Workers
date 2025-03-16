@@ -1,6 +1,6 @@
 import type * as Telegram from 'telegram-bot-api-types';
 import type { WorkerContextBase } from '../../config/context';
-import type { UnionData } from '../utils/utils';
+import type { UnionData } from '../utils/tg_utils';
 import type { MessageHandler } from './types';
 import { WorkerContext } from '../../config/context';
 import { ENV } from '../../config/env';
@@ -11,7 +11,7 @@ import { createTelegramBotAPI } from '../api';
 import { handleCommandMessage } from '../command';
 import { isAuthorized } from '../query';
 import { MessageSender } from '../utils/send';
-import { extractMessageInfo, isTelegramChatTypeGroup } from '../utils/utils';
+import { extractMessageInfo, isTelegramChatTypeGroup } from '../utils/tg_utils';
 import { substituteMessage } from './replacer';
 
 export class SaveLastMessage implements MessageHandler<WorkerContextBase> {

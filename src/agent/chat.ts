@@ -2,7 +2,7 @@
 import type { CoreMessage } from 'ai';
 import type { WorkerContext } from '../config/context';
 import type { AgentUserConfig } from '../config/env';
-import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, HistoryItem, HistoryModifier, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
+import type { ChatAgent, ChatStreamTextHandler, HistoryItem, HistoryModifier, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
 import { loadChatLLM } from '.';
 import { ENV } from '../config/env';
 import { log } from '../log/logger';
@@ -85,20 +85,6 @@ export async function requestCompletionsFromLLM(params: LLMChatRequestParams | n
         await storeHistory(history, context);
     }
     return answer;
-}
-
-export async function requestText2Image(url: string, headers: Record<string, any>, body: any, render: (arg: Response | GeneratedImage[] | string[], prompt: string) => Promise<ImageResult>) {
-    console.log('start generate image.');
-    const resp = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-    });
-    const result = await render(resp, body.prompt);
-    if (result.message) {
-        throw new Error(result.message);
-    }
-    return result;
 }
 
 export async function storeHistory(history: CoreMessage[], context: WorkerContext) {

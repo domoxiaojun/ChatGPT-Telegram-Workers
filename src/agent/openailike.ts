@@ -1,10 +1,11 @@
 import type { CoreUserMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ASRAgent, ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
-import { createLlmModel, warpLLMParams } from '.';
 import { Log } from '../log/logDecortor';
 import { log } from '../log/logger';
-import { requestText2Image } from './chat';
+import { requestText2Image } from './image';
+import { createLlmModel } from './llm';
+import { warpLLMParams } from './model_middleware';
 import { requestChatCompletionsV2 } from './request';
 
 export class OpenAILikeBase {

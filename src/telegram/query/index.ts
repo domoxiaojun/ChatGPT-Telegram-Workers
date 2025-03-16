@@ -1,3 +1,3 @@
-export * from './callbackQuery';
+export * from './callback_query';
 export * from './context';
-export * from './inlineQuery';
+export * from './inline_query';

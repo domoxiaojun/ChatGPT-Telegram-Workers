@@ -14,7 +14,7 @@ import { InlineCommandHandler } from '../command/system';
 import { catchError } from '../handler';
 import { EnvChecker, InitUserConfig } from '../handler/handlers';
 import { escape } from '../utils/md2tgmd';
-import { chunkArray } from '../utils/utils';
+import { chunkArray } from '../utils/tg_utils';
 import { CallbackQueryContext } from './context';
 
 class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext> {

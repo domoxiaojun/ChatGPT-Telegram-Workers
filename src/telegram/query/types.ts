@@ -1,5 +1,5 @@
 import type * as Telegram from 'telegram-bot-api-types';
-import type { UnionData } from '../utils/utils';
+import type { UnionData } from '../utils/tg_utils';
 
 export interface CallbackQueryHandler<Ctx = any> {
     handle: (message: Telegram.CallbackQuery, context: Ctx) => Promise<Response | UnionData | null>;

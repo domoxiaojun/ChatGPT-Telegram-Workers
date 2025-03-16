@@ -5,7 +5,7 @@ import type { ChatStreamTextHandler, HistoryModifier, ImageResult, LLMChatReques
 import type { WorkerContext } from '../../config/context';
 import type { AgentUserConfig } from '../../config/env';
 import type { ChosenInlineSender } from '../utils/send';
-import type { UnionData } from '../utils/utils';
+import type { UnionData } from '../utils/tg_utils';
 import type { MessageHandler } from './types';
 import { APICallError } from 'ai';
 import { loadASRLLM, loadChatLLM, loadImageGen, loadTTSLLM } from '../../agent';
@@ -19,7 +19,7 @@ import { convertOgaToMp3 } from '../../utils/others/audio';
 import { createTelegramBotAPI } from '../api';
 import { escape } from '../utils/md2tgmd';
 import { MessageSender, sendAction, TelegraphSender } from '../utils/send';
-import { getTelegramFile, waitUntil } from '../utils/utils';
+import { getTelegramFile, waitUntil } from '../utils/tg_utils';
 
 async function messageInitialize(sender: MessageSender, context?: WorkerContext, message?: Telegram.Message): Promise<ChatStreamTextHandler> {
     setTimeout(() => sendAction(sender.api.token, sender.context.chat_id, 'typing'), 0);

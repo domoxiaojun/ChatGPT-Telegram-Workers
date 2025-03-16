@@ -1,7 +1,7 @@
 import type * as Telegram from 'telegram-bot-api-types';
 import type { HistoryItem } from '../agent/types';
 import type { MessageSender } from '../telegram/utils/send';
-import type { UnionData } from '../telegram/utils/utils';
+import type { UnionData } from '../telegram/utils/tg_utils';
 import type { AgentUserConfig } from './env';
 import { ENV } from './env';
 import { ConfigMerger } from './merger';

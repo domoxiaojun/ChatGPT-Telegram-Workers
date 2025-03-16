@@ -70,12 +70,12 @@ const escapeRegexpMatch = [
     },
     // item
     {
-        regex: /^(\x20*)\\(?:-|\*)\s+([^\n]*)$/gm,
+        regex: /^(>?\x20*)\\(?:-|\*)\s+([^\n]*)$/gm,
         value: '$1•\x20$2',
     },
     // number sign
     {
-        regex: /^(\x20*(?:\\#){1,6})\x20+([^\n]+)$/gm,
+        regex: /^(>?\x20*(?:\\#){1,6})\x20+([^\n]+)$/gm,
         value: '$1\x20*$2*',
     },
 ];

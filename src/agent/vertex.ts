@@ -3,9 +3,10 @@ import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, GoogleVertexImageModelId, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
 import { createVertex } from '@ai-sdk/google-vertex';
 import { experimental_generateImage as generateImage } from 'ai';
-import { createLlmModel, warpLLMParams } from '.';
 import { Log } from '../log/logDecortor';
 import { handleUrl } from './google';
+import { createLlmModel } from './llm';
+import { warpLLMParams } from './model_middleware';
 import { requestChatCompletionsV2 } from './request';
 
 class VertexBase {

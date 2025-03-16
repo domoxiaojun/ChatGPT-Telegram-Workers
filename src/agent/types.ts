@@ -1,7 +1,7 @@
 import type { CoreAssistantMessage, CoreMessage, CoreToolMessage, CoreUserMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { MessageSender } from '../telegram/utils/send';
-import type { UnionData } from '../telegram/utils/utils';
+import type { UnionData } from '../telegram/utils/tg_utils';
 
 export interface OpenAIFuncCallData {
     // index: number;

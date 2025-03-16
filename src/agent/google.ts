@@ -1,9 +1,10 @@
 import type { CoreUserMessage, FilePart, ImagePart, UserContent } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
-import { createLlmModel, warpLLMParams } from '.';
 import { getLogSingleton, Log } from '../log/logDecortor';
 import { base64StringToBlob } from '../utils/image';
+import { createLlmModel } from './llm';
+import { warpLLMParams } from './model_middleware';
 import { requestChatCompletionsV2 } from './request';
 
 class GoogleBase {

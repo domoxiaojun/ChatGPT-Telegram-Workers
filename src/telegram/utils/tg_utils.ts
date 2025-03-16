@@ -119,10 +119,6 @@ export function chunkArray(arr: any[], size: number): any[][] {
     return result;
 }
 
-export async function waitUntil(timestamp: number) {
-    return new Promise(resolve => setTimeout(resolve, Math.max(0, timestamp - Date.now())));
-}
-
 export async function getTelegramFile(fileIds: string[], botToken: string, type: 'url' | 'blob' | 'base64' = 'url') {
     const api = createTelegramBotAPI(botToken);
     const files = await Promise.all(fileIds.map(id => api.getFileWithReturns({ file_id: id })));
@@ -150,3 +146,7 @@ export async function getTelegramFile(fileIds: string[], botToken: string, type:
 //     const fileIds = JSON.parse(await ENV.DATABASE.get(context.storeMediaMessageKey) || '{}');
 //     return fileIds[media_group_id] || [];
 // }
+
+export async function waitUntil(timestamp: number) {
+    return new Promise(resolve => setTimeout(resolve, Math.max(0, timestamp - Date.now())));
+}

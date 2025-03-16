@@ -1,7 +1,7 @@
 import type * as Telegram from 'telegram-bot-api-types';
 import type { WorkerContext } from '../../config/context';
 import type { RequestTemplate } from '../../plugins/template';
-import type { UnionData } from '../utils/utils';
+import type { UnionData } from '../utils/tg_utils';
 import type { CommandHandler } from './types';
 import { ENV } from '../../config/env';
 import { log } from '../../log/logger';

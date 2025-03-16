@@ -1,5 +1,5 @@
 import type * as Telegram from 'telegram-bot-api-types';
-import type { UnionData } from '../utils/utils';
+import type { UnionData } from '../utils/tg_utils';
 // import type { ShareContext } from '../../config/context';
 
 // 分离handler 仅shareContext

@@ -1,14 +1,12 @@
 import type { CoreMessage, LanguageModelV1, StepResult, TextStreamPart, ToolCallPart, ToolResultPart } from 'ai';
-import type { ToolChoice } from '.';
 import type { AgentUserConfig } from '../config/env';
-import type { MessageInfo } from './model_middleware';
+import type { MessageInfo, ToolChoice } from './model_middleware';
 import type { ChatStreamTextHandler, OpenAIFuncCallData, ResponseMessage } from './types';
 import { generateText, streamText, TypeValidationError, wrapLanguageModel } from 'ai';
-import { createLlmModel } from '.';
 import { ENV } from '../config/env';
 import { log } from '../log/logger';
 import { manualRequestTool } from '../tools';
-import { providerOptionsGenerator } from '../utils';
+import { createLlmModel } from './llm';
 import { AIMiddleware, metaDataExtractor } from './model_middleware';
 import { Stream } from './stream';
 
@@ -183,7 +181,7 @@ export async function streamHandler(stream: AsyncIterable<any>, contentExtractor
     return messageInfo.content;
 }
 
-export async function requestChatCompletionsV2({ model, messages, tools, activeTools, toolChoice, context, cache }: { model: LanguageModelV1; toolModel?: LanguageModelV1; prompt?: string; messages: CoreMessage[]; tools?: any; activeTools?: string[]; toolChoice?: ToolChoice[] | undefined; context: AgentUserConfig; cache?: string[] }, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> {
+export async function requestChatCompletionsV2({ model, messages, tools, activeTools, toolChoice, context, cache }: { model: LanguageModelV1; toolModel?: LanguageModelV1; prompt?: string; messages: CoreMessage[]; tools?: any; activeTools: string[]; toolChoice?: ToolChoice[] | undefined; context: AgentUserConfig; cache?: string[] }, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> {
     // 引入多轮对话 拼接提示
     const messageInfo: MessageInfo = {
         content: cache?.join() ?? '',
@@ -196,7 +194,7 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
         chatModel: model.modelId,
         messageInfo,
     });
-    const providerOptions = providerOptionsGenerator(model, context.PARAMS_MODIFIER, context[`${context.AI_CHAT_PROVIDER.toUpperCase()}_API_EXTRA_PARAMS` as keyof AgentUserConfig]);
+
     const hander_params = {
         model: wrapLanguageModel({
             model: activeTools?.length ? await createLlmModel(context.TOOL_MODEL, context) : model,
@@ -210,14 +208,13 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
         tools,
         maxTokens: context.MAX_TOKENS,
         activeTools,
-        providerOptions,
         onStepFinish: middleware.onStepFinish as (data: StepResult<any>) => void,
     };
     let responseMessages: ResponseMessage[] = [];
     let contentFull = '';
     const errorReferencer = [false];
 
-    if (onStream !== null && providerOptions[model.provider]?.stream !== false) {
+    if (onStream !== null) {
         // const stream = streamText({ ...hander_params, ...mockParams(middleware) });
         const stream = streamText({
             ...hander_params,

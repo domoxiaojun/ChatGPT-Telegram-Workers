@@ -1,12 +1,12 @@
 import type * as Telegram from 'telegram-bot-api-types';
 import type { WorkerContext } from '../../config/context';
-import type { UnionData } from '../utils/utils';
+import type { UnionData } from '../utils/tg_utils';
 import type { MessageHandler } from './types';
 import { ENV } from '../../config/env';
 import { log } from '../../log/logger';
 import { createTelegramBotAPI } from '../api';
 import { checkIsNeedTagIds } from '../utils/send';
-import { isTelegramChatTypeGroup } from '../utils/utils';
+import { isTelegramChatTypeGroup } from '../utils/tg_utils';
 
 function checkMention(content: string, entities: Telegram.MessageEntity[], botName: string, botId: number): {
     isMention: boolean;

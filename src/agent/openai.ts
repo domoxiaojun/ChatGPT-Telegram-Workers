@@ -1,10 +1,11 @@
 import type { CoreUserMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ASRAgent, ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage, TTSAgent } from './types';
-import { createLlmModel, warpLLMParams } from '.';
 import { Log } from '../log/logDecortor';
 import { log } from '../log/logger';
-import { requestText2Image } from './chat';
+import { requestText2Image } from './image';
+import { createLlmModel } from './llm';
+import { warpLLMParams } from './model_middleware';
 import { requestChatCompletionsV2 } from './request';
 
 export class OpenAIBase {
@@ -21,7 +22,6 @@ export class OpenAIBase {
 
 export class OpenAI extends OpenAIBase implements ChatAgent {
     readonly modelKey = 'OPENAI_CHAT_MODEL';
-    static readonly transformModelPerfix = 'TRANSFROM-';
 
     readonly model = (ctx: AgentUserConfig, params?: LLMChatRequestParams): string => {
         const msgType = Array.isArray(params?.content) ? params.content.at(-1)?.type : 'text';
