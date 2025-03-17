@@ -65,7 +65,7 @@ const escapeRegexpMatch = [
     // },
     // quote
     {
-        regex: /^\x20*\\>\x20*([^\n]*)$/gm,
+        regex: /^\x20*\\>\x20?([^\n]*)$/gm,
         value: '>$1',
     },
     // item
@@ -94,12 +94,12 @@ export function escape(text: string, expandParams: ExpandParams = { addQuote: fa
         lineTrim = line.trim();
         let startIndex: number | undefined;
         // if line starts with ```xx, push current line index to codeStack
-        if (/^```.+/.test(lineTrim)) {
+        if (/^>?```.+/.test(lineTrim)) {
             codeStack.push(i);
             if (textStartIndex < i) {
                 result.push(handleEscape(lines.slice(textStartIndex, i).join('\n'), 'text', expandParams));
             }
-        } else if (lineTrim === '```') {
+        } else if (/^>?```$/.test(lineTrim)) {
             // if line is ```, and codeStack is not empty, pop last element from codeStack
             if (codeStack.length > 0) {
                 startIndex = codeStack.pop();
@@ -142,18 +142,22 @@ function handleEscape(text: string, type: 'text' | 'code', { addQuote }: ExpandP
         Object.entries(markd).forEach(([key, value]) => {
             text = text.replace(key, value);
         });
-    } else if (!addQuote) {
+    } else {
+        // 清理代码块前多余空白符
         const codeBlank = text.length - text.trimStart().length;
         if (codeBlank > 0) {
             const blankReg = new RegExp(`^\\s{${codeBlank}}`, 'gm');
             text = text.replace(blankReg, '');
         }
-        text = text
-            .trimEnd()
-            .replace(/([\\`])/g, '\\$1')
-            .replace(reverseCodeRegexp, '```$1```'); // code block
-    } else {
-        text = text.replace(escapeChars, match => `\\${match}`);
+        // 非引用代码块
+        if ((!addQuote && !text.trimStart().startsWith('>'))) {
+            text = text
+                .trimEnd()
+                .replace(/([\\`])/g, '\\$1')
+                .replace(reverseCodeRegexp, '```$1```'); // code block
+        } else {
+            text = text.replace(escapeChars, match => `\\${match}`).replace(/^\\>/gm, '>');
+        }
     }
     text = quoteMessage(text, addQuote);
     return text.replace(
