@@ -327,19 +327,15 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
         const data = context && needLog ? mergeLogMessages(text, context.USER_CONFIG) : text;
         log.info(`sent message ids: ${isMessageSender ? sender.context.sentMessageIds : sender.context.inline_message_id}`);
         expandParams.addQuote = addQuotePrerequisites && data.length > ENV.ADD_QUOTE_LIMIT;
-        try {
-            while (true) {
+        let maxFetchFailedTimes = 3;
+        while (true) {
+            try {
                 const finalResp = await sender.sendRichText(data, undefined, 'chat', expandParams);
                 if (finalResp.status === 429) {
-                    const retryAfter = Number.parseInt(finalResp.headers.get('Retry-After') || '');
-                    if (retryAfter) {
-                        log.error(`Status 429, need wait: ${retryAfter}s`);
-                        await waitUntil(Date.now() + retryAfter * 1000 + 10);
-                        continue;
-                    } else {
-                        await waitUntil(Date.now() + 10_000);
-                        continue;
-                    }
+                    const retryAfter = Number.parseInt(finalResp.headers.get('Retry-After') || '') ?? 10;
+                    log.error(`Status 429, need wait: ${retryAfter}s`);
+                    await waitUntil(Date.now() + retryAfter * 1000 + 10);
+                    continue;
                 }
                 if (!finalResp.ok) {
                     (sender as MessageSender).context.sentMessageIds.length = 0;
@@ -348,13 +344,17 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
                     return;
                 }
                 return finalResp;
+            } catch (e) {
+                log.error((e as Error).stack);
+                if (e instanceof TypeError && e.message.includes('fetch failed')) {
+                    maxFetchFailedTimes--;
+                    if (maxFetchFailedTimes <= 0) {
+                        throw e;
+                    }
+                    continue;
+                }
+                throw e;
             }
-        } catch (e) {
-            log.error((e as Error).stack);
-            if (e instanceof TypeError && e.message.includes('fetch failed')) {
-                return new Response('fetch failed');
-            }
-            throw e;
         }
     };
 
