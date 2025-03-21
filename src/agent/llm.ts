@@ -115,15 +115,10 @@ export async function createLlmModel(model: string, context: AgentUserConfig) {
 
 function extraMetadataExtractor(modelId: string): MetadataExtractor | undefined {
     const pplxModelPerfix = 'sonar';
-    const openaiSearchModelRegex = /gpt-4o-(?:mini-)?search/;
-    const type = openaiSearchModelRegex.test(modelId)
-        ? 'openai'
-        : modelId.startsWith(pplxModelPerfix)
-            ? 'pplx'
-            : undefined;
-    if (!type) {
-        return;
-    }
+    // const openaiSearchModelRegex = /gpt-4o-(?:mini-)?search/;
+    const type = modelId.startsWith(pplxModelPerfix)
+        ? 'pplx'
+        : 'openai';
     return {
         extractMetadata: ({ parsedBody }: { parsedBody: unknown }) => {
             const body = parsedBody as Record<string, any>;
@@ -137,6 +132,9 @@ function extraMetadataExtractor(modelId: string): MetadataExtractor | undefined 
             const citations: string[] = [];
             return {
                 processChunk: (parsedChunk: Record<string, any>) => {
+                    if (citations.length > 0) {
+                        return;
+                    }
                     const c = type === 'pplx'
                         ? parsedChunk.citations
                         : parsedChunk.choices[0]?.delta?.annotations;
