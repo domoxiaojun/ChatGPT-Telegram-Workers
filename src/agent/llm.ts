@@ -1,5 +1,6 @@
 /* eslint-disable no-case-declarations */
 import type { MetadataExtractor } from '@ai-sdk/openai-compatible';
+import type { LanguageModelV1 } from '@ai-sdk/provider';
 import type { AgentUserConfig } from '../config/types';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createCohere } from '@ai-sdk/cohere';
@@ -9,7 +10,7 @@ import { OpenAICompatibleChatLanguageModel } from '@ai-sdk/openai-compatible';
 import { createXai } from '@ai-sdk/xai';
 import { isCfWorker } from '../telegram/utils/tg_utils';
 
-export async function createLlmModel(model: string, context: AgentUserConfig) {
+export async function createLlmModel(model: string, context: AgentUserConfig): Promise<LanguageModelV1> {
     let [agent, model_id] = model.includes(':') ? model.trim().split(':') : [context.AI_CHAT_PROVIDER, model];
     if (agent === 'auto') {
         throw new Error('Auto mode is not supported, please specify the agent');
