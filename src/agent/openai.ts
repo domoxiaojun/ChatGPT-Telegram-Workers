@@ -151,6 +151,7 @@ export class OpenAITTS extends OpenAIBase implements TTSAgent {
                 voice: context.OPENAI_TTS_VOICE,
                 response_format: 'opus',
                 speed: 1,
+                ...context.OPENAI_TTS_EXTRA_PARAMS,
             }),
         });
         if (resp.ok) {

@@ -150,6 +150,15 @@ class Environment extends EnvironmentConfig {
         if (!this.USER_CONFIG.SYSTEM_INIT_MESSAGE) {
             this.USER_CONFIG.SYSTEM_INIT_MESSAGE = this.I18N?.env?.system_init_message || 'You are a helpful assistant';
         }
+        // 清理ENVS_VARIABLES
+        if (this.ENVS_VARIABLES.length > 0) {
+            this.ENVS_VARIABLES = this.ENVS_VARIABLES.filter((key: string) => Object.keys(this.USER_CONFIG).includes(key));
+        }
+        // 清理CALLBACK_MENU
+        if (this.CALLBACK_MENU.length > 0) {
+            const supportedKeys = ['AI_CHAT_PROVIDER', 'AI_IMAGE_PROVIDER', 'USE_TOOLS', 'USE_OAILIKE_RELAY_TOOLS', 'CHAT_MODEL', 'IMAGE_MODEL', 'VISION_MODEL', 'TOOL_MODEL', 'ENVS', 'RERANK_AGENT', 'TEXT_HANDLE_TYPE', 'TEXT_OUTPUT', 'AUDIO_HANDLE_TYPE', 'AUDIO_OUTPUT', 'AUDIO_CONTAINS_TEXT'];
+            this.CALLBACK_MENU = this.CALLBACK_MENU.filter((key: string) => supportedKeys.includes(key));
+        }
     }
 
     private mergeCommands(prefix: string, descriptionPrefix: string, scopePrefix: string, source: any, target: Record<string, CommandConfig>) {

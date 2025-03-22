@@ -182,7 +182,7 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
         let inlineList: Telegram.InlineKeyboardButton[] = [];
         if (path.length > 1 && key) {
             inlineList = data.map((item, index) => ({
-                text: `${isSelected(item, index)}${key ? item as string : ''}`,
+                text: `${isSelected(item, index)}${item}`,
                 callback_data: index.toString(),
             }));
         } else {
@@ -196,7 +196,7 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
 
         const chunkedList = chunkArray(inlineList, realCol) as Telegram.InlineKeyboardButton[][];
         chunkedList.unshift([{
-            text: `请选择 ${key || label || '需要配置的选项'}`,
+            text: `请选择 ${label || key || '需要配置的选项'}`,
             callback_data: path.join('.') + (key === 'ENVS' ? ':set' : ''),
         }]);
 

@@ -8,7 +8,7 @@ import type { AgentUserConfig } from '../../config/env';
 import type { MessageSender } from '../utils/send';
 import type { CommandHandler, InlineItem, ScopeType } from './types';
 import { authChecker } from '.';
-import { CHAT_AGENTS, customInfo, IMAGE_AGENTS, loadASRLLM, loadChatLLM, loadImageGen, loadTTSLLM } from '../../agent';
+import { ASR_AGENTS, CHAT_AGENTS, customInfo, IMAGE_AGENTS, loadASRLLM, loadChatLLM, loadImageGen, loadTTSLLM, TTS_AGENTS } from '../../agent';
 import { loadHistory } from '../../agent/chat';
 import { KlingAI } from '../../agent/kling';
 import { ENV, ENV_KEY_MAPPER } from '../../config/env';
@@ -484,7 +484,7 @@ export class SetCommandHandler implements CommandHandler {
     ): Promise<string | Response> {
         let key = keys[flag]
             || (Object.values(keys).includes(flag.slice(1))
-                || Object.keys(context.USER_CONFIG).includes(flag.slice(1))
+                || Object.keys(context.USER_CONFIG).some(k => k.endsWith(flag.slice(1)))
                 ? flag.slice(1)
                 : null);
         let mappedValue = value && (values[value] ?? value);
@@ -643,6 +643,9 @@ export class InlineCommandHandler implements CommandHandler {
     defaultInlines = (context: AgentUserConfig): InlineItem[] => {
         const allChatAgents = CHAT_AGENTS.map(agent => agent.name);
         const allImageAgents = IMAGE_AGENTS.map(agent => agent.name);
+        const allTTSAgents = TTS_AGENTS.map(agent => agent.name);
+        const allASRAgents = ASR_AGENTS.map(agent => agent.name);
+        const allRerankAgents = ['jina', 'openai', 'oailikeV1', 'oailikeV2', 'google'];
         const configKeyHandler = (type: string) => {
             if (type === 'Tool') {
                 return 'TOOL_MODEL';
@@ -650,10 +653,12 @@ export class InlineCommandHandler implements CommandHandler {
             const agent = context[`AI_${(type === 'Image' ? 'IMAGE' : 'CHAT')}_PROVIDER`];
             return `${agent.toUpperCase()}_${type.toUpperCase()}_MODEL`;
         };
-        const envs = Object.keys(context).filter((key) => {
-            return !ENV.LOCK_USER_CONFIG_KEYS.includes(key) && !key.endsWith('KEY');
-        });
-        return [
+        const envs = ENV.ENVS_VARIABLES.length === 0
+            ? Object.keys(context).filter((key) => {
+                    return !ENV.LOCK_USER_CONFIG_KEYS.includes(key) && !key.endsWith('KEY');
+                })
+            : ENV.ENVS_VARIABLES;
+        const inlines: InlineItem[] = [
             {
                 label: 'Chat Agent',
                 config_key: 'AI_CHAT_PROVIDER',
@@ -665,6 +670,24 @@ export class InlineCommandHandler implements CommandHandler {
                 config_key: 'AI_IMAGE_PROVIDER',
                 type: 'radio',
                 value: allImageAgents,
+            },
+            {
+                label: 'TTS Agent',
+                config_key: 'AI_TTS_PROVIDER',
+                type: 'radio',
+                value: allTTSAgents,
+            },
+            {
+                label: 'ASR Agent',
+                config_key: 'AI_ASR_PROVIDER',
+                type: 'radio',
+                value: allASRAgents,
+            },
+            {
+                label: 'Rerank Agent',
+                config_key: 'RERANK_AGENT',
+                type: 'radio',
+                value: allRerankAgents,
             },
             {
                 label: 'Tools',
@@ -694,6 +717,38 @@ export class InlineCommandHandler implements CommandHandler {
                 type: 'radio' as const,
                 value: envs,
             },
+            {
+                label: 'Text Handler',
+                config_key: '',
+                type: 'radio',
+                value: [{
+                    label: 'Handle Type',
+                    config_key: 'TEXT_HANDLE_TYPE',
+                    type: 'radio',
+                    value: ['tts', 'text', 'chat'],
+                }, {
+                    label: 'Output',
+                    config_key: 'TEXT_OUTPUT',
+                    type: 'radio',
+                    value: ['audio', 'text'],
+                }],
+            },
+            {
+                label: 'Audio Handler',
+                config_key: '',
+                type: 'radio',
+                value: [{
+                    label: 'Handle Type',
+                    config_key: 'AUDIO_HANDLE_TYPE',
+                    type: 'radio',
+                    value: ['stt', 'audio', 'chat'],
+                }, {
+                    label: 'Output',
+                    config_key: 'AUDIO_OUTPUT',
+                    type: 'radio',
+                    value: ['audio', 'text'],
+                }],
+            },
             // {
             //     label: 'Models',
             //     config_key: '',
@@ -709,6 +764,7 @@ export class InlineCommandHandler implements CommandHandler {
             //     }),
             // },
         ];
+        return ENV.CALLBACK_MENU.length === 0 ? inlines : ENV.CALLBACK_MENU.map(key => inlines.find(inline => inline.config_key.endsWith(key))).filter(Boolean) as InlineItem[];
     };
 
     settingsMessage = (context: AgentUserConfig, inlines: InlineItem[], { key, callBack }: { key?: string; callBack: string | InlineItem }) => {
@@ -720,7 +776,7 @@ export class InlineCommandHandler implements CommandHandler {
         if (key && typeof callBack === 'string') {
             const newKey = key === 'ENVS' ? callBack : key;
             configValue = context[newKey] || '';
-            (typeof configValue !== 'string') && (configValue = Array.isArray(configValue) ? `[${(configValue as any[]).join(', ')}]` : JSON.stringify(configValue));
+            (typeof configValue !== 'string') && (configValue = JSON.stringify(configValue));
             if (newKey.endsWith('KEY') || newKey.endsWith('TOKEN') || newKey.endsWith('SECRET') || newKey.endsWith('COOKIE') || newKey.endsWith('ID') || newKey.endsWith('API') || newKey.endsWith('CREDENTIALS')) {
                 configValue = `${configValue.slice(0, 5)}********${configValue.slice(-2)}`;
             } else if (newKey.endsWith('URL') || newKey.endsWith('BASE')) {

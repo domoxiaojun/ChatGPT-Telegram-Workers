@@ -145,8 +145,7 @@ export class OpenAILikeTTS extends OpenAILikeBase {
                 input: text,
                 voice: context.OAILIKE_TTS_VOICE,
                 response_format: 'opus',
-                speed: 1,
-                stream: false,
+                ...context.OAILIKE_TTS_EXTRA_PARAMS,
             }),
         });
         if (resp.ok) {

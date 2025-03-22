@@ -330,7 +330,7 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
                 return replacer(content, metadata?.pplx?.citations);
             }
             if (metadata?.openai?.citations) {
-                const sources = metadata?.openai?.citations?.map(({ url_citation: { title, url } }: { url_citation: { title: string; url: string } }) => `- [${`${title.slice(0, 30)}...`}](${url})`).join('\n');
+                const sources = metadata?.openai?.citations?.map(({ url_citation: { title, url } }: { url_citation: { title: string; url: string } }) => `- [${`${title.length > 40 ? `${title.slice(0, 40)}...` : title}`}](${url})`).join('\n');
                 return sources ? `${content.trimEnd()}\n\n**Sources:**\n${sources}` : content;
             }
             return content;

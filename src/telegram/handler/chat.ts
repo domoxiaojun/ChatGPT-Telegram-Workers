@@ -95,7 +95,7 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
         } catch (e) {
             log.error((e as Error).stack);
             const errMsg = (e as Error).message.replace(context.SHARE_CONTEXT.botToken, '[REDACTED]').substring(0, 2048);
-            return streamSender.end!(`\`\`\`Error\n${errMsg}\n\`\`\``, false);
+            return sender.with(message).sendRichText(`\`\`\`Error\n${errMsg}\n\`\`\``, 'MarkdownV2', 'tip');
         }
     };
 
@@ -562,7 +562,7 @@ export async function sendImages(img: ImageResult, sendAsFile: boolean, sender: 
         return sender.sendPlainText('ERROR: No image found');
     }
 
-    const caption = img.caption?.map(t => `>${t}`?.slice(0, 800)?.trim()) || [img.text || 'No prompt'];
+    const caption = img.caption?.map(t => `>${t}`?.slice(0, 800)?.trim()) || [img.text?.slice(0, 800) || ''];
     if (img.url?.length === 1 || img.raw?.length === 1) {
         return sender.editMessageMedia({
             type: sendAsFile ? 'document' : 'photo',

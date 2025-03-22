@@ -7,7 +7,7 @@ interface RerankResult {
     value: string;
 }
 
-const generalRerankAgent = {
+const RERANK_AGENTS = {
     openai: new OpenaiEmbedding(),
     oailikeV1: new OpenAILikeEmbedding(),
     oailikeV2: new OpenAILikeEmbedding(),
@@ -31,7 +31,7 @@ export class Rerank {
     };
 
     readonly generalRerankAgent = async (context: AgentUserConfig, data: string[], topN: number): Promise<RerankResult[]> => {
-        const embeddings = await generalRerankAgent[context.RERANK_AGENT as keyof typeof generalRerankAgent].request(data, context);
+        const embeddings = await RERANK_AGENTS[context.RERANK_AGENT as keyof typeof RERANK_AGENTS].request(data, context);
         const inputEmbeddings = embeddings[0].embed;
         return embeddings.slice(1)
             .map(({ embed, value }) => ({ similar: cosineSimilarity(inputEmbeddings, embed), value }))

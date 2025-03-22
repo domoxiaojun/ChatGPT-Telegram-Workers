@@ -115,7 +115,7 @@ export class GoogleImage extends GoogleBase implements ImageAgent {
         return {
             type: 'image',
             raw: await Promise.all(images.map(({ inlineData: { data } }) => base64StringToBlob(data))),
-            text: prompt,
+            caption: [prompt],
         };
     };
 }

@@ -224,7 +224,7 @@ export class IntelligentModelProcess implements MessageHandler<WorkerContext> {
         if (models.length === 0) {
             return null;
         }
-        const regex = /^\s*\/\/([cvt])\s*(\S+)/;
+        const regex = /^\s*\/\/([cvts])\s*(\S+)/;
         const text = new RegExp(regex).exec((message.text || message.caption || '').trim());
         if (text?.[1] && text[2]) {
             const rerank = new Rerank();
@@ -246,6 +246,9 @@ export class IntelligentModelProcess implements MessageHandler<WorkerContext> {
                         break;
                     case 't':
                         textReplace += `-TOOL_MODEL`;
+                        break;
+                    case 's':
+                        textReplace += `-TTS_MODEL`;
                         break;
                 }
                 textReplace += ` ${similarityModel}`;

@@ -181,6 +181,12 @@ export class EnvironmentConfig {
     FILE_SIZE_LIMIT = 4096 * 2;
     // inline keyboard callback row count x column count
     CALLBACK_QUERY_RC = '7x2';
+    // envs variables, in the callback query, if it is empty, all variables will be displayed;
+    // otherwise, only the set variables will be shown.
+    ENVS_VARIABLES = [];
+    // callback menu, if it is empty, all options will be displayed.
+    // options: 'AI_CHAT_PROVIDER', 'AI_IMAGE_PROVIDER', 'USE_TOOLS', 'USE_OAILIKE_RELAY_TOOLS', 'CHAT_MODEL', 'IMAGE_MODEL', 'VISION_MODEL', 'TOOL_MODEL', 'ENVS', 'RERANK_AGENT', 'TEXT_HANDLE_TYPE', 'TEXT_OUTPUT', 'AUDIO_HANDLE_TYPE', 'AUDIO_OUTPUT', 'AUDIO_CONTAINS_TEXT'
+    CALLBACK_MENU = [];
 }
 
 // -- 通用配置 --
@@ -216,6 +222,9 @@ export class OpenAIConfig {
     OPENAI_VISION_MODEL = 'gpt-4o-mini';
     // OpenAI TTS Model
     OPENAI_TTS_MODEL = 'tts-1';
+    // OpenAI TTS Extra Params
+    OPENAI_TTS_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
+
     OPENAI_TTS_VOICE = 'alloy';
     /**
      * OpenAI need transform model
@@ -368,6 +377,8 @@ export class OpenAILikeConfig {
     OAILIKE_STT_MODEL = 'FunAudioLLM/SenseVoiceSmall';
     // oailike tts model
     OAILIKE_TTS_MODEL = 'fishaudio/fish-speech-1.4';
+    // oailike tts extra params
+    OAILIKE_TTS_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
     // oailike tts voice
     OAILIKE_TTS_VOICE = 'fishaudio/fish-speech-1.4:alex';
     // OAILIKE API Extra Params, key is model id, separated by commas, value is extra Params

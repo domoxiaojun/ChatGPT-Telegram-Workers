@@ -64,7 +64,7 @@ export function loadImageGen(context: AgentUserConfig): ImageAgent {
     throw new Error(`Image generator not found: ${context.AI_IMAGE_PROVIDER}\nAvailable: ${IMAGE_AGENTS.map(i => i.name).join(', ')}`);
 }
 
-const ASR_AGENTS: ASRAgent[] = [
+export const ASR_AGENTS: ASRAgent[] = [
     new OpenAIASR(),
     new OpenAILikeASR(),
 ];
@@ -78,7 +78,7 @@ export function loadASRLLM(context: AgentUserConfig) {
     return null;
 }
 
-const TTS_AGENTS: TTSAgent[] = [
+export const TTS_AGENTS: TTSAgent[] = [
     new OpenAITTS(),
     new OpenAILikeTTS(),
 ];
