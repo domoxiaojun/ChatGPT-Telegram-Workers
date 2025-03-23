@@ -254,6 +254,7 @@ export class ClearEnvCommandHandler implements CommandHandler {
 export class VersionCommandHandler implements CommandHandler {
     command = '/version';
     scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
+    needAuth = COMMAND_AUTH_CHECKER.default;
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
         // const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
         const current = {
@@ -282,6 +283,7 @@ export class VersionCommandHandler implements CommandHandler {
 export class SystemCommandHandler implements CommandHandler {
     command = '/system';
     scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
+    needAuth = COMMAND_AUTH_CHECKER.default;
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
         // const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
         const chatAgent = loadChatLLM(context.USER_CONFIG);

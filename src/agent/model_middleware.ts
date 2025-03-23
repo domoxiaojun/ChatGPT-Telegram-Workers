@@ -165,7 +165,7 @@ function warpMessages(params: LanguageModelV1CallOptions, tools: Record<string, 
         return modifiedMessages;
     };
 
-    if (activeTools.length <= 0) {
+    if (activeTools.length === 0) {
         (mode as any).tools = undefined;
     }
     params.prompt = trimMessages(messages);
