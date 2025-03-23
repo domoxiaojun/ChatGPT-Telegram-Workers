@@ -75,14 +75,10 @@ async function handleSystemCommand(message: Telegram.Message, raw: string, comma
         if (command.needAuth && !command.relaxAuth) {
             await authChecker(command, message, context);
         }
-    } catch (e) {
-        return sender.sendPlainText(`ERROR: ${(e as Error).message}`);
-    }
-    const subcommand = raw.substring(command.command.length).trim();
-    try {
+        const subcommand = raw.substring(command.command.length).trim();
         return command.handle(message, subcommand, context, sender);
     } catch (e) {
-        return sender.sendPlainText(`ERROR: ${(e as Error).message}`);
+        return sender.sendRichText(`<pre><code class="language-error">${(e as Error).message}</code></pre>`, 'HTML', 'tip');
     }
 }
 
@@ -116,7 +112,7 @@ async function handlePluginCommand(message: Telegram.Message, command: string, r
         }
     } catch (e) {
         const help = ENV.PLUGINS_COMMAND[command].description;
-        return sender.sendPlainText(`ERROR: ${(e as Error).message}${help ? `\n${help}` : ''}`);
+        return sender.sendRichText(`<pre><code class="language-error">${(e as Error).message}${help ? `\n${help}` : ''}</code></pre>`, 'HTML', 'tip');
     }
 }
 

@@ -423,10 +423,10 @@ export class SetCommandHandler implements CommandHandler {
                 message.text = remainingText;
                 return null;
             }
-            return sender.sendRichText(`<pre><code class="language-Update">${msg}</code></pre>`, 'HTML', 'tip');
+            return sender.sendRichText(`<pre><code class="language-update">${msg}</code></pre>`, 'HTML', 'tip');
         } catch (e) {
             log.error(`/set error: ${(e as Error).message}`);
-            return sender.sendPlainText(`ERROR: ${(e as Error).message}`);
+            return sender.sendRichText(`<pre><code class="language-error">${(e as Error).message}</code></pre>`, 'HTML', 'tip');
         }
     };
 
