@@ -106,7 +106,7 @@ export function customInfo(config: AgentUserConfig): string {
         MAPPING_VALUE: config.MAPPING_VALUE,
         USE_TOOLS: config.USE_TOOLS.join(','),
         SUPPORT_PLUGINS: Object.keys({ ...ENV.PLUGINS_FUNCTION, ...tools }).join('|'),
-        CHAT_TRIGGER_PERFIX: ENV.CHAT_TRIGGER_PERFIX,
+        CHAT_TRIGGER_PREFIX: ENV.CHAT_TRIGGER_PREFIX,
         MESSAGE_REPLACER: Object.keys(config.MESSAGE_REPLACER).join('|'),
         MAX_STEPS: config.MAX_STEPS,
         MAX_RETRIES: config.MAX_RETRIES,

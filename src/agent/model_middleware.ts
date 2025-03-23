@@ -191,8 +191,8 @@ function warpModel(model: LanguageModelV1, config: AgentUserConfig, activeTools:
 export async function warpLLMParams(params: { messages: CoreMessage[]; model: LanguageModelV1; cache?: string[] }, context: AgentUserConfig) {
     const tool_envs: Record<string, any> = { ...(context.JINA_API_KEY && { JINA_API_KEY: context.JINA_API_KEY[Math.floor(Math.random() * context.JINA_API_KEY.length)] }) };
 
-    const env_perfix = 'TOOL_ENV_';
-    Object.keys(context).forEach(i => i.startsWith(env_perfix) && (tool_envs[i.substring(env_perfix.length - 1)] = context[i]));
+    const env_prefix = 'TOOL_ENV_';
+    Object.keys(context).forEach(i => i.startsWith(env_prefix) && (tool_envs[i.substring(env_prefix.length - 1)] = context[i]));
 
     const messages = params.messages.at(-1) as CoreUserMessage;
     let tool = typeof messages.content === 'string'
@@ -235,14 +235,14 @@ function wrapToolChoice(activeToolAlias: string[], message: string): {
     message: string;
     toolChoices: ToolChoice[] | [];
 } {
-    const tool_perfix = '/t-';
+    const tool_prefix = '/t-';
     let text = message.trim();
     const choices = ['auto', 'none', 'required', ...activeToolAlias];
     const toolChoices = [];
     while (true) {
-        const toolAlias = choices.find(t => text.startsWith(`${tool_perfix}${t}`)) || '';
+        const toolAlias = choices.find(t => text.startsWith(`${tool_prefix}${t}`)) || '';
         if (toolAlias) {
-            text = text.substring(tool_perfix.length + toolAlias.length).trim();
+            text = text.substring(tool_prefix.length + toolAlias.length).trim();
             const choice = ['auto', 'none', 'required'].includes(toolAlias)
                 ? { type: toolAlias as 'auto' | 'none' | 'required' }
                 : { type: 'tool', toolName: tools[toolAlias].schema.name };

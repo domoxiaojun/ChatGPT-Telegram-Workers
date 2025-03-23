@@ -101,7 +101,7 @@ export class WhiteListFilter implements MessageHandler<WorkerContextBase> {
 
 export class MessageFilter implements MessageHandler<WorkerContextBase> {
     handle = async (message: Telegram.Message, context: WorkerContextBase): Promise<Response | null> => {
-        if (ENV.IGNORE_TEXT_PERFIX && (message.text || message.caption || '').startsWith(ENV.IGNORE_TEXT_PERFIX)) {
+        if (ENV.IGNORE_TEXT_PREFIX && (message.text || message.caption || '').startsWith(ENV.IGNORE_TEXT_PREFIX)) {
             log.info(`[IGNORE MESSAGE] Ignore message`);
             return new Response('success', { status: 200 });
         }

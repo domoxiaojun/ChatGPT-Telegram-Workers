@@ -86,7 +86,7 @@ export class EnvironmentConfig {
     // In group chats, the reply object is the trigger object by default, and when enabled, it is prioritized as the object to be replied to
     ENABLE_REPLY_TO_MENTION = false;
     // Ignore messages starting with specified text
-    IGNORE_TEXT_PERFIX = '';
+    IGNORE_TEXT_PREFIX = '';
     // When multiple processes, whether to hide intermediate step information
     HIDE_MIDDLE_MESSAGE = false;
     /**
@@ -95,7 +95,7 @@ export class EnvironmentConfig {
      */
     CHAT_MESSAGE_TRIGGER = {};
     // Chat trigger prefix, it will trigger group message and be deleted
-    CHAT_TRIGGER_PERFIX = '';
+    CHAT_TRIGGER_PREFIX = '';
     // Ask AI to call function times
     FUNC_LOOP_TIMES = 1;
     // Show call info
@@ -447,7 +447,7 @@ export class ExtraUserConfig {
     //
     USE_TOOLS: string[] = [];
     JINA_API_KEY: string[] = [];
-    // if starts with '{agent}:' perfix, the specified agent corresponds to the chat model,
+    // if starts with '{agent}:' prefix, the specified agent corresponds to the chat model,
     // otherwise use the current agent and the specified model.
     // Keep empty to use the current agent chat model as function call model.
     TOOL_MODEL = '';
