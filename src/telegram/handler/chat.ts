@@ -57,6 +57,7 @@ export async function chatWithLLM(
         }
         return streamSender.end!(answer.content);
     } catch (e) {
+        const sender = (streamSender.sender as MessageSender).with(message);
         log.error((e as Error).message, (e as Error).stack);
         let errMsg = '';
         if ((e as Error).name === 'AbortError') {
@@ -69,7 +70,7 @@ export async function chatWithLLM(
             }
         }
         errMsg = errMsg.trim().replace(context.SHARE_CONTEXT.botToken, '[REDACTED]').substring(0, 2048);
-        return streamSender.end!(`\`\`\`Error\n${errMsg}\n\`\`\``, false);
+        return sender.sendRichText(`\`\`\`Error\n${errMsg}\n\`\`\``, 'MarkdownV2', 'tip');
     }
 }
 
