@@ -333,7 +333,7 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
                     // content = insertTextByByteIndex(content, segment.endIndex, tag);
                     content = content.replace(segment.text, `$&${tag}`);
                 }
-                return `${content.trimEnd()}\n\n**Sources:**\n${sources}`;
+                return `${content.trimEnd()}\n\n>sources:\n>${sources}`;
                 // return `${content}\n## Sources:\n${sources}\n## Search Query:\n${webSearchQueries || ''}`;
                 // return content;
             };
@@ -342,7 +342,7 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
         }
         case 'oailike':
         {
-            if (metadata?.pplx?.citations) {
+            if ((metadata?.pplx?.citations ?? []).length > 0) {
                 const replacer = (content: string, urls: string[]) => {
                     for (const [i, url] of Object.entries(urls)) {
                         content = content.replace(new RegExp(`\\[(${+i + 1})\\]`, 'g'), `[[$1\\]](${url})`);
@@ -351,9 +351,9 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
                 };
                 return replacer(content, metadata?.pplx?.citations);
             }
-            if (metadata?.openai?.citations) {
-                const sources = metadata?.openai?.citations?.map(({ url_citation: { title, url } }: { url_citation: { title: string; url: string } }) => `- [${`${title.length > 40 ? `${title.slice(0, 40)}...` : title}`}](${url})`).join('\n');
-                return sources ? `${content.trimEnd()}\n\n**Sources:**\n${sources}` : content;
+            if ((metadata?.openai?.citations ?? []).length > 0) {
+                const sources = metadata?.openai?.citations?.map(({ url_citation: { title, url } }: { url_citation: { title: string; url: string } }) => `- [${`${title.length > 40 ? `${title.slice(0, 40)}...` : title}`}](${url})`).join('\n>');
+                return sources ? `${content.trimEnd()}\n\n>sources:\n>${sources}` : content;
             }
             return content;
         }
