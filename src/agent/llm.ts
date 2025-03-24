@@ -222,7 +222,7 @@ function mockParams(modelId: string, config: AgentUserConfig, provider: string) 
     const options: Record<string, any> = {};
     if (provider === 'oailike') {
         const relayKey = Object.keys(relayTools).find(key => modelId.includes(key));
-        if (relayKey) {
+        if (relayKey && relayToolsList.length > 0) {
             options.tools = relayTools[relayKey].filter(t => relayToolsList.includes(t)).map(t => ({
                 type: 'function',
                 function: { name: t },
@@ -236,8 +236,7 @@ function mockParams(modelId: string, config: AgentUserConfig, provider: string) 
         }
     }
 
-    paramsModifier(modelId, options, modifier, extraParams);
-    return options;
+    return paramsModifier(modelId, options, modifier, extraParams);
 }
 
 function mockFetch(modelId: string, context: AgentUserConfig, provider: string) {

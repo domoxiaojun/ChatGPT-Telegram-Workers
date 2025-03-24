@@ -30,7 +30,7 @@ export async function loadHistory(key: string, length: number): Promise<HistoryI
     // 裁剪
     if (ENV.AUTO_TRIM_HISTORY) {
         history = trimHistory(history, length);
-        // 裁剪开始的tool call 以避免报错
+        // 裁剪开始的tool result 以避免报错
         // let validStart = 0;
         // for (const h of history) {
         //     if (h.role === 'tool') {
@@ -59,9 +59,18 @@ export async function requestCompletionsFromLLM(params: LLMChatRequestParams | n
 
     const trimer = (list: HistoryItem[], maxLength: number) => {
         if (list.length > 0 && list.length > maxLength) {
-            return list.slice(list.length - maxLength);
+            list = list.slice(list.length - maxLength);
         }
-        return list;
+        // 裁剪开始的tool result 以避免报错
+        let validStart = 0;
+        for (const h of list) {
+            if (h.role === 'tool') {
+                validStart++;
+                continue;
+            }
+            break;
+        }
+        return list.slice(validStart);
     };
     const messages = [...trimer(history, context.USER_CONFIG.MAX_HISTORY_LENGTH), params];
 

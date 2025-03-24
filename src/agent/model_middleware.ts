@@ -7,6 +7,7 @@ import type { ChatStreamTextHandler } from './types';
 import {
     extractReasoningMiddleware,
 } from 'ai';
+import { ENV } from '../config/env';
 import { getLogSingleton } from '../log/logDecortor';
 import { log } from '../log/logger';
 import { tools, vaildTools } from '../tools';
@@ -43,8 +44,8 @@ export function AIMiddleware({ config, activeTools, onStream, toolChoice, messag
         transformParams: async ({ type, params }) => {
             log.info(`start ${type} call`);
             startTime = Date.now();
-            if (!rawSystemPrompt && params.prompt[0]?.role === 'system') {
-                rawSystemPrompt = params.prompt[0].content;
+            if (!rawSystemPrompt) {
+                rawSystemPrompt = params.prompt.find(i => i.role === 'system')?.content;
             }
             const logs = getLogSingleton(config);
             logs.ongoingFunctions.push({ name: 'chat', startTime });
@@ -88,11 +89,12 @@ export function AIMiddleware({ config, activeTools, onStream, toolChoice, messag
                     };
                 });
                 log.info(`func logs: ${JSON.stringify(func_logs, null, 2)}`);
-                log.info(`func result: ${JSON.stringify(toolResults, null, 2)}`);
+                log.debug(`func result: ${JSON.stringify(toolResults, null, 2)}`);
                 logs.functions.push(...func_logs);
                 logs.tool.time.push((+time - maxFuncTime).toFixed(1));
                 const toolNames = [...new Set(toolResults.map(i => i.toolName))];
-                activeTools = trimActiveTools(activeTools, toolNames);
+                // Whether to trim used tools
+                // activeTools = trimActiveTools(activeTools, toolNames);
                 log.info(`finish ${toolNames}`);
                 onStream?.send(`${messageInfo.content}...\n` + `finish ${toolNames}`);
             } else {
@@ -116,12 +118,17 @@ function warpMessages(params: LanguageModelV1CallOptions, tools: Record<string, 
     const { prompt: messages, mode } = params;
 
     const getSystemContent = () => {
+        let systemContent = rawSystemPrompt ?? '';
         if (activeTools.length > 0) {
-            return `${rawSystemPrompt}\nYou can consider using the following tools:\n${activeTools.map(name =>
+            systemContent += `\nYou can consider using the following tools:\n${activeTools.map(name =>
                 `### ${name}\n- desc: ${tools[name]?.schema?.description || ''} \n${tools[name]?.prompt || ''}`,
             ).join('\n\n')}`;
         }
-        return rawSystemPrompt ?? 'You are a helpful assistant';
+        if (!ENV.MESSAGE_COMPATIBLE && activeTools.length > 0) {
+            systemContent += `\n\n${activeTools.map(name => `## For tool \`${name}\`, you should follow these rules:\n - ${tools[name]?.prompt ?? ''}`)
+                .join('\n')}`;
+        }
+        return systemContent ?? 'You are a helpful assistant';
     };
 
     const trimMessages = (messages: LanguageModelV1Prompt) => {
@@ -151,7 +158,7 @@ function warpMessages(params: LanguageModelV1CallOptions, tools: Record<string, 
                         }
                         text += `#### [tool ${toolName} with args ${toolArgs}]\nResult:\n${JSON.stringify(result)}\n\n`;
                     }
-                    text = `${[...toolNames].map(name => `## For tool ${name}, you should follow these rules:\n - ${tools[name]?.prompt ?? ''}`).join('\n')}\n### Please use the following retrieved data to answer the question:\n${text}`;
+                    text = `${[...toolNames].map(name => `## For tool \`${name}\`, you should follow these rules:\n - ${tools[name]?.prompt ?? ''}`).join('\n')}\n### Please use the following retrieved data to answer the question:\n${text}`;
                     modifiedMessages.push({
                         role: 'user',
                         content: [{ type: 'text', text }],
@@ -168,7 +175,22 @@ function warpMessages(params: LanguageModelV1CallOptions, tools: Record<string, 
     if (activeTools.length === 0) {
         (mode as any).tools = undefined;
     }
-    params.prompt = trimMessages(messages);
+    if (ENV.MESSAGE_COMPATIBLE) {
+        params.prompt = trimMessages(messages);
+    } else {
+        const systemMessage = messages.find(i => i.role === 'system');
+        if (systemMessage) {
+            systemMessage.content = getSystemContent();
+        }
+        messages.forEach((i: CoreMessage) => {
+            if (i.role === 'tool' && i.content.some((j: any) => j.type === 'tool-result')) {
+                i.content.forEach((j: any) => {
+                    // 消除 time信息
+                    j.result = j.result.result || j.result;
+                });
+            }
+        });
+    }
 }
 
 function warpModel(model: LanguageModelV1, config: AgentUserConfig, activeTools: string[], toolChoice: ToolChoice, chatModel: string) {
@@ -205,7 +227,7 @@ export async function warpLLMParams(params: { messages: CoreMessage[]; model: La
         activeTools.length = 0;
         tool = undefined;
         // only use first system message and last user message
-        params.messages = [params.messages.find(p => p.role === 'system')!, params.messages.findLast(p => p.role === 'user')!];
+        // params.messages = [params.messages.find(p => p.role === 'system')!, params.messages.findLast(p => p.role === 'user')!];
     }
 
     let toolChoice;

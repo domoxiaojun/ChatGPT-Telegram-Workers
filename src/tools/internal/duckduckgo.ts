@@ -18,41 +18,44 @@ async function getJS(query: string, signal?: AbortSignal | undefined) {
     };
 };
 
-async function regularSearch(path: string, signal?: AbortSignal) {
+function cleanResult(result: string) {
+    return result.replace(/&nbsp;/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&apos;/g, '\'').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+}
+
+async function regularSearch(path: string, max_length: number, signal?: AbortSignal) {
     const js = await fetch(`https://links.duckduckgo.com${path}`, { signal }).then(res => res.text());
     const result = /DDG\.pageLayout\.load\('d',?\s?(\[.+\])?\);/.exec(js);
     let data;
+    let next = '';
     if (result?.[1]) {
         try {
             data = JSON.parse(result[1]);
+            next = (data.filter((d: any) => d.n) ?? [])?.[0]?.n;
         } catch (e) {
             throw new Error(`Failed parsing from DDG response`);
         }
     } else {
         data = [];
     }
+    data = data.filter((d: any) => !d.n).map((item: any) => ({
+        title: cleanResult(item.t),
+        url: item.u,
+        // domain: item.i,
+        description: cleanResult(item.a),
+        // icon: `https://external-content.duckduckgo.com/ip3/${item.i}.ico`,
+    }));
+    if (data.length < max_length && next) {
+        data.push(...(await regularSearch(next, max_length - data.length, signal)));
+    }
 
-    return data
-        .filter((d: any) => !d.n)
-        .map((item: any) => {
-            return {
-                title: item.t,
-                url: item.u,
-                // domain: item.i,
-                description: item.a,
-                // icon: `https://external-content.duckduckgo.com/ip3/${item.i}.ico`,
-            };
-        });
+    return data;
 }
 
-async function search(query: string, max_length = 6, signal?: AbortSignal): Promise<{ result: string }> {
+async function search(query: string, max_length = 12, signal?: AbortSignal): Promise<{ result: string }> {
     const { path } = await getJS(query, signal);
     if (!path)
         throw new Error('Failed to get JS URL');
-    return (await regularSearch(path, signal))
-        .slice(0, max_length)
-        .map((d: any) => `title: ${d.title}\n description: ${d.description}\n url: ${d.url}`)
-        .join('\n---\n');
+    return (await regularSearch(path, max_length, signal)).slice(0, max_length);
 }
 
 export const duckduckgo: FuncTool = {
@@ -77,14 +80,14 @@ export const duckduckgo: FuncTool = {
         const { keywords } = args;
         const startTime = Date.now();
         log.info(`tool duckduckgo request start`);
+        let result;
         try {
-            const result = await search(keywords.join(' '), 8, options?.signal);
+            result = await search(keywords.join(' '), 12, options?.signal);
             log.info(`tool duckduckgo request end`);
-            return { result, time: ((Date.now() - startTime) / 1e3).toFixed(1) };
         } catch (e) {
             console.error(e);
-            return { result: 'Failed to get search results', time: ((Date.now() - startTime) / 1e3).toFixed(1) };
         }
+        return { result: result ?? 'Failed to get search results', time: ((Date.now() - startTime) / 1e3).toFixed(1) };
     },
 
     type: 'search',

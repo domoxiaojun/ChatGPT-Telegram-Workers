@@ -187,6 +187,9 @@ export class EnvironmentConfig {
     // callback menu, if it is empty, all options will be displayed.
     // options: 'AI_CHAT_PROVIDER', 'AI_IMAGE_PROVIDER', 'USE_TOOLS', 'USE_OAILIKE_RELAY_TOOLS', 'CHAT_MODEL', 'IMAGE_MODEL', 'VISION_MODEL', 'TOOL_MODEL', 'ENVS', 'RERANK_AGENT', 'TEXT_HANDLE_TYPE', 'TEXT_OUTPUT', 'AUDIO_HANDLE_TYPE', 'AUDIO_OUTPUT', 'AUDIO_CONTAINS_TEXT'
     CALLBACK_MENU = [];
+
+    // Whether to transform  tool_call/tool_result message to user message
+    MESSAGE_COMPATIBLE = true;
 }
 
 // -- 通用配置 --
