@@ -5,7 +5,7 @@ import type { MessageHandler } from './types';
 import { ENV } from '../../config/env';
 import { log } from '../../log/logger';
 import { createTelegramBotAPI } from '../api';
-import { checkIsNeedTagIds } from '../utils/send';
+import { checkIsNeedTagIds, MessageSender } from '../utils/send';
 import { isTelegramChatTypeGroup } from '../utils/tg_utils';
 
 function checkMention(content: string, entities: Telegram.MessageEntity[], botName: string, botId: number): {
@@ -76,8 +76,6 @@ export class GroupMention implements MessageHandler {
         const isTriggered = CheckTrigger(message);
         // 非群组消息不作判断，交给下一个中间件处理
         if (!isTelegramChatTypeGroup(message.chat.type)) {
-            // 私聊中回复bot，不会包含引用消息
-            this.mergeMessage(true, message);
             const noneMessage = await this.noneMessage(message, context);
             if (noneMessage instanceof Response) {
                 return noneMessage;
@@ -132,7 +130,6 @@ export class GroupMention implements MessageHandler {
             return new Response('Not mention');
         }
 
-        this.mergeMessage(replyMe, message);
         return this.noneMessage(message, context);
     };
 
@@ -147,15 +144,6 @@ export class GroupMention implements MessageHandler {
             return forwardCheckResult;
         }
         return null;
-    };
-
-    mergeMessage = async (replyMe: boolean, message: Telegram.Message) => {
-        // 开启引用消息，并且不是回复bot，则将引用消息和当前消息合并
-        if (ENV.EXTRA_MESSAGE_CONTEXT && !replyMe && message.reply_to_message) {
-            const replyText = message.reply_to_message.text || message.reply_to_message.caption || '';
-            const currentText = message.text || message.caption || '';
-            message.text = `${currentText}\n${replyText ? `> ${replyText}` : ''}`;
-        }
     };
 
     noneMessage = async (message: Telegram.Message, context: WorkerContext) => {
@@ -219,7 +207,7 @@ class Lock {
         //     await ENV.DATABASE.delete(this.lockKey);
         // }
         while (retry < 24) {
-            await new Promise(resolve => setTimeout(resolve, 50));
+            await new Promise(resolve => setTimeout(resolve, 20));
             const lock = await ENV.DATABASE.put(this.lockKey, '1', { expirationTtl: 1, condition: 'NX' });
             if (lock === true || lock === undefined) {
                 log.info(`Lock success, key: ${this.lockKey}, retry: ${retry}`);
@@ -251,8 +239,8 @@ class HandleChunkMessage extends Lock {
             await this.releaseLock();
             return new Response('ok');
         }
-        // 异步会同时接收多条消息 等待50ms
-        await new Promise(resolve => setTimeout(resolve, 50));
+        // 异步会同时接收多条消息 等待20ms
+        await new Promise(resolve => setTimeout(resolve, 20));
         log.info(`[CHUNK MESSAGE] handle chunk message, key: ${chunkMessageKey}`);
         const chunks = JSON.parse(await ENV.DATABASE.get(chunkMessageKey) || '[]');
         if (chunks.length > 0) {
@@ -292,13 +280,15 @@ class HandleMediaGroupMessage extends Lock {
             const fileIds = data[message.reply_to_message.media_group_id];
             if (fileIds) {
                 context.MIDDLE_CONTEXT.messageInfo.id = fileIds;
+                const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
+                sender.sendRichText(`<pre><code class="language-tip">Has received ${fileIds.length} images, processing...</code></pre>`, 'HTML', 'tip');
             }
         }
         return null;
     };
 
-    storeMediaMessage = async (message: Telegram.Message, storeMediaMessageKey: string, msgInfo: UnionData) => {
-        const maxMediaGroupNum = 10;
+    storeMediaMessage = async (_message: Telegram.Message, storeMediaMessageKey: string, msgInfo: UnionData) => {
+        const maxMediaGroupNum = 12;
         this.lockKey = `${storeMediaMessageKey}:lock`;
         await this.quireLock();
         const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');

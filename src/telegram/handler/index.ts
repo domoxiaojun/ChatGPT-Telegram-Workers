@@ -11,6 +11,7 @@ import {
     EnvChecker,
     InitUserConfig,
     IntelligentModelProcess,
+    MergeQuote,
     MessageFilter,
     OldMessageFilter,
     ReplyInlineHandler,
@@ -51,20 +52,22 @@ export async function handleUpdate(token: string, update: Telegram.Update, heade
 async function handleMessage(token: string, message: Telegram.Message, isForwarding: boolean) {
     // 消息处理中间件
     const SHARE_HANDLER: MessageHandler<any>[] = [
-    // 检查环境是否准备好: DATABASE
+        // 检查环境是否准备好: DATABASE
         new EnvChecker(),
         // 过滤非白名单用户, 提前过滤减少KV消耗
         new WhiteListFilter(),
-        // 过滤不支持的消息(抛出异常结束消息处理) 忽略的消息
+        // 过滤不支持的消息 抽离文件ID
         new MessageFilter(),
+        // 忽略旧消息
+        new OldMessageFilter(),
         // 处理回复内联消息
         new ReplyInlineHandler(),
         // 处理群消息，判断是否需要响应此条消息
         new GroupMention(),
-        // 忽略旧消息
-        new OldMessageFilter(),
         // DEBUG: 保存最后一条消息,按照需求自行调整此中间件位置
         new SaveLastMessage(),
+        // 合并引用消息
+        new MergeQuote(),
         // 初始化用户配置
         new InitUserConfig(),
         // 替换消息

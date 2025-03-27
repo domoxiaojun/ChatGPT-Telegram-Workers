@@ -331,3 +331,19 @@ export class ReplyInlineHandler implements MessageHandler<WorkerContext> {
         return isMyMessage && isInlineSetMessage;
     };
 }
+
+export class MergeQuote implements MessageHandler<WorkerContext> {
+    handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | null> => {
+        const isReplyMe = message.reply_to_message?.from?.id === Number(context.SHARE_CONTEXT.botId);
+        const quoteText = message.quote?.text || '';
+        const replyText = message.reply_to_message?.text || message.reply_to_message?.caption || '';
+        // 开启引用消息且
+        // 不是回复bot且包含回复消息 或 是引用消息 则将回复/引用消息和当前消息合并
+        if (ENV.EXTRA_MESSAGE_CONTEXT && ((!isReplyMe && replyText) || quoteText)) {
+            message.text
+                ? message.text += `\n${`> ${quoteText || replyText}`}`
+                : message.caption += `\n${`> ${quoteText || replyText}`}`;
+        }
+        return null;
+    };
+}
