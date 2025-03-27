@@ -10,7 +10,7 @@ import { createTelegramBotAPI } from '../api';
 import { SetCommandHandler } from '../command/system';
 import { catchError } from '../handler';
 import { OnStreamHander } from '../handler/chat';
-import { substituteMessage } from '../handler/replacer';
+import { substituteMessage } from '../handler/msg_trimer';
 import { ChosenInlineSender } from '../utils/send';
 import { ChosenInlineWorkerContext, InlineQueryContext } from './context';
 

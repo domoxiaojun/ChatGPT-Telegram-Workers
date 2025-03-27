@@ -7,6 +7,7 @@ import { ChatHandler } from './chat';
 import { GroupMention } from './group';
 import {
     CheckForwarding,
+    ChunkMessageHandler,
     CommandHandler,
     EnvChecker,
     InitUserConfig,
@@ -64,6 +65,8 @@ async function handleMessage(token: string, message: Telegram.Message, isForward
         new ReplyInlineHandler(),
         // 处理群消息，判断是否需要响应此条消息
         new GroupMention(),
+        // 处理消息分块
+        new ChunkMessageHandler(),
         // DEBUG: 保存最后一条消息,按照需求自行调整此中间件位置
         new SaveLastMessage(),
         // 合并引用消息

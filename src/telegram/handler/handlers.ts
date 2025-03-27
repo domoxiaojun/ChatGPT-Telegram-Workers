@@ -12,7 +12,7 @@ import { handleCommandMessage } from '../command';
 import { isAuthorized } from '../query';
 import { MessageSender } from '../utils/send';
 import { extractMessageInfo, isTelegramChatTypeGroup } from '../utils/tg_utils';
-import { substituteMessage } from './replacer';
+import { HandleChunkMessage, HandleMediaGroupMessage, substituteMessage } from './msg_trimer';
 
 export class SaveLastMessage implements MessageHandler<WorkerContextBase> {
     handle = async (message: Telegram.Message, context: WorkerContextBase): Promise<Response | null> => {
@@ -343,6 +343,21 @@ export class MergeQuote implements MessageHandler<WorkerContext> {
             message.text
                 ? message.text += `\n${`> ${quoteText || replyText}`}`
                 : message.caption += `\n${`> ${quoteText || replyText}`}`;
+        }
+        return null;
+    };
+}
+
+export class ChunkMessageHandler implements MessageHandler<WorkerContext> {
+    handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | null> => {
+        let forwardCheckResult = null;
+        if (message.media_group_id || message.reply_to_message?.media_group_id) {
+            forwardCheckResult = await HandleMediaGroupMessage.handle(message, context);
+        } else if (message.text) {
+            forwardCheckResult = await HandleChunkMessage.handle(message, context);
+        }
+        if (forwardCheckResult instanceof Response) {
+            return forwardCheckResult;
         }
         return null;
     };

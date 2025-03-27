@@ -1,11 +1,9 @@
 import type * as Telegram from 'telegram-bot-api-types';
 import type { WorkerContext } from '../../config/context';
-import type { UnionData } from '../utils/tg_utils';
 import type { MessageHandler } from './types';
 import { ENV } from '../../config/env';
-import { log } from '../../log/logger';
 import { createTelegramBotAPI } from '../api';
-import { checkIsNeedTagIds, MessageSender } from '../utils/send';
+import { checkIsNeedTagIds } from '../utils/send';
 import { isTelegramChatTypeGroup } from '../utils/tg_utils';
 
 function checkMention(content: string, entities: Telegram.MessageEntity[], botName: string, botId: number): {
@@ -80,7 +78,7 @@ export class GroupMention implements MessageHandler {
             if (noneMessage instanceof Response) {
                 return noneMessage;
             }
-            return this.furtherChecker(message, context);
+            return null;
         }
 
         // 处理回复消息, 如果回复的是当前机器人的消息交给下一个中间件处理
@@ -89,8 +87,7 @@ export class GroupMention implements MessageHandler {
             if (context.SHARE_CONTEXT.botName && message.text?.endsWith(`@${context.SHARE_CONTEXT.botName}`)) {
                 message.text = message.text.slice(0, -context.SHARE_CONTEXT.botName.length - 1);
             }
-            const data = this.furtherChecker(message, context);
-            return data;
+            return null;
         }
 
         // 处理群组消息，过滤掉AT部分
@@ -120,30 +117,11 @@ export class GroupMention implements MessageHandler {
         if (isTriggered && !isMention) {
             isMention = true;
         }
-        // mediaGroupMessage & chunkMessage
-        const finalCheckResult = await this.furtherChecker(message, context);
-        if (finalCheckResult instanceof Response) {
-            return finalCheckResult;
-        }
-        if (!isMention && !finalCheckResult) {
-            log.error('Not mention');
+        if (!isMention) {
             return new Response('Not mention');
         }
 
         return this.noneMessage(message, context);
-    };
-
-    furtherChecker = async (message: Telegram.Message, context: WorkerContext): Promise<Response | null> => {
-        let forwardCheckResult = null;
-        if (message.media_group_id || message.reply_to_message?.media_group_id) {
-            forwardCheckResult = await new HandleMediaGroupMessage().handle(message, context);
-        } else if (message.text) {
-            forwardCheckResult = await new HandleChunkMessage().handle(message, context);
-        }
-        if (forwardCheckResult instanceof Response) {
-            return forwardCheckResult;
-        }
-        return null;
     };
 
     noneMessage = async (message: Telegram.Message, context: WorkerContext) => {
@@ -196,121 +174,3 @@ export class GroupMention implements MessageHandler {
 //         return ENV.DATABASE.put(`${chunkMessageKeyPrefix}:${message.message_id}`, message.text!, { expirationTtl: 5 });
 //     }
 // }
-
-class Lock {
-    lockKey = '';
-    quireLock = async () => {
-        let retry = 0;
-        // 移除异常情况下未释放的锁
-        // const lock = await ENV.DATABASE.get(this.lockKey);
-        // if (lock && lock.expiration < Math.floor(Date.now() / 1000)) {
-        //     await ENV.DATABASE.delete(this.lockKey);
-        // }
-        while (retry < 24) {
-            await new Promise(resolve => setTimeout(resolve, 20));
-            const lock = await ENV.DATABASE.put(this.lockKey, '1', { expirationTtl: 1, condition: 'NX' });
-            if (lock === true || lock === undefined) {
-                log.info(`Lock success, key: ${this.lockKey}, retry: ${retry}`);
-                return;
-            }
-            log.info(`Lock failed, key: ${this.lockKey}, retry: ${retry}`);
-            retry++;
-        }
-        throw new Error('Lock failed');
-    };
-
-    releaseLock = async () => {
-        await ENV.DATABASE.delete(this.lockKey);
-    };
-}
-
-class HandleChunkMessage extends Lock {
-    handle = async (message: Telegram.Message, context: WorkerContext): Promise<any> => {
-        const chunkMessageKey = context.SHARE_CONTEXT?.chunkMessageKey;
-        if (!chunkMessageKey) {
-            return null;
-        }
-
-        const textFragmentThreshold = 4000;
-        if ((message.text || '')?.length > textFragmentThreshold) {
-            this.lockKey = `${chunkMessageKey}:lock`;
-            await this.quireLock();
-            await this.chunkMessageStore(message, chunkMessageKey);
-            await this.releaseLock();
-            return new Response('ok');
-        }
-        // 异步会同时接收多条消息 等待20ms
-        await new Promise(resolve => setTimeout(resolve, 20));
-        log.info(`[CHUNK MESSAGE] handle chunk message, key: ${chunkMessageKey}`);
-        const chunks = JSON.parse(await ENV.DATABASE.get(chunkMessageKey) || '[]');
-        if (chunks.length > 0) {
-            message.text = chunks
-                .sort((a: { message_id: number }, b: { message_id: number }) => a.message_id - b.message_id)
-                .map(({ text }: { text: string }) => text)
-                .join('\n') + message.text;
-            log.info(`[CHUNK MESSAGE] Merged message chunk, text: ${message.text}`);
-            await ENV.DATABASE.delete(chunkMessageKey);
-            return true;
-        }
-        return false;
-    };
-
-    async chunkMessageStore(message: Telegram.Message, chunkMessageKey: string) {
-        log.info(`[CHUNK MESSAGE] Stored message chunk, message_id: ${message.message_id} key: ${chunkMessageKey}`);
-        const data = JSON.parse(await ENV.DATABASE.get(chunkMessageKey) || '[]');
-        data.push({
-            message_id: message.message_id,
-            text: message.text,
-        });
-        return ENV.DATABASE.put(chunkMessageKey, JSON.stringify(data), { expirationTtl: 5 });
-    }
-}
-
-class HandleMediaGroupMessage extends Lock {
-    handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | null> => {
-        const storeMediaMessageKey = context.SHARE_CONTEXT?.storeMediaMessageKey;
-        if (!storeMediaMessageKey) {
-            return null;
-        }
-        const msgInfo = context.MIDDLE_CONTEXT.messageInfo;
-        if (message.media_group_id && ['photo', 'image'].includes(msgInfo.type) && Array.isArray(msgInfo.id)) {
-            return this.storeMediaMessage(message, storeMediaMessageKey, msgInfo);
-        } else if (message.reply_to_message?.media_group_id) {
-            const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
-            const fileIds = data[message.reply_to_message.media_group_id];
-            if (fileIds) {
-                context.MIDDLE_CONTEXT.messageInfo.id = fileIds;
-                const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
-                sender.sendRichText(`<pre><code class="language-tip">Has received ${fileIds.length} images, processing...</code></pre>`, 'HTML', 'tip');
-            }
-        }
-        return null;
-    };
-
-    storeMediaMessage = async (_message: Telegram.Message, storeMediaMessageKey: string, msgInfo: UnionData) => {
-        const maxMediaGroupNum = 12;
-        this.lockKey = `${storeMediaMessageKey}:lock`;
-        await this.quireLock();
-        const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
-        console.debug(`current data length: ${data?.[msgInfo.media_group_id!]?.length ?? 0}`);
-        if (!data[msgInfo.media_group_id!]) {
-            data[msgInfo.media_group_id!] = [];
-        }
-        const needStoreIds = msgInfo.id?.filter((id: string) => !data[msgInfo.media_group_id!].includes(id)) || [];
-        if (needStoreIds.length === 0) {
-            await this.releaseLock();
-            return new Response('no need store');
-        }
-        data[msgInfo.media_group_id!].push(...needStoreIds);
-        if (Object.keys(data).length > maxMediaGroupNum) {
-            const groupIds = Object.keys(data).sort((a, b) => Number(a) - Number(b));
-            groupIds.splice(0, groupIds.length - maxMediaGroupNum).forEach((key) => {
-                delete data[key];
-            });
-        }
-        await ENV.DATABASE.put(storeMediaMessageKey, JSON.stringify(data));
-        await this.releaseLock();
-        log.info(`[STORE MESSAGE] Store message media, group_id: ${msgInfo.media_group_id}, id: ${msgInfo.id}`);
-        return new Response('ok');
-    };
-}

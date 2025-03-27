@@ -363,27 +363,27 @@ export class OpenAILikeConfig {
     // oailike api key
     OAILIKE_API_KEY: string | null = null;
     // oailike api base
-    OAILIKE_API_BASE = 'https://api.siliconflow.cn/v1';
+    OAILIKE_API_BASE = 'https://api.openai.com/v1';
     // oailike api model
-    OAILIKE_CHAT_MODEL = '';
+    OAILIKE_CHAT_MODEL = 'gpt-4o-mini';
     // oailike image model
-    OAILIKE_IMAGE_MODEL = 'black-forest-labs/FLUX.1-schnell';
+    OAILIKE_IMAGE_MODEL = 'dall-e-3';
     // oailike vision model
-    OAILIKE_VISION_MODEL = '';
+    OAILIKE_VISION_MODEL = 'gpt-4o-mini';
     // oailike image size
-    OAILIKE_IMAGE_SIZE = '512x512';
+    OAILIKE_IMAGE_SIZE = '1024x1024';
     // oailike embedding model
-    OAILIKE_EMBEDDING_MODEL = 'BAAI/bge-m3';
+    OAILIKE_EMBEDDING_MODEL = 'text-embedding-3-small';
     // oailike rerank model
-    OAILIKE_RERANK_MODEL = 'BAAI/bge-reranker-v2-m3';
+    OAILIKE_RERANK_MODEL = '';
     // oailike asr model
     OAILIKE_STT_MODEL = 'FunAudioLLM/SenseVoiceSmall';
     // oailike tts model
-    OAILIKE_TTS_MODEL = 'fishaudio/fish-speech-1.4';
+    OAILIKE_TTS_MODEL = 'tts-1';
     // oailike tts extra params
     OAILIKE_TTS_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
     // oailike tts voice
-    OAILIKE_TTS_VOICE = 'fishaudio/fish-speech-1.4:alex';
+    OAILIKE_TTS_VOICE = 'alloy';
     // OAILIKE API Extra Params, key is model id, separated by commas, value is extra Params
     // for example: OAILIKE_API_EXTRA_PARAMS = { 'gpt-4o-mini,gpt-4o-2024-08-06': { 'temperature': 0.5 } };
     OAILIKE_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {};

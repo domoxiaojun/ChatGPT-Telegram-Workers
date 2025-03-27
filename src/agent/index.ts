@@ -31,6 +31,9 @@ export function loadChatLLM(context: AgentUserConfig): ChatAgent {
     // let CHAT_AGENTS = CHAT_AGENTS_ITER();
     for (const llm of CHAT_AGENTS) {
         if (llm.name === context.AI_CHAT_PROVIDER) {
+            if (!llm.enable(context)) {
+                throw new Error(`Agent ${llm.name} api key is not set.`);
+            }
             return llm;
         }
     }
