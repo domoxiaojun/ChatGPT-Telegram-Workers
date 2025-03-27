@@ -25,13 +25,7 @@ export class OpenAILike extends OpenAILikeBase implements ChatAgent {
 
     readonly model = (ctx: AgentUserConfig, params?: LLMChatRequestParams): string => {
         const msgType = Array.isArray(params?.content) ? params.content.at(-1)?.type : 'text';
-        switch (msgType) {
-            case 'image':
-                return ctx.OAILIKE_VISION_MODEL;
-            case 'file':
-            default:
-                return ctx.OAILIKE_CHAT_MODEL;
-        }
+        return msgType === 'text' ? ctx.OAILIKE_CHAT_MODEL : ctx.OAILIKE_VISION_MODEL;
     };
 
     readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> => {
