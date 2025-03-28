@@ -65,7 +65,7 @@ export function CheckTrigger(message: Telegram.Message): boolean {
 
     const textBefore = message.text || message.caption || '';
     const text = textBefore.replace(new RegExp(`^${ENV.CHAT_TRIGGER_PREFIX}`), '');
-    message.text ? message.text = text : message.caption = text;
+    message.text = text;
     return text !== textBefore;
 }
 
@@ -74,11 +74,7 @@ export class GroupMention implements MessageHandler {
         const isTriggered = CheckTrigger(message);
         // 非群组消息不作判断，交给下一个中间件处理
         if (!isTelegramChatTypeGroup(message.chat.type)) {
-            const noneMessage = await this.noneMessage(message, context);
-            if (noneMessage instanceof Response) {
-                return noneMessage;
-            }
-            return null;
+            return this.noneMessage(message, context);
         }
 
         // 处理回复消息, 如果回复的是当前机器人的消息交给下一个中间件处理

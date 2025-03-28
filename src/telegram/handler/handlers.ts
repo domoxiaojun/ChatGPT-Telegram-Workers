@@ -340,9 +340,7 @@ export class MergeQuote implements MessageHandler<WorkerContext> {
         // 开启引用消息且
         // 不是回复bot且包含回复消息 或 是引用消息 则将回复/引用消息和当前消息合并
         if (ENV.EXTRA_MESSAGE_CONTEXT && ((!isReplyMe && replyText) || quoteText)) {
-            message.text
-                ? message.text += `\n${`> ${quoteText || replyText}`}`
-                : message.caption += `\n${`> ${quoteText || replyText}`}`;
+            message.text = `${message.text || message.caption || ''}\n> ${quoteText || replyText}`;
         }
         return null;
     };
@@ -350,14 +348,10 @@ export class MergeQuote implements MessageHandler<WorkerContext> {
 
 export class ChunkMessageHandler implements MessageHandler<WorkerContext> {
     handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | null> => {
-        let forwardCheckResult = null;
         if (message.media_group_id || message.reply_to_message?.media_group_id) {
-            forwardCheckResult = await HandleMediaGroupMessage.handle(message, context);
+            return HandleMediaGroupMessage.handle(message, context);
         } else if (message.text) {
-            forwardCheckResult = await HandleChunkMessage.handle(message, context);
-        }
-        if (forwardCheckResult instanceof Response) {
-            return forwardCheckResult;
+            return HandleChunkMessage.handle(message, context);
         }
         return null;
     };

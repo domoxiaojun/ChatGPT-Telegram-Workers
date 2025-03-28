@@ -128,8 +128,9 @@ export class HandleChunkMessage {
                 .join('\n') + message.text;
             log.info(`[CHUNK MESSAGE] Merged message chunk, text: ${message.text}`);
             await ENV.DATABASE.delete(chunkMessageKey);
+            return new Response('ok');
         }
-        return new Response('ok');
+        return null;
     };
 
     static chunkMessageStore = async (message: Message, chunkMessageKey: string) => {
