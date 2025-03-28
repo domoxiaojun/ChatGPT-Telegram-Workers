@@ -9,14 +9,20 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { OpenAICompatibleChatLanguageModel } from '@ai-sdk/openai-compatible';
 import { createXai } from '@ai-sdk/xai';
 import { isCfWorker } from '../telegram/utils/tg_utils';
+import { CHAT_AGENTS } from './index';
 
 export async function createLlmModel(model: string, context: AgentUserConfig): Promise<LanguageModelV1> {
     let [agent, model_id] = model.includes(':') ? model.trim().split(':') : [context.AI_CHAT_PROVIDER, model];
-    if (agent === 'auto') {
-        throw new Error('Auto mode is not supported, please specify the agent');
+    // if agent not exists, fallback to model
+    if (!CHAT_AGENTS.some(a => a.name === agent)) {
+        model_id = model;
     }
+
     if (!model_id) {
         model_id = context[`${agent.toUpperCase()}_CHAT_MODEL`];
+        if (!model_id) {
+            throw new Error(`Model ${model} not found`);
+        }
     }
     const GOOGLE_SAFETY: { category: 'HARM_CATEGORY_UNSPECIFIED' | 'HARM_CATEGORY_DANGEROUS_CONTENT' | 'HARM_CATEGORY_HARASSMENT' | 'HARM_CATEGORY_HATE_SPEECH' | 'HARM_CATEGORY_SEXUALLY_EXPLICIT' | 'HARM_CATEGORY_CIVIC_INTEGRITY'; threshold: 'BLOCK_NONE' | 'BLOCK_LOW_AND_ABOVE' | 'BLOCK_MEDIUM_AND_ABOVE' | 'BLOCK_ONLY_HIGH' }[] = [
         { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
@@ -28,14 +34,12 @@ export async function createLlmModel(model: string, context: AgentUserConfig): P
 
     switch (agent) {
         case 'openai':
-        case 'gpt':
             return createOpenAI({
                 baseURL: context.OPENAI_API_BASE,
                 apiKey: context.OPENAI_API_KEY[Math.floor(Math.random() * context.OPENAI_API_KEY.length)],
                 compatibility: 'strict',
                 fetch: mockFetch(model_id, context, agent),
             }).languageModel(model_id);
-        case 'claude':
         case 'anthropic':
             return createAnthropic({
                 baseURL: context.ANTHROPIC_API_BASE,
@@ -43,7 +47,6 @@ export async function createLlmModel(model: string, context: AgentUserConfig): P
                 fetch: mockFetch(model_id, context, agent),
             }).languageModel(model_id);
         case 'google':
-        case 'gemini':
             return createGoogleGenerativeAI({
                 baseURL: context.GOOGLE_API_BASE,
                 apiKey: context.GOOGLE_API_KEY || undefined,
