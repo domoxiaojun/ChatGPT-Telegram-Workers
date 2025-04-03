@@ -10,6 +10,48 @@ ChatGPT-Telegram-Workers
     <em>Deploy your own Telegram ChatGPT bot on Cloudflare Workers with ease.</em>
 </p>
 
+## This project is a modified version of the original project.
+
+> There are many modifications, please directly check the environment variables in the `src/config/config.ts` file.
+
+Modifications include but are not limited to:
+
+- All except workerAI are switched to AI SDK
+- Added display of information such as model name and usage time
+- Supports function calling, with several built-in functions, and allows additional functions to be added via environment variables
+- Added additional agents such as Vertex AI on the original project
+- Supports custom trigger words
+- Supports custom replacement words, simplifying the steps to modify environment variables, and also supports temporary adjustments of variables for AI conversations without modifying the variables
+- Added several commands, such as `/set`, `/settings`, `/history`
+- Supports image generation via function calls, supports Google image generation
+- Supports real-time rendering of markdownV2, with special optimization for code blocks
+- Supports ultra-long text segmentation and rendering (code blocks are still rendered normally after chunking)
+- Supports custom domain folding function to prevent excessively long text from interfering with normal communication when replying in groups
+- Supports different media sending methods
+- Supports TTS ASR
+- Supports processing text/voice in different ways (e.g., text input, voice output, etc.)
+- Supports a smoother message sending mechanism, with almost 0 delay in sending text (optimizes 429 errors caused by overly frequent sending), and the final message is still sent normally even with 429 errors.
+- Supports the function of deleting different types of messages on a schedule
+- Supports reading multiple images; supports processing of ultra-long text after being segmented
+- Supports Kling AI image generation
+- Supports special parameter processing, allowing specific models to remove or add specific parameters
+- Supports intelligent adjustment of dialogue models
+- Supports inline messages (you need to enable inline mode in BotFather and adjust inlinefeedback to 100%)
+- OAILIKE special agent is specially optimized for newapi, allowing the opening of special built-in tools such as Google Search
+- Supports GPT-4o-search model search source reading, supports Google Vertex OAILIKE search source reading
+- Supports long text replies to be converted to Telegraph or text files
+- Supports folding of model thinking content (folding function needs to be enabled)
+etc.
+
+### Note
+
+- Due to the use of AI SDK, CPU time is greatly increased, which is not suitable for use in Cloudflare Worker (Worker free tier limit CPU time: 10ms). Also, due to processing via webhook, the maximum running time is only 60s.
+- Cloudflare Worker artifacts are not compiled. If needed, please compile them yourself.
+
+> It is recommended to use Docker deployment, polling mode.
+> The deployment method is the same as the original project; Docker can directly use the image `adolphnov/chatgpt-telegram-workers:latest`.
+
+
 
 ## About
 
