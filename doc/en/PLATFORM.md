@@ -38,7 +38,7 @@ See [Local](LOCAL.md) for details. For local deployment method, you need to conf
 
 > It is recommended to select `Frankfurt` for Instance region
 
-8. Click on `Environment variables and files`, set the port to 8787 (the same as the port in config.json)
+8. Click on `Exposed ports`, set the port to 8787 (the same as the port in config.json)
 
 9. Deploy
 

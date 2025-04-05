@@ -28,7 +28,7 @@
 6. 点击 add file，复制粘贴local部署方式中的config.json内容，mode设置为webhook，baseURL此时暂时留空（若你有自己的域名，可进行设置），path填写`/app/config.json`
 7. 继续 add file, 复制wrangle.toml内容，此文件为所有环境变量配置文件，自行填写token botname apikey等数据，path填写 `/app/config.toml`
 > Instance region 建议选 `Frankfurt`
-8. 点击`Environment variables and files`，端口设置为8787（与config.json中的port一致即可）
+8. 点击`Exposed ports`，端口设置为8787（与config.json中的port一致即可）
 9. deploy
 10. 复制 Overview - Web service Public URL, 修改第六步中`config.json`留空的baseURL，重新deploy
 11. 访问 Web service Public URL 激活webhook, 完成
