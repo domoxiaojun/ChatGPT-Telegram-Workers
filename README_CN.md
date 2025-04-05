@@ -44,9 +44,10 @@ ChatGPT-Telegram-Workers
 - 由于使用AI SDK，大幅增加CPU time，不太适合在cloudflare worker中使用(worker free tier limit cpu time: 10ms)，同时由于通过webhook方式处理，最大运行时间仅60s
 - 未编译cloudflare worker产物，如有需要，请自行编译
 > 建议使用docker部署，polling模式
-> 部署方式与原项目一致；docker可直接使用镜像 `adolphnov/chatgpt-telegram-workers:latest`
+> 部署方式与原项目一致；请查看 [LOCAL/DOCKER部署文档](./doc/cn/LOCAL.md)。
+> 其他部署方式，请查看[部署文档](./doc/cn/PLATFORM.md)。
 
-—-
+---
 
 
 ## 关于

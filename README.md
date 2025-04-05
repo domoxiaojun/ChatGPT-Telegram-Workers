@@ -49,9 +49,12 @@ etc.
 - Cloudflare Worker artifacts are not compiled. If needed, please compile them yourself.
 
 > It is recommended to use Docker deployment, polling mode.
-> The deployment method is the same as the original project; Docker can directly use the image `adolphnov/chatgpt-telegram-workers:latest`.
+> The deployment method is the same as the original project.
 
+> The deployment method is consistent with the original project, please refer to [local/docker document](./doc/en/LOCAL.md). 
+> Other deployment methods, please check [deployment documentation](./doc/en/PLATFORM.md)
 
+---
 
 ## About
 

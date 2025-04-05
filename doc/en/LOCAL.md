@@ -70,9 +70,9 @@ docker-compose up # edit the docker-compose.yml to change the config file path
 
 ## Use docker hub image
 
-https://hub.docker.com/r/tbxark/chatgpt-telegram-workers
+https://hub.docker.com/r/adolphnov/chatgpt-telegram-workers
 
 ```shell
-docker pull tbxark/chatgpt-telegram-workers
+docker pull adolphnov/chatgpt-telegram-workers
 docker run -d -p 8787:8787 -v $(pwd)/config.json:/app/config.json:ro -v $(pwd)/wrangler.toml:/app/config.toml:ro chatgpt-telegram-workers:latest
 ```
