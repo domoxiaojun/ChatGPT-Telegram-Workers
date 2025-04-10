@@ -38,14 +38,14 @@ class Lock {
         //     await ENV.DATABASE.delete(this.lockKey);
         // }
         while (retry < 24) {
-            await new Promise(resolve => setTimeout(resolve, 20));
             const lock = await ENV.DATABASE.put(lockKey, '1', { expirationTtl: 1, condition: 'NX' });
             if (lock === true || lock === undefined) {
                 log.info(`Lock success, key: ${lockKey}, retry: ${retry}`);
                 return;
             }
-            log.info(`Lock failed, key: ${lockKey}, retry: ${retry}`);
+            // log.info(`Lock failed, key: ${lockKey}, retry: ${retry}`);
             retry++;
+            await new Promise(resolve => setTimeout(resolve, 15));
         }
         throw new Error('Lock failed');
     };
@@ -98,7 +98,7 @@ export class HandleMediaGroupMessage {
         }
         await ENV.DATABASE.put(storeMediaMessageKey, JSON.stringify(data));
         await Lock.releaseLock(`${storeMediaMessageKey}:lock`);
-        log.info(`[STORE MESSAGE] Store message media, group_id: ${msgInfo.media_group_id}, id: ${msgInfo.id}`);
+        log.info(`[CHUNK] Store message media, group_id: ${msgInfo.media_group_id}, id: ${msgInfo.id}`);
         return new Response('ok');
     };
 }
@@ -110,36 +110,38 @@ export class HandleChunkMessage {
             return null;
         }
 
-        const textFragmentThreshold = 4000;
+        const textFragmentThreshold = 3500;
         if ((message.text || '')?.length > textFragmentThreshold) {
             await Lock.quireLock(`${chunkMessageKey}:lock`);
             await this.chunkMessageStore(message, chunkMessageKey);
             await Lock.releaseLock(`${chunkMessageKey}:lock`);
             return new Response('ok');
         }
-        // 异步会同时接收多条消息 等待20ms
-        await new Promise(resolve => setTimeout(resolve, 20));
-        log.info(`[CHUNK MESSAGE] handle chunk message, key: ${chunkMessageKey}`);
+        // polling会同时接收多条消息 等待50ms
+        log.info(`[CHUNK] start handle chunk text, key: ${chunkMessageKey}`);
+        await new Promise(resolve => setTimeout(resolve, 50));
         const chunks = JSON.parse(await ENV.DATABASE.get(chunkMessageKey) || '[]');
         if (chunks.length > 0) {
             message.text = chunks
                 .sort((a: { message_id: number }, b: { message_id: number }) => a.message_id - b.message_id)
                 .map(({ text }: { text: string }) => text)
                 .join('\n') + message.text;
-            log.info(`[CHUNK MESSAGE] Merged message chunk, text: ${message.text}`);
+            log.info(`[CHUNK] Merged message chunk, chunks length: ${chunks?.length}, text length: ${message.text?.length}`);
+            // 读取后立即删除
             await ENV.DATABASE.delete(chunkMessageKey);
-            return new Response('ok');
         }
         return null;
     };
 
     static chunkMessageStore = async (message: Message, chunkMessageKey: string) => {
-        log.info(`[CHUNK MESSAGE] Stored message chunk, message_id: ${message.message_id} key: ${chunkMessageKey}`);
+        log.info(`[CHUNK] Stored message chunk, message_id: ${message.message_id} key: ${chunkMessageKey}`);
         const data = JSON.parse(await ENV.DATABASE.get(chunkMessageKey) || '[]');
         data.push({
             message_id: message.message_id,
             text: message.text,
         });
-        return ENV.DATABASE.put(chunkMessageKey, JSON.stringify(data), { expirationTtl: 5 });
+        console.log(`chunk size: ${data.length}, current chunk message length: ${message.text?.length}`);
+        // 60s后删除
+        return ENV.DATABASE.put(chunkMessageKey, JSON.stringify(data), { expirationTtl: 60 });
     };
 }

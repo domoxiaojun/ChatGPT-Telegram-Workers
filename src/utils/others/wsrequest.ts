@@ -51,7 +51,9 @@ function perplexityFormatter(message: any[]): { done: boolean; content: any } {
 }
 
 export async function WssRequest(url: string, protocols: string | string[] | null, options: Record<string, any>, messages: string[], handlers: Record<string, any>): Promise<any> {
-    const { WebSocket } = await import('ws');
+    const { WebSocket } = await import('ws').catch((err) => {
+        throw new Error(`无法导入WebSocket模块: ${err.message}。请确保在Node.js环境中运行，或者已经安装了ws模块。`);
+    });
     let { extractor, formatter, onStream } = handlers;
     return new Promise((resolve) => {
         const ws = protocols ? new WebSocket(url, protocols, options) : new WebSocket(url, options);

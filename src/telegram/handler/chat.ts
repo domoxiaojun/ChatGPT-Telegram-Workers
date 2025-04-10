@@ -71,6 +71,8 @@ export async function chatWithLLM(
         }
         errMsg = errMsg.trim().replace(context.SHARE_CONTEXT.botToken, '[REDACTED]').substring(0, 2048);
         return sender.sendRichText(`\`\`\`Error\n${errMsg}\n\`\`\``, 'MarkdownV2', 'tip');
+    } finally {
+        streamSender.clearHeartbeat!();
     }
 }
 
@@ -95,8 +97,11 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
             return null;
         } catch (e) {
             log.error((e as Error).stack);
+            if ((e as Error).message.includes('code 524')) {
+                return streamSender.end!(`\`\`\`Error\nOccur 524 error.\n\`\`\``, false, 'error');
+            }
             const errMsg = (e as Error).message.replace(context.SHARE_CONTEXT.botToken, '[REDACTED]').substring(0, 2048);
-            return sender.with(message).sendRichText(`\`\`\`Error\n${errMsg}\n\`\`\``, 'MarkdownV2', 'tip');
+            return streamSender.end!(`\`\`\`Error\n${errMsg}\n\`\`\``, false, 'error');
         }
     };
 
@@ -216,7 +221,6 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
                 }
             }
         }
-
         return params;
     }
 }
@@ -255,13 +259,39 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
 
     const immediatePromise = Promise.resolve('[PROMISE DONE]');
 
+    let cache = '';
+    let heartWaitedTime = 0;
+    let heartbeatId: NodeJS.Timeout;
+    const HEARTBEAT_INTERVAL = 10_000;
+
     const streamSender = {
-        send: null as ((text: string, isEnd: boolean) => Promise<any>) | null,
-        end: null as ((text: string) => Promise<any>) | null,
+        send: null as ((text: string, type?: 'chat' | 'error' | 'heartbeat') => Promise<any>) | null,
+        end: null as ((text: string, needLog?: boolean, type?: 'chat' | 'error' | 'heartbeat') => Promise<any>) | null,
         sender,
+        clearHeartbeat: () => {
+            heartbeatId && clearInterval(heartbeatId);
+        },
     };
-    streamSender.send = async (text: string): Promise<any> => {
+
+    const updateHeartbeat = () => {
+        heartbeatId && clearInterval(heartbeatId);
+        // if (heartWaitedTime > 600) {
+        //     throw new Error('Heartbeat timeout');
+        // }
+        heartbeatId = setInterval(async () => {
+            heartWaitedTime += HEARTBEAT_INTERVAL / 1000;
+            await sentPromise;
+            sentPromise = streamSender.send!(`${cache}\n\nwaited for ${heartWaitedTime}s`, 'heartbeat');
+        }, HEARTBEAT_INTERVAL);
+    };
+
+    streamSender.send = async (text: string, type = 'chat'): Promise<any> => {
         try {
+            if (type === 'chat') {
+                cache = text;
+                heartWaitedTime = 0;
+                updateHeartbeat();
+            }
             // 判断是否需要等待
             if ((nextEnableTime || 0) > Date.now()) {
                 log.info(`Need await: ${(nextEnableTime || 0) - Date.now()}ms`);
@@ -273,15 +303,16 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
             }
 
             // 设置最小流间隔
-            if (sendInterval > 0) {
+            if (sendInterval > 0 && type === 'chat') {
                 nextEnableTime = Date.now() + sendInterval;
             }
+
             if (isSendDocument(text)) {
                 if (isSendDocumentTip) {
                     return;
                 }
                 isSendDocumentTip = true;
-                text += '\n\n>**Hold on, answer will be sent as a document.**';
+                text += '\n\n**Hold on, answer will be sent as a document.**';
             }
 
             if (isSendTelegraph(text)) {
@@ -316,9 +347,13 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
         }
     };
 
-    streamSender.end = async (text: string, needLog = true): Promise<any> => {
+    streamSender.end = async (text: string, needLog = true, type = 'chat'): Promise<any> => {
         log.info('--- start end ---');
+        // streamSender.clearHeartbeat();
         await sentPromise;
+        if (type === 'error') {
+            text = `${cache}\n${text}`;
+        }
         if (isSendDocument(text)) {
             return sendDocument(sender as MessageSender, { question: question || 'Redo Question', answer: text, log: getLog(context?.USER_CONFIG || {} as AgentUserConfig, false, true) });
         }
@@ -615,7 +650,7 @@ async function asr(audio: Blob, config: AgentUserConfig) {
 
 function mergeLogMessages(text: string, config: AgentUserConfig) {
     if (ENV.LOG_POSITION_ON_TOP) {
-        return `${getLog(config)}\n\n${text.trim()}`.trim();
+        return `${getLog(config)}\n${text.trim()}`.trim();
     }
-    return `${text.trim()}\n\n${getLog(config)}`;
+    return `${text.trim()}\n${getLog(config)}`;
 }

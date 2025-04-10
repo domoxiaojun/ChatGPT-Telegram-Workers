@@ -13,44 +13,24 @@ EXPOSE 8787
 CMD ["npm", "run", "start"]
 `;
 
-const packageJson = `
-{
-  "name": "chatgpt-telegram-workers",
-  "type": "module",
-  "version": "2.4.0",
-  "author": "TBXark",
-  "license": "MIT",
-  "module": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "dependencies": {
-    "@ai-sdk/anthropic": "^1.2.2",
-    "@ai-sdk/azure": "^1.3.4",
-    "@ai-sdk/cohere": "^1.2.2",
-    "@ai-sdk/google": "^1.2.3",
-    "@ai-sdk/google-vertex": "^2.2.5",
-    "@ai-sdk/mistral": "^1.2.1",
-    "@ai-sdk/openai": "^1.3.4",
-    "@ai-sdk/openai-compatible": "^0.2.2",
-    "@ai-sdk/provider": "^1.1.0",
-    "@ai-sdk/xai": "^1.2.3",
-    "@ffmpeg.wasm/core-st": "^0.13.2",
-    "@ffmpeg.wasm/main": "^0.13.1",
-    "ai": "^4.2.0",
-    "cf-worker-adapter": "^1.4.0",
-    "node-cron": "^3.0.3"
-  },
-  "devDependencies": {}
-}
-`;
-
 export function createDockerPlugin(targetDir: string) {
     return {
         name: 'docker',
         async closeBundle() {
             await fs.writeFile(path.resolve(targetDir, 'Dockerfile'), dockerfile.trim());
-            await fs.writeFile(path.resolve(targetDir, 'package.json'), packageJson.trim());
+
+            const packageJsonPath = path.resolve(process.cwd(), 'package.json');
+            const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'));
+            const cleanedPackageJson = {
+                name: packageJson.name,
+                version: packageJson.version,
+                dependencies: packageJson.dependencies,
+            };
+
+            await fs.writeFile(
+                path.resolve(targetDir, 'package.json'),
+                JSON.stringify(cleanedPackageJson, null, 2),
+            );
         },
     };
 }

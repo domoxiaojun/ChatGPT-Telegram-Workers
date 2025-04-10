@@ -154,7 +154,6 @@ export class TagNeedDelete implements MessageHandler<WorkerContext> {
     handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | null> => {
         // 未记录消息
         if ((tagMessageIds.get(message) ?? new Set()).size === 0) {
-            log.info(`[TAG MESSAGE] No message id to tag`);
             return null;
         }
         const botName = context.SHARE_CONTEXT?.botName;
@@ -219,17 +218,22 @@ export class CheckForwarding implements MessageHandler<WorkerContext> {
 
 export class IntelligentModelProcess implements MessageHandler<WorkerContext> {
     handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | null> => {
-        const agentModelKey = `${context.USER_CONFIG.AI_CHAT_PROVIDER.toUpperCase()}_MODELS`;
-        const models = context.USER_CONFIG[agentModelKey] || [];
-        if (models.length === 0) {
+        if (!context.USER_CONFIG.ENABLE_INTELLIGENT_MODEL) {
             return null;
         }
+
         const regex = /^\s*\/\/([cvts])\s*(\S+)/;
         const text = new RegExp(regex).exec((message.text || message.caption || '').trim());
+
         if (text?.[1] && text[2]) {
             const rerank = new Rerank();
             const sendTipPromise = this.sendTip(context, message);
             try {
+                const agentModelKey = `${context.USER_CONFIG.AI_CHAT_PROVIDER.toUpperCase()}_MODELS`;
+                const models = context.USER_CONFIG[agentModelKey] || [];
+                if (models.length === 0) {
+                    throw new Error('Don\'t have any model, please set/refresh model list first.');
+                }
                 const similarityModel = (await rerank.rank(context.USER_CONFIG, [text[2], ...models], 1))[0].value;
                 if (!similarityModel) {
                     return this.editTip(context, (await sendTipPromise).result, 'No similarity model found');

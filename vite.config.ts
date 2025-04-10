@@ -69,7 +69,6 @@ export default defineConfig({
             fileName,
             formats,
         },
-        minify: false,
         outDir,
     },
     define: {
