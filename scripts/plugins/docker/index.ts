@@ -10,7 +10,7 @@ RUN npm install --only=production && \
 apk add --no-cache sqlite && \
 npm cache clean --force
 EXPOSE 8787
-CMD ["npm", "run", "start"]
+CMD ["node", "index.js"]
 `;
 
 export function createDockerPlugin(targetDir: string) {
