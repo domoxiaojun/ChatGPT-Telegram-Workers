@@ -4,6 +4,7 @@ import type { MessageInfo, ToolChoice } from './model_middleware';
 import type { ChatStreamTextHandler, OpenAIFuncCallData, ResponseMessage } from './types';
 import { generateText, streamText, TypeValidationError, wrapLanguageModel } from 'ai';
 import { ENV } from '../config/env';
+import { getLogSingleton } from '../log/logDecortor';
 import { log } from '../log/logger';
 import { manualRequestTool } from '../tools';
 import { createLlmModel } from './llm';
@@ -221,7 +222,7 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
             onChunk: middleware.onChunk as (data: any) => void,
         });
 
-        const contentExtractor = thinkingExtractor(messageInfo);
+        const contentExtractor = thinkingExtractor(messageInfo, getLogSingleton(context));
         contentFull = await streamHandler(stream.fullStream, contentExtractor, onStream, messageInfo, errorReferencer);
         responseMessages = errorReferencer[0] ? [{ role: 'assistant', content: contentFull }] : (await stream.response).messages;
         contentFull = errorReferencer[0] ? contentFull : metaDataExtractor(await stream.providerMetadata, model.provider, contentFull);
@@ -278,12 +279,18 @@ function toolResultExtractor(responseMessages: ResponseMessage[], contentFull: s
     };
 }
 
-function thinkingExtractor(messageInfo: MessageInfo) {
+function thinkingExtractor(messageInfo: MessageInfo, logs: any) {
     let thinkingStart = false;
     let thinkingEnd = false;
     let thinkingStartTime: undefined | number;
     const thinkingTag = '>`Thinking\\.\\.\\.`';
+    let recordFtt = false;
     return (data: TextStreamPart<any>) => {
+        if (!recordFtt) {
+            recordFtt = true;
+            const startTime = logs.ongoing.at(-1)?.startTime;
+            startTime && (logs.first_chunk_time = `${(Date.now() - startTime)}ms`);
+        }
         switch (data.type) {
             case 'reasoning':
                 if (!thinkingStart) {

@@ -20,7 +20,7 @@ export function Log(
                     const startTime = Date.now();
 
                     // 未完成的模型对话
-                    logs.ongoingFunctions.push({
+                    logs.ongoing.push({
                         name: initialValue.name || 'anonymous',
                         startTime,
                     });
@@ -38,7 +38,7 @@ export function Log(
                         const endTime = Date.now();
                         const elapsed = ((endTime - startTime) / 1e3).toFixed(1);
                         // 移除ongoing
-                        logs.ongoingFunctions = logs.ongoingFunctions.filter(
+                        logs.ongoing = logs.ongoing.filter(
                             func => func.startTime !== startTime,
                         );
 
@@ -54,7 +54,7 @@ export function Log(
 
                         return { content: result.content, tool_calls: result.tool_calls };
                     } catch (error) {
-                        logs.ongoingFunctions = logs.ongoingFunctions.filter(
+                        logs.ongoing = logs.ongoing.filter(
                             func => func.startTime !== startTime,
                         );
                         throw error;
@@ -97,8 +97,9 @@ export function getLogSingleton(config: AgentUserConfig): Logs {
                 time: [],
             },
             tokens: [],
-            ongoingFunctions: [],
+            ongoing: [],
             error: '',
+            first_chunk_time: '',
         });
     }
     return logSingleton.get(config)!;
@@ -121,6 +122,7 @@ export function getLog(context: AgentUserConfig, onlyModel: boolean = false, isP
         token: context.SHOW_PARTS.includes('token'),
         tool: context.SHOW_PARTS.includes('tool'),
         tool_time: context.SHOW_PARTS.includes('tool_time'),
+        first_chunk_time: context.SHOW_PARTS.includes('first_chunk_time'),
     };
 
     // tool
@@ -149,14 +151,17 @@ export function getLog(context: AgentUserConfig, onlyModel: boolean = false, isP
         logList.push(`${logObj.error}`);
     }
 
-    // chat
+    // chat && fct
     if (logObj.chat.model.size > 0 && show.model) {
-        const chatLogs = `${[...logObj.chat.model].join('|')}${logObj.chat.time.length > 0 && show.model_time ? ` ${logObj.chat.time.join('s ')}s` : ''}`;
+        let chatLogs = `${[...logObj.chat.model].join('|')}${logObj.chat.time.length > 0 && show.model_time ? ` ${logObj.chat.time.join('s ')}s` : ''}`;
+        if (logObj.first_chunk_time && show.first_chunk_time) {
+            chatLogs += ` [${logObj.first_chunk_time}]`;
+        }
         logList.push(chatLogs);
     }
 
     // ongoing
-    logObj.ongoingFunctions.forEach((func) => {
+    logObj.ongoing.forEach((func) => {
         const elapsed = ((Date.now() - func.startTime) / 1e3).toFixed(1);
         logList.push(`[ongoing: ${func.name} ${elapsed}s]`);
     });
@@ -198,6 +203,7 @@ interface Logs {
     tool: { model: Set<string>; time: string[] };
     chat: { model: Set<string>; time: string[] };
     tokens: string[];
-    ongoingFunctions: { name: string; startTime: number }[];
+    ongoing: { name: string; startTime: number }[];
     error: string;
+    first_chunk_time: string;
 }

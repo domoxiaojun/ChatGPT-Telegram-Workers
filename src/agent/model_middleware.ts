@@ -48,7 +48,7 @@ export function AIMiddleware({ config, activeTools, onStream, toolChoice, messag
                 rawSystemPrompt = params.prompt.find(i => i.role === 'system')?.content;
             }
             const logs = getLogSingleton(config);
-            logs.ongoingFunctions.push({ name: 'chat', startTime });
+            logs.ongoing.push({ name: 'chat', startTime });
             if (toolChoice.length > 0 && step < toolChoice.length && params.mode.type === 'regular') {
                 params.mode.toolChoice = toolChoice[step] as any;
                 log.info(`toolChoice changed: ${JSON.stringify(toolChoice[step])}`);
@@ -107,7 +107,7 @@ export function AIMiddleware({ config, activeTools, onStream, toolChoice, messag
             } else {
                 log.warn('usage is none or not a number');
             }
-            logs.ongoingFunctions = logs.ongoingFunctions.filter(i => i.startTime !== startTime);
+            logs.ongoing = logs.ongoing.filter(i => i.startTime !== startTime);
             sendToolCall = false;
             step++;
         },

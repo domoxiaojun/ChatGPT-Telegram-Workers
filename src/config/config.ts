@@ -444,7 +444,7 @@ export class ExtraUserConfig {
     // MAPPING_VALUE = "cson:claude-3-5-sonnet-20240620|haiku:claude-3-haiku-20240307|g4m:gpt-4o-mini|g4:gpt-4o|rp+:command-r-plus";
     // Whether to show model and time information in the message
     ENABLE_SHOWINFO = false;
-    // enable Show info, which parts to show, support model, model_time, token, tool, tool_time
+    // enable Show info, which parts to show, support model, model_time, token, tool, tool_time, first_chunk_time
     SHOW_PARTS = ['model', 'model_time', 'token', 'tool', 'tool_time'];
     // Function to use, currently has duckduckgo, jina_reader, icloud_price, nf_price, iap_price, currency
     //
