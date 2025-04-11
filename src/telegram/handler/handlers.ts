@@ -1,3 +1,4 @@
+/* eslint-disable unused-imports/no-unused-vars */
 import type * as Telegram from 'telegram-bot-api-types';
 import type { WorkerContextBase } from '../../config/context';
 import type { UnionData } from '../utils/tg_utils';
@@ -67,14 +68,15 @@ export class WhiteListFilter implements MessageHandler<WorkerContextBase> {
             return null;
         }
         const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
+
         const text = `You are not in the white list, please contact the administrator to add you to the white list. Your chat_id: ${message.chat.id}`;
 
         // 判断私聊消息
         if (message.chat.type === 'private') {
             // 白名单判断
             if (!ENV.CHAT_WHITE_LIST.includes(`${message.chat.id}`)) {
-                // return sender.sendPlainText(text);
                 log.error(`[WHITE LIST] ${message.chat.id} not in white list`);
+                // return sender.sendPlainText(text);
                 return new Response('success', { status: 200 });
             }
             return null;
@@ -88,7 +90,9 @@ export class WhiteListFilter implements MessageHandler<WorkerContextBase> {
             }
             // 白名单判断
             if (!ENV.CHAT_GROUP_WHITE_LIST.includes(`${message.chat.id}`)) {
-                return sender.sendPlainText(text);
+                log.error(`[WHITE LIST] ${message.chat.id} not in white list`);
+                // return sender.sendPlainText(text);
+                return new Response('success', { status: 200 });
             }
             return null;
         }

@@ -37,16 +37,13 @@ export async function chatWithLLM(
     sender?: ChatStreamTextHandler,
     isMiddle?: boolean,
 ): Promise<Response | string> {
-    const agent = loadChatLLM(context.USER_CONFIG);
     const streamSender = sender ?? OnStreamHander(MessageSender.from(context.SHARE_CONTEXT.botToken, message), context, message?.text || message?.caption || '');
-    if (!agent) {
-        return streamSender.end!('LLM is not enabled', false);
-    }
-
     try {
+        const agent = loadChatLLM(context.USER_CONFIG);
         log.info(`start chat with LLM`);
         const answer = await requestCompletionsFromLLM(params, context, agent, modifier, ENV.STREAM_MODE && !isMiddle ? streamSender : null);
         log.info(`chat with LLM done`);
+
         if (answer.messages.at(-1)?.role === 'tool') {
             await sendToolResult(answer.messages.at(-1)?.content as ToolResultPart[], streamSender.sender!, context.USER_CONFIG);
             return new Response('Success');
@@ -57,7 +54,6 @@ export async function chatWithLLM(
         }
         return streamSender.end!(answer.content);
     } catch (e) {
-        const sender = (streamSender.sender as MessageSender).with(message);
         log.error((e as Error).message, (e as Error).stack);
         let errMsg = '';
         if ((e as Error).name === 'AbortError') {
@@ -70,7 +66,7 @@ export async function chatWithLLM(
             }
         }
         errMsg = errMsg.trim().replace(context.SHARE_CONTEXT.botToken, '[REDACTED]').substring(0, 2048);
-        return sender.sendRichText(`\`\`\`Error\n${errMsg}\n\`\`\``, 'MarkdownV2', 'tip');
+        return streamSender.end!(`\`\`\`Error\n${errMsg}\n\`\`\``, false, 'error');
     } finally {
         streamSender.clearHeartbeat!();
     }

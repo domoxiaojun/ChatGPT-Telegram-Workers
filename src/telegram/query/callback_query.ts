@@ -26,7 +26,7 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
         // 未授权
         if (!authorized) {
             log.error(`[CALLBACK QUERY] User ${context.from.first_name}, id: ${context.from.id} not in the white list`);
-            return this.sendAlert(api, context.query_id, `⚠️ This is NOT your operation.`, true);
+            return this.sendAlert(api, context.query_id, `⚠️ This is not your operation`, true);
         }
         // 不支持的回调查询类型
         if (!query.data || !(query.message as Telegram.Message)?.reply_markup) {
@@ -283,8 +283,9 @@ export async function handleCallbackQuery(token: string, callbackQuery: Telegram
 
 export function isAuthorized(fromId: number, inline_keyboard: Array<Array<Telegram.InlineKeyboardButton>>) {
     const [id, _] = (inline_keyboard?.[0]?.[0]?.callback_data ?? '').split('.');
-    const authorizedId = [id, ...ENV.CHAT_WHITE_LIST];
-    return authorizedId.includes(fromId.toString());
+    return id === fromId.toString();
+    // const authorizedId = [id, ...ENV.CHAT_WHITE_LIST];
+    // return authorizedId.includes(fromId.toString());
 }
 
 function getNextpage({ pathDetail, pageIndexData, callbackData, inlineList, pageLength }: { pathDetail: string; pageIndexData: string | undefined; callbackData: number | string; inlineList: InlineItem[]; pageLength: number }) {
