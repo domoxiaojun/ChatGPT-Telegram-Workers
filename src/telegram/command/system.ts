@@ -596,7 +596,7 @@ export class PerplexityCommandHandler implements CommandHandler {
             },
             rejectUnauthorized: false,
         };
-        const resp = await (await sender.sendRichText('Perplexity is asking...')).json();
+        const resp = await sender.sendRichText('Perplexity is asking...').then(r => r.json());
         // sender.update({
         //     message_id: resp.result.message_id,
         // });

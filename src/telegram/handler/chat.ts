@@ -53,6 +53,7 @@ export async function chatWithLLM(
         }
         return streamSender.end!(answer.content);
     } catch (e) {
+        streamSender.clearHeartbeat!();
         log.error((e as Error).message, (e as Error).stack);
         let errMsg = '';
         if ((e as Error).name === 'AbortError') {
@@ -66,8 +67,6 @@ export async function chatWithLLM(
         }
         errMsg = errMsg.trim().replace(context.SHARE_CONTEXT.botToken, '[REDACTED]').substring(0, 2048);
         return streamSender.end!(`\`\`\`Error\n${errMsg}\n\`\`\``, false, 'error');
-    } finally {
-        streamSender.clearHeartbeat!();
     }
 }
 
@@ -91,6 +90,7 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
             await workflow(context, message, params, streamSender);
             return null;
         } catch (e) {
+            streamSender.clearHeartbeat!();
             const sender = streamSender.sender as MessageSender;
             log.error((e as Error).stack);
             if ((e as Error).message.includes('code 524')) {
@@ -98,8 +98,6 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
             }
             const errMsg = (e as Error).message.replace(context.SHARE_CONTEXT.botToken, '[REDACTED]').substring(0, 2048);
             return sender.sendRichText(`\`\`\`Error\n${errMsg}\n\`\`\``, undefined, 'tip');
-        } finally {
-            streamSender.clearHeartbeat!();
         }
     };
 
@@ -350,7 +348,7 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
 
     streamSender.end = async (text: string, needLog = true, type = 'chat'): Promise<any> => {
         log.info('--- start end ---');
-        // streamSender.clearHeartbeat();
+        streamSender.clearHeartbeat();
         await sentPromise;
         if (type === 'error') {
             text = `${cache}\n${text}`;
