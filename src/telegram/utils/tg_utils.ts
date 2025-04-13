@@ -1,5 +1,6 @@
 import type * as Telegram from 'telegram-bot-api-types';
 import { ENV } from '../../config/env';
+import { log } from '../../log';
 import { createTelegramBotAPI } from '../api';
 import { findPhotoFileID } from '../handler/chat';
 
@@ -69,11 +70,11 @@ function extractTypeFromMessage(message: Telegram.Message): UnionData {
         case 'sticker':
         case 'video':
         {
-            const MAX_FILE_SIZE = 20 * 1024 * 1024; // 能直接下载的文件大小为20MB
-            const fileSize = message[msgType]?.file_size;
-            if (fileSize && fileSize > MAX_FILE_SIZE) {
-                throw new Error(`File size over limit: ${(fileSize / 1024 / 1024).toFixed(1)}MB\nThe maximum file size to download is 20 MB`);
-            }
+            // const MAX_FILE_SIZE = 20 * 1024 * 1024; // 能直接下载的文件大小为20MB
+            // const fileSize = message[msgType]?.file_size;
+            // if (fileSize && fileSize > MAX_FILE_SIZE) {
+            //     throw new Error(`File size over limit: ${(fileSize / 1024 / 1024).toFixed(1)}MB\nThe maximum file size to download is 20 MB`);
+            // }
             const id = message[msgType]?.file_id;
             if (!id) {
                 throw new Error('file_id not found');
@@ -122,10 +123,14 @@ export function chunkArray(arr: any[], size: number): any[][] {
 export async function getTelegramFile(fileIds: string[], botToken: string, type: 'url' | 'blob' | 'base64' = 'url') {
     const api = createTelegramBotAPI(botToken);
     const files = await Promise.all(fileIds.map(id => api.getFileWithReturns({ file_id: id })));
+    const errorFile = files.find(f => !f.ok) as unknown as Telegram.ResponseError | undefined;
+    if (errorFile) {
+        throw new Error(errorFile.description);
+    }
+
     const paths = files.map(f => f.result?.file_path).filter(Boolean) as string[];
     const urls = paths.map(p => `https://api.telegram.org/file/bot${botToken}/${p}`);
-
-    console.log(`File URLs:\n${urls.join('\n')}`);
+    log.info(`files urls:\n${urls.join('\n')}`);
 
     switch (type) {
         case 'url':

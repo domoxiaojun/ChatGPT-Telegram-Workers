@@ -91,12 +91,15 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
             await workflow(context, message, params, streamSender);
             return null;
         } catch (e) {
+            const sender = streamSender.sender as MessageSender;
             log.error((e as Error).stack);
             if ((e as Error).message.includes('code 524')) {
-                return streamSender.end!(`\`\`\`Error\nOccur 524 error.\n\`\`\``, false, 'error');
+                return sender.sendRichText(`\`\`\`Error\nOccur 524 error.\n\`\`\``, undefined, 'tip');
             }
             const errMsg = (e as Error).message.replace(context.SHARE_CONTEXT.botToken, '[REDACTED]').substring(0, 2048);
-            return streamSender.end!(`\`\`\`Error\n${errMsg}\n\`\`\``, false, 'error');
+            return sender.sendRichText(`\`\`\`Error\n${errMsg}\n\`\`\``, undefined, 'tip');
+        } finally {
+            streamSender.clearHeartbeat!();
         }
     };
 
