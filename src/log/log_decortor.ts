@@ -6,63 +6,62 @@ import type { AgentUserConfig } from '../config/env';
 export const logSingleton = new WeakMap<AgentUserConfig, Logs>();
 export const tagMessageIds = new WeakMap<Message, Set<number>>();
 
-export function Log(
+export function Logger(
     value: any,
     context: ClassFieldDecoratorContext | ClassMethodDecoratorContext,
 ): any {
     if (context.kind === 'field') {
         const configIndex = 1; // config 的索引
         return function (initialValue: any) {
-            if (typeof initialValue === 'function') {
-                return async function (this: any, ...args: any[]) {
-                    const config: AgentUserConfig = args[configIndex];
-                    const logs = getLogSingleton(config);
-                    const startTime = Date.now();
-
-                    // 未完成的模型对话
-                    logs.ongoing.push({
-                        name: initialValue.name || 'anonymous',
-                        startTime,
-                    });
-
-                    let model: string;
-                    try {
-                        model = args[0]?.model || this.model(config, args[0]);
-                        if (this.type === 'tool') {
-                            logs.tool.model.add(model);
-                        } else {
-                            logs.chat.model.add(model);
-                        }
-
-                        const result: CompletionData = await initialValue.apply(this, args);
-                        const endTime = Date.now();
-                        const elapsed = ((endTime - startTime) / 1e3).toFixed(1);
-                        // 移除ongoing
-                        logs.ongoing = logs.ongoing.filter(
-                            func => func.startTime !== startTime,
-                        );
-
-                        handleLlmLog(logs, result, elapsed, this.type);
-
-                        if (!result.content && !result.tool_calls) {
-                            return result;
-                        }
-
-                        if (result.usage) {
-                            logs.tokens.push(`${result.usage.prompt_tokens},${result.usage.completion_tokens}`);
-                        }
-
-                        return { content: result.content, tool_calls: result.tool_calls };
-                    } catch (error) {
-                        logs.ongoing = logs.ongoing.filter(
-                            func => func.startTime !== startTime,
-                        );
-                        throw error;
-                    }
-                };
-            } else {
+            if (typeof initialValue !== 'function')
                 return initialValue;
-            }
+
+            return async function (this: any, ...args: any[]) {
+                const config: AgentUserConfig = args[configIndex];
+                const logs = getLogSingleton(config);
+                const startTime = Date.now();
+
+                // 未完成的模型对话
+                logs.ongoing.push({
+                    name: initialValue.name || 'anonymous',
+                    startTime,
+                });
+
+                let model: string;
+                try {
+                    model = args[0]?.model || this.model(config, args[0]);
+                    if (this.type === 'tool') {
+                        logs.tool.model.add(model);
+                    } else {
+                        logs.chat.model.add(model);
+                    }
+
+                    const result: CompletionData = await initialValue.apply(this, args);
+                    const endTime = Date.now();
+                    const elapsed = ((endTime - startTime) / 1e3).toFixed(1);
+                    // 移除ongoing
+                    logs.ongoing = logs.ongoing.filter(
+                        func => func.startTime !== startTime,
+                    );
+
+                    handleLlmLog(logs, result, elapsed, this.type);
+
+                    if (!result.content && !result.tool_calls) {
+                        return result;
+                    }
+
+                    if (result.usage) {
+                        logs.tokens.push(`${result.usage.prompt_tokens},${result.usage.completion_tokens}`);
+                    }
+
+                    return { content: result.content, tool_calls: result.tool_calls };
+                } catch (error) {
+                    logs.ongoing = logs.ongoing.filter(
+                        func => func.startTime !== startTime,
+                    );
+                    throw error;
+                }
+            };
         };
     }
 

@@ -1,7 +1,7 @@
 import type { AgentUserConfig } from '../config/env';
 import type { SseChatCompatibleOptions } from './request';
 import type { ChatAgent, ChatStreamTextHandler, ImageAgent, ImageResult, LLMChatParams, ResponseMessage } from './types';
-import { Log } from '../log/logDecortor';
+import { Logger } from '../log';
 import { base64StringToBlob } from '../utils/image';
 import { isJsonResponse, requestChatCompletions } from './request';
 
@@ -85,7 +85,7 @@ export class WorkersImage extends WorkerBase implements ImageAgent {
         return ctx.WORKERS_IMAGE_MODEL;
     };
 
-    @Log
+    @Logger
     readonly request = async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
         const id = context.CLOUDFLARE_ACCOUNT_ID;
         const token = context.CLOUDFLARE_TOKEN;

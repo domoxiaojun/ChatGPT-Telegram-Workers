@@ -70,6 +70,7 @@ export default defineConfig({
             formats,
         },
         outDir,
+        minify: false,
     },
     define: {
         ...versionDefine,

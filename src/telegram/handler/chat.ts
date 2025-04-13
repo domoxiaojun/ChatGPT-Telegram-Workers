@@ -11,8 +11,7 @@ import { APICallError } from 'ai';
 import { loadASRLLM, loadChatLLM, loadImageGen, loadTTSLLM } from '../../agent';
 import { loadHistory, requestCompletionsFromLLM } from '../../agent/chat';
 import { ENV } from '../../config/env';
-import { clearLog, getLog } from '../../log/logDecortor';
-import { log } from '../../log/logger';
+import { clearLog, getLog, log } from '../../log';
 import { sendToolResult } from '../../tools';
 import { imageToBase64String } from '../../utils/image';
 import { convertOgaToMp3 } from '../../utils/others/audio';
@@ -122,100 +121,103 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
             content: message.text || message.caption || '',
         };
 
-        if (id) {
-            const urls = await getTelegramFile(id, context.SHARE_CONTEXT.botToken, 'url') as string[];
-            log.info(`File URLs:\n${urls.join('\n')}`);
-            if (urls.length > 0) {
-                params.content = [];
-                if (message.text || message.caption) {
+        if (!id)
+            return params;
+
+        const urls = await getTelegramFile(id, context.SHARE_CONTEXT.botToken, 'url') as string[];
+        log.info(`File URLs:\n${urls.join('\n')}`);
+
+        if (urls.length === 0)
+            return params;
+
+        params.content = [];
+        if (message.text || message.caption) {
+            params.content.push({
+                type: 'text',
+                text: message.text || message.caption as string,
+            });
+        } else {
+            params.content.push({
+                type: 'text',
+                text: type === 'sticker'
+                    ? 'User sent a sticker to respond to you'
+                    : ['audio', 'voice'].includes(type)
+                            ? context.USER_CONFIG.AUDIO_PROMPT
+                            : `Please explain the ${type}`,
+            });
+        }
+        switch (type) {
+            case 'image':
+            case 'photo':
+            {
+                const isUrl = ENV.TELEGRAM_IMAGE_TRANSFER_MODE === 'url';
+                for (const url of urls) {
+                    const { data, format } = isUrl ? { data: url, format: `image/${url.split('.').pop()}` } : await imageToBase64String(url);
                     params.content.push({
-                        type: 'text',
-                        text: message.text || message.caption as string,
+                        type: 'image',
+                        image: data,
+                        mimeType: format,
+                    });
+                }
+                break;
+            }
+            case 'sticker':
+            {
+                const isUrl = ENV.TELEGRAM_IMAGE_TRANSFER_MODE === 'url';
+                const format = urls[0].split('.').pop();
+                if (format === 'webm') {
+                    params.content.push({
+                        type: 'file',
+                        data: urls[0],
+                        mimeType: 'video/webm',
                     });
                 } else {
+                    const { data, format: mimeType } = isUrl ? { data: urls[0], format: `image/${format}` } : await imageToBase64String(urls[0]);
                     params.content.push({
-                        type: 'text',
-                        text: type === 'sticker'
-                            ? 'User sent a sticker to respond to you'
-                            : ['audio', 'voice'].includes(type)
-                                    ? context.USER_CONFIG.AUDIO_PROMPT
-                                    : `Please explain the ${type}`,
+                        type: 'image',
+                        image: data,
+                        mimeType,
                     });
                 }
-                switch (type) {
-                    case 'image':
-                    case 'photo':
-                    {
-                        const isUrl = ENV.TELEGRAM_IMAGE_TRANSFER_MODE === 'url';
-                        for (const url of urls) {
-                            const { data, format } = isUrl ? { data: url, format: `image/${url.split('.').pop()}` } : await imageToBase64String(url);
-                            params.content.push({
-                                type: 'image',
-                                image: data,
-                                mimeType: format,
-                            });
-                        }
-                        break;
-                    }
-                    case 'sticker':
-                    {
-                        const isUrl = ENV.TELEGRAM_IMAGE_TRANSFER_MODE === 'url';
-                        const format = urls[0].split('.').pop();
-                        if (format === 'webm') {
-                            params.content.push({
-                                type: 'file',
-                                data: urls[0],
-                                mimeType: 'video/webm',
-                            });
-                        } else {
-                            const { data, format: mimeType } = isUrl ? { data: urls[0], format: `image/${format}` } : await imageToBase64String(urls[0]);
-                            params.content.push({
-                                type: 'image',
-                                image: data,
-                                mimeType,
-                            });
-                        }
-                        break;
-                    }
-                    case 'audio':
-                    case 'voice':
-                    {
-                        const isChat = context.USER_CONFIG.AUDIO_HANDLE_TYPE === 'chat';
-                        let audioData = urls[0];
-                        if (isChat && context.USER_CONFIG.AI_CHAT_PROVIDER === 'openai') {
-                            const response = await fetch(urls[0]);
-                            if (!response.body) {
-                                throw new Error('Failed to fetch audio data');
-                            }
-                            audioData = await convertOgaToMp3(response, 'base64') as string;
-                        }
-                        params.content.push({
-                            type: 'file',
-                            data: audioData,
-                            mimeType: `audio/${audioData.split('.').pop()}`,
-                        });
-                        break;
-                    }
-                    case 'text':
-                    {
-                        const text = await Promise.all(urls.map(url => fetch(url).then(r => r.text()))).then(t => t.join('\n'));
-                        params.content = [
-                            {
-                                type: 'text',
-                                text: `${message.text || message.caption}\n${text}`.trim(),
-                            },
-                        ];
-                        break;
-                    }
-                    case 'video':
-                        params.content.push({
-                            type: 'file',
-                            data: urls[0],
-                            mimeType: `video/${urls[0].split('.').pop()}`,
-                        });
-                        break;
-                }
+                break;
             }
+            case 'audio':
+            case 'voice':
+            {
+                const isChat = context.USER_CONFIG.AUDIO_HANDLE_TYPE === 'chat';
+                let audioData = urls[0];
+                if (isChat && context.USER_CONFIG.AI_CHAT_PROVIDER === 'openai') {
+                    const response = await fetch(urls[0]);
+                    if (!response.body) {
+                        throw new Error('Failed to fetch audio data');
+                    }
+                    audioData = await convertOgaToMp3(response, 'base64') as string;
+                }
+                params.content.push({
+                    type: 'file',
+                    data: audioData,
+                    mimeType: `audio/${audioData.split('.').pop()}`,
+                });
+                break;
+            }
+            case 'text':
+            {
+                const text = await Promise.all(urls.map(url => fetch(url).then(r => r.text()))).then(t => t.join('\n'));
+                params.content = [
+                    {
+                        type: 'text',
+                        text: `${message.text || message.caption}\n${text}`.trim(),
+                    },
+                ];
+                break;
+            }
+            case 'video':
+                params.content.push({
+                    type: 'file',
+                    data: urls[0],
+                    mimeType: `video/${urls[0].split('.').pop()}`,
+                });
+                break;
         }
         return params;
     }

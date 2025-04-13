@@ -1,7 +1,7 @@
 import type { CoreUserMessage, FilePart, ImagePart, UserContent } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
-import { getLogSingleton, Log } from '../log/logDecortor';
+import { getLogSingleton, Logger } from '../log';
 import { base64StringToBlob } from '../utils/image';
 import { createLlmModel } from './llm';
 import { warpLLMParams } from './model_middleware';
@@ -46,7 +46,7 @@ export class GoogleImage extends GoogleBase implements ImageAgent {
         return ctx.GOOGLE_IMAGE_MODEL;
     };
 
-    @Log
+    @Logger
     request = async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
         if (prompt.trim() === '') {
             throw new Error('Please provide a prompt.');

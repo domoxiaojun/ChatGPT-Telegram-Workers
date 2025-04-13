@@ -1,8 +1,7 @@
 import type { CoreUserMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ASRAgent, ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage, TTSAgent } from './types';
-import { Log } from '../log/logDecortor';
-import { log } from '../log/logger';
+import { log, Logger } from '../log';
 import { requestText2Image } from './image';
 import { createLlmModel } from './llm';
 import { warpLLMParams } from './model_middleware';
@@ -53,7 +52,7 @@ export class Dalle extends OpenAIBase implements ImageAgent {
         return ctx.DALL_E_MODEL;
     };
 
-    @Log
+    @Logger
     request = async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
         const url = `${context.OPENAI_API_BASE}/images/generations`;
         const header = {
@@ -97,7 +96,7 @@ export class OpenAIASR extends OpenAIBase implements ASRAgent {
         return ctx.OPENAI_STT_MODEL;
     };
 
-    @Log
+    @Logger
     request = async (audio: Blob, context: AgentUserConfig): Promise<string> => {
         const url = `${context.OPENAI_API_BASE}/audio/transcriptions`;
         const header = {

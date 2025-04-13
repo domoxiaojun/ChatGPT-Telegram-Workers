@@ -1,7 +1,6 @@
 import type { AgentUserConfig } from '../config/env';
 import type { GeneratedImage, ImageAgent, ImageResult } from './types';
-import { Log } from '../log/logDecortor';
-import { log } from '../log/logger';
+import { log, Logger } from '../log';
 import { createTelegramBotAPI } from '../telegram/api';
 
 export class KlingAI implements ImageAgent {
@@ -15,7 +14,7 @@ export class KlingAI implements ImageAgent {
         return this.modelKey;
     };
 
-    @Log
+    @Logger
     readonly request = async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
         const { n, radio, inputs = [], args, type } = extraParams || {};
         const COOKIES = context.KLINGAI_COOKIE;

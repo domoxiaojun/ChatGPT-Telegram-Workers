@@ -1,8 +1,7 @@
 import type { CoreUserMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ASRAgent, ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
-import { Log } from '../log/logDecortor';
-import { log } from '../log/logger';
+import { log, Logger } from '../log';
 import { requestText2Image } from './image';
 import { createLlmModel } from './llm';
 import { warpLLMParams } from './model_middleware';
@@ -46,7 +45,7 @@ export class OpenAILikeImage extends OpenAILikeBase implements ImageAgent {
         return ctx.OAILIKE_IMAGE_MODEL;
     };
 
-    @Log
+    @Logger
     request = async (prompt: string, context: AgentUserConfig): Promise<ImageResult> => {
         const url = `${context.OAILIKE_API_BASE}/images/generations`;
         const header = {
@@ -83,7 +82,7 @@ export class OpenAILikeASR extends OpenAILikeBase implements ASRAgent {
         return ctx.OAILIKE_STT_MODEL;
     };
 
-    @Log
+    @Logger
     request = async (audio: Blob, context: AgentUserConfig): Promise<string> => {
         const url = `${context.OAILIKE_API_BASE}/audio/transcriptions`;
         const header = {

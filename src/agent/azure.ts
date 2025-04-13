@@ -1,7 +1,7 @@
 import type { CoreUserMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
-import { Log } from '../log/logDecortor';
+import { Logger } from '../log';
 import { requestText2Image } from './image';
 import { createLlmModel } from './llm';
 import { warpLLMParams } from './model_middleware';
@@ -51,7 +51,7 @@ export class AzureImageAI implements ImageAgent {
         return ctx.AZURE_IMAGE_MODEL || '';
     };
 
-    @Log
+    @Logger
     readonly request = async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
         const url = `https://${context.AZURE_RESOURCE_NAME}.openai.azure.com/openai/deployments/${context.AZURE_IMAGE_MODEL}/chat/completions?${context.AZURE_API_VERSION}`;
         if (!url || !context.AZURE_API_KEY) {

@@ -8,8 +8,7 @@ import {
     extractReasoningMiddleware,
 } from 'ai';
 import { ENV } from '../config/env';
-import { getLogSingleton } from '../log/logDecortor';
-import { log } from '../log/logger';
+import { getLogSingleton, log } from '../log';
 import { tools, vaildTools } from '../tools';
 
 type Writeable<T> = { -readonly [P in keyof T]: T[P] };

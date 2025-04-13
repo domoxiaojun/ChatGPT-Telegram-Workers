@@ -3,7 +3,7 @@ import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, GoogleVertexImageModelId, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
 import { createVertex } from '@ai-sdk/google-vertex';
 import { experimental_generateImage as generateImage } from 'ai';
-import { Log } from '../log/logDecortor';
+import { Logger } from '../log';
 import { handleUrl } from './google';
 import { createLlmModel } from './llm';
 import { warpLLMParams } from './model_middleware';
@@ -48,7 +48,7 @@ export class VertexImage extends VertexBase implements ImageAgent {
         return ctx.VERTEX_IMAGE_MODEL;
     };
 
-    @Log
+    @Logger
     request = async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
         const { n = 1, radio: aspectRatio = '16:9' } = extraParams || {};
         const { images } = await generateImage({

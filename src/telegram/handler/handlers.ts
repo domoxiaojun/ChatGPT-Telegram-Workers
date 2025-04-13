@@ -5,8 +5,7 @@ import type { UnionData } from '../utils/tg_utils';
 import type { MessageHandler } from './types';
 import { WorkerContext } from '../../config/context';
 import { ENV } from '../../config/env';
-import { tagMessageIds } from '../../log/logDecortor';
-import { log } from '../../log/logger';
+import { log, tagMessageIds } from '../../log';
 import { Rerank } from '../../utils/data_calculation/rerank';
 import { createTelegramBotAPI } from '../api';
 import { handleCommandMessage } from '../command';
@@ -229,46 +228,47 @@ export class IntelligentModelProcess implements MessageHandler<WorkerContext> {
         const regex = /^\s*\/\/([cvts])\s*(\S+)/;
         const text = new RegExp(regex).exec((message.text || message.caption || '').trim());
 
-        if (text?.[1] && text[2]) {
-            const rerank = new Rerank();
-            const sendTipPromise = this.sendTip(context, message);
-            try {
-                const agentModelKey = `${context.USER_CONFIG.AI_CHAT_PROVIDER.toUpperCase()}_MODELS`;
-                const models = context.USER_CONFIG[agentModelKey] || [];
-                if (models.length === 0) {
-                    throw new Error('Don\'t have any model, please set/refresh model list first.');
-                }
-                const similarityModel = (await rerank.rank(context.USER_CONFIG, [text[2], ...models], 1))[0].value;
-                if (!similarityModel) {
-                    return this.editTip(context, (await sendTipPromise).result, 'No similarity model found');
-                }
-                log.info(`[INTELLIGENT MODEL] find similarity model: ${similarityModel}`);
-                const mode = text[1];
-                let textReplace = `/set `;
-                switch (mode) {
-                    case 'c':
-                        textReplace += `-CHAT_MODEL`;
-                        break;
-                    case 'v':
-                        textReplace += `-VISION_MODEL`;
-                        break;
-                    case 't':
-                        textReplace += `-TOOL_MODEL`;
-                        break;
-                    case 's':
-                        textReplace += `-TTS_MODEL`;
-                        break;
-                }
-                textReplace += ` ${similarityModel}`;
-                if (message.text) {
-                    message.text = textReplace + message.text.slice(text[0].length);
-                } else if (message.caption) {
-                    message.caption = textReplace + message.caption.slice(text[0].length);
-                }
-                this.deleteTip(context, (await sendTipPromise).result);
-            } catch (error) {
-                return this.editTip(context, (await sendTipPromise).result, (error as Error).message, 'Error');
+        if (!text?.[1] || !text[2])
+            return null;
+
+        const rerank = new Rerank();
+        const sendTipPromise = this.sendTip(context, message);
+        try {
+            const agentModelKey = `${context.USER_CONFIG.AI_CHAT_PROVIDER.toUpperCase()}_MODELS`;
+            const models = context.USER_CONFIG[agentModelKey] || [];
+            if (models.length === 0) {
+                throw new Error('Don\'t have any model, please set/refresh model list first.');
             }
+            const similarityModel = (await rerank.rank(context.USER_CONFIG, [text[2], ...models], 1))[0].value;
+            if (!similarityModel) {
+                return this.editTip(context, (await sendTipPromise).result, 'No similarity model found');
+            }
+            log.info(`[INTELLIGENT MODEL] find similarity model: ${similarityModel}`);
+            const mode = text[1];
+            let textReplace = `/set `;
+            switch (mode) {
+                case 'c':
+                    textReplace += `-CHAT_MODEL`;
+                    break;
+                case 'v':
+                    textReplace += `-VISION_MODEL`;
+                    break;
+                case 't':
+                    textReplace += `-TOOL_MODEL`;
+                    break;
+                case 's':
+                    textReplace += `-TTS_MODEL`;
+                    break;
+            }
+            textReplace += ` ${similarityModel}`;
+            if (message.text) {
+                message.text = textReplace + message.text.slice(text[0].length);
+            } else if (message.caption) {
+                message.caption = textReplace + message.caption.slice(text[0].length);
+            }
+            this.deleteTip(context, (await sendTipPromise).result);
+        } catch (error) {
+            return this.editTip(context, (await sendTipPromise).result, (error as Error).message, 'Error');
         }
         return null;
     };
@@ -317,18 +317,19 @@ export class ReplyInlineHandler implements MessageHandler<WorkerContext> {
     handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | null> => {
         const isMyInlineSetMessage = this.isMyInlineSetMessage(message, context);
         const authorized = isAuthorized(message?.from?.id ?? 0, message.reply_to_message?.reply_markup?.inline_keyboard ?? []);
-        if (isMyInlineSetMessage && authorized) {
-            const inlineKeyboard = message.reply_to_message!.reply_markup!.inline_keyboard.flat();
-            const variable = inlineKeyboard.find(i => i.text.startsWith('✅'))?.text.split('✅')[1];
-            if (variable) {
-                message.text = `/set -${variable} ${message.text}`;
-            } else {
-                return createTelegramBotAPI(context.SHARE_CONTEXT.botToken).sendMessage({
-                    chat_id: message.chat.id,
-                    text: '```Tip\n选中变量后再进行回复\n```',
-                    parse_mode: 'MarkdownV2',
-                });
-            }
+        if (!isMyInlineSetMessage || !authorized) {
+            return null;
+        }
+        const inlineKeyboard = message.reply_to_message!.reply_markup!.inline_keyboard.flat();
+        const variable = inlineKeyboard.find(i => i.text.startsWith('✅'))?.text.split('✅')[1];
+        if (variable) {
+            message.text = `/set -${variable} ${message.text}`;
+        } else {
+            return createTelegramBotAPI(context.SHARE_CONTEXT.botToken).sendMessage({
+                chat_id: message.chat.id,
+                text: '```Tip\n选中变量后再进行回复\n```',
+                parse_mode: 'MarkdownV2',
+            });
         }
         return null;
     };
