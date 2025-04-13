@@ -23,6 +23,7 @@ export function createDockerPlugin(targetDir: string) {
             const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'));
             const cleanedPackageJson = {
                 name: packageJson.name,
+                type: packageJson.type,
                 version: packageJson.version,
                 dependencies: packageJson.dependencies,
             };

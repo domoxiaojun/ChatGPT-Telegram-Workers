@@ -93,10 +93,10 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
             streamSender.clearHeartbeat!();
             const sender = streamSender.sender as MessageSender;
             log.error((e as Error).stack);
-            if ((e as Error).message.includes('code 524')) {
+            if ((e as Error).message.includes(' 524')) {
                 return sender.sendRichText(`\`\`\`Error\nOccur 524 error.\n\`\`\``, undefined, 'tip');
             }
-            const errMsg = (e as Error).message.replace(context.SHARE_CONTEXT.botToken, '[REDACTED]').substring(0, 2048);
+            const errMsg = (e as Error).message.replaceAll(context.SHARE_CONTEXT.botToken, '[REDACTED]').substring(0, 2048);
             return sender.sendRichText(`\`\`\`Error\n${errMsg}\n\`\`\``, undefined, 'tip');
         }
     };
