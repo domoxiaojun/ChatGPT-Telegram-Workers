@@ -11,7 +11,7 @@ import { waitUntil } from './tg_utils';
 
 class MessageContext implements Record<string, any> {
     chat_id: number;
-    message_id: number | null = null; // 当前发生的消息，用于后续编辑
+    message_id: number | null = null; // 当前发送的消息，用于后续编辑
     reply_to_message_id: number | null;
     parse_mode: Telegram.ParseMode | null = null;
     allow_sending_without_reply: boolean | null = null;
@@ -140,6 +140,8 @@ export class MessageSender {
             }
 
             chatContext.message_id = context.sentMessageIds[i] ?? null;
+            // 非第一个片段，回复消息的id为上一个片段的id
+            i > 0 && (chatContext.reply_to_message_id = context.sentMessageIds[i - 1]);
             log.info(`message id: ${chatContext.message_id}`);
             // log.debug(`chunk:\n${messages[i]}`);
             lastMessageResponse = await this.sendMessage(messages[i], chatContext);

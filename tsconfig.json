@@ -1,7 +1,6 @@
 {
     "compilerOptions": {
         "target": "ESNext",
-        "jsx": "react",
         "lib": [
             "ESNext",
             "dom",
@@ -12,11 +11,7 @@
         "rootDir": ".",
         "module": "ESNext",
         "moduleResolution": "bundler",
-        "types": [
-            "node",
-            "react",
-            "react-dom"
-        ],
+        "resolveJsonModule": true,
         "allowJs": true,
         "strict": true,
         "declaration": true,
