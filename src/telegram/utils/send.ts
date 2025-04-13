@@ -140,8 +140,8 @@ export class MessageSender {
             }
 
             chatContext.message_id = context.sentMessageIds[i] ?? null;
-            // 非第一个片段，回复消息的id为上一个片段的id
-            i > 0 && (chatContext.reply_to_message_id = context.sentMessageIds[i - 1]);
+            // 存在reply_to_message_id 且 非第一个片段，回复消息的id为上一个片段的id
+            context.reply_to_message_id && i > 0 && (chatContext.reply_to_message_id = context.sentMessageIds[i - 1]);
             log.info(`message id: ${chatContext.message_id}`);
             // log.debug(`chunk:\n${messages[i]}`);
             lastMessageResponse = await this.sendMessage(messages[i], chatContext);
