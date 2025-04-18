@@ -6,9 +6,10 @@ export class EnvironmentConfig {
     LANGUAGE = 'zh-cn';
     // 检查更新的分支
     UPDATE_BRANCH = 'master';
-    // Chat Complete API Timeout, default 10 minutes
-    CHAT_COMPLETE_API_TIMEOUT = 60 * 1000 * 10;
-
+    // Chat Complete API Timeout, scale: seconds
+    CHAT_COMPLETE_API_TIMEOUT = 0;
+    // Total Duration Limit, scale: seconds, default 30 minutes
+    CHAT_TOTAL_DURATION_LIMIT = 60 * 30;
     // -- Telegram 相关 --
     //
     // Telegram API Domain
@@ -312,6 +313,7 @@ export class GeminiConfig {
     //         },
     //     },
     // };
+
     GOOGLE_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
     GOOGLE_MODELS = [];
     GOOGLE_MODELS_API = '/models';
@@ -518,6 +520,7 @@ export class ExtraUserConfig {
     MESSAGE_REPLACER: Record<string, string> = {};
     // Parameter modifier; string array; separated by colons, the key is the model name, separated by commas;
     // the value is the parameter modification value, modification values starting with '+' indicates addition, with the value after '=' and separated by '|'; starting with '-' indicates addition indicate deletion.
+    // note: not support stream option
     // for example: PARAMS_MODIFIER = ['o1-mini,o3-mini:-temperature|+max_tokens=1000'];
     // priority is higher than EXTRA_PARAMS
     PARAMS_MODIFIER: string[] = ['o1-mini,o3-mini,gpt-4o-mini-search-preview,gpt-4o-search-preview:-temperature'];

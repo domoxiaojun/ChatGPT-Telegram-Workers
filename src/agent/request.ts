@@ -209,6 +209,7 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
         maxTokens: context.MAX_TOKENS,
         activeTools,
         onStepFinish: middleware.onStepFinish as (data: StepResult<any>) => void,
+        ...(ENV.CHAT_TOTAL_DURATION_LIMIT > 0 && { abortSignal: AbortSignal.timeout(ENV.CHAT_TOTAL_DURATION_LIMIT * 1e3) }),
     };
     let responseMessages: ResponseMessage[] = [];
     let contentFull = '';
