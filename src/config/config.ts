@@ -6,8 +6,8 @@ export class EnvironmentConfig {
     LANGUAGE = 'zh-cn';
     // 检查更新的分支
     UPDATE_BRANCH = 'master';
-    // Chat Complete API Timeout
-    CHAT_COMPLETE_API_TIMEOUT = 0;
+    // Chat Complete API Timeout, default 10 minutes
+    CHAT_COMPLETE_API_TIMEOUT = 60 * 1000 * 10;
 
     // -- Telegram 相关 --
     //
@@ -216,7 +216,7 @@ export class OpenAIConfig {
     OPENAI_CHAT_MODEL = 'gpt-4o-mini';
     // OpenAI API BASE ``
     OPENAI_API_BASE = 'https://api.openai.com/v1';
-    // OpenAI API Extra Params, key is model id, separated by commas, value is extra params
+    // OpenAI API Extra Params, key is model name prefix, separated by commas; value is extra Params, support path(camelCase), split by '.'
     // for example: OPENAI_API_EXTRA_PARAMS = { 'gpt-4o-mini,gpt-4o-2024-08-06': { 'temperature': 0.5 } };
     OPENAI_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
     // OpenAI STT Model
@@ -302,8 +302,16 @@ export class GeminiConfig {
     GOOGLE_IMAGE_MODEL = 'gemini-2.0-flash-exp';
     // Google Embedding Model
     GOOGLE_EMBEDDING_MODEL = 'text-embedding-004';
-    // Google API Extra Params, key is model id, separated by commas, value is extra Params
-    // for example: GOOGLE_API_EXTRA_PARAMS = { 'gemini-2.0-flash,gemini-2.0-flash-exp': { 'temperature': 0.5 } };
+    // Google API Extra Params, key is model name prefix, separated by commas; value is extra Params, support path(camelCase), split by '.'
+    // for example: GOOGLE_API_EXTRA_PARAMS = { 'gemini-2.0-flash,gemini-2.5-flash': { 'generationConfig.temperature': 0.5 } };
+    // GOOGLE_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {
+    //     'gemini-2.5-flash': {
+    //         'generationConfig.thinkingConfig': {
+    //             includeThoughts: false,
+    //             thinkingBudget: 0,
+    //         },
+    //     },
+    // };
     GOOGLE_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
     GOOGLE_MODELS = [];
     GOOGLE_MODELS_API = '/models';
@@ -343,10 +351,10 @@ export class AnthropicConfig {
     ANTHROPIC_CHAT_MODEL = 'claude-3-5-haiku-20241022';
     // Anthropic vision model
     ANTHROPIC_VISION_MODEL = 'claude-3-5-haiku-20241022';
-    // Anthropic API Extra Params, key is model id, separated by commas, value is extra Params
-    // for example: ANTHROPIC_API_EXTRA_PARAMS = { 'claude-3-5-haiku-20241022,claude-3-5-sonnet': { 'temperature': 0.5 } };
+    // Anthropic API Extra Params, key is model name prefix, separated by commas; value is extra Params, support path(camelCase), split by '.'
+    // for example: ANTHROPIC_API_EXTRA_PARAMS = { 'claude-3-5': { 'temperature': 0.5 } };
     ANTHROPIC_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {
-        'claude-3-7-sonnet-20250219': {
+        'claude-3-7-sonnet': {
             temperature: 1,
             thinking: {
                 type: 'enabled',
@@ -384,8 +392,8 @@ export class OpenAILikeConfig {
     OAILIKE_TTS_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
     // oailike tts voice
     OAILIKE_TTS_VOICE = 'alloy';
-    // OAILIKE API Extra Params, key is model id, separated by commas, value is extra Params
-    // for example: OAILIKE_API_EXTRA_PARAMS = { 'gpt-4o-mini,gpt-4o-2024-08-06': { 'temperature': 0.5 } };
+    // OAILIKE API Extra Params, key is model name prefix, separated by commas; value is extra Params, support path(camelCase), split by '.'
+    // for example: OAILIKE_API_EXTRA_PARAMS = { 'gpt-4o': { 'temperature': 0.5 } };
     OAILIKE_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
     OAILIKE_MODELS = [];
     OAILIKE_MODELS_API = '/models';
@@ -427,8 +435,11 @@ export class XAIConfig {
     // XAI api base
     XAI_API_BASE = 'https://api.x.ai/v1';
     // XAI api model
-    XAI_CHAT_MODEL = 'grok-beta';
-    XAI_VISION_MODEL = 'grok-vision-beta';
+    XAI_CHAT_MODEL = 'grok-3';
+    XAI_VISION_MODEL = 'grok-2-vision';
+    // XAI API Extra Params, key is model name prefix, separated by commas; value is extra Params,  support path(camelCase), split by '.'
+    // for example: XAI_API_EXTRA_PARAMS = { 'grok-3': { 'temperature': 0.5 } };
+    XAI_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
     XAI_MODELS = [];
     XAI_MODELS_API = '/models';
 }

@@ -157,11 +157,28 @@ function extraMetadataExtractor(modelId: string): MetadataExtractor | undefined 
 }
 
 export function paramsModifier(model: string, options: Record<string, any>, modifier: string[], extraParams: Record<string, Record<string, any>>) {
-    // 处理 extraParams
+    // 解析路径 处理 extraParams
+    const paramsHandler = (paths: string, value: any) => {
+        const pathList = paths.split('.');
+        let current = options;
+        const isLast = (i: number) => i === pathList.length - 1;
+        for (let i = 0; i < pathList.length; i++) {
+            const key = pathList[i];
+            if (isLast(i)) {
+                current[key] = value;
+            } else {
+                if (!current[key]) {
+                    current[key] = {};
+                }
+                current = current[key];
+            }
+        }
+    };
+
     for (const [models, params] of Object.entries(extraParams)) {
-        if (models.includes(model) || models.includes('*')) {
+        if (models.split(',').some(m => model.startsWith(m)) || models === '*') {
             Object.entries(params).forEach(([key, value]) => {
-                options[key] = value;
+                paramsHandler(key, value);
             });
             break;
         }
@@ -169,7 +186,7 @@ export function paramsModifier(model: string, options: Record<string, any>, modi
     if (modifier.length === 0) {
         return options;
     }
-
+    // 解析 value
     const valueParser = (text: string) => {
         const numericParser = (text: string) => {
             const num = Number(text);
@@ -218,11 +235,17 @@ export function paramsModifier(model: string, options: Record<string, any>, modi
     return options;
 }
 
-function mockParams(modelId: string, config: AgentUserConfig, provider: string) {
-    const extraParams = config[`${config.AI_CHAT_PROVIDER.toUpperCase()}_API_EXTRA_PARAMS` as keyof AgentUserConfig];
+interface MockParams {
+    modelId: string;
+    config: AgentUserConfig;
+    provider: string;
+    options: Record<string, any>;
+}
+
+function mockParams({ modelId, config, provider, options }: MockParams) {
+    const extraParams = (config[`${provider.toUpperCase()}_API_EXTRA_PARAMS` as keyof AgentUserConfig] as Record<string, Record<string, any>>) || {};
     const { PARAMS_MODIFIER: modifier, OAILIKE_RELAY_TOOLS: relayTools, USE_OAILIKE_RELAY_TOOLS: relayToolsList } = config;
 
-    const options: Record<string, any> = {};
     if (provider === 'oailike') {
         const relayKey = Object.keys(relayTools).find(key => modelId.includes(key));
         if (relayKey && relayToolsList.length > 0) {
@@ -245,8 +268,7 @@ function mockParams(modelId: string, config: AgentUserConfig, provider: string) 
 function mockFetch(modelId: string, context: AgentUserConfig, provider: string) {
     return (url: RequestInfo | URL, options?: RequestInit) => {
         const body = JSON.parse(options?.body as string) || {};
-        const params = mockParams(modelId, context, provider);
-        Object.assign(body, params);
+        mockParams({ modelId, config: context, provider, options: body });
         return fetch(url, {
             ...options,
             body: JSON.stringify(body),
