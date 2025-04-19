@@ -535,15 +535,17 @@ export class ExtraUserConfig {
             next: string;
         }[];
     } = {
-            think: [{
-                agent: 'oailike',
-                model: 'deepseek-reasoner',
-                temperature: 0.3,
-                max_tokens: 1,
-                next: `思考内容: {{result}}\n\n基于以上思考回答问题: {{question}}`,
-            }],
+            // think: [{
+            //     agent: 'oailike',
+            //     model: 'deepseek-reasoner',
+            //     temperature: 0.3,
+            //     max_tokens: 1,
+            //     next: `思考内容: {{result}}\n\n基于以上思考回答问题: {{question}}`,
+            // }],
         };
 
     // whether to enable workflow
     ENABLE_WORKFLOW = false;
+    // whether to enable model alias of mapping value
+    ENABLE_ALIAS = false;
 }

@@ -288,10 +288,15 @@ function trimActiveTools(activeTools: string[], toolNames: string[]) {
 function recordModelLog(config: AgentUserConfig, model: LanguageModelV1, activeTools: string[], toolChoice: ToolChoice) {
     const logs = getLogSingleton(config);
     log.info(`provider: ${model.provider}, modelId: ${model.modelId} `);
+    let modelName = model.modelId;
+    if (config.ENABLE_ALIAS) {
+        const mappedModel = config.MAPPING_VALUE.split('|').map(i => i.split(':')).find(([_, value]) => value === model.modelId);
+        modelName = mappedModel?.[0] ?? model.modelId;
+    }
     if (activeTools.length > 0 && toolChoice?.type !== 'none') {
-        logs.tool.model.add(model.modelId);
+        logs.tool.model.add(modelName);
     } else {
-        logs.chat.model.add(model.modelId);
+        logs.chat.model.add(modelName);
     }
 }
 

@@ -439,7 +439,7 @@ export class SetCommandHandler extends RenewConfig {
                     entries.push([key.replace(/^-/, ''), value]);
                     continue;
                 }
-                entries.push([value, key]);
+                entries.push([key, value]);
             }
 
             return Object.fromEntries(entries);
