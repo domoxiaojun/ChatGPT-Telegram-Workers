@@ -74,7 +74,7 @@ export class WhiteListFilter implements MessageHandler<WorkerContextBase> {
         if (message.chat.type === 'private') {
             // 白名单判断
             if (!ENV.CHAT_WHITE_LIST.includes(`${message.chat.id}`)) {
-                log.error(`[WHITE LIST] ${message.chat.id} not in white list`);
+                log.error(`[WHITE LIST] ${message.chat.id} ${message.chat.username} not in white list`);
                 // return sender.sendPlainText(text);
                 return new Response('success', { status: 200 });
             }
@@ -89,7 +89,7 @@ export class WhiteListFilter implements MessageHandler<WorkerContextBase> {
             }
             // 白名单判断
             if (!ENV.CHAT_GROUP_WHITE_LIST.includes(`${message.chat.id}`)) {
-                log.error(`[WHITE LIST] ${message.chat.id} not in white list`);
+                log.error(`[WHITE LIST] ${message.chat.id} ${message.chat.username} not in white list`);
                 // return sender.sendPlainText(text);
                 return new Response('success', { status: 200 });
             }

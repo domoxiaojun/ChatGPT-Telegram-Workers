@@ -41,6 +41,26 @@ export const COMMAND_AUTH_CHECKER = {
     },
 };
 
+abstract class RenewConfig implements CommandHandler {
+    abstract command: string;
+    scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
+    needAuth: (chatType: string) => string[] | null = COMMAND_AUTH_CHECKER.shareModeGroup;
+    abstract handle: (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender) => Promise<Response | null>;
+    store = async (data: Record<string, any>, context: WorkerContext, isStore: boolean = true): Promise<void> => {
+        Object.keys(data).forEach((key) => {
+            context.USER_CONFIG.DEFINE_KEYS.push(key);
+        });
+        context.USER_CONFIG.DEFINE_KEYS = Array.from(new Set(context.USER_CONFIG.DEFINE_KEYS));
+        ConfigMerger.merge(context.USER_CONFIG, data);
+        if (isStore) {
+            await ENV.DATABASE.put(
+                context.SHARE_CONTEXT.configStoreKey,
+                JSON.stringify(ConfigMerger.trim(context.USER_CONFIG, ENV.LOCK_USER_CONFIG_KEYS)),
+            );
+        }
+    };
+}
+
 export class ImgCommandHandler implements CommandHandler {
     command = '/img';
     scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
@@ -125,7 +145,7 @@ class BaseNewCommandHandler {
 
 export class NewCommandHandler extends BaseNewCommandHandler implements CommandHandler {
     command = '/new';
-    scopes: ScopeType[] = ['all_private_chats', 'all_group_chats', 'all_chat_administrators'];
+    needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext): Promise<Response> => {
         return BaseNewCommandHandler.handle(false, message, subcommand, context);
     };
@@ -138,9 +158,8 @@ export class StartCommandHandler extends BaseNewCommandHandler implements Comman
     };
 }
 
-export class SetEnvCommandHandler implements CommandHandler {
+export class SetEnvCommandHandler extends RenewConfig {
     command = '/setenv';
-    needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
         // const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
         const kv = subcommand.indexOf('=');
@@ -157,16 +176,8 @@ export class SetEnvCommandHandler implements CommandHandler {
             return sender.sendPlainText(`Key ${key} not found`);
         }
         try {
-            context.USER_CONFIG.DEFINE_KEYS.push(key);
-            context.USER_CONFIG.DEFINE_KEYS = Array.from(new Set(context.USER_CONFIG.DEFINE_KEYS));
-            ConfigMerger.merge(context.USER_CONFIG, {
-                [key]: value,
-            });
+            this.store({ [key]: value }, context);
             log.info('Update user config: ', key, context.USER_CONFIG[key]);
-            await ENV.DATABASE.put(
-                context.SHARE_CONTEXT.configStoreKey,
-                JSON.stringify(ConfigMerger.trim(context.USER_CONFIG, ENV.LOCK_USER_CONFIG_KEYS)),
-            );
             return sender.sendPlainText('Update user config success');
         } catch (e) {
             return sender.sendPlainText(`ERROR: ${(e as Error).message}`);
@@ -174,9 +185,8 @@ export class SetEnvCommandHandler implements CommandHandler {
     };
 }
 
-export class SetEnvsCommandHandler implements CommandHandler {
+export class SetEnvsCommandHandler extends RenewConfig {
     command = '/setenvs';
-    needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
         // const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
         try {
@@ -191,17 +201,10 @@ export class SetEnvsCommandHandler implements CommandHandler {
                 if (!configKeys.includes(key)) {
                     return sender.sendPlainText(`Key ${key} not found`);
                 }
-                context.USER_CONFIG.DEFINE_KEYS.push(key);
-                ConfigMerger.merge(context.USER_CONFIG, {
-                    [key]: value,
-                });
+                this.store({ [key]: value }, context, false);
                 log.info('Update user config: ', key, context.USER_CONFIG[key]);
             }
-            context.USER_CONFIG.DEFINE_KEYS = Array.from(new Set(context.USER_CONFIG.DEFINE_KEYS));
-            await ENV.DATABASE.put(
-                context.SHARE_CONTEXT.configStoreKey,
-                JSON.stringify(ConfigMerger.trim(context.USER_CONFIG, ENV.LOCK_USER_CONFIG_KEYS)),
-            );
+            this.store({}, context);
             return sender.sendPlainText('Update user config success');
         } catch (e) {
             return sender.sendPlainText(`ERROR: ${(e as Error).message}`);
@@ -209,9 +212,8 @@ export class SetEnvsCommandHandler implements CommandHandler {
     };
 }
 
-export class DelEnvCommandHandler implements CommandHandler {
+export class DelEnvCommandHandler extends RenewConfig {
     command = '/delenv';
-    needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
         // const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
         if (ENV.LOCK_USER_CONFIG_KEYS.includes(subcommand)) {
@@ -221,10 +223,7 @@ export class DelEnvCommandHandler implements CommandHandler {
         try {
             context.USER_CONFIG[subcommand] = null;
             context.USER_CONFIG.DEFINE_KEYS = context.USER_CONFIG.DEFINE_KEYS.filter(key => key !== subcommand);
-            await ENV.DATABASE.put(
-                context.SHARE_CONTEXT.configStoreKey,
-                JSON.stringify(ConfigMerger.trim(context.USER_CONFIG, ENV.LOCK_USER_CONFIG_KEYS)),
-            );
+            this.store({}, context);
             return sender.sendPlainText('Delete user config success');
         } catch (e) {
             return sender.sendPlainText(`ERROR: ${(e as Error).message}`);
@@ -232,9 +231,8 @@ export class DelEnvCommandHandler implements CommandHandler {
     };
 }
 
-export class ClearEnvCommandHandler implements CommandHandler {
+export class ClearEnvCommandHandler extends RenewConfig {
     command = '/clearenv';
-    needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
         // const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
         try {
@@ -246,7 +244,6 @@ export class ClearEnvCommandHandler implements CommandHandler {
         } catch (e) {
             return sender.sendPlainText(`ERROR: ${(e as Error).message}`);
         }
-        ;
     };
 }
 
@@ -370,10 +367,8 @@ export class EchoCommandHandler implements CommandHandler {
     };
 }
 
-export class SetCommandHandler implements CommandHandler {
+export class SetCommandHandler extends RenewConfig {
     command = '/set';
-    needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
-    scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
     relaxAuth = true;
     handle = async (
         message: Telegram.Message,
@@ -406,11 +401,7 @@ export class SetCommandHandler implements CommandHandler {
             }
             await this.RelaxAuthCheck(message, context, updatedKeys, needUpdate);
             if (needUpdate && updatedKeys.length > 0 && context.SHARE_CONTEXT?.configStoreKey) {
-                context.USER_CONFIG.DEFINE_KEYS = Array.from(new Set(context.USER_CONFIG.DEFINE_KEYS));
-                await ENV.DATABASE.put(
-                    context.SHARE_CONTEXT.configStoreKey,
-                    JSON.stringify(ConfigMerger.trim(context.USER_CONFIG, ENV.LOCK_USER_CONFIG_KEYS)),
-                );
+                await this.store({}, context);
                 const suffixWhiteList = ['_PROVIDER', '_MODEL', '_MODELS', '_TOOLS', '_TYPE', '_OUTPUT', '_AGENT', '_TEMPERATURE', 'MAPPING_KEY', 'MAPPING_VALUE'];
                 msg += `${updatedKeys
                     .filter(key => suffixWhiteList.some(suffix => key.endsWith(suffix)))
@@ -430,7 +421,7 @@ export class SetCommandHandler implements CommandHandler {
     };
 
     private parseMappings(context: WorkerContext): { keys: Record<string, string>; values: Record<string, string> } {
-        const parseMapping = (mapping: string): Record<string, string> => {
+        const parseMapping = (mapping: string, type: string): Record<string, string> => {
             if (!mapping) {
                 return {};
             }
@@ -444,18 +435,23 @@ export class SetCommandHandler implements CommandHandler {
                 }
                 // 防止映射值中同样包含:
                 const value = rest.length > 0 ? rest.join(':') : '';
-                entries.push([key, value]);
+                if (type === 'key') {
+                    entries.push([key.replace(/^-/, ''), value]);
+                    continue;
+                }
+                entries.push([value, key]);
             }
+
             return Object.fromEntries(entries);
         };
 
-        const keys = parseMapping(context.USER_CONFIG.MAPPING_KEY);
-        const values = parseMapping(context.USER_CONFIG.MAPPING_VALUE);
+        const keys = parseMapping(context.USER_CONFIG.MAPPING_KEY, 'key');
+        const values = parseMapping(context.USER_CONFIG.MAPPING_VALUE, 'value');
         return { keys, values };
     }
 
     private tokenizeSubcommand(subcommand: string): { flags: { flag: string; value: string | undefined }[]; remainingText: string } {
-        const regex = /^\s*(-\w+)(?:\s+("[^"]*"|'[^']*'|\S+|$)|$)/;
+        const regex = /^\s*-(\w+)(?:\s+("[^"]*"|'[^']*'|\S+|$)|$)/;
         const flags: { flag: string; value: string | undefined }[] = [];
         let text = subcommand;
         let match: RegExpExecArray | null;
@@ -484,9 +480,9 @@ export class SetCommandHandler implements CommandHandler {
         sender: MessageSender,
     ): Promise<string | Response> {
         let key = keys[flag]
-            || (Object.values(keys).includes(flag.slice(1))
-                || Object.keys(context.USER_CONFIG).some(k => k.endsWith(flag.slice(1)))
-                ? flag.slice(1)
+            || (Object.values(keys).includes(flag)
+                || Object.keys(context.USER_CONFIG).some(k => k.endsWith(flag))
+                ? flag
                 : null);
         let mappedValue = value && (values[value] ?? value);
 
@@ -902,5 +898,65 @@ export class HistoryCommandHandler implements CommandHandler {
         const length = Number.parseInt(subcommand.trim()) || ENV.STORE_HISTORY_LENGTH;
         const history = await loadHistory(context.SHARE_CONTEXT.chatHistoryKey, length);
         return sender.sendDocument(new File([JSON.stringify(history, null, 2)], 'history.json', { type: 'application/json' }));
+    };
+}
+
+export class MapCommandHandler extends RenewConfig {
+    command = '/map';
+    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
+        subcommand = subcommand.trim();
+        let type = 'value';
+        if (subcommand.startsWith('key')) {
+            type = 'key';
+        }
+
+        const setKey = `MAPPING_${type.toUpperCase()}`;
+        if (subcommand === '') {
+            const msg = '使用方法:\n'
+                + `- 添加映射: /map [type] +key:value (不带+时，默认新增; 设置多个映射时以空格分隔)\n`
+                + `- 删除映射: /map [type] -key\n`
+                + `- 查看映射: /map [type]\n`
+                + `- 清空映射: /map [type] clear\n\n`
+                + `type 可选值: key, value; 分别对应 MAPPING\\_KEY, MAPPING\\_VALUE; 不带type时，默认为${setKey}`;
+            return this.send(msg, sender);
+        }
+        if (/^(?:key|value)$/.test(subcommand)) {
+            subcommand = subcommand.replace(/^key|value/, '').trim();
+            const map = this.getMaps(context.USER_CONFIG[setKey]);
+            const msg = map.size > 0 ? `当前${type}映射:\n${Array.from(map.entries()).map(([key, value]) => `- \`${key} -> ${value}\``).join('\n')}` : `${setKey} 映射为空`;
+            return this.send(msg, sender);
+        }
+        subcommand = subcommand.replace(/^key|value/, '').trim();
+        if (subcommand === 'clear') {
+            this.store({ [setKey]: '' }, context);
+            return this.send(`${setKey}映射已清空`, sender);
+        }
+        const mapString = context.USER_CONFIG[setKey];
+        const currentMap = this.getMaps(mapString);
+        const maps = subcommand.split(' ').map(i => i.trim().split(':'));
+        maps.forEach(([key, value]) => {
+            if (key.startsWith('-')) {
+                currentMap.delete(key.replace(/^-/, ''));
+            } else {
+                currentMap.set(key.replace(/^\+/, ''), value);
+            }
+        });
+        this.store({ [setKey]: Array.from(currentMap.entries()).map(([key, value]) => `${key}:${value}`).join('|') }, context);
+        const msg = `${type} 映射更新成功\n当前映射:\n${Array.from(currentMap.entries()).map(([key, value]) => `- \`${key} -> ${value}\``).join('\n')}`;
+        return this.send(msg, sender);
+    };
+
+    getMaps = (mapString: string) => {
+        if (mapString === '') {
+            return new Map();
+        }
+        return new Map(mapString.split('|').map((item: string) => [item.split(':')[0].replace(/^-/, ''), item.split(':')[1]]));
+    };
+
+    send = (msg: string, sender: MessageSender) => {
+        return sender.sendRichText(`Tip:\n${msg}`, 'MarkdownV2', 'tip', {
+            addQuote: true,
+            quoteExpandable: true,
+        });
     };
 }
