@@ -294,11 +294,9 @@ export class SystemCommandHandler implements CommandHandler {
             [imageAgent?.modelKey || 'AI_IMAGE_PROVIDER_NOT_FOUND']: imageAgent?.model ? imageAgent.model(context.USER_CONFIG) : 'AI_IMAGE_PROVIDER_NOT_FOUND',
             [asrAgent?.modelKey || 'AI_ASR_PROVIDER_NOT_FOUND']: asrAgent?.model ? asrAgent.model(context.USER_CONFIG) : 'AI_ASR_PROVIDER_NOT_FOUND',
             [ttsAgent?.modelKey || 'AI_TTS_PROVIDER_NOT_FOUND']: ttsAgent?.model(context.USER_CONFIG),
-            VISION_MODEL: context.USER_CONFIG.OPENAI_VISION_MODEL,
-            IMAGE_MODEL: context.USER_CONFIG.IMAGE_MODEL,
+            VISION_MODEL: context.USER_CONFIG[`${chatAgent?.name?.toUpperCase()}_VISION_MODEL`] || `Agent ${chatAgent?.name ?? ''} not found`,
         };
-        let msg = `<pre>AGENT: ${JSON.stringify(agent, null, 2)}\nOTHERS: ${customInfo(context.USER_CONFIG)
-        }\n</pre>`;
+        let msg = `system info:\n\nAGENT: ${JSON.stringify(agent, null, 2).split('\n').map(line => `\`${line}\``).join('\n')}\n\nOTHERS: ${customInfo(context.USER_CONFIG)}\n`;
         if (ENV.DEV_MODE) {
             const shareCtx = { ...context.SHARE_CONTEXT };
             shareCtx.botToken = '******';
@@ -313,13 +311,15 @@ export class SystemCommandHandler implements CommandHandler {
             context.USER_CONFIG.COHERE_API_KEY = '******';
             context.USER_CONFIG.ANTHROPIC_API_KEY = '******';
             const config = ConfigMerger.trim(context.USER_CONFIG, ENV.LOCK_USER_CONFIG_KEYS);
-            msg = `<pre>\n${msg}`;
+            msg = `${msg}\n`;
             msg += `USER_CONFIG: ${JSON.stringify(config, null, 2)}\n`;
             msg += `CHAT_CONTEXT: ${JSON.stringify(sender.context || {}, null, 2)}\n`;
-            msg += `SHARE_CONTEXT: ${JSON.stringify(shareCtx, null, 2)}\n`;
-            msg += '</pre>';
+            msg += `SHARE_CONTEXT: ${JSON.stringify(shareCtx, null, 2)}`;
         }
-        return sender.sendRichText(msg, 'HTML', 'tip');
+        return sender.sendRichText(msg, 'MarkdownV2', 'tip', {
+            addQuote: true,
+            quoteExpandable: true,
+        });
     };
 }
 

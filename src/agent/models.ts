@@ -33,7 +33,7 @@ export async function getModels(context: AgentUserConfig, agent: string) {
             models.push(...modlesData.models.map((model: any) => model.baseModelId));
             break;
         case 'OPENAI':
-        case 'OAI_LIKE':
+        case 'OAILIKE':
         case 'COHERE':
         case 'ANTHROPIC':
         case 'XAI':

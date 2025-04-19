@@ -105,25 +105,26 @@ export function customInfo(config: AgentUserConfig): string {
     const other_info = {
         mode: config.CURRENT_MODE,
         prompt: prompt.length > 50 ? `${prompt.slice(0, 50)}...` : prompt,
-        MAPPING_KEY: config.MAPPING_KEY,
-        MAPPING_VALUE: config.MAPPING_VALUE,
         USE_TOOLS: config.USE_TOOLS.join(','),
         SUPPORT_PLUGINS: Object.keys({ ...ENV.PLUGINS_FUNCTION, ...tools }).join('|'),
         CHAT_TRIGGER_PREFIX: ENV.CHAT_TRIGGER_PREFIX,
-        MESSAGE_REPLACER: Object.keys(config.MESSAGE_REPLACER).join('|'),
         MAX_STEPS: config.MAX_STEPS,
         MAX_RETRIES: config.MAX_RETRIES,
         SEND_IMAGE_AS_FILE: ENV.SEND_IMAGE_AS_FILE,
         SUPPORT_PROMPT_ROLE: Object.keys(config.PROMPT).join('|'),
-        // DISABLE_WEB_PREVIEW: ENV.DISABLE_WEB_PREVIEW,
-        SEARCH_GROUNDING: config.SEARCH_GROUNDING,
+        DISABLE_WEB_PREVIEW: ENV.DISABLE_WEB_PREVIEW,
+        GOOGLE_SEARCH_GROUNDING: config.SEARCH_GROUNDING,
         TEXT_OUTPUT: config.TEXT_OUTPUT,
         TEXT_HANDLE_TYPE: config.TEXT_HANDLE_TYPE,
         AUDIO_OUTPUT: config.AUDIO_OUTPUT,
         AUDIO_HANDLE_TYPE: config.AUDIO_HANDLE_TYPE,
         AUDIO_TEXT_FORMAT: ENV.AUDIO_TEXT_FORMAT,
+        ENABLE_ALIAS: config.ENABLE_ALIAS,
+        PARAMS_MODIFIER: config.PARAMS_MODIFIER.join('|'),
+        MESSAGE_REPLACER: Object.keys(config.MESSAGE_REPLACER).join('|'),
+        USED_RELAY_TOOLS: config.USE_OAILIKE_RELAY_TOOLS.join(','),
     };
-    return JSON.stringify(other_info, null, 2);
+    return JSON.stringify(other_info, null, 2).split('\n').map(line => `\`${line}\``).join('\n');
 }
 
 // async function registryFactory(context: AgentUserConfig) {
