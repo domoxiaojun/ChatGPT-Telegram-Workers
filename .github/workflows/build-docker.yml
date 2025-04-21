@@ -8,6 +8,7 @@ on:
     paths:
       - 'src/**'
       - 'scripts/**'
+      - 'package.json'
 
 jobs:
   build-and-push:
