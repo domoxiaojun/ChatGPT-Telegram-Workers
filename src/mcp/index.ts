@@ -22,9 +22,7 @@ async function initializeMcp(activeMcp: string[] = []): Promise<{
 
     await (async () => {
         let mcpConfig = Object.entries(ENV.MCP_CONFIG);
-        if (activeMcp.length > 0 && activeMcp.length < Object.keys(ENV.MCP_CONFIG).length) {
-            mcpConfig = mcpConfig.filter(([name]) => activeMcp.includes(name));
-        }
+        mcpConfig = mcpConfig.filter(([name]) => activeMcp.includes(name));
         const toolPromises = mcpConfig.map(async ([name, transport]: [string, MCPTransport]) => {
             let mcpTransport: MCPTransport | MCPStdioTransport | StreamableHTTPClientTransport;
             switch (transport.type) {
@@ -67,12 +65,15 @@ async function initializeMcp(activeMcp: string[] = []): Promise<{
     };
 }
 
-export async function getMcp() {
+export async function getMcp(activeMcp: string[] = []) {
     // if (!mcpInitialized) {
     //     await initializeMcp();
     // }
+    if (activeMcp.length === 0) {
+        return;
+    }
     console.log('initializing mcp...');
-    return initializeMcp();
+    return initializeMcp(activeMcp);
 }
 
 // export async function updateMcpTool(activeMcp: string[] = []) {
