@@ -462,6 +462,7 @@ export class ExtraUserConfig {
     // Function to use, currently has duckduckgo, jina_reader, icloud_price, nf_price, iap_price, currency
     //
     USE_TOOLS: string[] = [];
+    USE_MCP: string[] = [];
     JINA_API_KEY: string[] = [];
     // if starts with '{agent}:' prefix, the specified agent corresponds to the chat model,
     // otherwise use the current agent and the specified model.

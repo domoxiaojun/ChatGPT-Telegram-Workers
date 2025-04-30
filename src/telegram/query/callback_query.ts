@@ -44,7 +44,7 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
         const [row = 5, col = 3] = ENV.CALLBACK_QUERY_RC.split('x').map(Number);
         const pageLength = row * col;
         const queryHandler = new InlineCommandHandler();
-        const defaltData = queryHandler.defaultInlines(context.USER_CONFIG);
+        const defaltData = await queryHandler.defaultInlines(context.USER_CONFIG);
         const pageIndexData = keyboard.flat().find(i => i.callback_data?.startsWith('PAGE_INDEX:'))?.callback_data?.replace('PAGE_INDEX:', '');
         const pathDetail = keyboard[0]?.[0]?.callback_data || '';
         let { path, data, pageIndex, pageNum, newCallBack, configKey, label } = getNextpage({ pathDetail, pageIndexData, callbackData: query.data, inlineList: defaltData, pageLength });
@@ -75,7 +75,8 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
                 callbackData: newCallBack,
             },
         );
-        const settingMessage = queryHandler.settingsMessage(context.USER_CONFIG, queryHandler.defaultInlines(context.USER_CONFIG), {
+        const newData = await queryHandler.defaultInlines(context.USER_CONFIG);
+        const settingMessage = queryHandler.settingsMessage(context.USER_CONFIG, newData, {
             key: configKey,
             callBack: typeof newCallBack === 'number' ? data[newCallBack] : '',
         });

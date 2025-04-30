@@ -9,7 +9,7 @@ import {
 } from 'ai';
 import { ENV } from '../config/env';
 import { getLogSingleton, log } from '../log';
-import { tools, vaildTools } from '../tools';
+import { getTools, vaildTools } from '../tools';
 
 type Writeable<T> = { -readonly [P in keyof T]: T[P] };
 export interface MessageInfo {
@@ -17,12 +17,13 @@ export interface MessageInfo {
     // reasoning: string;
 };
 
-export function AIMiddleware({ config, activeTools, onStream, toolChoice, messageInfo, chatModel }: { config: AgentUserConfig; activeTools: string[]; onStream: ChatStreamTextHandler | null; toolChoice: ToolChoice[] | []; messageInfo: MessageInfo; chatModel: string }): LanguageModelV1Middleware & { onChunk: (data: any) => void; onStepFinish: (data: StepResult<any>, context: AgentUserConfig) => void } {
+export async function AIMiddleware({ config, activeTools, onStream, toolChoice, messageInfo, chatModel }: { config: AgentUserConfig; activeTools: string[]; onStream: ChatStreamTextHandler | null; toolChoice: ToolChoice[] | []; messageInfo: MessageInfo; chatModel: string }): Promise<LanguageModelV1Middleware & { onChunk: (data: any) => void; onStepFinish: (data: StepResult<any>, context: AgentUserConfig) => void }> {
     let startTime: number | undefined;
     let sendToolCall = false;
     let step = 0;
     let rawSystemPrompt: string | undefined;
     const extractReasoning = extractReasoningMiddleware({ tagName: 'think' });
+    const tools = await getTools();
     return {
         wrapGenerate: async ({ doGenerate, params, model }) => {
             warpModel(model, config, activeTools, (params.mode as any).toolChoice, chatModel);
@@ -79,7 +80,7 @@ export function AIMiddleware({ config, activeTools, onStream, toolChoice, messag
                 }
                 let maxFuncTime = 0;
                 const func_logs = toolResults.map(({ toolName, args, result }) => {
-                    logs.functionTime.push(result.time);
+                    result.time && logs.functionTime.push(result.time);
                     maxFuncTime = Math.max(maxFuncTime, result.time);
                     return {
                         name: toolName,
@@ -90,7 +91,7 @@ export function AIMiddleware({ config, activeTools, onStream, toolChoice, messag
                 log.info(`func logs: ${JSON.stringify(func_logs, null, 2)}`);
                 log.debug(`func result: ${JSON.stringify(toolResults, null, 2)}`);
                 logs.functions.push(...func_logs);
-                logs.tool.time.push((+time - maxFuncTime).toFixed(1));
+                maxFuncTime && logs.tool.time.push((+time - maxFuncTime).toFixed(1));
                 const toolNames = [...new Set(toolResults.map(i => i.toolName))];
                 // Whether to trim used tools
                 // activeTools = trimActiveTools(activeTools, toolNames);
@@ -118,13 +119,17 @@ function warpMessages(params: LanguageModelV1CallOptions, tools: Record<string, 
 
     const getSystemContent = () => {
         let systemContent = rawSystemPrompt ?? '';
-        if (activeTools.length > 0) {
+        // 非兼容模式下不再插入工具提示
+        // if (activeTools.length > 0) {
+        //     systemContent += `\nYou can consider using the following tools:\n${activeTools.map(name =>
+        //         `### ${name}\n- desc: ${tools[name]?.schema?.description || ''} \n${tools[name]?.prompt || ''}`,
+        //     ).join('\n\n')}`;
+        // }
+        if (ENV.MESSAGE_COMPATIBLE && activeTools.length > 0) {
             systemContent += `\nYou can consider using the following tools:\n${activeTools.map(name =>
                 `### ${name}\n- desc: ${tools[name]?.schema?.description || ''} \n${tools[name]?.prompt || ''}`,
-            ).join('\n\n')}`;
-        }
-        if (!ENV.MESSAGE_COMPATIBLE && activeTools.length > 0) {
-            systemContent += `\n\n${activeTools.map(name => `## For tool \`${name}\`, you should follow these rules:\n - ${tools[name]?.prompt ?? ''}`)
+            ).join('\n\n')}`
+            + `\n\n${activeTools.map(name => `## For tool \`${name}\`, you should follow these rules:\n - ${tools[name]?.prompt ?? ''}`)
                 .join('\n')}`;
         }
         return systemContent ?? 'You are a helpful assistant';
@@ -185,7 +190,7 @@ function warpMessages(params: LanguageModelV1CallOptions, tools: Record<string, 
             if (i.role === 'tool' && i.content.some((j: any) => j.type === 'tool-result')) {
                 i.content.forEach((j: any) => {
                     // 消除 time信息
-                    j.result = j.result.result || j.result;
+                    j.result?.result && (j.result = j.result.result);
                 });
             }
         });
@@ -210,6 +215,7 @@ function warpModel(model: LanguageModelV1, config: AgentUserConfig, activeTools:
 }
 
 export async function warpLLMParams(params: { messages: CoreMessage[]; model: LanguageModelV1; cache?: string[] }, context: AgentUserConfig) {
+    const tools = await getTools();
     const tool_envs: Record<string, any> = { ...(context.JINA_API_KEY && { JINA_API_KEY: context.JINA_API_KEY[Math.floor(Math.random() * context.JINA_API_KEY.length)] }) };
 
     const env_prefix = 'TOOL_ENV_';
@@ -217,13 +223,16 @@ export async function warpLLMParams(params: { messages: CoreMessage[]; model: La
 
     const messages = params.messages.at(-1) as CoreUserMessage;
     let tool = typeof messages.content === 'string'
-        ? await vaildTools(context.USE_TOOLS)
+        ? await vaildTools(context.USE_TOOLS, context.USE_MCP)
         : undefined;
 
-    const activeTools = tool?.activeToolAlias.map(t => tools[t].schema.name) || [];
+    const activeTools = tool?.activeToolAlias.map((t: string) => tools[t]?.schema?.name || t) || [];
     // if vertex use search grounding, do not use other tools
     if (params.model.provider === 'google-vertex' && context.SEARCH_GROUNDING) {
         activeTools.length = 0;
+        tool && tool.mcpClients.forEach(async (mcpClient) => {
+            await mcpClient.close();
+        });
         tool = undefined;
         // only use first system message and last user message
         // params.messages = [params.messages.find(p => p.role === 'system')!, params.messages.findLast(p => p.role === 'user')!];
@@ -232,7 +241,7 @@ export async function warpLLMParams(params: { messages: CoreMessage[]; model: La
     let toolChoice;
     if (tool?.activeToolAlias && tool?.activeToolAlias.length > 0) {
         const userMessageIsString = typeof messages.content === 'string';
-        const choiceResult = wrapToolChoice(tool?.activeToolAlias, userMessageIsString ? messages.content as string : '');
+        const choiceResult = await wrapToolChoice(tool?.activeToolAlias, userMessageIsString ? messages.content as string : '');
         userMessageIsString && (messages.content = choiceResult.message);
         toolChoice = choiceResult.toolChoices;
     }
@@ -247,16 +256,18 @@ export async function warpLLMParams(params: { messages: CoreMessage[]; model: La
         activeTools,
         toolChoice,
         context,
+        mcpClients: tool?.mcpClients || [],
     };
 }
 
 export type ToolChoice = { type: 'auto' | 'none' | 'required' } | { type: 'tool'; toolName: string };
 
-function wrapToolChoice(activeToolAlias: string[], message: string): {
+async function wrapToolChoice(activeToolAlias: string[], message: string): Promise<{
     message: string;
     toolChoices: ToolChoice[] | [];
-} {
+}> {
     const tool_prefix = '/t-';
+    const tools = await getTools();
     let text = message.trim();
     const choices = ['auto', 'none', 'required', ...activeToolAlias];
     const toolChoices = [];

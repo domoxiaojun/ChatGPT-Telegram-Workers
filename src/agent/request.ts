@@ -181,12 +181,12 @@ export async function streamHandler(stream: AsyncIterable<any>, contentExtractor
     return messageInfo.content;
 }
 
-export async function requestChatCompletionsV2({ model, messages, tools, activeTools, toolChoice, context, cache }: { model: LanguageModelV1; toolModel?: LanguageModelV1; prompt?: string; messages: CoreMessage[]; tools?: any; activeTools: string[]; toolChoice?: ToolChoice[] | undefined; context: AgentUserConfig; cache?: string[] }, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> {
+export async function requestChatCompletionsV2({ model, messages, tools, activeTools, toolChoice, context, cache, mcpClients }: { model: LanguageModelV1; toolModel?: LanguageModelV1; prompt?: string; messages: CoreMessage[]; tools?: any; activeTools: string[]; toolChoice?: ToolChoice[] | undefined; context: AgentUserConfig; cache?: string[]; mcpClients: any[] }, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> {
     // 引入多轮对话 拼接提示
     const messageInfo: MessageInfo = {
         content: cache?.join() ?? '',
     };
-    const middleware = AIMiddleware({
+    const middleware = await AIMiddleware({
         config: context,
         activeTools: activeTools || [],
         onStream,
@@ -195,22 +195,8 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
         messageInfo,
     });
 
-    const hander_params = {
-        model: wrapLanguageModel({
-            model: activeTools?.length ? await createLlmModel(context.TOOL_MODEL, context) : model,
-            middleware,
-        }),
-        messages,
-        maxSteps: context.MAX_STEPS,
-        experimental_continueSteps: context.CONTINUE_STEP,
-        maxRetries: context.MAX_RETRIES,
-        temperature: (activeTools?.length || 0) > 0 ? context.FUNCTION_CALL_TEMPERATURE : context.CHAT_TEMPERATURE,
-        tools,
-        maxTokens: context.MAX_TOKENS,
-        activeTools,
-        onStepFinish: middleware.onStepFinish as (data: StepResult<any>) => void,
-        ...(ENV.CHAT_TOTAL_DURATION_LIMIT > 0 && { abortSignal: AbortSignal.timeout(ENV.CHAT_TOTAL_DURATION_LIMIT * 1e3) }),
-    };
+    const handeredParams = await combineParams({ context, middleware, model, messages, activeTools, tools });
+
     let responseMessages: ResponseMessage[] = [];
     let contentFull = '';
     const errorReferencer = [false];
@@ -218,7 +204,7 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
     if (onStream !== null) {
         // const stream = streamText({ ...hander_params, ...mockParams(middleware) });
         const stream = streamText({
-            ...hander_params,
+            ...handeredParams,
             onChunk: middleware.onChunk as (data: any) => void,
         });
 
@@ -227,10 +213,10 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
         responseMessages = errorReferencer[0] ? [{ role: 'assistant', content: contentFull }] : (await stream.response).messages;
         contentFull = errorReferencer[0] ? contentFull : metaDataExtractor(await stream.providerMetadata, model.provider, contentFull);
     } else {
-        const result = await generateText(hander_params);
+        const result = await generateText(handeredParams);
         contentFull = `${result.reasoning ? `>\`Thought for several seconds\`\n>${result.reasoning.replace(/\n/g, '\n>')}\n>✹\n` : ''}${result.text}`;
         responseMessages = result.response.messages;
-        contentFull = metaDataExtractor(await result.providerMetadata, model.provider, contentFull);
+        contentFull = metaDataExtractor(result.providerMetadata, model.provider, contentFull);
     }
     try {
         // when last message is tool, avoid ai message not sent complete
@@ -241,6 +227,11 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
         await manualRequestTool(responseMessages, context);
     } catch (e) {
         streamErrorHandler(e as Error, contentFull, responseMessages);
+    } finally {
+        mcpClients.length > 0 && log.info('close mcp clients');
+        await Promise.all(mcpClients.map(async (mcpClient) => {
+            await mcpClient.close();
+        }));
     }
     return toolResultExtractor(responseMessages, contentFull);
 }
@@ -316,5 +307,24 @@ function thinkingExtractor(messageInfo: MessageInfo, logs: any) {
             default:
                 return '';
         }
+    };
+}
+
+async function combineParams({ context, middleware, model, messages, activeTools, tools }: { context: AgentUserConfig; middleware: any; model: LanguageModelV1; messages: CoreMessage[]; activeTools: string[]; tools: any }) {
+    return {
+        model: wrapLanguageModel({
+            model: activeTools?.length ? await createLlmModel(context.TOOL_MODEL, context) : model,
+            middleware,
+        }),
+        messages,
+        maxSteps: context.MAX_STEPS,
+        experimental_continueSteps: context.CONTINUE_STEP,
+        maxRetries: context.MAX_RETRIES,
+        temperature: (activeTools?.length || 0) > 0 ? context.FUNCTION_CALL_TEMPERATURE : context.CHAT_TEMPERATURE,
+        tools,
+        maxTokens: context.MAX_TOKENS,
+        activeTools,
+        onStepFinish: middleware.onStepFinish as (data: StepResult<any>) => void,
+        ...(ENV.CHAT_TOTAL_DURATION_LIMIT > 0 && { abortSignal: AbortSignal.timeout(ENV.CHAT_TOTAL_DURATION_LIMIT * 1e3) }),
     };
 }
