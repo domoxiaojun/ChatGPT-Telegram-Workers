@@ -52,7 +52,7 @@
         "@ai-sdk/xai": "^1.2.15",
         "@ffmpeg.wasm/core-st": "^0.13.2",
         "@ffmpeg.wasm/main": "^0.13.1",
-        "ai": "^4.3.10",
+        "ai": "^4.3.11",
         "cf-worker-adapter": "^1.4.0",
         "node-cron": "^3.0.3"
     },
