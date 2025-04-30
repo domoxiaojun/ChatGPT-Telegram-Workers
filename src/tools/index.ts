@@ -9,6 +9,7 @@ import type { FuncTool, ToolHandler } from './types';
 import { jsonSchema, tool } from 'ai';
 import { ENV } from '../config/env';
 import { log } from '../log/logger';
+import { getMcp } from '../mcp';
 import { interpolate } from '../plugins/interpolate';
 import { sendImages } from '../telegram/handler/chat';
 import externalTools from './external';
@@ -18,10 +19,11 @@ import { processHtmlText, webCrawler } from './internal/web';
 export * from './external';
 export * from './internal';
 
-export const tools = {
+const tools = {
     ...externalTools,
     ...internalTools,
 } as unknown as Record<string, FuncTool>;
+
 export function executeTool(toolName: string) {
     return async (args: any, options: Record<string, any> & { signal?: AbortSignal }): Promise<{ result: any; time: string; error?: string }> => {
         const { signal } = options;
@@ -91,23 +93,59 @@ export function executeTool(toolName: string) {
     };
 }
 
-export async function vaildTools(tools_config: string[]) {
-    await injectFunction();
+let toolsInitialized = false;
+let toolsPromise: Promise<void> | null = null;
+
+export async function initializeTools() {
+    if (toolsPromise) {
+        return toolsPromise;
+    }
+    toolsPromise = (async () => {
+        console.log('TOOLS:', ENV.PLUGINS_FUNCTION);
+        await Promise.all(Object.keys(ENV.PLUGINS_FUNCTION).map(async (plugin) => {
+            let template = ENV.PLUGINS_FUNCTION[plugin];
+            if (template.startsWith('http')) {
+                template = await fetch(template).then(r => r.text());
+            }
+            try {
+                tools[plugin] = JSON.parse(template.trim());
+            } catch (e) {
+                log.error(`Plugin ${plugin} is invalid`);
+            }
+        }));
+        toolsInitialized = true;
+    })();
+    return toolsPromise;
+}
+
+export async function vaildTools(tools_config: string[], mcp_config: string[]) {
     const activeToolAlias = tools_config.filter(t => Object.keys(tools).includes(t));
+    const { mcpTools, mcpClients } = await getMcp();
+    const activeMcpTools = Object.entries(mcpTools)
+        .filter(([tname, _]) => mcp_config.includes(tname))
+        .reduce((acc: Record<string, any>, [_, t]) => {
+            acc = { ...acc, ...t };
+            return acc;
+        }, {});
+
     // real tool name, not the key name
-    const useTools = Object.entries(tools).filter(([tname, _]) => activeToolAlias.includes(tname)).reduce((acc: Record<string, any>, [name, t]) => {
-        const execute = t.buildin ? t.func : executeTool(name) as any;
-        acc[t.schema.name] = tool({
-            description: t.schema.description,
-            parameters: jsonSchema(t.schema.parameters as any),
-            execute: t.not_send_to_ai ? undefined : execute,
-        });
-        return acc;
-    }, {});
+    const useTools = Object.entries(tools)
+        .filter(([tname, _]) => activeToolAlias.includes(tname))
+        .reduce((acc: Record<string, any>, [name, t]) => {
+            const execute = t.buildin ? t.func : executeTool(name) as any;
+            acc[t.schema.name] = tool({
+                description: t.schema.description,
+                parameters: jsonSchema(t.schema.parameters as any),
+                execute: t.not_send_to_ai ? undefined : execute,
+            });
+            return acc;
+        }, {});
+    // return useTools;
     // tools key name
     return {
-        tools: useTools,
-        activeToolAlias,
+        tools: { ...useTools, ...activeMcpTools },
+        activeToolAlias: [...activeToolAlias, ...Object.keys(activeMcpTools)],
+        mcpClients,
     };
 }
 
@@ -161,20 +199,6 @@ export async function sendToolResult(toolResult: ToolResultPart[], sender: Messa
     }
 }
 
-async function injectFunction() {
-    return Promise.all(Object.keys(ENV.PLUGINS_FUNCTION).map(async (plugin) => {
-        let template = ENV.PLUGINS_FUNCTION[plugin];
-        if (template.startsWith('http')) {
-            template = await fetch(template).then(r => r.text());
-        }
-        try {
-            tools[plugin] = JSON.parse(template.trim());
-        } catch (e) {
-            log.error(`Plugin ${plugin} is invalid`);
-        }
-    }));
-}
-
 function injectPatterns(handler: ToolHandler, args: Record<string, string>) {
     const { dynamic_patterns } = handler;
     if (!dynamic_patterns) {
@@ -189,3 +213,12 @@ function injectPatterns(handler: ToolHandler, args: Record<string, string>) {
     }
     log.debug(JSON.stringify(handler.patterns, null, 2));
 }
+
+export async function getTools() {
+    if (!toolsInitialized) {
+        await initializeTools();
+    }
+    return tools;
+}
+
+// initializeTools().catch(console.error);

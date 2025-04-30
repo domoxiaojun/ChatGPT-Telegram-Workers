@@ -1,5 +1,7 @@
-import type { APIGuard, CommandConfig, KVNamespace } from './types';
+import type { APIGuard, CommandConfig, KVNamespace, MCPTransport } from './types';
 import loadI18n from '../i18n';
+// import { initializeMcp } from '../mcp';
+import { initializeTools } from '../tools';
 import {
     AgentShareConfig,
     AnthropicConfig,
@@ -80,7 +82,7 @@ class Environment extends EnvironmentConfig {
     readonly CUSTOM_COMMAND: Record<string, CommandConfig> = {};
     readonly PLUGINS_COMMAND: Record<string, CommandConfig> = {};
     readonly PLUGINS_FUNCTION: Record<string, any> = {};
-
+    readonly MCP_CONFIG: Record<string, MCPTransport> = {};
     DATABASE: KVNamespace = null as any;
     API_GUARD: APIGuard | null = null;
 
@@ -128,6 +130,9 @@ class Environment extends EnvironmentConfig {
             }
         }
 
+        // 读取MCP配置
+        this.mergeMCP('MCP_', source, this.MCP_CONFIG);
+
         // 合并环境变量
         ConfigMerger.merge(this, source, [
             'BUILD_TIMESTAMP',
@@ -159,6 +164,8 @@ class Environment extends EnvironmentConfig {
             const supportedKeys = ['AI_CHAT_PROVIDER', 'AI_IMAGE_PROVIDER', 'USE_TOOLS', 'USE_OAILIKE_RELAY_TOOLS', 'CHAT_MODEL', 'IMAGE_MODEL', 'VISION_MODEL', 'TOOL_MODEL', 'ENVS', 'RERANK_AGENT', 'TEXT_HANDLE_TYPE', 'TEXT_OUTPUT', 'AUDIO_HANDLE_TYPE', 'AUDIO_OUTPUT', 'AUDIO_CONTAINS_TEXT'];
             this.CALLBACK_MENU = this.CALLBACK_MENU.filter((key: string) => supportedKeys.includes(key));
         }
+        // 异步初始化tools和mcp
+        this.asyncInit();
     }
 
     private mergeCommands(prefix: string, descriptionPrefix: string, scopePrefix: string, source: any, target: Record<string, CommandConfig>) {
@@ -235,6 +242,20 @@ class Environment extends EnvironmentConfig {
         if (source.AI_PROVIDER) {
             this.USER_CONFIG.AI_CHAT_PROVIDER = source.AI_PROVIDER;
         }
+    }
+
+    private mergeMCP(prefix: string, source: any, target: Record<string, MCPTransport>) {
+        for (const key of Object.keys(source)) {
+            if (key.startsWith(prefix)) {
+                const mcp = key.substring(prefix.length);
+                target[mcp] = JSON.parse(source[key]);
+            }
+        }
+    }
+
+    private asyncInit() {
+        initializeTools().catch(console.error);
+        // initializeMcp().catch(console.error);
     }
 }
 

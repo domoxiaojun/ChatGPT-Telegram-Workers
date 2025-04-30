@@ -14,7 +14,7 @@ import { KlingAI } from '../../agent/kling';
 import { ENV, ENV_KEY_MAPPER } from '../../config/env';
 import { ConfigMerger } from '../../config/merger';
 import { getLogSingleton, log } from '../../log';
-import { tools } from '../../tools';
+import { getTools } from '../../tools';
 import { WssRequest } from '../../utils/others/wsrequest';
 import { createTelegramBotAPI } from '../api';
 import { chatWithLLM, OnStreamHander, sendImages } from '../handler/chat';
@@ -512,6 +512,7 @@ export class SetCommandHandler extends RenewConfig {
                 break;
             case 'USE_TOOLS':
                 if (value === 'on') {
+                    const tools = await getTools();
                     mappedValue = Object.keys(tools);
                 } else if (value === 'off') {
                     mappedValue = [];
@@ -613,7 +614,7 @@ export class InlineCommandHandler implements CommandHandler {
     scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
     needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender?: MessageSender): Promise<Response> => {
-        const defaultInlines = this.defaultInlines(context.USER_CONFIG);
+        const defaultInlines = await this.defaultInlines(context.USER_CONFIG);
         const settingMsg = this.settingsMessage(context.USER_CONFIG, defaultInlines, { callBack: '' });
         const headKeyboard = [
             {
@@ -637,7 +638,7 @@ export class InlineCommandHandler implements CommandHandler {
         });
     };
 
-    defaultInlines = (context: AgentUserConfig): InlineItem[] => {
+    defaultInlines = async (context: AgentUserConfig): Promise<InlineItem[]> => {
         const allChatAgents = CHAT_AGENTS.map(agent => agent.name);
         const allImageAgents = IMAGE_AGENTS.map(agent => agent.name);
         const allTTSAgents = TTS_AGENTS.map(agent => agent.name);
@@ -655,6 +656,7 @@ export class InlineCommandHandler implements CommandHandler {
                     return !ENV.LOCK_USER_CONFIG_KEYS.includes(key) && !key.endsWith('KEY');
                 })
             : ENV.ENVS_VARIABLES;
+        const tools = await getTools();
         const inlines: InlineItem[] = [
             {
                 label: 'Chat Agent',
@@ -691,6 +693,12 @@ export class InlineCommandHandler implements CommandHandler {
                 config_key: 'USE_TOOLS',
                 type: 'checkbox',
                 value: Object.keys({ ...ENV.PLUGINS_FUNCTION, ...tools }),
+            },
+            {
+                label: 'MCP',
+                config_key: 'USE_MCP',
+                type: 'checkbox',
+                value: Object.keys(ENV.MCP_CONFIG),
             },
             {
                 label: 'Relay Tools',

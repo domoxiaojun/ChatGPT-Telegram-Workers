@@ -1,7 +1,7 @@
 import type { AgentUserConfig } from '../config/env';
 import type { ASRAgent, ChatAgent, ImageAgent, TTSAgent } from './types';
 import { ENV } from '../config/env';
-import { tools } from '../tools';
+import { getTools } from '../tools';
 import { Anthropic } from './anthropic';
 import { AzureChatAI, AzureImageAI } from './azure';
 import { Cohere } from './cohere';
@@ -100,8 +100,9 @@ export function loadTTSLLM(context: AgentUserConfig) {
  * @param {UserConfigType} config
  * @return {string} info
  */
-export function customInfo(config: AgentUserConfig): string {
+export async function customInfo(config: AgentUserConfig): Promise<string> {
     const prompt = config.SYSTEM_INIT_MESSAGE || '';
+    const tools = await getTools();
     const other_info = {
         mode: config.CURRENT_MODE,
         prompt: prompt.length > 50 ? `${prompt.slice(0, 50)}...` : prompt,

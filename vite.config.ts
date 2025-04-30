@@ -62,7 +62,13 @@ export default defineConfig({
     build: {
         target: 'es2022',
         rollupOptions: {
-            external: ['ws', '@ai-sdk/google-vertex', 'node:buffer', 'node-cron'],
+            external: [
+                'ws',
+                '@ai-sdk/google-vertex',
+                'node:buffer',
+                'node-cron',
+                'child_process',
+            ],
         },
         lib: {
             entry: path.resolve(__dirname, entry),
@@ -71,6 +77,7 @@ export default defineConfig({
         },
         outDir,
         minify: false,
+        emptyOutDir: true,
     },
     define: {
         ...versionDefine,
