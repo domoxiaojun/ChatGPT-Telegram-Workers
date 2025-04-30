@@ -97,11 +97,17 @@ export class EnvironmentConfig {
     CHAT_MESSAGE_TRIGGER = {};
     // Chat trigger prefix, it will trigger group message and be deleted
     CHAT_TRIGGER_PREFIX = '';
-    // Ask AI to call function times
+    /**
+     * Ask AI to call function times
+     * @deprecated
+     */
     FUNC_LOOP_TIMES = 1;
     // Show call info
     CALL_INFO = true;
-    // func call Maximum number of concurrent calls after each successful hit
+    /**
+     * func call Maximum number of concurrent calls after each successful hit
+     * @deprecated
+     */
     CON_EXEC_FUN_NUM = 1;
     // When the length reaches the set value, the group will send a telegraph article. If less than 0, it will not be sent
     TELEGRAPH_NUM_LIMIT = -1;
@@ -111,7 +117,7 @@ export class EnvironmentConfig {
     TELEGRAPH_AUTHOR_URL = '';
     // Disable link preview
     DISABLE_WEB_PREVIEW = false;
-    // Message expired time, unit: minute
+    // Message expired time, scale: minute
     EXPIRED_TIME = -1;
     // Schedule check time use cron expression, for example '*/10 0-2,6-23 * * *' means every ten minutes from 0 to 2 and from 6 to 23
     CRON_CHECK_TIME = '';
@@ -120,9 +126,15 @@ export class EnvironmentConfig {
     // Schedule private delete type command dialog:command and chat dialog:chat
     SCHEDULE_PRIVATE_DELETE_TYPE = ['tip'];
 
-    // All complete api timeout
+    /**
+     * All complete api timeout
+     * @deprecated
+     */
     ALL_COMPLETE_API_TIMEOUT = 180;
-    // Function call timeout
+    /**
+     * Function call timeout
+     * @deprecated
+     */
     FUNC_TIMEOUT = 15;
     // Send pictures via files format
     SEND_IMAGE_AS_FILE: boolean = false;
@@ -186,7 +198,7 @@ export class EnvironmentConfig {
     // otherwise, only the set variables will be shown.
     ENVS_VARIABLES = [];
     // callback menu, if it is empty, all options will be displayed.
-    // options: 'AI_CHAT_PROVIDER', 'AI_IMAGE_PROVIDER', 'USE_TOOLS', 'USE_OAILIKE_RELAY_TOOLS', 'CHAT_MODEL', 'IMAGE_MODEL', 'VISION_MODEL', 'TOOL_MODEL', 'ENVS', 'RERANK_AGENT', 'TEXT_HANDLE_TYPE', 'TEXT_OUTPUT', 'AUDIO_HANDLE_TYPE', 'AUDIO_OUTPUT', 'AUDIO_CONTAINS_TEXT'
+    // options: 'AI_CHAT_PROVIDER', 'AI_IMAGE_PROVIDER', 'USE_TOOLS', 'USE_OAILIKE_RELAY_TOOLS', 'CHAT_MODEL', 'IMAGE_MODEL', 'VISION_MODEL', 'TOOL_MODEL', 'ENVS', 'RERANK_AGENT', 'TEXT_HANDLE_TYPE', 'TEXT_OUTPUT', 'AUDIO_HANDLE_TYPE', 'AUDIO_OUTPUT', 'AUDIO_CONTAINS_TEXT', 'MCP'
     CALLBACK_MENU = [];
 
     // Whether to transform  tool_call/tool_result message to user message
