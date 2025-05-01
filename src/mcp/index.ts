@@ -53,6 +53,7 @@ export async function initializeMcp() {
     })();
 
     log.info('initialize mcp done');
+    log.info('mcpTools:', JSON.stringify(Object.keys(mcpTools)));
 }
 
 export async function getMcp() {

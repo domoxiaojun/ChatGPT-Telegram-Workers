@@ -248,7 +248,11 @@ class Environment extends EnvironmentConfig {
         for (const key of Object.keys(source)) {
             if (key.startsWith(prefix)) {
                 const mcp = key.substring(prefix.length);
-                target[mcp] = JSON.parse(source[key]);
+                try {
+                    target[mcp] = JSON.parse(source[key]);
+                } catch (error) {
+                    console.error(`[ERROR] Failed to parse MCP config for ${mcp}:`, error);
+                }
             }
         }
     }
