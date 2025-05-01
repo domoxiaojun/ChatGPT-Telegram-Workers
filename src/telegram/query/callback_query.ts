@@ -4,8 +4,6 @@ import type { TelegramBotAPI } from '../api';
 import type { InlineItem } from '../command/types';
 import type { MessageHandler } from '../handler/types';
 import type { CallbackQueryHandler } from './types';
-import { loadChatLLM } from '../../agent';
-import { getModels } from '../../agent/models';
 import { WorkerContextBase } from '../../config/context';
 import { ENV } from '../../config/env';
 import { log } from '../../log/logger';
@@ -47,18 +45,21 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
         const defaltData = await queryHandler.defaultInlines(context.USER_CONFIG);
         const pageIndexData = keyboard.flat().find(i => i.callback_data?.startsWith('PAGE_INDEX:'))?.callback_data?.replace('PAGE_INDEX:', '');
         const pathDetail = keyboard[0]?.[0]?.callback_data || '';
-        let { path, data, pageIndex, pageNum, newCallBack, configKey, label } = getNextpage({ pathDetail, pageIndexData, callbackData: query.data, inlineList: defaltData, pageLength });
+        let { path, data, pageIndex, pageNum, newCallBackData, configKey, label, callback } = getNextpage({ pathDetail, pageIndexData, callbackData: query.data, inlineList: defaltData, pageLength });
 
         try {
             if (query.data === 'fresh' || (configKey.endsWith('_MODEL') && data.length === 0)) {
-                const models = await this.updateModels(context, configKey);
-                this.sendAlert(api, context.query_id, '✅ 模型更新成功', false);
-                ({ data, pageNum } = paging(models, 0, pageLength));
-            } else if (typeof newCallBack === 'number' && configKey !== 'ENVS') {
-                await this.updateConfig(context, api, { data: data as unknown as string[], configKey, newCallBack });
+                if (configKey === 'USE_MCP' && query.from?.id && !(ENV.CHAT_WHITE_LIST.includes(query.from.id.toString()))) {
+                    throw new Error('This operation is only accessible to the white list');
+                }
+                data = await callback?.(context, configKey) || [];
+                this.sendAlert(api, context.query_id, `✅ ${label} 数据更新成功`, false);
+                ({ data, pageNum } = paging(data, 0, pageLength));
+            } else if (typeof newCallBackData === 'number' && configKey !== 'ENVS') {
+                await this.updateConfig(context, api, { data: data as unknown as string[], configKey, newCallBack: newCallBackData });
             }
         } catch (e) {
-            return this.sendAlert(api, context.query_id, `❌ 获取模型失败: ${(e as Error).message}`, true);
+            return this.sendAlert(api, context.query_id, `❌ ${label} 数据刷新失败\n${(e as Error).message}`, true);
         }
 
         let inlineKeyboard: Telegram.InlineKeyboardButton[][] = [];
@@ -72,13 +73,14 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
                 label,
                 key: configKey,
                 config: context.USER_CONFIG,
-                callbackData: newCallBack,
+                callbackData: newCallBackData,
+                callback,
             },
         );
         const newData = await queryHandler.defaultInlines(context.USER_CONFIG);
         const settingMessage = queryHandler.settingsMessage(context.USER_CONFIG, newData, {
             key: configKey,
-            callBack: typeof newCallBack === 'number' ? data[newCallBack] : '',
+            callBack: typeof newCallBackData === 'number' ? data[newCallBackData] : '',
         });
 
         return this.sendCallBackMessage(api, message, settingMessage, inlineKeyboard);
@@ -130,27 +132,6 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
         this.sendAlert(api, context.query_id, '✅ Data update successful', false);
     }
 
-    private async updateModels(context: CallbackQueryContext, modelKey: string) {
-        let agent;
-        if (modelKey === 'TOOL_MODEL') {
-            agent = loadChatLLM(context.USER_CONFIG).name.toUpperCase();
-        } else {
-            agent = modelKey.split('_')[0];
-        }
-        const models = await getModels(context.USER_CONFIG, agent);
-        if (models.length > 0) {
-            const modelKey = `${agent}_MODELS`;
-            context.USER_CONFIG[modelKey] = models;
-            if (!context.USER_CONFIG.DEFINE_KEYS.includes(modelKey)) {
-                context.USER_CONFIG.DEFINE_KEYS.push(modelKey);
-            }
-            await ENV.DATABASE.put(context.SHARE_CONTEXT.configStoreKey, JSON.stringify(context.USER_CONFIG)).catch(console.error);
-        } else {
-            throw new Error('No models found');
-        }
-        return models;
-    }
-
     private async closeInlineKeyboard(api: TelegramBotAPI, message: Telegram.Message) {
         return api.deleteMessage({
             chat_id: message.chat.id,
@@ -169,7 +150,7 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
         });
     }
 
-    private constructInlineList({ path, data, label, key, config, callbackData, pageIndex, pageNum, col }: { path: number[]; data: (string | InlineItem)[]; label?: string; key?: string; config: AgentUserConfig; callbackData: number | string; pageIndex: number; pageNum: number; col: number }): Telegram.InlineKeyboardButton[][] {
+    private constructInlineList({ path, data, label, key, config, callbackData, pageIndex, pageNum, col, callback }: { path: number[]; data: (string | InlineItem)[]; label?: string; key?: string; config: AgentUserConfig; callbackData: number | string; pageIndex: number; pageNum: number; col: number; callback?: (...args: any[]) => Promise<string[]> }): Telegram.InlineKeyboardButton[][] {
         const isSelected = (item: string | InlineItem, index: number) => {
             // 单选
             if ((key && callbackData === index && !Array.isArray(config[key]))
@@ -227,7 +208,7 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
             callback_data: 'close',
         }];
 
-        if (key?.endsWith('_MODEL')) {
+        if (callback) {
             footer.unshift({
                 text: '🔄',
                 callback_data: 'fresh',
@@ -299,11 +280,13 @@ function getNextpage({ pathDetail, pageIndexData, callbackData, inlineList, page
     let configKey = '';
     let label;
     let pageNum = 1;
+    let callback;
     for (const i of path.slice(1)) {
         if (!data[i]) {
             throw new Error('Invalid path');
         }
         ({ label, config_key: configKey } = data[i]);
+        callback = data[i].callback;
         data = data[i].value as InlineItem[];
     }
 
@@ -331,13 +314,14 @@ function getNextpage({ pathDetail, pageIndexData, callbackData, inlineList, page
                 path.push(callbackData);
                 label = data[callbackData].label;
                 configKey = data[callbackData].config_key;
+                callback = data[callbackData].callback;
                 data = data[callbackData].value as InlineItem[] || [];
                 pageIndex = 0;
                 ({ data, pageNum } = paging(data, pageIndex, pageLength));
                 callbackData = '';
             }
     }
-    return { path, data, pageIndex, pageNum, newCallBack: callbackData, configKey, label };
+    return { path, data, pageIndex, pageNum, newCallBackData: callbackData, configKey, label, callback };
 }
 
 function paging(data: any[], pageIndex: number, pageLength: number) {

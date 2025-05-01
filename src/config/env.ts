@@ -1,6 +1,6 @@
 import type { APIGuard, CommandConfig, KVNamespace, MCPTransport } from './types';
 import loadI18n from '../i18n';
-// import { initializeMcp } from '../mcp';
+import { initializeMcp } from '../mcp';
 import { initializeTools } from '../tools';
 import {
     AgentShareConfig,
@@ -248,14 +248,18 @@ class Environment extends EnvironmentConfig {
         for (const key of Object.keys(source)) {
             if (key.startsWith(prefix)) {
                 const mcp = key.substring(prefix.length);
-                target[mcp] = JSON.parse(source[key]);
+                try {
+                    target[mcp] = JSON.parse(source[key]);
+                } catch (error) {
+                    console.error(`[ERROR] Failed to parse MCP config for ${mcp}:`, error);
+                }
             }
         }
     }
 
     private asyncInit() {
         initializeTools().catch(console.error);
-        // initializeMcp().catch(console.error);
+        initializeMcp().catch(console.error);
     }
 }
 

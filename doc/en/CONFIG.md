@@ -333,7 +333,7 @@ Detailed examples can be found in the [qweather](../../src/tools/external/qweath
 
 ## Custom MCP
 
-Custom MCP, prefixed with `MCP_`, such as `MCP_amap`, the value is the definition of the MCP.
+Custom MCP, environment variable prefixed with `MCP_`, such as `MCP_amap`, the value is the definition of the MCP.
 
 ### sse:
 Parameter definition:
@@ -373,6 +373,16 @@ Example:
 }
 ```
 
+You can mount local files, for example:
+```json
+{
+    "type": "stdio",
+    "command": "node",
+    "args": ["server.test.ts"],
+    "cwd": "src/mcp"
+}
+```
+
 ### stream http:
 Parameter definition:
 ```json
@@ -386,4 +396,5 @@ Example:
 {
     "type": "http",
     "url": "https://example.com/mcp"
+}
 ```

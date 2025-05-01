@@ -120,7 +120,7 @@ export async function initializeTools() {
 
 export async function vaildTools(tools_config: string[], mcp_config: string[]) {
     const activeToolAlias = tools_config.filter(t => Object.keys(tools).includes(t));
-    const { mcpTools = {}, mcpClients = [] } = await getMcp(mcp_config) || {};
+    const mcpTools = await getMcp();
     const activeMcpTools = Object.entries(mcpTools)
         .filter(([tname, _]) => mcp_config.includes(tname))
         .reduce((acc: Record<string, any>, [_, t]) => {
@@ -145,7 +145,6 @@ export async function vaildTools(tools_config: string[], mcp_config: string[]) {
     return {
         tools: { ...useTools, ...activeMcpTools },
         activeToolAlias: [...activeToolAlias, ...Object.keys(activeMcpTools)],
-        mcpClients,
     };
 }
 

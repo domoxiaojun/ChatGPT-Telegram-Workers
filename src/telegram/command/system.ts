@@ -11,9 +11,11 @@ import { authChecker } from '.';
 import { ASR_AGENTS, CHAT_AGENTS, customInfo, IMAGE_AGENTS, loadASRLLM, loadChatLLM, loadImageGen, loadTTSLLM, TTS_AGENTS } from '../../agent';
 import { loadHistory } from '../../agent/chat';
 import { KlingAI } from '../../agent/kling';
+import { updateModels } from '../../agent/models';
 import { ENV, ENV_KEY_MAPPER } from '../../config/env';
 import { ConfigMerger } from '../../config/merger';
 import { getLogSingleton, log } from '../../log';
+import { updateMcp } from '../../mcp';
 import { getTools } from '../../tools';
 import { WssRequest } from '../../utils/others/wsrequest';
 import { createTelegramBotAPI } from '../api';
@@ -699,6 +701,7 @@ export class InlineCommandHandler implements CommandHandler {
                 config_key: 'USE_MCP',
                 type: 'checkbox',
                 value: Object.keys(ENV.MCP_CONFIG),
+                callback: updateMcp,
             },
             {
                 label: 'Relay Tools',
@@ -714,6 +717,7 @@ export class InlineCommandHandler implements CommandHandler {
                     config_key,
                     type: 'radio' as const,
                     value: context[`${modelProvider.toUpperCase()}_MODELS`],
+                    callback: updateModels,
                 };
             }),
             {

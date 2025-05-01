@@ -84,7 +84,7 @@ export interface ImageResult extends UnionData {
 export type ASRAgentRequest = (audio: Blob, context: AgentUserConfig) => Promise<string>;
 
 export interface ASRAgent {
-    name: string | string[];
+    name: string;
     modelKey: string;
     enable: (context: AgentUserConfig) => boolean;
     request: ASRAgentRequest;

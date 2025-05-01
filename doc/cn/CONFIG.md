@@ -327,7 +327,7 @@ COMMAND_DESCRIPTION_cn2en = '将对话内容翻译成英文'
 
 ## 自定义MCP
 
-自定义MCP, 以`MCP_`为前缀， 比如`MCP_amap`， 值为MCP的定义。
+自定义MCP, 环境变量以`MCP_`为前缀， 例如 `MCP_amap`，值为MCP。
 
 ### sse：
 参数定义：
@@ -367,6 +367,15 @@ COMMAND_DESCRIPTION_cn2en = '将对话内容翻译成英文'
 }
 ```
 
+可挂载本地文件， 例如：
+```json
+{
+    "type": "stdio",
+    "command": "node",
+    "args": ["server.test.ts"],
+    "cwd": "src/mcp"
+}
+```
 ### stream http：
 参数定义：
 ```json
@@ -380,4 +389,5 @@ COMMAND_DESCRIPTION_cn2en = '将对话内容翻译成英文'
 {
     "type": "http",
     "url": "https://example.com/mcp"
+}
 ```
