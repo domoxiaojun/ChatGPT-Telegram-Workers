@@ -1,4 +1,7 @@
 import type { AgentUserConfig } from '../config/types';
+import type { CallbackQueryContext } from '../telegram/query';
+import { loadChatLLM } from '.';
+import { ENV } from '../config/env';
 
 export async function getModels(context: AgentUserConfig, agent: string) {
     const configKey = `${agent}_MODELS_API`;
@@ -43,4 +46,25 @@ export async function getModels(context: AgentUserConfig, agent: string) {
             break;
     }
     return models.filter(Boolean);
+}
+
+export async function updateModels(context: CallbackQueryContext, modelKey: string) {
+    let agent;
+    if (modelKey === 'TOOL_MODEL') {
+        agent = loadChatLLM(context.USER_CONFIG).name.toUpperCase();
+    } else {
+        agent = modelKey.split('_')[0];
+    }
+    const models = await getModels(context.USER_CONFIG, agent);
+    if (models.length > 0) {
+        const modelKey = `${agent}_MODELS`;
+        context.USER_CONFIG[modelKey] = models;
+        if (!context.USER_CONFIG.DEFINE_KEYS.includes(modelKey)) {
+            context.USER_CONFIG.DEFINE_KEYS.push(modelKey);
+        }
+        await ENV.DATABASE.put(context.SHARE_CONTEXT.configStoreKey, JSON.stringify(context.USER_CONFIG)).catch(console.error);
+    } else {
+        throw new Error('No models found');
+    }
+    return models;
 }

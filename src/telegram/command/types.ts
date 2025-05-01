@@ -29,4 +29,5 @@ export interface InlineItem {
     config_key: string;
     type?: 'radio' | 'checkbox';
     value: (string | InlineItem)[];
+    callback?: (...args: any[]) => Promise<any[]>;
 }

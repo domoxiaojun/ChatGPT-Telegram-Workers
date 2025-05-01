@@ -230,9 +230,6 @@ export async function warpLLMParams(params: { messages: CoreMessage[]; model: La
     // if vertex use search grounding, do not use other tools
     if (params.model.provider === 'google-vertex' && context.SEARCH_GROUNDING) {
         activeTools.length = 0;
-        tool && tool.mcpClients.forEach(async (mcpClient) => {
-            await mcpClient.close();
-        });
         tool = undefined;
         // only use first system message and last user message
         // params.messages = [params.messages.find(p => p.role === 'system')!, params.messages.findLast(p => p.role === 'user')!];
@@ -256,7 +253,6 @@ export async function warpLLMParams(params: { messages: CoreMessage[]; model: La
         activeTools,
         toolChoice,
         context,
-        mcpClients: tool?.mcpClients || [],
     };
 }
 

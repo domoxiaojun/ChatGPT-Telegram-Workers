@@ -1,6 +1,6 @@
 import type { APIGuard, CommandConfig, KVNamespace, MCPTransport } from './types';
 import loadI18n from '../i18n';
-// import { initializeMcp } from '../mcp';
+import { initializeMcp } from '../mcp';
 import { initializeTools } from '../tools';
 import {
     AgentShareConfig,
@@ -255,7 +255,7 @@ class Environment extends EnvironmentConfig {
 
     private asyncInit() {
         initializeTools().catch(console.error);
-        // initializeMcp().catch(console.error);
+        initializeMcp().catch(console.error);
     }
 }
 

@@ -3,26 +3,21 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { experimental_createMCPClient as createMCPClient } from 'ai';
 import { Experimental_StdioMCPTransport as MCPStdioTransport } from 'ai/mcp-stdio';
 import { ENV } from '../config/env';
+import { log } from '../log';
 
-// const mcpTools: Record<string, Record<string, any>> = {};
-// let mcpInitialized = false;
-// let mcpPromise: Promise<void> | null = null;
-// const mcpClients: any[] = [];
+const mcpTools: Record<string, Record<string, any>> = {};
+let mcpInitialized = false;
+let mcpPromise: Promise<void> | null = null;
+const mcpClients: any[] = [];
 
-async function initializeMcp(activeMcp: string[] = []): Promise<{
-    mcpTools: Record<string, Record<string, any>>;
-    mcpClients: any[];
-}> {
-    // if (mcpPromise) {
-    //     return mcpPromise;
-    // }
-
-    const mcpTools: Record<string, Record<string, any>> = {};
-    const mcpClients: any[] = [];
+export async function initializeMcp() {
+    if (mcpPromise) {
+        return mcpPromise;
+    }
+    log.info('initializing mcp...');
 
     await (async () => {
-        let mcpConfig = Object.entries(ENV.MCP_CONFIG);
-        mcpConfig = mcpConfig.filter(([name]) => activeMcp.includes(name));
+        const mcpConfig = Object.entries(ENV.MCP_CONFIG);
         const toolPromises = mcpConfig.map(async ([name, transport]: [string, MCPTransport]) => {
             let mcpTransport: MCPTransport | MCPStdioTransport | StreamableHTTPClientTransport;
             switch (transport.type) {
@@ -53,36 +48,28 @@ async function initializeMcp(activeMcp: string[] = []): Promise<{
         });
 
         await Promise.all(toolPromises);
-        // mcpInitialized = true;
-        console.log('MCP:', JSON.stringify(Object.entries(mcpTools).map(([name, tools]) => ({ [name]: Object.entries(tools).map(([tname, t]) => ({ name: tname, description: t.description })) })), null, 1));
+        mcpInitialized = true;
+        log.debug('MCP:', JSON.stringify(Object.entries(mcpTools).map(([name, tools]) => ({ [name]: Object.entries(tools).map(([tname, t]) => ({ name: tname, description: t.description })) })), null, 1));
     })();
 
-    console.log('initialize mcp done');
-
-    return {
-        mcpTools,
-        mcpClients,
-    };
+    log.info('initialize mcp done');
 }
 
-export async function getMcp(activeMcp: string[] = []) {
-    // if (!mcpInitialized) {
-    //     await initializeMcp();
-    // }
-    if (activeMcp.length === 0) {
-        return;
+export async function getMcp() {
+    if (!mcpInitialized) {
+        await initializeMcp();
     }
-    console.log('initializing mcp...');
-    return initializeMcp(activeMcp);
+    return mcpTools;
 }
 
-// export async function updateMcpTool(activeMcp: string[] = []) {
-//     await Promise.all(mcpClients.map(async (mcpClient) => {
-//         await mcpClient.close();
-//     }));
-//     mcpClients.length = 0;
-//     mcpPromise = null;
-//     await initializeMcp(activeMcp);
-// }
+export async function updateMcp() {
+    log.info('updating mcp...');
+    await Promise.all(mcpClients.map(mcpClient => mcpClient.close()));
+    mcpClients.length = 0;
+    mcpPromise = null;
+    mcpInitialized = false;
+    await initializeMcp();
+    return Object.keys(mcpTools);
+}
 
 // initializeMcp().catch(console.error);

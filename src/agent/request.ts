@@ -181,7 +181,7 @@ export async function streamHandler(stream: AsyncIterable<any>, contentExtractor
     return messageInfo.content;
 }
 
-export async function requestChatCompletionsV2({ model, messages, tools, activeTools, toolChoice, context, cache, mcpClients }: { model: LanguageModelV1; toolModel?: LanguageModelV1; prompt?: string; messages: CoreMessage[]; tools?: any; activeTools: string[]; toolChoice?: ToolChoice[] | undefined; context: AgentUserConfig; cache?: string[]; mcpClients: any[] }, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> {
+export async function requestChatCompletionsV2({ model, messages, tools, activeTools, toolChoice, context, cache }: { model: LanguageModelV1; toolModel?: LanguageModelV1; prompt?: string; messages: CoreMessage[]; tools?: any; activeTools: string[]; toolChoice?: ToolChoice[] | undefined; context: AgentUserConfig; cache?: string[] }, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> {
     // 引入多轮对话 拼接提示
     const messageInfo: MessageInfo = {
         content: cache?.join() ?? '',
@@ -227,11 +227,6 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
         await manualRequestTool(responseMessages, context);
     } catch (e) {
         streamErrorHandler(e as Error, contentFull, responseMessages);
-    } finally {
-        mcpClients.length > 0 && log.info('close mcp clients');
-        await Promise.all(mcpClients.map(async (mcpClient) => {
-            await mcpClient.close();
-        }));
     }
     return toolResultExtractor(responseMessages, contentFull);
 }
@@ -260,7 +255,7 @@ function toolResultExtractor(responseMessages: ResponseMessage[], contentFull: s
             if (role === 'tool') {
                 content.forEach((i) => {
                     if (i.type === 'tool-result') {
-                        i.result = (i.result as { result: any }).result;
+                        i.result = (i.result as { result: any }).result || i.result;
                     }
                 });
             }
