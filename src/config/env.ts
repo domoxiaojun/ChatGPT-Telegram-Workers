@@ -161,7 +161,7 @@ class Environment extends EnvironmentConfig {
         }
         // 清理CALLBACK_MENU
         if (this.CALLBACK_MENU.length > 0) {
-            const supportedKeys = ['AI_CHAT_PROVIDER', 'AI_IMAGE_PROVIDER', 'USE_TOOLS', 'USE_OAILIKE_RELAY_TOOLS', 'CHAT_MODEL', 'IMAGE_MODEL', 'VISION_MODEL', 'TOOL_MODEL', 'ENVS', 'RERANK_AGENT', 'TEXT_HANDLE_TYPE', 'TEXT_OUTPUT', 'AUDIO_HANDLE_TYPE', 'AUDIO_OUTPUT', 'AUDIO_CONTAINS_TEXT'];
+            const supportedKeys = ['AI_CHAT_PROVIDER', 'AI_IMAGE_PROVIDER', 'AI_TTS_PROVIDER', 'AI_ASR_PROVIDER', 'RERANK_AGENT', 'USE_TOOLS', 'USE_MCP', 'USE_OAILIKE_RELAY_TOOLS', 'CHAT_MODEL', 'IMAGE_MODEL', 'VISION_MODEL', 'TOOL_MODEL', 'ENVS', 'RERANK_AGENT'];
             this.CALLBACK_MENU = this.CALLBACK_MENU.filter((key: string) => supportedKeys.includes(key));
         }
         // 异步初始化tools和mcp
