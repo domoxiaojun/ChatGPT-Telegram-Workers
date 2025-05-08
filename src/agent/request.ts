@@ -252,11 +252,9 @@ function streamErrorHandler(e: Error, contentFull: string, responseMessages: Res
 function toolResultExtractor(responseMessages: ResponseMessage[], contentFull: string) {
     return {
         messages: responseMessages.map(({ role, content }) => {
-            if (role === 'tool') {
-                content.forEach((i) => {
-                    if (i.type === 'tool-result') {
-                        i.result = (i.result as { result: any }).result || i.result;
-                    }
+            if (role === 'tool' && content.some(i => i.type === 'tool-result')) {
+                content.forEach((j: any) => {
+                    j.result?.time && (delete j.result.time);
                 });
             }
             return { role, content };

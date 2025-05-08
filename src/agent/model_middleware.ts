@@ -60,7 +60,7 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
 
         onChunk: ({ chunk }: { chunk: Extract<TextStreamPart<any>, { type: 'reasoning' | 'tool-call' | 'tool-call-streaming-start' | 'tool-call-delta' | 'tool-result' }> }) => {
             if (chunk.type === 'tool-call' && !sendToolCall) {
-                onStream?.send(`${messageInfo.content}...\n` + `tool call will start: ${chunk.toolName}`);
+                onStream?.send(`${messageInfo.content}...\n` + `tool call will start: \`${chunk.toolName}\``);
                 sendToolCall = true;
                 log.info(`will start tool: ${chunk.toolName}`);
             }
@@ -119,13 +119,8 @@ function warpMessages(params: LanguageModelV1CallOptions, tools: Record<string, 
 
     const getSystemContent = () => {
         let systemContent = rawSystemPrompt ?? '';
-        // 非兼容模式下不再插入工具提示
-        // if (activeTools.length > 0) {
-        //     systemContent += `\nYou can consider using the following tools:\n${activeTools.map(name =>
-        //         `### ${name}\n- desc: ${tools[name]?.schema?.description || ''} \n${tools[name]?.prompt || ''}`,
-        //     ).join('\n\n')}`;
-        // }
-        if (ENV.MESSAGE_COMPATIBLE && activeTools.length > 0) {
+        // 非兼容模式插入工具prompt
+        if (!ENV.MESSAGE_COMPATIBLE && activeTools.length > 0) {
             systemContent += `\nYou can consider using the following tools:\n${activeTools.map(name =>
                 `### ${name}\n- desc: ${tools[name]?.schema?.description || ''} \n${tools[name]?.prompt || ''}`,
             ).join('\n\n')}`
@@ -154,13 +149,13 @@ function warpMessages(params: LanguageModelV1CallOptions, tools: Record<string, 
                     let text = '';
                     const toolNames: Set<string> = new Set();
                     for (const toolResultPart of message.content) {
-                        const { toolCallId, toolName, result: { result } } = toolResultPart as LanguageModelV1ToolResultPart & { result: { result: any } };
+                        const { toolCallId, toolName, result: { content }, content: arrayResult } = toolResultPart as LanguageModelV1ToolResultPart & { result: { content: unknown } };
                         toolNames.add(toolName);
                         let toolArgs = 'UNKNOWN';
                         if (messages[i - 1]?.role === 'assistant' && (messages[i - 1]?.content as any[])?.some(i => i.type === 'tool-call')) {
                             toolArgs = JSON.stringify((messages[i - 1]?.content as LanguageModelV1ToolCallPart[])?.find(i => i.toolCallId === toolCallId)?.args);
                         }
-                        text += `#### [tool ${toolName} with args ${toolArgs}]\nResult:\n${JSON.stringify(result)}\n\n`;
+                        text += `#### [tool ${toolName} with args ${toolArgs}]\nResult:\n${JSON.stringify(content || arrayResult)}\n\n`;
                     }
                     text = `${[...toolNames].map(name => `## For tool \`${name}\`, you should follow these rules:\n - ${tools[name]?.prompt ?? ''}`).join('\n')}\n### Please use the following retrieved data to answer the question:\n${text}`;
                     modifiedMessages.push({
@@ -190,7 +185,7 @@ function warpMessages(params: LanguageModelV1CallOptions, tools: Record<string, 
             if (i.role === 'tool' && i.content.some((j: any) => j.type === 'tool-result')) {
                 i.content.forEach((j: any) => {
                     // 消除 time信息
-                    j.result?.result && (j.result = j.result.result);
+                    j.result?.time && (delete j.result.time);
                 });
             }
         });
