@@ -78,6 +78,6 @@ export interface PatternInfo {
 }
 
 export interface ToolResult {
-    result: any;
+    content: any;
     time: string;
 }

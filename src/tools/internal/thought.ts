@@ -21,7 +21,7 @@ export const think: FuncTool = {
 
     func: async ({ thought }: any, _options?: { signal?: AbortSignal; [key: string]: any }, _config?: AgentUserConfig): Promise<ToolResult> => {
         log.info(`tool think request start: thought: ${thought}`);
-        return { result: 'Thought has been logged', time: '0' };
+        return { content: 'Thought has been logged', time: '0' };
     },
 
     buildin: true,

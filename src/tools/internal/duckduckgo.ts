@@ -87,7 +87,7 @@ export const duckduckgo: FuncTool = {
         } catch (e) {
             console.error(e);
         }
-        return { result: result ?? 'Failed to get search results', time: ((Date.now() - startTime) / 1e3).toFixed(1) };
+        return { content: result ?? 'Failed to get search results', time: ((Date.now() - startTime) / 1e3).toFixed(1) };
     },
 
     type: 'search',
