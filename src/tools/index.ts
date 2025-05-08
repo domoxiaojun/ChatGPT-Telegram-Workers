@@ -25,8 +25,11 @@ const tools = {
 } as unknown as Record<string, FuncTool>;
 
 export function executeTool(toolName: string) {
-    return async (args: any, options: Record<string, any> & { signal?: AbortSignal }): Promise<{ result: any; time: string; error?: string }> => {
-        const { signal } = options;
+    return async (args: any): Promise<{ content: unknown; time: string; error?: string }> => {
+        let signal;
+        if (ENV.TOOL_TIMEOUT > 0) {
+            signal = AbortSignal.timeout(ENV.TOOL_TIMEOUT * 1000);
+        }
         let filledPayload = JSON.stringify(tools[toolName].payload)
             .replace(/\{\{([^}]+)\}\}/g, (match, p1) => args[p1] || match);
 
@@ -57,7 +60,7 @@ export function executeTool(toolName: string) {
         if (!result.ok) {
             const text = await result.text();
             log.error(`Tool call error: ${result.statusText} ${text}`);
-            return { result: `Tool call error: ${result.statusText}`, time: ((Date.now() - startTime) / 1e3).toFixed(1), error: result.statusText };
+            return { content: `Tool call error: ${result.statusText}`, time: ((Date.now() - startTime) / 1e3).toFixed(1), error: result.statusText };
         }
         try {
             result = await result.clone().json();
@@ -89,7 +92,7 @@ export function executeTool(toolName: string) {
         //     const next_tool_alias = tools[toolName].next_tool;
         //     return executeTool(next_tool_alias)(result, options);
         // }
-        return { result, time: ((Date.now() - startTime) / 1e3).toFixed(1) };
+        return { content: result, time: ((Date.now() - startTime) / 1e3).toFixed(1) };
     };
 }
 
@@ -169,7 +172,7 @@ export async function manualRequestTool(messages: ResponseMessage[], config: Age
         if (!tool_func) {
             throw new Error(`Tool ${c.toolName} not found`);
         }
-        const toolResult = await tool_func(c.args, { signal: undefined }, config);
+        const toolResult = await tool_func(c.args as any);
         (messages.at(-1)?.content as ToolResultPart[]).push({
             type: 'tool-result',
             toolCallId: c.toolCallId,

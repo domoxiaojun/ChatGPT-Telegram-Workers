@@ -932,10 +932,12 @@ export class MapCommandHandler extends RenewConfig {
                 + `type 可选值: key, value; 分别对应 MAPPING\\_KEY, MAPPING\\_VALUE; 不带type时，默认为${setKey}`;
             return this.send(msg, sender);
         }
+        const mappedTip = (map: Map<string, string>) => `当前映射:\n${Array.from(map.entries()).map(([key, value]) => `- \`${key}\` -> \`${value}\``).join('\n')}`;
+
         if (/^(?:key|value)$/.test(subcommand)) {
             subcommand = subcommand.replace(/^key|value/, '').trim();
             const map = this.getMaps(context.USER_CONFIG[setKey]);
-            const msg = map.size > 0 ? `当前${type}映射:\n${Array.from(map.entries()).map(([key, value]) => `- \`${key} -> ${value}\``).join('\n')}` : `${setKey} 映射为空`;
+            const msg = map.size > 0 ? mappedTip(map) : `${setKey} 映射为空`;
             return this.send(msg, sender);
         }
         subcommand = subcommand.replace(/^key|value/, '').trim();
@@ -954,7 +956,7 @@ export class MapCommandHandler extends RenewConfig {
             }
         });
         this.store({ [setKey]: Array.from(currentMap.entries()).map(([key, value]) => `${key}:${value}`).join('|') }, context);
-        const msg = `${type} 映射更新成功\n当前映射:\n${Array.from(currentMap.entries()).map(([key, value]) => `- \`${key} -> ${value}\``).join('\n')}`;
+        const msg = `${type} 映射更新成功\n${mappedTip(currentMap)}`;
         return this.send(msg, sender);
     };
 
@@ -966,7 +968,7 @@ export class MapCommandHandler extends RenewConfig {
     };
 
     send = (msg: string, sender: MessageSender) => {
-        return sender.sendRichText(`Tip:\n${msg}`, 'MarkdownV2', 'tip', {
+        return sender.sendRichText(msg, 'MarkdownV2', 'tip', {
             addQuote: true,
             quoteExpandable: true,
         });
