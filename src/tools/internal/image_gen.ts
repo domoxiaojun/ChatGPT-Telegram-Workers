@@ -64,7 +64,7 @@ export const image_gen: FuncTool = {
             result.push(res);
         }
         log.info(`${agent_name} result: ${JSON.stringify(result)}`);
-        return { result, time: ((Date.now() - startTime) / 1e3).toFixed(1) };
+        return { content: result, time: ((Date.now() - startTime) / 1e3).toFixed(1) };
     },
 
     extra_params: { temperature: 1.2 },
