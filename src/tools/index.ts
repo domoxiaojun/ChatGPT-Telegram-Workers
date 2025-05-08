@@ -25,8 +25,11 @@ const tools = {
 } as unknown as Record<string, FuncTool>;
 
 export function executeTool(toolName: string) {
-    return async (args: any, options: Record<string, any> & { signal?: AbortSignal }): Promise<{ content: unknown; time: string; error?: string }> => {
-        const { signal } = options;
+    return async (args: any): Promise<{ content: unknown; time: string; error?: string }> => {
+        let signal;
+        if (ENV.TOOL_TIMEOUT > 0) {
+            signal = AbortSignal.timeout(ENV.TOOL_TIMEOUT * 1000);
+        }
         let filledPayload = JSON.stringify(tools[toolName].payload)
             .replace(/\{\{([^}]+)\}\}/g, (match, p1) => args[p1] || match);
 
@@ -169,7 +172,7 @@ export async function manualRequestTool(messages: ResponseMessage[], config: Age
         if (!tool_func) {
             throw new Error(`Tool ${c.toolName} not found`);
         }
-        const toolResult = await tool_func(c.args, {}, config);
+        const toolResult = await tool_func(c.args as any);
         (messages.at(-1)?.content as ToolResultPart[]).push({
             type: 'tool-result',
             toolCallId: c.toolCallId,

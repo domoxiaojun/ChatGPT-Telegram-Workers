@@ -10,6 +10,8 @@ export class EnvironmentConfig {
     CHAT_COMPLETE_API_TIMEOUT = 0;
     // Total Duration Limit, scale: seconds, default 30 minutes
     CHAT_TOTAL_DURATION_LIMIT = 60 * 30;
+    // tool timeout, scale: seconds
+    TOOL_TIMEOUT = 0;
     // -- Telegram 相关 --
     //
     // Telegram API Domain
