@@ -4,6 +4,7 @@ import type { WorkerContext } from '../../config/context';
 import type { MessageSender } from '../utils/send';
 import type { ChosenInlineQueryHandler, InlineQueryHandler } from './types';
 import { loadChatLLM } from '../../agent';
+import { injectSystemMessage } from '../../agent/chat';
 import { ENV } from '../../config/env';
 import { log } from '../../log/logger';
 import { createTelegramBotAPI } from '../api';
@@ -34,10 +35,8 @@ export class AnswerChatInlineQuery implements AnswerInlineQueryType {
         }
         const isStream = chosenInline.result_id === ':c stream';
         const OnStream = OnStreamHander(sender as unknown as MessageSender, context as unknown as WorkerContext, question);
-        const messages = [{ role: 'user', content: question }];
-        if (context.USER_CONFIG.SYSTEM_INIT_MESSAGE) {
-            messages.unshift({ role: 'system', content: context.USER_CONFIG.SYSTEM_INIT_MESSAGE });
-        }
+        const messages = injectSystemMessage([{ role: 'user', content: question }], context.USER_CONFIG.SYSTEM_INIT_MESSAGE);
+
         try {
             const resp = await agent.request({
                 messages: messages as CoreMessage[],

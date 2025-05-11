@@ -73,15 +73,8 @@ export async function requestCompletionsFromLLM(params: LLMChatRequestParams | n
         return list.slice(validStart);
     };
     const messages = [...trimer(history, context.USER_CONFIG.MAX_HISTORY_LENGTH), params];
-
-    if (context.USER_CONFIG.SYSTEM_INIT_MESSAGE) {
-        messages.unshift({
-            role: 'system',
-            content: context.USER_CONFIG.SYSTEM_INIT_MESSAGE,
-        });
-    }
     const llmParams: LLMChatParams = {
-        messages,
+        messages: injectSystemMessage(messages, context.USER_CONFIG.SYSTEM_INIT_MESSAGE),
         cache: [],
     };
     const answer = await workflow(agent, llmParams, context.USER_CONFIG, onStream);
@@ -165,3 +158,15 @@ function extractResultText(result: { messages: ResponseMessage[]; content: strin
     }
     return lastMessage.content;
 };
+
+export function injectSystemMessage(messages: CoreMessage[], systemMessage: string | null) {
+    if (systemMessage) {
+        // 注入{{CURRENT_TIME}}
+        systemMessage = systemMessage.replace('{{CURRENT_TIME}}', new Date().toISOString());
+        messages.unshift({
+            role: 'system',
+            content: systemMessage,
+        });
+    }
+    return messages;
+}
