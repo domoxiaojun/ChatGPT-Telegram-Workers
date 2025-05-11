@@ -83,7 +83,13 @@ export async function requestCompletionsFromLLM(params: LLMChatRequestParams | n
     if (!historyDisable && raw_messages.at(-1)?.role === 'assistant') {
         // only push valid chat history
         history.push(params);
-        history.push(...raw_messages.filter(i => i.content !== ''));
+        history.push(...raw_messages.filter((i) => {
+            if (i.role === 'assistant') {
+                // assistant message is raw text or has text part
+                return typeof i.content === 'string' ? i.content !== '' : i.content.some(c => c.type !== 'text') || i.content.every(c => c.type === 'text' && c.text !== '');
+            }
+            return true;
+        }));
         await storeHistory(history, context);
     }
     return answer;
