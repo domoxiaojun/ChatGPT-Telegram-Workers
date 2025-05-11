@@ -303,7 +303,7 @@ function recordModelLog(config: AgentUserConfig, model: LanguageModelV1, activeT
 }
 
 export function metaDataExtractor(metadata: any, provider: string, content: string) {
-    if (!metadata) {
+    if (!metadata || !ENV.ENABLE_SEARCH_SOURCE) {
         return content;
     }
 
