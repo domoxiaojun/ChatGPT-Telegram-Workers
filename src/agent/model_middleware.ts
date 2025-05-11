@@ -119,12 +119,12 @@ function warpMessages(params: LanguageModelV1CallOptions, tools: Record<string, 
 
     const getSystemContent = () => {
         let systemContent = rawSystemPrompt ?? '';
-        // 非兼容模式插入工具prompt
-        if (!ENV.MESSAGE_COMPATIBLE && activeTools.length > 0) {
+        // 插入工具prompt
+        if (activeTools.length > 0) {
             systemContent += `\nYou can consider using the following tools:\n${activeTools.map(name =>
                 `### ${name}\n- desc: ${tools[name]?.schema?.description || ''} \n${tools[name]?.prompt || ''}`,
             ).join('\n\n')}`
-            + `\n\n${activeTools.map(name => `## For tool \`${name}\`, you should follow these rules:\n - ${tools[name]?.prompt ?? ''}`)
+            + `\n\n${activeTools.map(name => tools[name]?.prompt && `## For tool \`${name}\`, you should follow these rules:\n - ${tools[name]?.prompt}`)
                 .join('\n')}`;
         }
         return systemContent ?? 'You are a helpful assistant';
@@ -153,11 +153,11 @@ function warpMessages(params: LanguageModelV1CallOptions, tools: Record<string, 
                         toolNames.add(toolName);
                         let toolArgs = 'UNKNOWN';
                         if (messages[i - 1]?.role === 'assistant' && (messages[i - 1]?.content as any[])?.some(i => i.type === 'tool-call')) {
-                            toolArgs = JSON.stringify((messages[i - 1]?.content as LanguageModelV1ToolCallPart[])?.find(i => i.toolCallId === toolCallId)?.args);
+                            toolArgs = JSON.stringify((messages[i - 1]?.content as LanguageModelV1ToolCallPart[])?.find(i => i.toolCallId === toolCallId)?.args) || 'UNKNOWN';
                         }
-                        text += `#### [tool ${toolName} with args ${toolArgs}]\nResult:\n${JSON.stringify(content || arrayResult)}\n\n`;
+                        text += `#### [tool \`${toolName}\` invoke detail]\n - args: ${toolArgs}\n - result:\n${JSON.stringify(content || arrayResult)}\n\n`;
                     }
-                    text = `${[...toolNames].map(name => `## For tool \`${name}\`, you should follow these rules:\n - ${tools[name]?.prompt ?? ''}`).join('\n')}\n### Please use the following retrieved data to answer the question:\n${text}`;
+                    text = `### Please use the following retrieved data to answer user's question:\n${text}`;
                     modifiedMessages.push({
                         role: 'user',
                         content: [{ type: 'text', text }],
@@ -303,7 +303,7 @@ function recordModelLog(config: AgentUserConfig, model: LanguageModelV1, activeT
 }
 
 export function metaDataExtractor(metadata: any, provider: string, content: string) {
-    if (!metadata) {
+    if (!metadata || !ENV.ENABLE_SEARCH_SOURCE) {
         return content;
     }
 

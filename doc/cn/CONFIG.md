@@ -114,6 +114,7 @@ OPENAI_API_BASE,GOOGLE_API_BASE,MISTRAL_API_BASE,COHERE_API_BASE,ANTHROPIC_API_B
 | ENVS_VARIABLES               | 环境变量              | `[]` (array string)                             | 环境变量                                                                                                                                                                                                                                                                                  |
 | CALLBACK_MENU                | 回调菜单              | `[]` (array string)                             | 回调菜单， 可选值 `AI_CHAT_PROVIDER`, 'AI_IMAGE_PROVIDER', 'AI_TTS_PROVIDER', 'AI_ASR_PROVIDER', 'USE_TOOLS', 'USE_MCP', 'USE_OAILIKE_RELAY_TOOLS', 'CHAT_MODEL', 'IMAGE_MODEL', 'VISION_MODEL', 'TOOL_MODEL', 'ENVS', 'RERANK_AGENT' |
 | MESSAGE_COMPATIBLE           | 消息兼容              | `true`                                          | 消息兼容, 当为true时，会将tool_call/tool_result消息转换为user消息，同时在system message中添加tool定义                                                                                                                                                                                       |
+| ENABLE_SEARCH_SOURCE         | 显示搜索源            | `true`                                          | 是否显示搜索源                                                                                                                                                                                                                                                                                |
 
 
 

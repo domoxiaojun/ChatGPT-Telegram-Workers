@@ -205,6 +205,8 @@ export class EnvironmentConfig {
 
     // Whether to transform  tool_call/tool_result message to user message
     MESSAGE_COMPATIBLE = true;
+    // whether to display search source
+    ENABLE_SEARCH_SOURCE = true;
 }
 
 // -- 通用配置 --
@@ -219,8 +221,6 @@ export class AgentShareConfig {
     AI_TTS_PROVIDER = 'openai';
     // 全局默认初始化消息
     SYSTEM_INIT_MESSAGE: string | null = null;
-    // 音频提示词
-    AUDIO_PROMPT = 'Please listen to the audio file. Identify and understand the question being asked in the audio. Then, provide a detailed explanation and answer to this question. Ensure your answer is helpful and explains the solution or information clearly.';
 }
 
 // -- Open AI 配置 --
@@ -563,4 +563,6 @@ export class ExtraUserConfig {
     ENABLE_WORKFLOW = false;
     // whether to enable model alias of mapping value
     ENABLE_ALIAS = false;
+    // 音频提示词
+    AUDIO_PROMPT = 'Please listen to the audio file. Identify and understand the question being asked in the audio. Then, provide a detailed explanation and answer to this question. Ensure your answer is helpful and explains the solution or information clearly.';
 }

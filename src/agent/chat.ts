@@ -73,15 +73,8 @@ export async function requestCompletionsFromLLM(params: LLMChatRequestParams | n
         return list.slice(validStart);
     };
     const messages = [...trimer(history, context.USER_CONFIG.MAX_HISTORY_LENGTH), params];
-
-    if (context.USER_CONFIG.SYSTEM_INIT_MESSAGE) {
-        messages.unshift({
-            role: 'system',
-            content: context.USER_CONFIG.SYSTEM_INIT_MESSAGE,
-        });
-    }
     const llmParams: LLMChatParams = {
-        messages,
+        messages: injectSystemMessage(messages, context.USER_CONFIG.SYSTEM_INIT_MESSAGE),
         cache: [],
     };
     const answer = await workflow(agent, llmParams, context.USER_CONFIG, onStream);
@@ -90,7 +83,13 @@ export async function requestCompletionsFromLLM(params: LLMChatRequestParams | n
     if (!historyDisable && raw_messages.at(-1)?.role === 'assistant') {
         // only push valid chat history
         history.push(params);
-        history.push(...raw_messages.filter(i => i.content !== ''));
+        history.push(...raw_messages.filter((i) => {
+            if (i.role === 'assistant') {
+                // assistant message is raw text or has text part
+                return typeof i.content === 'string' ? i.content !== '' : i.content.some(c => c.type !== 'text') || i.content.every(c => c.type === 'text' && c.text !== '');
+            }
+            return true;
+        }));
         await storeHistory(history, context);
     }
     return answer;
@@ -165,3 +164,15 @@ function extractResultText(result: { messages: ResponseMessage[]; content: strin
     }
     return lastMessage.content;
 };
+
+export function injectSystemMessage(messages: CoreMessage[], systemMessage: string | null) {
+    if (systemMessage) {
+        // 注入{{CURRENT_TIME}}
+        systemMessage = systemMessage.replace('{{CURRENT_TIME}}', new Date().toISOString());
+        messages.unshift({
+            role: 'system',
+            content: systemMessage,
+        });
+    }
+    return messages;
+}
