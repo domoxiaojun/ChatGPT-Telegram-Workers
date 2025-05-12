@@ -135,7 +135,7 @@ export async function vaildTools(tools_config: string[], mcp_config: string[]) {
     const useTools = Object.entries(tools)
         .filter(([tname, _]) => activeToolAlias.includes(tname))
         .reduce((acc: Record<string, any>, [name, t]) => {
-            const execute = t.buildin ? t.func : executeTool(name) as any;
+            const execute = (t.buildin || t.func) ? t.func : executeTool(name) as any;
             acc[t.schema.name] = tool({
                 description: t.schema.description,
                 parameters: jsonSchema(t.schema.parameters as any),
