@@ -13,9 +13,11 @@ import { log } from '../log/logger';
 import { getMcp } from '../mcp';
 import { interpolate } from '../plugins/interpolate';
 import { sendImages } from '../telegram/handler/chat';
+import { isCfWorker } from '../telegram/utils/tg_utils';
 import externalTools from './external';
 import internalTools from './internal';
 import { processHtmlText, webCrawler } from './internal/web';
+import { getLocalTools } from './local';
 
 export * from './external';
 export * from './internal';
@@ -105,16 +107,11 @@ export async function initializeTools() {
         return toolsPromise;
     }
     toolsPromise = (async () => {
-        console.log('external tools:', ENV.PLUGINS_FUNCTION);
+        console.log('external tools:', Object.keys(ENV.PLUGINS_FUNCTION));
         await Promise.all(Object.keys(ENV.PLUGINS_FUNCTION).map(async (plugin) => {
             let template = ENV.PLUGINS_FUNCTION[plugin];
             if (template.startsWith('http')) {
                 template = await fetch(template).then(r => r.text());
-            } else if (/^\.*\/.*?\.json$/.test(template)) {
-                template = readFileSync(template, 'utf-8');
-            } else if (/^\.*\/.*?\.[tj]s$/.test(template)) {
-                tools[plugin] = await localTools(template);
-                return;
             }
             try {
                 tools[plugin] = JSON.parse(template.trim());
@@ -122,6 +119,11 @@ export async function initializeTools() {
                 log.error(`Plugin ${plugin} is invalid`);
             }
         }));
+        if (!isCfWorker) {
+            const localTools = await getLocalTools();
+            console.log('local tools:', Object.keys(localTools));
+            Object.assign(tools, localTools);
+        }
         toolsInitialized = true;
     })();
     return toolsPromise;

@@ -307,9 +307,9 @@ COMMAND_DESCRIPTION_cn2en = '将对话内容翻译成英文'
 
 如果你想将自定义命令绑定到telegram的菜单中，你可以添加如下环境变量`COMMAND_SCOPE_azure = "all_private_chats,all_group_chats,all_chat_administrators"`，这样插件就会在所有的私聊，群聊和群组中生效。
 
-## 自定义TOOLS
+## 自定义TOOL
 
-自定义TOOLS, 以`PLUGIN_FUNCTION_`为前缀 比如`PLUGIN_FUNCTION_weather`， 值为TOOLS的定义， 例如：
+以`PLUGIN_FUNCTION_`为前缀 例如：`PLUGIN_FUNCTION_weather`；值为TOOL的定义， 例如：
 ```json
 {
     "name": "weather",
@@ -323,6 +323,42 @@ COMMAND_DESCRIPTION_cn2en = '将对话内容翻译成英文'
 环境变量以`PLUGIN_ENV_`为前缀， 例如：`PLUGIN_ENV_QWEATHER_TOKEN`， 值为QWEATHER_TOKEN，用于替换`{{QWEATHER_TOKEN}}`。
 
 详细请参考示例[qweather](../../src/tools/external/qweather.json)
+
+### 本地TOOL
+
+将工具文件挂载在 `/app/tool` 目录下， 在启动时会自动加载，参考 [docker compose文件](../../docker-compose.yaml)。工具需要使用的环境变量仍以 `PLUGIN_ENV_` 为前缀进行设置。
+支持的文件类型：
+- .json
+- .ts
+- .js
+> 注： `ts/js`文件需要以**默认导出方式**导出工具，显式工具名为文件名。例如：`echo.ts`， 则工具名为`echo` 。支持的字段见[types.ts](../../src/tools/types.ts)。
+示例：
+```ts
+export default {
+    schema: {
+        name: 'echo',
+        description: 'a echo tool',
+        parameters: {
+            type: 'object',
+            properties: {
+                test: {
+                    type: 'string',
+                    description: `sth to echo`,
+                },
+            },
+            required: ['test'],
+        },
+    },
+
+    func: async (args: { test: string }): Promise<any> => {
+        return { content: args.test, time: 0.01 };
+    },
+
+    prompt: 'You just need to echo the input',
+    extra_params: { temperature: 0.7, top_p: 0.4 },
+    not_send_to_ai: false,
+};
+```
 
 ---
 

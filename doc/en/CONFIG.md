@@ -312,9 +312,9 @@ COMMAND_DESCRIPTION_cn2en = 'Translate the conversation content into English.'
 
 If you want to bind custom commands to the menu of Telegram, you can add the following environment variable `COMMAND_SCOPE_azure = "all_private_chats,all_group_chats,all_chat_administrators"`, so that the plugin will take effect in all private chats, group chats and groups.
 
-## Custom TOOLS
+## Custom TOOL
 
-Custom TOOLS, prefixed with `PLUGIN_FUNCTION_`, such as `PLUGIN_FUNCTION_weather`, the value is the definition of the TOOLS, such as:
+Custom TOOL, prefixed with `PLUGIN_FUNCTION_`, such as `PLUGIN_FUNCTION_weather`, the value is the definition of the TOOLS, such as:
 ```json
 {
     "name": "weather",
@@ -328,6 +328,40 @@ Custom TOOLS, prefixed with `PLUGIN_FUNCTION_`, such as `PLUGIN_FUNCTION_weather
 The environment variable is prefixed with `PLUGIN_ENV_`, such as `PLUGIN_ENV_QWEATHER_TOKEN`, the value is `QWEATHER_TOKEN`, used to replace `{{QWEATHER_TOKEN}}`.
 
 Detailed examples can be found in the [qweather](../../src/tools/external/qweather.json) file.
+
+### Local TOOL
+
+Mount the tool files under the `/app/tool` directory. They will be automatically loaded at startup. See the [docker compose file](../../docker-compose.yaml) for reference. Environment variables required by the tool should still be set with the `PLUGIN_ENV_` prefix.
+Supported file types:
+- .json
+- .ts
+- .js
+> Note: `ts/js` files need to export tools using the **default export method**, with the explicit tool name being the filename. For example: `echo.ts`, then the tool name is `echo`. For supported fields, see [types.ts](../../src/tools/types.ts).
+Example:
+```ts
+export default {
+    schema: {
+        name: 'echo',
+        description: 'a echo tool',
+        parameters: {
+            type: 'object',
+            properties: {
+                test: {
+                    type: 'string',
+                    description: `sth to echo`,
+                },
+            },
+        },
+    },
+    func: async (args: { test: string }) => {
+        return args.test;
+    },
+
+    prompt: 'echo sth',
+    extra_params: { temperature: 0.7, top_p: 0.4 },
+    not_send_to_ai: false,
+};
+```
 
 ---
 

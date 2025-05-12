@@ -68,6 +68,9 @@ export default defineConfig({
                 'node:buffer',
                 'node-cron',
                 'child_process',
+                'node:fs',
+                'node:path',
+                'node:fs/promises',
             ],
         },
         lib: {
