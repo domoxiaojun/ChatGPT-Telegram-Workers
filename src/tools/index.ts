@@ -6,6 +6,7 @@ import type { AgentUserConfig } from '../config/env';
 import type { MessageSender } from '../telegram/utils/send';
 import type { FuncTool, ToolHandler } from './types';
 
+import { readFileSync } from 'node:fs';
 import { jsonSchema, tool } from 'ai';
 import { ENV } from '../config/env';
 import { log } from '../log/logger';
@@ -104,11 +105,16 @@ export async function initializeTools() {
         return toolsPromise;
     }
     toolsPromise = (async () => {
-        console.log('TOOLS:', ENV.PLUGINS_FUNCTION);
+        console.log('external tools:', ENV.PLUGINS_FUNCTION);
         await Promise.all(Object.keys(ENV.PLUGINS_FUNCTION).map(async (plugin) => {
             let template = ENV.PLUGINS_FUNCTION[plugin];
             if (template.startsWith('http')) {
                 template = await fetch(template).then(r => r.text());
+            } else if (/^\.*\/.*?\.json$/.test(template)) {
+                template = readFileSync(template, 'utf-8');
+            } else if (/^\.*\/.*?\.[tj]s$/.test(template)) {
+                tools[plugin] = await localTools(template);
+                return;
             }
             try {
                 tools[plugin] = JSON.parse(template.trim());
@@ -135,7 +141,7 @@ export async function vaildTools(tools_config: string[], mcp_config: string[]) {
     const useTools = Object.entries(tools)
         .filter(([tname, _]) => activeToolAlias.includes(tname))
         .reduce((acc: Record<string, any>, [name, t]) => {
-            const execute = t.buildin ? t.func : executeTool(name) as any;
+            const execute = (t.buildin || t.func) ? t.func : executeTool(name) as any;
             acc[t.schema.name] = tool({
                 description: t.schema.description,
                 parameters: jsonSchema(t.schema.parameters as any),
@@ -224,3 +230,8 @@ export async function getTools() {
 }
 
 // initializeTools().catch(console.error);
+
+async function localTools(path: string) {
+    const { default: tool } = await import(path);
+    return tool;
+}

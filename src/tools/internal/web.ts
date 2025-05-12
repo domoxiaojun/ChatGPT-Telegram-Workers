@@ -37,7 +37,7 @@ export async function webCrawler(webcrawler: WebCrawlerInfo, data: Record<string
     log.info(`webcrawler url: ${url}`);
     const resp = await fetch(url).then(r => r.text());
     result = {
-        content : processHtmlText(webcrawler.patterns || [], resp),
+        content: processHtmlText(webcrawler.patterns || [], resp),
         source: url,
     };
     return result;
