@@ -11,7 +11,7 @@ ChatGPT-Telegram-Workers
 </p>
 
 ## 此项目为原项目的修改版本
-> 修改内容较多，请直接查看`src/config/config.ts`文件中的环境变量
+> 修改内容较多，请直接查阅[config doc](./doc/cn/CONFIG.md)
 修改内容包括但不限于：
 - 除workerAI 全部切换为AI SDK
 - 增加模型名、使用时间等信息显示

@@ -8,3 +8,4 @@ services:
     volumes:
       - ./config.json:/app/config.json:ro # change `./config.json` to your local path
       - ./wrangler.toml:/app/config.toml:ro # change `./wrangler.toml` to your local path
+      - ./tool:/app/tool:ro # change `./tool` to your local path

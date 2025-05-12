@@ -4,6 +4,7 @@ import { experimental_createMCPClient as createMCPClient } from 'ai';
 import { Experimental_StdioMCPTransport as MCPStdioTransport } from 'ai/mcp-stdio';
 import { ENV } from '../config/env';
 import { log } from '../log';
+import { isCfWorker } from '../telegram/utils/tg_utils';
 
 const mcpTools: Record<string, Record<string, any>> = {};
 let mcpInitialized = false;
@@ -11,6 +12,10 @@ let mcpPromise: Promise<void> | null = null;
 const mcpClients: any[] = [];
 
 export async function initializeMcp() {
+    if (isCfWorker) {
+        log.info('MCP is not supported in worker / browser');
+        return;
+    }
     if (mcpPromise) {
         return mcpPromise;
     }

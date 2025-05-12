@@ -112,7 +112,7 @@ export class MessageFilter implements MessageHandler<WorkerContextBase> {
         const supportMessageType = ENV.ENABLE_FILE === false ? ['text'] : ENV.SUPPORT_FORMAT;
         const types = [messageInfo.original_type, messageInfo.type];
         if (!types.every(type => supportMessageType.includes(type!))) {
-            log.error(`[MESSAGE FILTER] Not supported message type: ${types.join(', ')}`);
+            log.info(`[MESSAGE FILTER] Not supported message type: ${types.join(', ')}`);
             return new Response('success', { status: 200 });
         }
         context.MIDDLE_CONTEXT.messageInfo = messageInfo;

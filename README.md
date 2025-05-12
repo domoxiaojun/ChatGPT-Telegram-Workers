@@ -12,7 +12,7 @@ ChatGPT-Telegram-Workers
 
 ## This project is a modified version of the original project.
 
-> There are many modifications, please directly check the environment variables in the `src/config/config.ts` file.
+> There are many modifications, please directly check [config doc](./doc/en/CONFIG.md).
 
 Modifications include but are not limited to:
 
