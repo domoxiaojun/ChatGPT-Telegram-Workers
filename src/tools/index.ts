@@ -180,7 +180,7 @@ export async function manualRequestTool(messages: ResponseMessage[], config: Age
         if (!tool_func) {
             throw new Error(`Tool ${c.toolName} not found`);
         }
-        const toolResult = await tool_func(c.args as any);
+        const toolResult = await tool_func(c.args as any, {}, config);
         (messages.at(-1)?.content as ToolResultPart[]).push({
             type: 'tool-result',
             toolCallId: c.toolCallId,
@@ -191,12 +191,17 @@ export async function manualRequestTool(messages: ResponseMessage[], config: Age
 }
 
 export async function sendToolResult(toolResult: ToolResultPart[], sender: MessageSender, config: AgentUserConfig) {
-    const resultType = tools[toolResult.at(-1)?.toolName || '']?.result_type || 'text';
+    const isError = toolResult.some(r => r.isError);
+    const resultType = isError ? 'text' : tools[toolResult.at(-1)?.toolName || '']?.result_type || 'text';
+    const result = toolResult.map(r => r.result) as { content: string | ImageResult }[];
     switch (resultType) {
         case 'text':
-            return sender.sendRichText(toolResult.map(r => r.result).join('\n'));
+            // clear message id for extra message
+            sender.context.message_id = null;
+            sender.context.sentMessageIds.length = 0;
+            return sender.sendRichText((result as { content: string }[]).map(r => r.content).join('\n'));
         case 'image': {
-            const images = toolResult.map(r => r.result as ImageResult).flat();
+            const images = (result as { content: ImageResult }[]).map(r => r.content).flat();
             const type = images.some(r => r.raw) ? 'raw' : 'url';
             return sendImages({
                 type: 'image',
