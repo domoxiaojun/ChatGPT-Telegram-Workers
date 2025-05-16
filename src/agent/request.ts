@@ -243,8 +243,9 @@ function streamErrorHandler(e: Error, contentFull: string, responseMessages: Res
             toolCallId: 'tool-call-id',
             toolName: 'tool-name',
             result: {
-                result: `\`\`\`Error\n${(e as Error).message}\n\`\`\``,
+                content: `\`\`\`Error\n${(e as Error).message}\n\`\`\``,
             },
+            isError: true,
         }],
     });
 }
