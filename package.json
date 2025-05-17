@@ -53,7 +53,7 @@
         "@ffmpeg.wasm/core-st": "^0.13.2",
         "@ffmpeg.wasm/main": "^0.13.1",
         "@modelcontextprotocol/sdk": "^1.11.4",
-        "ai": "^4.3.15",
+        "ai": "^4.3.16",
         "cf-worker-adapter": "^1.4.0",
         "node-cron": "^4.0.5"
     },
