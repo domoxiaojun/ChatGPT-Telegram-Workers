@@ -350,9 +350,9 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
         log.info('--- start end ---');
         streamSender.clearHeartbeat();
         await sentPromise;
-        if (nextEnableTime !== null && nextEnableTime > Date.now()) {
-            log.info(`Need await: ${nextEnableTime - Date.now()}ms`);
-            await waitUntil(nextEnableTime + 10);  
+        if ((nextEnableTime || 0) > Date.now()) {
+            log.info(`Need await: ${(nextEnableTime || 0) - Date.now()}ms`);
+            await waitUntil(nextEnableTime! + 10);
         }
         if (type === 'error') {
             text = `${cache}\n${text}`;
