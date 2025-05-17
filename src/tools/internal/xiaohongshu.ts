@@ -1,4 +1,3 @@
-import type { FuncTool } from '../types';
 import { ENV } from '../../config/env';
 
 interface SearchNotesParams {
@@ -61,7 +60,7 @@ async function getNoteDetail(note_id: string, xsec_token: string) {
     };
 }
 
-export const xiaohongshu: FuncTool = {
+export default {
     schema: {
         name: 'xiaohongshu',
         description: 'Search for notes on Xiaohongshu',

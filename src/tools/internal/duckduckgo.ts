@@ -1,5 +1,5 @@
 /* eslint-disable unused-imports/no-unused-vars */
-import type { FuncTool, ToolResult } from '../types';
+import type { ToolResult } from '../types';
 import { log } from '../../log/logger';
 
 // original repo: https://github.com/navetacandra/ddg
@@ -58,7 +58,7 @@ async function search(query: string, max_length = 12, signal?: AbortSignal): Pro
     return (await regularSearch(path, max_length, signal)).slice(0, max_length);
 }
 
-export const duckduckgo: FuncTool = {
+export default {
     schema: {
         name: 'duckduckgo',
         description: 'Use DuckDuckGo search engine to find information. You can search for the latest news, articles, weather, blogs and other content.',

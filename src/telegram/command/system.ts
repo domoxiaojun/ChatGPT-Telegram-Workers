@@ -694,7 +694,7 @@ export class InlineCommandHandler implements CommandHandler {
                 label: 'Tools',
                 config_key: 'USE_TOOLS',
                 type: 'checkbox',
-                value: Object.keys({ ...ENV.PLUGINS_FUNCTION, ...tools }),
+                value: Object.keys({ ...ENV.PLUGINS_FUNCTION, ...tools }).sort(),
             },
             {
                 label: 'MCP',

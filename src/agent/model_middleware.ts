@@ -95,7 +95,7 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
                 const toolNames = [...new Set(toolResults.map(i => i.toolName))];
                 // Whether to trim used tools
                 // activeTools = trimActiveTools(activeTools, toolNames);
-                log.info(`finish ${toolNames}`);
+                log.info(`finish ${toolNames}\``);
                 onStream?.send(`${messageInfo.content}...\n` + `finish ${toolNames}`);
             } else {
                 activeTools.length > 0 && toolChoice[step]?.type !== 'none' ? logs.tool.time.push(time) : logs.chat.time.push(time);
