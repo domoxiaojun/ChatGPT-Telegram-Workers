@@ -234,3 +234,9 @@ export async function authChecker(command: CommandHandler, message: Telegram.Mes
         }
     }
 }
+
+export function blockCommand() {
+    const commands = SYSTEM_COMMANDS.filter(item => !ENV.BLOCK_COMMANDS.includes(item.command));
+    SYSTEM_COMMANDS.length = 0;
+    SYSTEM_COMMANDS.push(...commands);
+}

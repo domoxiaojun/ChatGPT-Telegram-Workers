@@ -1,6 +1,8 @@
 import type { APIGuard, CommandConfig, KVNamespace, MCPTransport } from './types';
+import { blockAgent } from '../agent';
 import loadI18n from '../i18n';
 import { initializeMcp } from '../mcp';
+import { blockCommand } from '../telegram/command';
 import { initializeTools } from '../tools';
 import {
     AgentShareConfig,
@@ -166,6 +168,11 @@ class Environment extends EnvironmentConfig {
         }
         // 异步初始化tools和mcp
         this.asyncInit();
+
+        // block agents
+        blockAgent();
+        // block commands
+        blockCommand();
     }
 
     private mergeCommands(prefix: string, descriptionPrefix: string, scopePrefix: string, source: any, target: Record<string, CommandConfig>) {

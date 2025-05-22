@@ -30,12 +30,12 @@ export const CHAT_AGENTS: ChatAgent[] = [
 export function loadChatLLM(context: AgentUserConfig): ChatAgent {
     // let CHAT_AGENTS = CHAT_AGENTS_ITER();
     for (const llm of CHAT_AGENTS) {
-        if (llm.name === context.AI_CHAT_PROVIDER) {
-            if (!llm.enable(context)) {
-                throw new Error(`Agent ${llm.name} api key is not set.`);
-            }
-            return llm;
+        if (llm.name !== context.AI_CHAT_PROVIDER)
+            continue;
+        if (!llm.enable(context)) {
+            throw new Error(`Agent ${llm.name} api key is not set.`);
         }
+        return llm;
     }
     // 找不到指定的AI，使用第一个可用的AI
     // CHAT_AGENTS = CHAT_AGENTS_ITER();
@@ -171,3 +171,9 @@ export async function customInfo(config: AgentUserConfig): Promise<string> {
 //     }
 //     return createProviderRegistry(providers);
 // }
+
+export function blockAgent() {
+    const agents = CHAT_AGENTS.filter(item => !ENV.BLOCK_AGENTS.includes(item.name));
+    CHAT_AGENTS.length = 0;
+    CHAT_AGENTS.push(...agents);
+}

@@ -105,6 +105,9 @@ export async function initializeTools() {
     if (toolsPromise) {
         return toolsPromise;
     }
+
+    blockTool();
+
     toolsPromise = (async () => {
         console.log('external tools:', Object.keys(ENV.PLUGINS_FUNCTION));
         await Promise.all(Object.keys(ENV.PLUGINS_FUNCTION).map(async (plugin) => {
@@ -125,6 +128,7 @@ export async function initializeTools() {
         }
         toolsInitialized = true;
     })();
+
     return toolsPromise;
 }
 
@@ -237,7 +241,11 @@ export async function getTools() {
 
 // initializeTools().catch(console.error);
 
-async function localTools(path: string) {
-    const { default: tool } = await import(path);
-    return tool;
+function blockTool() {
+    // 禁用内置工具
+    Object.keys(tools).forEach((t) => {
+        if (ENV.BLOCK_TOOLS.includes(t)) {
+            delete tools[t];
+        }
+    });
 }

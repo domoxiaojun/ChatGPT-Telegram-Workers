@@ -72,10 +72,16 @@ export class EnvironmentConfig {
     //
     // 隐藏部分命令按钮
     HIDE_COMMAND_BUTTONS: string[] = [];
+    // 禁用部分命令
+    BLOCK_COMMANDS: string[] = [];
     // 显示快捷回复按钮
     SHOW_REPLY_BUTTON = false;
     // 额外引用消息开关
     EXTRA_MESSAGE_CONTEXT = false;
+    // 禁用内置工具
+    BLOCK_TOOLS: string[] = [];
+    // 禁用Agent
+    BLOCK_AGENTS: string[] = [];
 
     // -------------
 
@@ -415,10 +421,10 @@ export class OpenAILikeConfig {
     OAILIKE_MODELS_API = '/models';
     // oailike relay
     OAILIKE_RELAY_TOOLS: Record<string, string[]> = {
-        gemini: ['googleSearch', 'codeExecution'],
+        gemini: ['googleSearch', 'codeExecution', 'urlContext'],
     };
 
-    // use oailike relay tools, support 'googleSearch, codeExecution'
+    // use oailike relay tools, support 'googleSearch, codeExecution, urlContext'
     USE_OAILIKE_RELAY_TOOLS: string[] = [];
 }
 

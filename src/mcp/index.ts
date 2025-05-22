@@ -21,7 +21,7 @@ export async function initializeMcp() {
     }
     log.info('initializing mcp...');
 
-    await (async () => {
+    {
         const mcpConfig = Object.entries(ENV.MCP_CONFIG);
         const toolPromises = mcpConfig.map(async ([name, transport]: [string, MCPTransport]) => {
             let mcpTransport: MCPTransport | MCPStdioTransport | StreamableHTTPClientTransport;
@@ -55,8 +55,7 @@ export async function initializeMcp() {
         await Promise.all(toolPromises);
         mcpInitialized = true;
         log.debug('MCP:', JSON.stringify(Object.entries(mcpTools).map(([name, tools]) => ({ [name]: Object.entries(tools).map(([tname, t]) => ({ name: tname, description: t.description })) })), null, 1));
-    })();
-
+    }
     log.info('initialize mcp done');
     log.info('mcpTools:', JSON.stringify(Object.keys(mcpTools)));
 }

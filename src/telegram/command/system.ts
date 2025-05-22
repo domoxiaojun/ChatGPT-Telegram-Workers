@@ -355,6 +355,7 @@ export class RedoCommandHandler implements CommandHandler {
             }
             return { history: historyCopy, message: nextMessage };
         };
+        context.MIDDLE_CONTEXT.history = await loadHistory(context.SHARE_CONTEXT.chatHistoryKey, ENV.STORE_HISTORY_LENGTH);
         return chatWithLLM(message, null, context, mf) as unknown as Response;
     };
 }
