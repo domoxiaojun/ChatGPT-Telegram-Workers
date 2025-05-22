@@ -421,10 +421,10 @@ export class OpenAILikeConfig {
     OAILIKE_MODELS_API = '/models';
     // oailike relay
     OAILIKE_RELAY_TOOLS: Record<string, string[]> = {
-        gemini: ['googleSearch', 'codeExecution'],
+        gemini: ['googleSearch', 'codeExecution', 'urlContext'],
     };
 
-    // use oailike relay tools, support 'googleSearch, codeExecution'
+    // use oailike relay tools, support 'googleSearch, codeExecution, urlContext'
     USE_OAILIKE_RELAY_TOOLS: string[] = [];
 }
 
