@@ -127,11 +127,17 @@ export function getLog(context: AgentUserConfig, onlyModel: boolean = false, isP
     // tool
     if (logObj.tool.model.size > 0 && show.model) {
         let toolsLog = [...logObj.tool.model].join(', ');
-        if (logObj.tool.time.length > 0 && show.model_time) {
-            toolsLog += ` ct: ${logObj.tool.time.join('s ')}s`;
+        // first chunk time
+        if (logObj.first_chunk_time && show.first_chunk_time) {
+            toolsLog += ` [${logObj.first_chunk_time}]`;
         }
+        // model time
+        if (logObj.tool.time.length > 0 && show.model_time) {
+            toolsLog += ` c: ${logObj.tool.time.join('s ')}s`;
+        }
+        // function call time
         if (logObj.functionTime.length > 0 && show.tool_time) {
-            toolsLog += ` ft: ${logObj.functionTime.join('s ')}s`;
+            toolsLog += ` f: ${logObj.functionTime.join('s ')}s`;
         }
         logList.push(toolsLog);
     }
@@ -150,19 +156,26 @@ export function getLog(context: AgentUserConfig, onlyModel: boolean = false, isP
         logList.push(`${logObj.error}`);
     }
 
-    // chat && fct
+    // chat && function
     if (logObj.chat.model.size > 0 && show.model) {
-        let chatLogs = `${[...logObj.chat.model].join('|')}${logObj.chat.time.length > 0 && show.model_time ? ` ${logObj.chat.time.join('s ')}s` : ''}`;
+        // model
+        let chatLogs = [...logObj.chat.model].join('|');
+        // first chunk time
         if (logObj.first_chunk_time && show.first_chunk_time) {
             chatLogs += ` [${logObj.first_chunk_time}]`;
         }
+        // chat time
+        if (logObj.chat.time.length > 0 && show.model_time) {
+            chatLogs += ` ${logObj.chat.time.join('s ')}s`;
+        }
+
         logList.push(chatLogs);
     }
 
     // ongoing
     logObj.ongoing.forEach((func) => {
         const elapsed = ((Date.now() - func.startTime) / 1e3).toFixed(1);
-        logList.push(`[ongoing: ${func.name} ${elapsed}s]`);
+        logList.push(`ongoing: ${func.name} ${elapsed}s`);
     });
 
     // token
