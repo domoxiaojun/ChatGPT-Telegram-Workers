@@ -223,7 +223,7 @@ export async function warpLLMParams(params: { messages: CoreMessage[]; model: La
 
     const activeTools = tool?.activeToolAlias.map((t: string) => tools[t]?.schema?.name || t) || [];
     // if vertex use search grounding, do not use other tools
-    if (params.model.provider === 'google-vertex' && context.SEARCH_GROUNDING) {
+    if (params.model.provider.startsWith('google') && (context.SEARCH_GROUNDING || context.USE_GOOGLE_BUILDIN.length > 0)) {
         activeTools.length = 0;
         tool = undefined;
         // only use first system message and last user message

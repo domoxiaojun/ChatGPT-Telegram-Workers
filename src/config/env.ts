@@ -161,11 +161,7 @@ class Environment extends EnvironmentConfig {
         if (this.ENVS_VARIABLES.length > 0) {
             this.ENVS_VARIABLES = this.ENVS_VARIABLES.filter((key: string) => Object.keys(this.USER_CONFIG).includes(key));
         }
-        // 清理CALLBACK_MENU
-        if (this.CALLBACK_MENU.length > 0) {
-            const supportedKeys = ['AI_CHAT_PROVIDER', 'AI_IMAGE_PROVIDER', 'AI_TTS_PROVIDER', 'AI_ASR_PROVIDER', 'RERANK_AGENT', 'USE_TOOLS', 'USE_MCP', 'USE_OAILIKE_RELAY_TOOLS', 'CHAT_MODEL', 'IMAGE_MODEL', 'VISION_MODEL', 'TOOL_MODEL', 'ENVS', 'RERANK_AGENT'];
-            this.CALLBACK_MENU = this.CALLBACK_MENU.filter((key: string) => supportedKeys.includes(key));
-        }
+
         // 异步初始化tools和mcp
         this.asyncInit();
 

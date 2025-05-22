@@ -337,6 +337,8 @@ export class GeminiConfig {
     GOOGLE_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
     GOOGLE_MODELS = [];
     GOOGLE_MODELS_API = '/models';
+    GOOGLE_BUILDIN = ['googleSearch', 'codeExecution', 'urlContext'];
+    USE_GOOGLE_BUILDIN: string[] = [];
 }
 
 // -- Mistral 配置 --

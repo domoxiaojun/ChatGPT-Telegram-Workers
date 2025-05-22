@@ -244,7 +244,7 @@ interface MockParams {
 
 function mockParams({ modelId, config, provider, options }: MockParams) {
     const extraParams = (config[`${provider.toUpperCase()}_API_EXTRA_PARAMS` as keyof AgentUserConfig] as Record<string, Record<string, any>>) || {};
-    const { PARAMS_MODIFIER: modifier, OAILIKE_RELAY_TOOLS: relayTools, USE_OAILIKE_RELAY_TOOLS: relayToolsList } = config;
+    const { PARAMS_MODIFIER: modifier, OAILIKE_RELAY_TOOLS: relayTools, USE_OAILIKE_RELAY_TOOLS: relayToolsList, GOOGLE_BUILDIN, USE_GOOGLE_BUILDIN } = config;
 
     if (provider === 'oailike') {
         const relayKey = Object.keys(relayTools).find(key => modelId.includes(key));
@@ -255,10 +255,24 @@ function mockParams({ modelId, config, provider, options }: MockParams) {
             }));
         }
     }
+
     if (provider === 'openai') {
         const searchModelRegex = /gpt-4o-(?:mini-)?search/;
         if (searchModelRegex.test(modelId)) {
             options.web_search_options = {};
+        }
+    }
+
+    if (provider === 'google' || provider === 'gemini' || provider === 'vertex') {
+        const usedBuildIn = GOOGLE_BUILDIN.filter(t => USE_GOOGLE_BUILDIN.includes(t));
+        if (usedBuildIn.length > 0) {
+            options.tools = {};
+            Object.assign(options.tools, ...usedBuildIn.map(t => ({
+                [t]: {},
+            })));
+            // options.tools = usedBuildIn.map(t => ({
+            //     [t]: {},
+            // }));
         }
     }
 

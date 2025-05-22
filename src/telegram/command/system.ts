@@ -647,6 +647,7 @@ export class InlineCommandHandler implements CommandHandler {
         const allTTSAgents = TTS_AGENTS.map(agent => agent.name);
         const allASRAgents = ASR_AGENTS.map(agent => agent.name);
         const allRerankAgents = ['jina', 'openai', 'oailikeV1', 'oailikeV2', 'google'];
+        const chatAgent = context.AI_CHAT_PROVIDER;
         const configKeyHandler = (type: string) => {
             if (type === 'Tool') {
                 return 'TOOL_MODEL';
@@ -703,12 +704,6 @@ export class InlineCommandHandler implements CommandHandler {
                 type: 'checkbox',
                 value: Object.keys(ENV.MCP_CONFIG),
                 callback: updateMcp,
-            },
-            {
-                label: 'Relay Tools',
-                config_key: 'USE_OAILIKE_RELAY_TOOLS',
-                type: 'checkbox',
-                value: Object.values(context.OAILIKE_RELAY_TOOLS).flat(),
             },
             ...['Chat', 'Image', 'Vision', 'Tool'].map((type) => {
                 const config_key = configKeyHandler(type);
@@ -774,7 +769,23 @@ export class InlineCommandHandler implements CommandHandler {
             //     }),
             // },
         ];
-        return ENV.CALLBACK_MENU.length === 0 ? inlines : ENV.CALLBACK_MENU.map(key => inlines.find(inline => inline.config_key.endsWith(key))).filter(Boolean) as InlineItem[];
+        if (chatAgent === 'gemini' || chatAgent === 'google' || chatAgent === 'vertex') {
+            inlines.push({
+                label: 'Google Tools',
+                config_key: 'USE_GOOGLE_BUILDIN',
+                type: 'checkbox',
+                value: context.GOOGLE_BUILDIN,
+            });
+        }
+        if (chatAgent === 'oailike') {
+            inlines.push({
+                label: 'Oailike Tools',
+                config_key: 'USE_OAILIKE_RELAY_TOOLS',
+                type: 'checkbox',
+                value: Object.values(context.OAILIKE_RELAY_TOOLS).flat(),
+            });
+        }
+        return (ENV.CALLBACK_MENU.length === 0 ? inlines.sort((a, b) => a.label.localeCompare(b.label)) : ENV.CALLBACK_MENU.map(key => inlines.find(inline => inline.config_key.endsWith(key))).filter(Boolean) as InlineItem[]);
     };
 
     settingsMessage = (context: AgentUserConfig, inlines: InlineItem[], { key, callBack }: { key?: string; callBack: string | InlineItem }) => {
