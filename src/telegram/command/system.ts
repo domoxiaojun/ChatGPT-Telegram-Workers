@@ -603,10 +603,10 @@ export class PerplexityCommandHandler implements CommandHandler {
 
         const onStream = OnStreamHander(sender, context, subcommand);
         const logs = getLogSingleton(context.USER_CONFIG);
-        logs.chat.model.add(`Perplexity ${mode}`);
-        const startTime = Date.now();
+        logs.model = `Perplexity ${mode}`;
+        logs.start_time = Date.now();
         const result = await WssRequest(perplexityWsUrl, null, perplexityWsOptions, perplexityMessage, { onStream }).catch(console.error);
-        logs.chat.time.push(((Date.now() - startTime) / 1e3).toFixed(1));
+        logs.end_time = Date.now();
         await onStream.end?.(result);
         return new Response('success');
     };

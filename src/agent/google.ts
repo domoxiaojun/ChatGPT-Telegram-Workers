@@ -102,10 +102,14 @@ export class GoogleImage extends GoogleBase implements ImageAgent {
             throw new Error(`No images found:\n${text || JSON.stringify(data)}`);
         }
 
-        if (data.usageMetadata) {
+        const usage = result.usageMetadata;
+        if (usage) {
             const log = getLogSingleton(context);
-            log.chat.model.add(data.modelVersion || this.model(context));
-            log.tokens.push(`${data.usageMetadata.promptTokenCount},0`);
+            log.model = result.modelVersion || this.model(context);
+            log.tokens = {
+                prompt: usage.promptTokenCount,
+                completion: usage.candidatesTokenCount,
+            };
         }
         return this.render(images, text || prompt);
     };

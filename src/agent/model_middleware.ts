@@ -16,7 +16,7 @@ type Writeable<T> = { -readonly [P in keyof T]: T[P] };
 export interface MessageInfo {
     content: string;
     // reasoning: string;
-    occured_error: boolean;
+    occured_error?: boolean;
 };
 
 export async function AIMiddleware({ config, activeTools, onStream, toolChoice, messageInfo, chatModel }: { config: AgentUserConfig; activeTools: string[]; onStream: ChatStreamTextHandler | null; toolChoice: ToolChoice[] | []; messageInfo: MessageInfo; chatModel: string }): Promise<LanguageModelV1Middleware & { onChunk: (data: any) => void; onStepFinish: (data: StepResult<any>) => void; onFinish?: (data: any) => void }> {

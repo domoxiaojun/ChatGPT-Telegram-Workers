@@ -1,5 +1,5 @@
 /* eslint-disable unused-imports/no-unused-vars */
-import type { FilePart, TextPart, ToolResultPart } from 'ai';
+import type { FilePart, TextPart } from 'ai';
 import type * as Telegram from 'telegram-bot-api-types';
 import type { ChatStreamTextHandler, HistoryModifier, ImageResult, LLMChatRequestParams } from '../../agent/types';
 import type { WorkerContext } from '../../config/context';
@@ -12,7 +12,6 @@ import { loadASRLLM, loadChatLLM, loadImageGen, loadTTSLLM } from '../../agent';
 import { loadHistory, requestCompletionsFromLLM } from '../../agent/chat';
 import { ENV } from '../../config/env';
 import { clearLog, getLog, log } from '../../log';
-import { sendToolResult } from '../../tools';
 import { imageToBase64String } from '../../utils/image';
 import { convertOgaToMp3 } from '../../utils/others/audio';
 import { createTelegramBotAPI } from '../api';
@@ -315,7 +314,7 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
                 return;
             }
 
-            const data = context ? mergeLogMessages(text, context.USER_CONFIG) : text;
+            const data = mergeLogMessages(text, context?.USER_CONFIG);
             expandParams.addQuote = addQuotePrerequisites && data.length > ENV.ADD_QUOTE_LIMIT;
             log.info(`sent message ids: ${isMessageSender ? sender.context.sentMessageIds : sender.context.inline_message_id}`);
             isMessageSender && sendAction(sender.api.token, sender.context.chat_id, 'typing');
@@ -596,12 +595,12 @@ export async function sendImages(img: ImageResult, sendAsFile: boolean, sender: 
         return sender.sendPlainText('ERROR: No image found');
     }
 
-    const caption = img.caption?.map(t => `>${t}`?.slice(0, 800)?.trim()) || [img.text?.slice(0, 800) || ''];
+    const caption = img.caption?.map(t => t?.slice(0, 800)?.trim()) || [img.text?.slice(0, 800) || ''];
     if (img.url?.length === 1 || img.raw?.length === 1) {
         return sender.editMessageMedia({
             type: sendAsFile ? 'document' : 'photo',
             media: img.url?.[0] || '',
-            caption: escape(mergeLogMessages(caption[0], config), { quoteExpandable: false, addQuote: true }),
+            caption: escape(mergeLogMessages(caption[0], config), { quoteExpandable: true, addQuote: true }),
         }, ENV.DEFAULT_PARSE_MODE as Telegram.ParseMode, img.raw?.[0] && new File([img.raw[0]], 'image.png', { type: 'image/png' }));
     } else {
         const medias = (img.url || img.raw)!.map((media: string | Blob, index: number) => ({
@@ -646,9 +645,9 @@ async function asr(audio: Blob, config: AgentUserConfig) {
     return agent.request(audio, config);
 }
 
-function mergeLogMessages(text: string, config: AgentUserConfig) {
+function mergeLogMessages(text: string, config: AgentUserConfig | undefined): string {
     if (ENV.LOG_POSITION_ON_TOP) {
-        return `${getLog(config)}\n${text.trim()}`.trim();
+        return `${config ? getLog(config) : ''}\n${text.trim()}`;
     }
-    return `${text.trim()}\n${getLog(config)}`;
+    return `${text.trim()}\n${config ? getLog(config) : ''}`;
 }

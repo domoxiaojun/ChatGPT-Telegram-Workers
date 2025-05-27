@@ -23,7 +23,6 @@ export const escapedChars = {
     '\\?': 'ESCAPEQUESTION',
 };
 export const escapedRegexp = /\\[*_~|`\\()[\]{}>#+\-=.!]/g;
-const logRegexp = /^>?LOGSTART\n(>[\s\S]*?)\n>?LOGEND$/m;
 const reverseCodeRegexp = /\\`\\`\\`([\s\S]+)\\`\\`\\`$/g;
 const inlineCodeRegexp = /`[^\n]*?`/g;
 const linkRegexp = /\\\[([^\]\n]+?)\\\]\\\((.+?)\\\)/g;
@@ -268,25 +267,10 @@ function markData(text: string, markd: Record<string, string>, type: 'INCODE' | 
 }
 
 export function addExpandable(text: string, quoteExpandable: boolean): string {
-    if (!quoteExpandable) {
-        // replace log data to expandable
-        // can't replace log data directly, because there may be other quote marks after the log data,
-        // tg doesn't allow expandable quote to be continuous quote
-        // maybe in code block, need to get it out -> (\n)? ... (\n```)?
-        text = text.replace(/^>?LOGSTART\n([\s\S]*?)\n>?LOGEND((?:\n>[^\n]*)*)$/m, `**>$1$2||`);
-        // maybe split by log start and log end
-        text = text.replace(/^>?LOGSTART$/m, '').replace(/^>?LOGEND$/m, '');
-        return text;
-    }
-    // replace log data to expandable
-    text = text.replace(logRegexp, `$1`);
-    text = text
-        // fold quote
+    return quoteExpandable
+        ? text.replace(/(?:^>[^\n]*(\n|$))+/gm, (match, p1) => `**${match.trimEnd()}||${p1}`)
         // .replace(/((?:^>[^\n]+(?:\n|$))+)/gm, (match, p1) => `**${p1.trimEnd()}||\n`)
-        .replace(/(?:^>[^\n]*(\n|$))+/gm, (match, p1) => `**${match.trimEnd()}||${p1}`);
-    // maybe split by log start and log end
-    text = text.replace(/^>?LOGSTART/m, '').replace(/^>?LOGEND(\|\|)?$/m, '$1');
-    return text;
+        : text;
 }
 
 export interface ExpandParams {
