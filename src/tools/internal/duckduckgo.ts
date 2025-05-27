@@ -51,7 +51,7 @@ async function regularSearch(path: string, max_length: number, signal?: AbortSig
     return data;
 }
 
-async function search(query: string, max_length = 12, signal?: AbortSignal): Promise<{ result: string }> {
+async function search(query: string, max_length = 12, signal?: AbortSignal) {
     const { path } = await getJS(query, signal);
     if (!path)
         throw new Error('Failed to get JS URL');
@@ -78,7 +78,6 @@ export default {
 
     func: async (args: any, options?: { signal?: AbortSignal }): Promise<ToolResult> => {
         const { keywords } = args;
-        const startTime = Date.now();
         log.info(`tool duckduckgo request start`);
         let result;
         try {
@@ -87,7 +86,7 @@ export default {
         } catch (e) {
             console.error(e);
         }
-        return { content: result ?? 'Failed to get search results', time: ((Date.now() - startTime) / 1e3).toFixed(1) };
+        return { content: [{ type: 'text', text: JSON.stringify(result) ?? 'Failed to get search results' }] };
     },
 
     type: 'search',

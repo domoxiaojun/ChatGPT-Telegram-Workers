@@ -30,10 +30,9 @@ async function getAppIap({ country, trackId }: { country: string; trackId: strin
 }> {
     if (!country || !trackId) {
         return {
-            content: 'Please provide both country and trackId',
+            content: [{ type: 'text', text: 'Please provide both country and trackId' }],
         };
     }
-    const start = Date.now();
     const url = `https://apps.apple.com/${country}/app/id${trackId}`;
     const xml = await fetch(url).then(res => res.text());
     const iap_data = xml.match(/<dd\sclass="information-list__item__definition">[\s\S]+?<div>([\s\S]*?)<\/div>/)?.[1] || '';
@@ -47,12 +46,10 @@ async function getAppIap({ country, trackId }: { country: string; trackId: strin
 
     const app_price_reg = /<li class=.*?--price">(.*?)<\/li>/;
     const app_price = xml.match(app_price_reg)?.[1] ?? 'get app price error';
-
     return {
-        content: {
+        content: [{ type: 'text', text: JSON.stringify({
             app_price,
             iap_list,
-        },
-        time: `${((Date.now() - start) / 1000).toFixed(2)}`,
+        }) }],
     };
 }

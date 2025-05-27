@@ -3,52 +3,53 @@
 import type { LanguageModelV1ToolCallPart, LanguageModelV1ToolResultPart } from '@ai-sdk/provider';
 import type { CoreMessage, CoreUserMessage, LanguageModelV1, LanguageModelV1CallOptions, LanguageModelV1Middleware, LanguageModelV1Prompt, StepResult, TextStreamPart } from 'ai';
 import type { AgentUserConfig } from '../config/env';
+import type { LogStruct } from '../log';
 import type { ChatStreamTextHandler } from './types';
 import {
     extractReasoningMiddleware,
 } from 'ai';
 import { ENV } from '../config/env';
 import { getLogSingleton, log } from '../log';
-import { getTools, vaildTools } from '../tools';
+import { getTools, sendToolResult, validTools } from '../tools';
 
 type Writeable<T> = { -readonly [P in keyof T]: T[P] };
 export interface MessageInfo {
     content: string;
     // reasoning: string;
+    occured_error: boolean;
 };
 
-export async function AIMiddleware({ config, activeTools, onStream, toolChoice, messageInfo, chatModel }: { config: AgentUserConfig; activeTools: string[]; onStream: ChatStreamTextHandler | null; toolChoice: ToolChoice[] | []; messageInfo: MessageInfo; chatModel: string }): Promise<LanguageModelV1Middleware & { onChunk: (data: any) => void; onStepFinish: (data: StepResult<any>, context: AgentUserConfig) => void }> {
-    let startTime: number | undefined;
-    let sendToolCall = false;
+export async function AIMiddleware({ config, activeTools, onStream, toolChoice, messageInfo, chatModel }: { config: AgentUserConfig; activeTools: string[]; onStream: ChatStreamTextHandler | null; toolChoice: ToolChoice[] | []; messageInfo: MessageInfo; chatModel: string }): Promise<LanguageModelV1Middleware & { onChunk: (data: any) => void; onStepFinish: (data: StepResult<any>) => void; onFinish?: (data: any) => void }> {
     let step = 0;
     let rawSystemPrompt: string | undefined;
     const extractReasoning = extractReasoningMiddleware({ tagName: 'think' });
     const tools = await getTools();
+    let hasRecordFirstChunkTime = false;
+    let record: LogStruct;
     return {
         wrapGenerate: async ({ doGenerate, params, model }) => {
             warpModel(model, config, activeTools, (params.mode as any).toolChoice, chatModel);
             log.info(`modelId: ${model.modelId}`);
-            recordModelLog(config, model, activeTools, (params.mode as any).toolChoice);
+            record = getLogSingleton(config, step);
+            recordModelLog({ config, model, record });
             const result = await extractReasoning.wrapGenerate!({ doGenerate: () => doGenerate(), doStream: () => model.doStream(params), params, model });
-            log.debug(`doGenerate result: ${JSON.stringify(result)}`);
+            log.debug(`generate result: ${JSON.stringify(result)}`);
             return result;
         },
 
         wrapStream: async ({ doStream, params, model }) => {
             warpModel(model, config, activeTools, (params.mode as any).toolChoice, chatModel);
             log.info(`modelId: ${model.modelId}`);
-            recordModelLog(config, model, activeTools, (params.mode as any).toolChoice);
+            record = getLogSingleton(config, step);
+            recordModelLog({ config, model, record });
             return extractReasoning.wrapStream!({ doStream: () => doStream(), doGenerate: () => model.doGenerate(params), params, model });
         },
 
         transformParams: async ({ type, params }) => {
             log.info(`start ${type} call`);
-            startTime = Date.now();
             if (!rawSystemPrompt) {
                 rawSystemPrompt = params.prompt.find(i => i.role === 'system')?.content;
             }
-            const logs = getLogSingleton(config);
-            logs.ongoing.push({ name: 'chat', startTime });
             if (toolChoice.length > 0 && step < toolChoice.length && params.mode.type === 'regular') {
                 params.mode.toolChoice = toolChoice[step] as any;
                 log.info(`toolChoice changed: ${JSON.stringify(toolChoice[step])}`);
@@ -58,59 +59,85 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
             return params;
         },
 
-        onChunk: ({ chunk }: { chunk: Extract<TextStreamPart<any>, { type: 'reasoning' | 'tool-call' | 'tool-call-streaming-start' | 'tool-call-delta' | 'tool-result' }> }) => {
-            if (chunk.type === 'tool-call' && !sendToolCall) {
-                onStream?.send(`${messageInfo.content}...\n` + `tool call will start: \`${chunk.toolName}\``);
-                sendToolCall = true;
+        onChunk: ({ chunk }: { chunk: Extract<TextStreamPart<any>, { type: 'reasoning' | 'tool-call' | 'tool-call-streaming-start' | 'tool-call-delta' | 'tool-result' | 'step-start' | 'step-finish' }> }) => {
+            if (!hasRecordFirstChunkTime) {
+                record.first_chunk_time = Date.now() - record.start_time;
+                hasRecordFirstChunkTime = true;
+            }
+            if (chunk.type === 'tool-call') {
+                onStream?.send(`${messageInfo.content}\n` + `tool call will start: \`${chunk.toolName}\``);
                 log.info(`will start tool: ${chunk.toolName}`);
             }
         },
 
-        onStepFinish: (data: StepResult<any>) => {
-            const { text, toolResults, finishReason, usage, request, response } = data;
-            const logs = getLogSingleton(config);
+        onStepFinish: async ({ text, toolResults, usage, request, response, finishReason }: StepResult<any>) => {
             log.info('llm request end');
             log.debug('step text:', text);
             log.debug('step raw request:', request);
             // log.debug('step raw response:', response);
-            const time = ((Date.now() - startTime!) / 1e3).toFixed(1);
+
+            // record end time
+            record.end_time = Date.now();
+
+            // record tool call detail
             if (toolResults.length > 0) {
-                if (toolResults.find(i => i.result === '')) {
-                    throw new Error('Function result is empty');
-                }
-                let maxFuncTime = 0;
-                const func_logs = toolResults.map(({ toolName, args, result }) => {
-                    result.time && logs.functionTime.push(result.time);
-                    maxFuncTime = Math.max(maxFuncTime, result.time);
-                    return {
-                        name: toolName,
-                        arguments: Object.values(args),
-                        ...(result.error && { error: result.error }),
-                    };
-                });
-                log.info(`func logs: ${JSON.stringify(func_logs, null, 2)}`);
-                log.debug(`func result: ${JSON.stringify(toolResults, null, 2)}`);
-                logs.functions.push(...func_logs);
-                maxFuncTime && logs.tool.time.push((+time - maxFuncTime).toFixed(1));
+                const func_logs = toolResults.map(({ toolName, args, result }) => ({
+                    name: toolName,
+                    arguments: Object.values(args),
+                    ...(result.error && { error: result.error }),
+                    ...(result.time && { time: result.time }),
+                }));
+
+                // record function log
+                record.functions.push(...func_logs);
+
+                // delete time
+                // ai sdk无api能调整函数结果，但内部记录stepMessages， result未做深拷贝 由此可以直接对数据直接进行修改
+                toolResults.forEach(({ result }) => result.time && (delete result.time));
+
+                log.info(`tool details: ${JSON.stringify(func_logs, null, 2)}`);
+                log.debug(`tool results: ${JSON.stringify(toolResults, null, 2)}`);
+
                 const toolNames = [...new Set(toolResults.map(i => i.toolName))];
-                // Whether to trim used tools
-                // activeTools = trimActiveTools(activeTools, toolNames);
-                log.info(`finish \`${toolNames}\``);
-                onStream?.send(`${messageInfo.content}...\n` + `finish ${toolNames}`);
-            } else {
-                activeTools.length > 0 && toolChoice[step]?.type !== 'none' ? logs.tool.time.push(time) : logs.chat.time.push(time);
+                log.info(`finish tools: ${toolNames}`);
+                onStream?.send(`${messageInfo.content}\n` + `finish tools: \`${toolNames}\``);
             }
 
+            // record token
             if (usage && !Number.isNaN(usage.promptTokens) && !Number.isNaN(usage.completionTokens)) {
-                logs.tokens.push(`${usage.promptTokens},${usage.completionTokens}`);
+                record.tokens = {
+                    prompt: usage.promptTokens,
+                    completion: usage.completionTokens,
+                    // reasoning: usage.reasoningTokens,
+                    // cached: usage.cachedTokens,
+                };
                 log.info(`tokens: ${JSON.stringify(usage)}`);
             } else {
-                log.warn('usage is none or not a number');
+                log.warn('usage is none');
             }
-            logs.ongoing = logs.ongoing.filter(i => i.startTime !== startTime);
-            sendToolCall = false;
+
+            if (finishReason === 'tool-calls' && onStream) {
+                const message_tool = Object.values(tools).filter(({ send_type }) => send_type === 'message').map(({ schema: { name } }) => name);
+                const sender = onStream.sender!;
+                const need_send_result = [];
+                for (const result of toolResults) {
+                    if (message_tool.includes(result.toolName))
+                        need_send_result.push(result);
+                }
+                // ai sdk无api能调整函数结果，但内部记录stepMessages，result未做深拷贝 由此可以直接对数据进行修改
+                if (need_send_result.length > 0) {
+                    await sendToolResult(need_send_result, sender, config);
+                    need_send_result.forEach(i => i.result.content = [{ type: 'text', text: 'tool result has been sent to user.' }]);
+                }
+            }
+
+            // reset tool message status
+            hasRecordFirstChunkTime = false;
             step++;
         },
+        // onFinish: async (result: any) => {
+        //     log.debug(`onFinish: ${JSON.stringify(result)}`);
+        // },
     };
 }
 
@@ -181,14 +208,6 @@ function warpMessages(params: LanguageModelV1CallOptions, tools: Record<string, 
         if (systemMessage) {
             systemMessage.content = getSystemContent();
         }
-        messages.forEach((i: CoreMessage) => {
-            if (i.role === 'tool' && i.content.some((j: any) => j.type === 'tool-result')) {
-                i.content.forEach((j: any) => {
-                    // 消除 time信息
-                    j.result?.time && (delete j.result.time);
-                });
-            }
-        });
     }
 }
 
@@ -211,14 +230,10 @@ function warpModel(model: LanguageModelV1, config: AgentUserConfig, activeTools:
 
 export async function warpLLMParams(params: { messages: CoreMessage[]; model: LanguageModelV1; cache?: string[] }, context: AgentUserConfig) {
     const tools = await getTools();
-    const tool_envs: Record<string, any> = { ...(context.JINA_API_KEY && { JINA_API_KEY: context.JINA_API_KEY[Math.floor(Math.random() * context.JINA_API_KEY.length)] }) };
-
-    const env_prefix = 'TOOL_ENV_';
-    Object.keys(context).forEach(i => i.startsWith(env_prefix) && (tool_envs[i.substring(env_prefix.length - 1)] = context[i]));
 
     const messages = params.messages.at(-1) as CoreUserMessage;
     let tool = typeof messages.content === 'string'
-        ? await vaildTools(context.USE_TOOLS, context.USE_MCP)
+        ? await validTools(context)
         : undefined;
 
     const activeTools = tool?.activeToolAlias.map((t: string) => tools[t]?.schema?.name || t) || [];
@@ -287,18 +302,13 @@ function trimActiveTools(activeTools: string[], toolNames: string[]) {
     return activeTools.length > 0 ? activeTools.filter(name => !toolNames.includes(name)) : [];
 }
 
-function recordModelLog(config: AgentUserConfig, model: LanguageModelV1, activeTools: string[], toolChoice: ToolChoice) {
-    const logs = getLogSingleton(config);
+function recordModelLog({ config, model, record }: { config: AgentUserConfig; model: LanguageModelV1; record: LogStruct }) {
     log.info(`provider: ${model.provider}, modelId: ${model.modelId} `);
-    let modelName = model.modelId;
+    record.start_time = Date.now();
+    record.model = model.modelId;
     if (config.ENABLE_ALIAS) {
         const mappedModel = config.MAPPING_VALUE.split('|').map(i => i.split(':')).find(([_, value]) => value === model.modelId);
-        modelName = mappedModel?.[0] ?? model.modelId;
-    }
-    if (activeTools.length > 0 && toolChoice?.type !== 'none') {
-        logs.tool.model.add(modelName);
-    } else {
-        logs.chat.model.add(modelName);
+        record.model = mappedModel?.[0] ?? model.modelId;
     }
 }
 

@@ -43,11 +43,6 @@ export async function chatWithLLM(
         const answer = await requestCompletionsFromLLM(params, context, agent, modifier, ENV.STREAM_MODE && !isMiddle ? streamSender : null);
         log.info(`chat with LLM done`);
 
-        if (answer.messages.at(-1)?.role === 'tool') {
-            await sendToolResult(answer.messages.at(-1)?.content as ToolResultPart[], streamSender.sender!, context.USER_CONFIG);
-            return new Response('Success');
-        }
-
         if (isMiddle) {
             return answer.content;
         }
@@ -358,7 +353,7 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
             text = `${cache}\n${text}`;
         }
         if (isSendDocument(text)) {
-            return sendDocument(sender as MessageSender, { question: question || 'Redo Question', answer: text, log: getLog(context?.USER_CONFIG || {} as AgentUserConfig, false, true) });
+            return sendDocument(sender as MessageSender, { question: question || 'Redo Question', answer: text, log: getLog(context?.USER_CONFIG || {} as AgentUserConfig, { onlyModel: false, isParagraph: true }) });
         }
         if (isSendTelegraph(text)) {
             return sendTelegraph(telegraphContext(true, false), question || 'Redo Question', text);
@@ -416,8 +411,8 @@ async function sendTelegraph(sendContext: {
     }
     const prefix = `#Question\n\`\`\`\n${trimedQuestion}\n\`\`\`\n---`;
 
-    const telegraph_prefix = `${prefix}\n#Answer\n🤖 **${getLog(context.USER_CONFIG, true, true)}**\n`;
-    const debug_info = `${getLog(context.USER_CONFIG, false, true)}`;
+    const telegraph_prefix = `${prefix}\n#Answer\n🤖 **${getLog(context.USER_CONFIG, { onlyModel: true, isParagraph: true })}**\n`;
+    const debug_info = `${getLog(context.USER_CONFIG, { onlyModel: false, isParagraph: true })}`;
     const telegraph_suffix = `\n---\n\`\`\`\n${debug_info}\n\`\`\``;
     const textLength = (telegraph_prefix + text + telegraph_suffix).length;
     try {
@@ -559,7 +554,7 @@ async function handleAudio(
         return new Response('audio handle done');
     }
     clearLog(context.USER_CONFIG);
-    !ENV.HIDE_MIDDLE_MESSAGE && (sender.context.sentMessageIds.length = 0);
+    !ENV.HIDE_MIDDLE_MESSAGE && (sender.context.sentMessageIds = []);
     const isMiddle = handleKey === 'audio:audio';
     const otherText = (params.content as TextPart[]).filter(c => c.type === 'text').map(c => c.text).join('\n').trim();
     const resp = await chatWithLLM(message, { role: 'user', content: `[AUDIO TRANSCRIPTION]: ${text}\n${otherText}` }, context, null, streamSender, isMiddle);

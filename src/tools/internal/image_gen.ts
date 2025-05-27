@@ -46,17 +46,16 @@ export default {
         },
     },
 
-    func: async (args: Record<string, any>, options?: { signal?: AbortSignal; [key: string]: any }, config?: AgentUserConfig): Promise<ToolResult> => {
+    func: async (args: Record<string, any>, { config }: { config: AgentUserConfig }): Promise<ToolResult> => {
         if (!config) {
-            throw new Error('Missing config');
+            return { content: [{ type: 'text', text: 'Missing config' }] };
         }
-        const startTime = Date.now();
         const { agent: agent_name, prompts, quantity, size, radio, style } = args;
         log.info(`tool image_gen request start: agent: ${agent_name}`);
         log.info(`params: ${JSON.stringify(args)}`);
         const agent = IMAGE_AGENTS.find(a => a.name === agent_name);
         if (!agent?.enable(config)) {
-            throw new Error(`Image agent ${agent_name} is not available`);
+            return { content: [{ type: 'text', text: `Image agent ${agent_name} is not available` }] };
         }
         const result: ImageResult[] = [];
         for (const prompt of prompts) {
@@ -64,12 +63,10 @@ export default {
             result.push(res);
         }
         log.info(`${agent_name} result: ${JSON.stringify(result)}`);
-        return { content: result, time: ((Date.now() - startTime) / 1e3).toFixed(1) };
+        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
     },
 
     extra_params: { temperature: 1.2 },
     type: 'text2image',
-    not_send_to_ai: true,
-    buildin: true,
-    result_type: 'image',
+    send_type: 'message',
 };

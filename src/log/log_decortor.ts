@@ -3,7 +3,7 @@ import type { CompletionData } from '../agent/types';
 import type { WorkerContext } from '../config/context';
 import type { AgentUserConfig } from '../config/env';
 
-export const logSingleton = new WeakMap<AgentUserConfig, Logs>();
+export const logSingleton = new WeakMap<AgentUserConfig, LogStruct[]>();
 export const tagMessageIds = new WeakMap<Message, Set<number>>();
 
 export function Logger(
@@ -18,49 +18,19 @@ export function Logger(
 
             return async function (this: any, ...args: any[]) {
                 const config: AgentUserConfig = args[configIndex];
-                const logs = getLogSingleton(config);
-                const startTime = Date.now();
+                const log = getLogSingleton(config);
+                log.model = args[0]?.model || this.model(config, args[0]);
+                log.start_time = Date.now();
+                const result: CompletionData = await initialValue.apply(this, args);
+                log.end_time = Date.now();
 
-                // 未完成的模型对话
-                logs.ongoing.push({
-                    name: initialValue.name || 'anonymous',
-                    startTime,
-                });
-
-                let model: string;
-                try {
-                    model = args[0]?.model || this.model(config, args[0]);
-                    if (this.type === 'tool') {
-                        logs.tool.model.add(model);
-                    } else {
-                        logs.chat.model.add(model);
-                    }
-
-                    const result: CompletionData = await initialValue.apply(this, args);
-                    const endTime = Date.now();
-                    const elapsed = ((endTime - startTime) / 1e3).toFixed(1);
-                    // 移除ongoing
-                    logs.ongoing = logs.ongoing.filter(
-                        func => func.startTime !== startTime,
-                    );
-
-                    handleLlmLog(logs, result, elapsed, this.type);
-
-                    if (!result.content && !result.tool_calls) {
-                        return result;
-                    }
-
-                    if (result.usage) {
-                        logs.tokens.push(`${result.usage.prompt_tokens},${result.usage.completion_tokens}`);
-                    }
-
-                    return { content: result.content, tool_calls: result.tool_calls };
-                } catch (error) {
-                    logs.ongoing = logs.ongoing.filter(
-                        func => func.startTime !== startTime,
-                    );
-                    throw error;
+                if (result.usage) {
+                    log.tokens = {
+                        prompt: result.usage.prompt_tokens,
+                        completion: result.usage.completion_tokens,
+                    };
                 }
+                return result;
             };
         };
     }
@@ -68,13 +38,10 @@ export function Logger(
     if (context.kind === 'method' && typeof value === 'function') {
         return async function (this: { context: WorkerContext }, ...args: any[]) {
             const config: AgentUserConfig = this.context.USER_CONFIG;
-            const logs = getLogSingleton(config);
-            const startTime = Date.now();
-
+            const log = getLogSingleton(config);
+            log.start_time = Date.now();
             const result = await value.apply(this, args);
-            const endTime = Date.now();
-            const elapsed = ((endTime - startTime) / 1e3).toFixed(1);
-            logs.functionTime.push(elapsed);
+            log.end_time = Date.now();
             return result;
         };
     }
@@ -82,37 +49,32 @@ export function Logger(
     return value;
 }
 
-export function getLogSingleton(config: AgentUserConfig): Logs {
+export function getLogSingleton(config: AgentUserConfig, index: number = 0): LogStruct {
+    const initLog: LogStruct = {
+        model: '',
+        functions: [],
+        start_time: Number.NaN,
+        end_time: undefined,
+        first_chunk_time: null,
+    };
     if (!logSingleton.has(config)) {
-        logSingleton.set(config, {
-            functions: [],
-            functionTime: [],
-            tool: {
-                model: new Set(),
-                time: [],
-            },
-            chat: {
-                model: new Set(),
-                time: [],
-            },
-            tokens: [],
-            ongoing: [],
-            error: '',
-            first_chunk_time: '',
-        });
+        logSingleton.set(config, [initLog]);
     }
-    return logSingleton.get(config)!;
+    if (index >= logSingleton.get(config)!.length) {
+        logSingleton.get(config)!.push(initLog);
+    }
+    return logSingleton.get(config)![index];
 }
 
 // 获取日志
-export function getLog(context: AgentUserConfig, onlyModel: boolean = false, isParagraph = false) {
+export function getLog(context: AgentUserConfig, { onlyModel = false, isParagraph = false }: { onlyModel?: boolean; isParagraph?: boolean } = {}) {
     if (!context.ENABLE_SHOWINFO && !isParagraph)
         return '';
-    const logObj = logSingleton.get(context);
-    if (!logObj)
+    const logs = logSingleton.get(context);
+    if (!logs)
         return '';
     if (onlyModel) {
-        return [...logObj.tool.model, ...logObj.chat.model].join(', ') || 'UNKNOWN';
+        return logs.map(log => log.model).join(', ') || 'UNKNOWN';
     }
     const logList: string[] = [];
     const show = {
@@ -123,99 +85,58 @@ export function getLog(context: AgentUserConfig, onlyModel: boolean = false, isP
         tool_time: context.SHOW_PARTS.includes('tool_time'),
         first_chunk_time: context.SHOW_PARTS.includes('first_chunk_time'),
     };
+    for (const log of logs) {
+        let logStr = '';
+        if (show.model) {
+            logStr += log.model;
+        }
+        if (show.first_chunk_time && log.first_chunk_time) {
+            logStr += ` [${log.first_chunk_time}ms]`;
+        }
+        if (show.model_time) {
+            logStr += ` ${(((log.end_time ?? Date.now()) - log.start_time) / 1e3).toFixed(1)}s`;
+        }
 
-    // tool
-    if (logObj.tool.model.size > 0 && show.model) {
-        let toolsLog = [...logObj.tool.model].join(', ');
-        // first chunk time
-        if (logObj.first_chunk_time && show.first_chunk_time) {
-            toolsLog += ` [${logObj.first_chunk_time}]`;
+        // tool
+        if (log.functions.length > 0 && show.tool) {
+            logStr += '\n';
+            logStr += log.functions.map(func => `${func.name}: ${JSON.stringify(func.arguments).substring(0, 80)} ${func.time}s`).join('\n');
         }
-        // model time
-        if (logObj.tool.time.length > 0 && show.model_time) {
-            toolsLog += ` c: ${logObj.tool.time.join('s ')}s`;
-        }
-        // function call time
-        if (logObj.functionTime.length > 0 && show.tool_time) {
-            toolsLog += ` f: ${logObj.functionTime.join('s ')}s`;
-        }
-        logList.push(toolsLog);
+
+        logList.push(logStr);
     }
 
-    // function
-    if (logObj.functions.length > 0 && show.tool) {
-        const functionLogs = logObj.functions.map((log) => {
-            const args = Object.values(log.arguments).join(', ');
-            return `${log.name}: ${log.error ? `error: ${log.error}` : args}`.substring(0, 80);
-        });
-        logList.push(...functionLogs);
-    }
-
-    // error
-    if (logObj.error) {
-        logList.push(`${logObj.error}`);
-    }
-
-    // chat && function
-    if (logObj.chat.model.size > 0 && show.model) {
-        // model
-        let chatLogs = [...logObj.chat.model].join('|');
-        // first chunk time
-        if (logObj.first_chunk_time && show.first_chunk_time) {
-            chatLogs += ` [${logObj.first_chunk_time}]`;
-        }
-        // chat time
-        if (logObj.chat.time.length > 0 && show.model_time) {
-            chatLogs += ` ${logObj.chat.time.join('s ')}s`;
-        }
-
-        logList.push(chatLogs);
-    }
-
-    // ongoing
-    logObj.ongoing.forEach((func) => {
-        const elapsed = ((Date.now() - func.startTime) / 1e3).toFixed(1);
-        logList.push(`ongoing: ${func.name} ${elapsed}s`);
-    });
-
-    // token
-    if (logObj.tokens.length > 0 && show.token) {
-        logList.push(`${logObj.tokens.join('|')}`);
+    if (show.token && logs.some(log => log.tokens)) {
+        logList.push(`${logs.map(({ tokens }) => {
+            if (!tokens)
+                return '-';
+            let tokenStr = '';
+            if (tokens?.prompt)
+                tokenStr += tokens.prompt;
+            if (tokens?.completion)
+                tokenStr += `,${tokens.completion}`;
+            if (tokens?.reasoning)
+                tokenStr += `,r:${tokens.reasoning}`;
+            if (tokens?.cached)
+                tokenStr += `,c:${tokens.cached}`;
+            return tokenStr;
+        }).join('|')}`);
     }
 
     return isParagraph
         ? logList.filter(Boolean).join(' ')
-        : `LOGSTART\n${logList.filter(Boolean).map(entry => `>\`${entry}\``).join('\n')}\nLOGEND`;
+        : logList.filter(Boolean).flatMap(i => i.split('\n')).map(i => `>\`${i}\``).join('\n');
 }
 
 export function clearLog(context: AgentUserConfig) {
     logSingleton.delete(context);
 }
 
-function handleLlmLog(logs: Logs, result: CompletionData, time: string, type: 'tool' | 'chat') {
-    if (type === 'tool') {
-        logs.tool.time.push(time);
-    } else {
-        logs.chat.time.push(time);
-    }
-
-    if (type === 'tool' && result.tool_calls && result.tool_calls.length > 0) {
-        logs.functions.push(
-            ...result.tool_calls.map((tool: { function: { name: any; arguments: string } }) => ({
-                name: tool.function.name,
-                arguments: JSON.parse(tool.function.arguments),
-            })),
-        );
-    }
-}
-
-interface Logs {
-    functions: { name: string; arguments: any; error?: string }[];
-    functionTime: string[];
-    tool: { model: Set<string>; time: string[] };
-    chat: { model: Set<string>; time: string[] };
-    tokens: string[];
-    ongoing: { name: string; startTime: number }[];
-    error: string;
-    first_chunk_time: string;
+export interface LogStruct {
+    model: string;
+    functions: { name: string; arguments: any; error?: string; time: number }[];
+    tokens?: { prompt: number; completion: number; reasoning?: number; cached?: number };
+    start_time: number;
+    end_time?: number;
+    first_chunk_time?: number | null;
 }
