@@ -1,7 +1,6 @@
 /* eslint-disable no-case-declarations */
 /* eslint-disable unused-imports/no-unused-vars */
 
-import type { ToolResultPart } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { MessageSender } from '../telegram/utils/send';
 import type { FuncTool, MediaToolResultContent, ResourceToolResultContent, TextToolResultContent, ToolHandler, ToolResult, ToolResultType } from './types';
@@ -26,11 +25,11 @@ const tools = {
     ...internalTools,
 } as unknown as Record<string, FuncTool>;
 
-export function executeTool(toolName: string, env: Record<string, any>) {
+export function executeTool(toolName: string, env: Record<string, any>, _config: AgentUserConfig) {
     if (tools[toolName].func) {
         return async (args: any) => {
             const startTime = Date.now();
-            const result = await tools[toolName].func!(args, env);
+            const result = await tools[toolName].func!(args, env, _config);
             return { ...result, time: ((Date.now() - startTime) / 1e3).toFixed(1) };
         };
     }
@@ -69,7 +68,7 @@ export function executeTool(toolName: string, env: Record<string, any>) {
         if (!result.ok) {
             const text = await result.text();
             log.error(`Tool call error: ${result.statusText} ${text}`);
-            return { content: `Tool call error: ${result.statusText}`, time: ((Date.now() - startTime) / 1e3).toFixed(1), error: result.statusText };
+            return { content: [{ type: 'text', text: `Tool call error: ${result.statusText} ${text}` }], time: ((Date.now() - startTime) / 1e3).toFixed(1), error: result.statusText };
         }
         try {
             result = await result.clone().json();
@@ -101,7 +100,7 @@ export function executeTool(toolName: string, env: Record<string, any>) {
         //     const next_tool_alias = tools[toolName].next_tool;
         //     return executeTool(next_tool_alias)(result, options);
         // }
-        return { content: result, time: ((Date.now() - startTime) / 1e3).toFixed(1) };
+        return { content: [{ type: 'text', text: result }], time: ((Date.now() - startTime) / 1e3).toFixed(1) };
     };
 }
 
@@ -157,7 +156,7 @@ export async function validTools(config: AgentUserConfig) {
             acc[t.schema.name] = tool({
                 description: t.schema.description,
                 parameters: jsonSchema(t.schema.parameters as any),
-                execute: executeTool(name, env) as any,
+                execute: executeTool(name, env, config) as any,
             });
             return acc;
         }, {});
@@ -169,70 +168,78 @@ export async function validTools(config: AgentUserConfig) {
     };
 }
 
-export async function sendToolResult(toolResult: ToolResultPart[], sender: MessageSender, config: AgentUserConfig) {
+export async function sendToolResult(toolResult: ToolResult[], sender: MessageSender, config: AgentUserConfig) {
     // clear message id for extra message
     const record = {
         message_id: sender.context.message_id,
         sentMessageIds: sender.context.sentMessageIds,
     };
-    console.log(record);
     sender.context.message_id = null;
     sender.context.sentMessageIds = [];
     const collect: { type: ToolResultType; data: Array<Omit<ToolResult['content'][number], 'type'>> }[] = [];
     let index = 0;
-    toolResult.map(r => (r.result as ToolResult).content).flat().forEach(({ type, ...params }) => {
-        if (collect[index]?.type !== type) {
-            collect[index] = { type, data: [params] };
-            index++;
+    const content = toolResult.map(r => r.content).flat();
+    for (const { type, ...result } of content) {
+        if (collect[index]?.type === undefined) {
+            collect[index] = { type, data: [result] };
+        } else if (collect[index]?.type !== type) {
+            collect[++index] = { type, data: [result] };
         } else {
-            collect[index].data.push(params);
+            collect[index].data.push(result);
         }
-    });
+    }
+    const sendStatus = [];
+    let sendResp: Response | null = null;
     for (const { type, data } of collect) {
         switch (type) {
             case 'image':
-                const imageData = data as MediaToolResultContent[];
-                const urlType = imageData.some(d => d.data_type === 'url') ? 'url' : 'raw';
-                await sendImages({
+                const imageData = await base64OrUrlToBlob(data as MediaToolResultContent[]);
+                sendResp = await sendImages({
                     type: 'image',
-                    [urlType]: imageData.map(d => d.data),
-                    caption: imageData.map(d => d.text),
+                    raw: imageData,
+                    caption: (data as MediaToolResultContent[]).map(d => d.text),
                 }, ENV.SEND_IMAGE_AS_FILE, sender, config);
+
                 break;
             case 'video':
-                const videoData = data as MediaToolResultContent[];
-                let mediaType = videoData[0].data_type;
-                if (mediaType === 'base64') {
-                    videoData.forEach((v) => {
-                        v.data = Buffer.from(v.data as string, 'base64').toString('utf-8');
-                    });
-                    mediaType = 'blob';
-                }
-                await sender.sendMediaGroup(videoData.map(d => ({
+                const videoData = await base64OrUrlToBlob(data as MediaToolResultContent[]);
+                sendResp = await sender.sendMediaGroup(videoData.map((d, i) => ({
                     type: 'video',
-                    media: mediaType === 'url' ? d.data as string : '',
-                    caption: d.text,
-                    parse_mode: ENV.DEFAULT_PARSE_MODE,
-                })), mediaType === 'blob' ? videoData.map(({ data, mimeType: type }) => new File([data as Blob], 'video.mp4', { type })) : undefined);
+                    media: '',
+                    caption: (data as MediaToolResultContent[])[i].text,
+                    parse_mode: ENV.DEFAULT_PARSE_MODE as any,
+                })), videoData.map(data => new File([data], 'video.mp4', { type: 'video/mp4' })));
+
                 break;
             case 'audio':
-                const audioData = data as MediaToolResultContent[];
-                await Promise.all(audioData.map(d => sender.sendVoice(d.data as Blob, d.text)));
+                const audioData = await base64OrUrlToBlob(data as MediaToolResultContent[]);
+                const resp = await Promise.all(audioData.map((d, i) => sender.sendVoice(d, (data as MediaToolResultContent[])[i].text)));
+                sendStatus.push(resp.map(r => r.statusText).join(', '));
+                break;
+
+            case 'resource':
+                sendResp = await sender.sendRichText((data as ResourceToolResultContent[]).map(d => d.resource.text).join('\n'));
                 break;
             case 'text':
-                await sender.sendRichText((data as TextToolResultContent[]).map(d => d.text).join('\n'));
-                break;
-            case 'resource':
-                await sender.sendRichText((data as ResourceToolResultContent[]).map(d => d.resource.text).join('\n'));
-                break;
             default:
+                sendResp = await sender.sendRichText((data as TextToolResultContent[]).map(d => d.text).join('\n'));
                 break;
         }
+        sendResp && sendStatus.push(sendResp.statusText);
     }
+    console.log(`tool result send status: ${sendStatus.join(', ')}`);
     // recover messgae id
     sender.context.message_id = record.message_id;
     sender.context.sentMessageIds = record.sentMessageIds;
-    console.log(`recovered: message_id: ${sender.context.message_id}, sentMessageIds: ${sender.context.sentMessageIds}`);
+}
+async function base64OrUrlToBlob(data: MediaToolResultContent[]): Promise<Blob[]> {
+    const mediaType = data[0].data_type ?? 'url';
+    if (mediaType === 'url') {
+        return Promise.all(data.map(v => fetch(v.data as string).then(r => r.blob())));
+    } else if (mediaType === 'base64') {
+        return Promise.all(data.map(v => new Blob([Buffer.from(v.data as string, 'base64')], { type: v.mimeType })));
+    }
+    return data.map(d => d.data as Blob);
 }
 
 function injectPatterns(handler: ToolHandler, args: Record<string, string>) {

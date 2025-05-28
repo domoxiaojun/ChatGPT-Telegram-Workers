@@ -580,9 +580,9 @@ async function handleTextToAudio(
         text = await chatWithLLM(message, params, context, null, streamSender, true) as string;
         !ENV.HIDE_MIDDLE_MESSAGE && streamSender.send('Chat with LLM done');
     }
-    const audio = await tts(text, context.USER_CONFIG);
+    const voice = await tts(text, context.USER_CONFIG);
     sendAction(context.SHARE_CONTEXT.botToken, sender.context.chat_id, 'upload_voice');
-    const resp = await sender.sendVoice(audio, context.USER_CONFIG.AUDIO_CONTAINS_TEXT ? text : undefined);
+    const resp = await sender.sendVoice(voice, context.USER_CONFIG.AUDIO_CONTAINS_TEXT ? text : undefined);
     if (resp.ok) {
         return sender.api.deleteMessage({ chat_id: sender.context.chat_id, message_id: sender.context.message_id! });
     }
@@ -596,26 +596,25 @@ export async function sendImages(img: ImageResult, sendAsFile: boolean, sender: 
     }
 
     const caption = img.caption?.map(t => t?.slice(0, 800)?.trim()) || [img.text?.slice(0, 800) || ''];
-    if (img.url?.length === 1 || img.raw?.length === 1) {
+    if ((img.url?.length === 1 || img.raw?.length === 1) && sender.context.message_id) {
         return sender.editMessageMedia({
             type: sendAsFile ? 'document' : 'photo',
             media: img.url?.[0] || '',
             caption: escape(mergeLogMessages(caption[0], config), { quoteExpandable: true, addQuote: true }),
         }, ENV.DEFAULT_PARSE_MODE as Telegram.ParseMode, img.raw?.[0] && new File([img.raw[0]], 'image.png', { type: 'image/png' }));
-    } else {
-        const medias = (img.url || img.raw)!.map((media: string | Blob, index: number) => ({
-            type: sendAsFile ? 'document' : 'photo',
-            media: typeof media === 'string' ? media : '',
-            caption: caption[index] && escape((index === 0 ? mergeLogMessages(caption[index], config) : caption[index]), { quoteExpandable: true, addQuote: true }),
-            parse_mode: ENV.DEFAULT_PARSE_MODE as Telegram.ParseMode,
-        })) as Telegram.InputMedia[];
-
-        if (img.raw && img.raw.length > 0) {
-            const files = img.raw.map((_, i) => new File([img.raw![i]], 'image.png', { type: 'image/png' }));
-            return sender.sendMediaGroup(medias, files);
-        }
-        return sender.sendMediaGroup(medias);
     }
+    const medias = (img.url || img.raw)!.map((media: string | Blob, index: number) => ({
+        type: sendAsFile ? 'document' : 'photo',
+        media: typeof media === 'string' ? media : '',
+        caption: caption[index] && escape(caption[index], { quoteExpandable: true, addQuote: true }),
+        parse_mode: ENV.DEFAULT_PARSE_MODE as Telegram.ParseMode,
+    })) as Telegram.InputMedia[];
+
+    if (img.raw && img.raw.length > 0) {
+        const files = img.raw.map((_, i) => new File([img.raw![i]], 'image.png', { type: 'image/png' }));
+        return sender.sendMediaGroup(medias, files);
+    }
+    return sender.sendMediaGroup(medias);
 }
 
 function injectHistory(context: WorkerContext, result: UnionData, nextType: string = 'text') {

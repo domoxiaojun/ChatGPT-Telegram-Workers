@@ -1,7 +1,7 @@
 import type { ImageResult } from '../../agent/types';
-import type { AgentUserConfig } from '../../config/env';
+import type { AgentUserConfig } from '../../config/types';
 
-import type { ToolResult } from '../types';
+import type { MediaToolResultContent, ToolResult } from '../types';
 import { IMAGE_AGENTS } from '../../agent';
 import { log } from '../../log/logger';
 
@@ -46,7 +46,7 @@ export default {
         },
     },
 
-    func: async (args: Record<string, any>, { config }: { config: AgentUserConfig }): Promise<ToolResult> => {
+    func: async (args: Record<string, any>, _env: Record<string, any>, config: AgentUserConfig): Promise<ToolResult> => {
         if (!config) {
             return { content: [{ type: 'text', text: 'Missing config' }] };
         }
@@ -63,7 +63,16 @@ export default {
             result.push(res);
         }
         log.info(`${agent_name} result: ${JSON.stringify(result)}`);
-        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+        const type = result[0].url ? 'url' : 'blob';
+        return {
+            content: result.flatMap(r => (r.url || r.raw || []).map(data => ({
+                type: 'image',
+                data_type: type,
+                data,
+                mimeType: 'image/png',
+                text: result[0].text ?? '',
+            }))) as MediaToolResultContent[],
+        };
     },
 
     extra_params: { temperature: 1.2 },

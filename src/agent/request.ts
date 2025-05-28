@@ -219,7 +219,6 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
 
 function thinkingExtractor(messageInfo: MessageInfo) {
     let thinkingStart = false;
-    let thinkingEnd = false;
     let thinkingStartTime: undefined | number;
     const thinkingTag = '>`Thinking\\.\\.\\.`';
     return (data: TextStreamPart<any>) => {
@@ -235,8 +234,8 @@ function thinkingExtractor(messageInfo: MessageInfo) {
             case 'text-delta':
             case 'step-finish':
             case 'finish':
-                if (thinkingStart && !thinkingEnd) {
-                    thinkingEnd = true;
+                if (thinkingStart) {
+                    thinkingStart = false;
                     const thinkingTime = ((Date.now() - thinkingStartTime!) / 1e3).toFixed(1);
                     messageInfo.content = messageInfo.content
                         .replace(thinkingTag, `>\`Thought for ${thinkingTime} seconds\``);

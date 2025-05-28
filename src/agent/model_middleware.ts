@@ -1,9 +1,10 @@
 /* eslint-disable no-case-declarations */
 /* eslint-disable unused-imports/no-unused-vars */
 import type { LanguageModelV1ToolCallPart, LanguageModelV1ToolResultPart } from '@ai-sdk/provider';
-import type { CoreMessage, CoreUserMessage, LanguageModelV1, LanguageModelV1CallOptions, LanguageModelV1Middleware, LanguageModelV1Prompt, StepResult, TextStreamPart } from 'ai';
+import type { CoreMessage, CoreUserMessage, LanguageModelV1, LanguageModelV1CallOptions, LanguageModelV1Middleware, LanguageModelV1Prompt, StepResult, TextStreamPart, ToolResultPart } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { LogStruct } from '../log';
+import type { ToolResult } from '../tools/types';
 import type { ChatStreamTextHandler } from './types';
 import {
     extractReasoningMiddleware,
@@ -42,6 +43,10 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
             log.info(`modelId: ${model.modelId}`);
             record = getLogSingleton(config, step);
             recordModelLog({ config, model, record });
+            if (params.prompt.at(-1)?.role === 'tool') {
+                const toolResults = params.prompt.at(-1)?.content as unknown as LanguageModelV1ToolResultPart[];
+                await handleToolResult({ tools, toolResults, onStream, config });
+            }
             return extractReasoning.wrapStream!({ doStream: () => doStream(), doGenerate: () => model.doGenerate(params), params, model });
         },
 
@@ -56,6 +61,7 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
                 params.mode.tools = params.mode.tools?.filter(i => activeTools.includes(i.name));
             }
             warpMessages(params, tools, activeTools, rawSystemPrompt);
+
             return params;
         },
 
@@ -65,8 +71,8 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
                 hasRecordFirstChunkTime = true;
             }
             if (chunk.type === 'tool-call') {
-                onStream?.send(`${messageInfo.content}\n` + `tool call will start: \`${chunk.toolName}\``);
-                log.info(`will start tool: ${chunk.toolName}`);
+                onStream?.send(`${messageInfo.content.trimEnd()}\n` + `tool call start: \`${chunk.toolName}\``);
+                log.info(`start tool: ${chunk.toolName}`);
             }
         },
 
@@ -79,7 +85,7 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
             // record end time
             record.end_time = Date.now();
 
-            // record tool call detail
+            // record tool call detail4
             if (toolResults.length > 0) {
                 const func_logs = toolResults.map(({ toolName, args, result }) => ({
                     name: toolName,
@@ -114,21 +120,6 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
                 log.info(`tokens: ${JSON.stringify(usage)}`);
             } else {
                 log.warn('usage is none');
-            }
-
-            if (finishReason === 'tool-calls' && onStream) {
-                const message_tool = Object.values(tools).filter(({ send_type }) => send_type === 'message').map(({ schema: { name } }) => name);
-                const sender = onStream.sender!;
-                const need_send_result = [];
-                for (const result of toolResults) {
-                    if (message_tool.includes(result.toolName))
-                        need_send_result.push(result);
-                }
-                // ai sdk无api能调整函数结果，但内部记录stepMessages，result未做深拷贝 由此可以直接对数据进行修改
-                if (need_send_result.length > 0) {
-                    await sendToolResult(need_send_result, sender, config);
-                    need_send_result.forEach(i => i.result.content = [{ type: 'text', text: 'tool result has been sent to user.' }]);
-                }
             }
 
             // reset tool message status
@@ -375,5 +366,23 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
         }
         default:
             return content;
+    }
+}
+
+async function handleToolResult({ tools, toolResults, onStream, config }: { tools: Record<string, any>; toolResults: ToolResultPart[]; onStream: ChatStreamTextHandler | null; config: AgentUserConfig }) {
+    const message_tool = Object.values(tools).filter(({ send_type }) => send_type === 'message').map(({ schema: { name } }) => name);
+    const need_send_result: ToolResult[] = [];
+    for (const { result, toolName } of toolResults) {
+        if (message_tool.includes(toolName)) {
+            need_send_result.push(result as ToolResult);
+        }
+    }
+    if (need_send_result.length > 0) {
+        const sender = onStream?.sender;
+        // TODO: 非流式模式下，无法直接发送工具结果
+        sender && await sendToolResult(need_send_result, sender, config);
+        need_send_result.forEach((result) => {
+            result.content = [{ type: 'text', text: 'tool result has been sent to user.' }];
+        });
     }
 }
