@@ -52,18 +52,18 @@
         "@ai-sdk/xai": "^1.2.16",
         "@ffmpeg.wasm/core-st": "^0.13.2",
         "@ffmpeg.wasm/main": "^0.13.1",
-        "@modelcontextprotocol/sdk": "^1.11.5",
+        "@modelcontextprotocol/sdk": "^1.12.0",
         "ai": "^4.3.16",
         "cf-worker-adapter": "^1.4.0",
-        "node-cron": "^4.0.6"
+        "node-cron": "^4.0.7"
     },
     "devDependencies": {
         "@antfu/eslint-config": "^4.13.2",
-        "@cloudflare/workers-types": "^4.20250522.0",
+        "@cloudflare/workers-types": "^4.20250525.0",
         "@rollup/plugin-node-resolve": "^16.0.1",
         "@types/node": "^22.15.21",
         "@types/node-cron": "^3.0.11",
-        "@types/react": "^19.1.5",
+        "@types/react": "^19.1.6",
         "@types/react-dom": "^19.1.5",
         "@types/ws": "^8.18.1",
         "@vercel/node": "^5.1.16",

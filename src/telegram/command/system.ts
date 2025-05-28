@@ -19,7 +19,7 @@ import { updateMcp } from '../../mcp';
 import { getTools } from '../../tools';
 import { WssRequest } from '../../utils/others/wsrequest';
 import { createTelegramBotAPI } from '../api';
-import { chatWithLLM, OnStreamHander, sendImages } from '../handler/chat';
+import { chatWithLLM, OnStreamHander, sendImages, tts } from '../handler/chat';
 import { escape } from '../utils/md2tgmd';
 import { checkIsNeedTagIds, sendAction } from '../utils/send';
 import { chunkArray, getTelegramFile, isCfWorker, isTelegramChatTypeGroup, UUIDv4 } from '../utils/tg_utils';
@@ -603,10 +603,10 @@ export class PerplexityCommandHandler implements CommandHandler {
 
         const onStream = OnStreamHander(sender, context, subcommand);
         const logs = getLogSingleton(context.USER_CONFIG);
-        logs.chat.model.add(`Perplexity ${mode}`);
-        const startTime = Date.now();
+        logs.model = `Perplexity ${mode}`;
+        logs.start_time = Date.now();
         const result = await WssRequest(perplexityWsUrl, null, perplexityWsOptions, perplexityMessage, { onStream }).catch(console.error);
-        logs.chat.time.push(((Date.now() - startTime) / 1e3).toFixed(1));
+        logs.end_time = Date.now();
         await onStream.end?.(result);
         return new Response('success');
     };
@@ -984,5 +984,25 @@ export class MapCommandHandler extends RenewConfig {
             addQuote: true,
             quoteExpandable: true,
         });
+    };
+}
+
+export class TTSCommandHandler implements CommandHandler {
+    command = '/tts';
+    scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
+    needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
+    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
+        const text = subcommand.trim();
+        if (text === '') {
+            return sender.sendPlainText('Please input your text');
+        }
+        await sender.sendRichText(`>Using agent \`${context.USER_CONFIG.AI_TTS_PROVIDER}\` to generate audio...`, 'MarkdownV2', 'tip');
+        const audio = await tts(text, context.USER_CONFIG);
+        sendAction(context.SHARE_CONTEXT.botToken, sender.context.chat_id, 'upload_voice');
+        const resp = await sender.sendVoice(audio, context.USER_CONFIG.AUDIO_CONTAINS_TEXT ? text : undefined);
+        if (resp.ok) {
+            return sender.api.deleteMessage({ chat_id: sender.context.chat_id, message_id: sender.context.message_id! });
+        }
+        throw new Error(`Failed to send voice message: ${resp.status} ${await resp.json().then(j => j.description)}`);
     };
 }

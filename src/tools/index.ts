@@ -1,10 +1,9 @@
+/* eslint-disable no-case-declarations */
 /* eslint-disable unused-imports/no-unused-vars */
 
-import type { ToolCallPart, ToolResultPart } from 'ai';
-import type { ImageResult, ResponseMessage } from '../agent/types';
 import type { AgentUserConfig } from '../config/env';
 import type { MessageSender } from '../telegram/utils/send';
-import type { FuncTool, ToolHandler } from './types';
+import type { FuncTool, MediaToolResultContent, ResourceToolResultContent, TextToolResultContent, ToolHandler, ToolResult, ToolResultType } from './types';
 
 import { jsonSchema, tool } from 'ai';
 import { ENV } from '../config/env';
@@ -26,20 +25,30 @@ const tools = {
     ...internalTools,
 } as unknown as Record<string, FuncTool>;
 
-export function executeTool(toolName: string) {
+export function executeTool(toolName: string, env: Record<string, any>, _config: AgentUserConfig) {
+    if (tools[toolName].func) {
+        return async (args: any) => {
+            const startTime = Date.now();
+            const result = await tools[toolName].func!(args, env, _config);
+            return { ...result, time: ((Date.now() - startTime) / 1e3).toFixed(1) };
+        };
+    }
     return async (args: any): Promise<{ content: unknown; time: string; error?: string }> => {
         let signal;
         if (ENV.TOOL_TIMEOUT > 0) {
             signal = AbortSignal.timeout(ENV.TOOL_TIMEOUT * 1000);
         }
         let filledPayload = JSON.stringify(tools[toolName].payload)
-            .replace(/\{\{([^}]+)\}\}/g, (match, p1) => args[p1] || match);
+            .replace(/\{\{([^}]+)\}\}/g, (match, p1) => {
+                const [key, ...defaultValue] = p1.split('=');
+                return args[key] || defaultValue.join('=') || match;
+            });
 
         (tools[toolName].required || []).forEach((key: string) => {
-            if (!ENV.PLUGINS_ENV[key]) {
+            if (!env[key]) {
                 throw new Error(`Missing required key: ${key}`);
             }
-            let secret = ENV.PLUGINS_ENV[key];
+            let secret = env[key];
             // if secret is array, choose one randomly
             if (Array.isArray(secret)) {
                 secret = secret[Math.floor(Math.random() * secret.length)];
@@ -49,20 +58,20 @@ export function executeTool(toolName: string) {
         // Remove the remaining {{...}}
         filledPayload = filledPayload.replace(/\{\{.*?\}\}/g, '');
 
-        const parsedPayload = JSON.parse(filledPayload);
+        const { url, method, headers, body } = JSON.parse(filledPayload);
         const startTime = Date.now();
-        log.info(`tool request start, url: ${parsedPayload.url}`);
-        let result: any = await fetch(parsedPayload.url, {
-            method: parsedPayload.method || 'GET',
-            headers: parsedPayload.headers || {},
-            body: parsedPayload.body ? JSON.stringify(parsedPayload.body) : undefined,
+        log.info(`tool request start, url: ${url}`);
+        let result: any = await fetch(url, {
+            method: method || 'GET',
+            headers: headers || {},
+            body: body ? JSON.stringify(body) : undefined,
             signal,
         });
-        log.info(`tool request end`);
+        log.info(`tool request end, status: ${result.status}`);
         if (!result.ok) {
             const text = await result.text();
             log.error(`Tool call error: ${result.statusText} ${text}`);
-            return { content: `Tool call error: ${result.statusText}`, time: ((Date.now() - startTime) / 1e3).toFixed(1), error: result.statusText };
+            return { content: [{ type: 'text', text: `Tool call error: ${result.statusText} ${text}` }], time: ((Date.now() - startTime) / 1e3).toFixed(1), error: result.statusText };
         }
         try {
             result = await result.clone().json();
@@ -94,7 +103,7 @@ export function executeTool(toolName: string) {
         //     const next_tool_alias = tools[toolName].next_tool;
         //     return executeTool(next_tool_alias)(result, options);
         // }
-        return { content: result, time: ((Date.now() - startTime) / 1e3).toFixed(1) };
+        return { content: [{ type: 'text', text: result }], time: ((Date.now() - startTime) / 1e3).toFixed(1) };
     };
 }
 
@@ -132,11 +141,12 @@ export async function initializeTools() {
     return toolsPromise;
 }
 
-export async function vaildTools(tools_config: string[], mcp_config: string[]) {
-    const activeToolAlias = tools_config.filter(t => Object.keys(tools).includes(t));
+export async function validTools(config: AgentUserConfig) {
+    const env: Record<string, any> = Object.assign({}, ENV.PLUGINS_ENV, { ...(config.JINA_API_KEY && { JINA_API_KEY: config.JINA_API_KEY[Math.floor(Math.random() * config.JINA_API_KEY.length)] }) });
+    const activeToolAlias = config.USE_TOOLS.filter(t => Object.keys(tools).includes(t));
     const mcpTools = await getMcp();
     const activeMcpTools = Object.entries(mcpTools)
-        .filter(([tname, _]) => mcp_config.includes(tname))
+        .filter(([tname, _]) => config.USE_MCP.includes(tname))
         .reduce((acc: Record<string, any>, [_, t]) => {
             acc = { ...acc, ...t };
             return acc;
@@ -146,11 +156,10 @@ export async function vaildTools(tools_config: string[], mcp_config: string[]) {
     const useTools = Object.entries(tools)
         .filter(([tname, _]) => activeToolAlias.includes(tname))
         .reduce((acc: Record<string, any>, [name, t]) => {
-            const execute = (t.buildin || t.func) ? t.func : executeTool(name) as any;
             acc[t.schema.name] = tool({
                 description: t.schema.description,
                 parameters: jsonSchema(t.schema.parameters as any),
-                execute: t.not_send_to_ai ? undefined : execute,
+                execute: executeTool(name, env, config) as any,
             });
             return acc;
         }, {});
@@ -162,59 +171,78 @@ export async function vaildTools(tools_config: string[], mcp_config: string[]) {
     };
 }
 
-export async function manualRequestTool(messages: ResponseMessage[], config: AgentUserConfig) {
-    if (messages.at(-1)?.role === 'tool') {
-        throw new Error('Maximum steps reached, please increase the number of steps to get the answer');
-    }
-    const isToolCallResponse = messages.at(-1)?.role === 'assistant'
-        && Array.isArray(messages.at(-1)?.content)
-        && (messages.at(-1)?.content as (ToolCallPart | ToolResultPart)[]).some(c => c.type === 'tool-call');
-    if (!isToolCallResponse) {
-        return;
-    }
-
-    const toolCallResult = messages.at(-1)?.content as ToolCallPart[];
-    messages.push({
-        role: 'tool',
-        content: [],
-    });
-    await Promise.all(toolCallResult.filter(c => c.type === 'tool-call').map(async (c) => {
-        const tool_func = tools[c.toolName].func || executeTool(c.toolName);
-        if (!tool_func) {
-            throw new Error(`Tool ${c.toolName} not found`);
+export async function sendToolResult(toolResult: ToolResult[], sender: MessageSender, config: AgentUserConfig) {
+    // clear message id for extra message
+    const record = {
+        message_id: sender.context.message_id,
+        sentMessageIds: sender.context.sentMessageIds,
+    };
+    sender.context.message_id = null;
+    sender.context.sentMessageIds = [];
+    const collect: { type: ToolResultType; data: Array<Omit<ToolResult['content'][number], 'type'>> }[] = [];
+    let index = 0;
+    const content = toolResult.map(r => r.content).flat();
+    for (const { type, ...result } of content) {
+        if (collect[index]?.type === undefined) {
+            collect[index] = { type, data: [result] };
+        } else if (collect[index]?.type !== type) {
+            collect[++index] = { type, data: [result] };
+        } else {
+            collect[index].data.push(result);
         }
-        const toolResult = await tool_func(c.args as any, {}, config);
-        (messages.at(-1)?.content as ToolResultPart[]).push({
-            type: 'tool-result',
-            toolCallId: c.toolCallId,
-            toolName: c.toolName,
-            result: toolResult,
-        });
-    }));
+    }
+    const sendStatus = [];
+    let sendResp: Response | null = null;
+    for (const { type, data } of collect) {
+        switch (type) {
+            case 'image':
+                const imageData = await base64OrUrlToBlob(data as MediaToolResultContent[]);
+                sendResp = await sendImages({
+                    type: 'image',
+                    raw: imageData,
+                    caption: (data as MediaToolResultContent[]).map(d => d.text),
+                }, ENV.SEND_IMAGE_AS_FILE, sender, config);
+
+                break;
+            case 'video':
+                const videoData = await base64OrUrlToBlob(data as MediaToolResultContent[]);
+                sendResp = await sender.sendMediaGroup(videoData.map((d, i) => ({
+                    type: 'video',
+                    media: '',
+                    caption: (data as MediaToolResultContent[])[i].text,
+                    parse_mode: ENV.DEFAULT_PARSE_MODE as any,
+                })), videoData.map(data => new File([data], 'video.mp4', { type: 'video/mp4' })));
+
+                break;
+            case 'audio':
+                const audioData = await base64OrUrlToBlob(data as MediaToolResultContent[]);
+                const resp = await Promise.all(audioData.map((d, i) => sender.sendVoice(d, (data as MediaToolResultContent[])[i].text)));
+                sendStatus.push(resp.map(r => r.statusText).join(', '));
+                break;
+
+            case 'resource':
+                sendResp = await sender.sendRichText((data as ResourceToolResultContent[]).map(d => d.resource.text).join('\n'));
+                break;
+            case 'text':
+            default:
+                sendResp = await sender.sendRichText((data as TextToolResultContent[]).map(d => d.text).join('\n'));
+                break;
+        }
+        sendResp && sendStatus.push(sendResp.statusText);
+    }
+    console.log(`tool result send status: ${sendStatus.join(', ')}`);
+    // recover messgae id
+    sender.context.message_id = record.message_id;
+    sender.context.sentMessageIds = record.sentMessageIds;
 }
-
-export async function sendToolResult(toolResult: ToolResultPart[], sender: MessageSender, config: AgentUserConfig) {
-    const isError = toolResult.some(r => r.isError);
-    const resultType = isError ? 'text' : tools[toolResult.at(-1)?.toolName || '']?.result_type || 'text';
-    const result = toolResult.map(r => r.result) as { content: string | ImageResult }[];
-    switch (resultType) {
-        case 'text':
-            // clear message id for extra message
-            sender.context.message_id = null;
-            sender.context.sentMessageIds.length = 0;
-            return sender.sendRichText((result as { content: string }[]).map(r => r.content).join('\n'));
-        case 'image': {
-            const images = (result as { content: ImageResult }[]).map(r => r.content).flat();
-            const type = images.some(r => r.raw) ? 'raw' : 'url';
-            return sendImages({
-                type: 'image',
-                [type]: images.map(r => r.url || r.raw).flat(),
-                caption: images.map(r => r.text ?? ''),
-            }, ENV.SEND_IMAGE_AS_FILE, sender, config);
-        }
-        default:
-            break;
+async function base64OrUrlToBlob(data: MediaToolResultContent[]): Promise<Blob[]> {
+    const mediaType = data[0].data_type ?? 'url';
+    if (mediaType === 'url') {
+        return Promise.all(data.map(v => fetch(v.data as string).then(r => r.blob())));
+    } else if (mediaType === 'base64') {
+        return Promise.all(data.map(v => new Blob([Buffer.from(v.data as string, 'base64')], { type: v.mimeType })));
     }
+    return data.map(d => d.data as Blob);
 }
 
 function injectPatterns(handler: ToolHandler, args: Record<string, string>) {
@@ -226,7 +254,10 @@ function injectPatterns(handler: ToolHandler, args: Record<string, string>) {
         handler.patterns = [];
     }
     for (const p of dynamic_patterns) {
-        p.pattern = p?.pattern?.replace(/\{\{([^}]+)\}\}/g, (match, p1) => args[p1] || match);
+        p.pattern = p?.pattern?.replace(/\{\{([^}]+)\}\}/g, (match, p1) => {
+            const [key, ...defaultValue] = p1.split('=');
+            return args[key] || defaultValue.join('=') || match;
+        });
         handler.patterns.push(p);
     }
     log.debug(JSON.stringify(handler.patterns, null, 2));

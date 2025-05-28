@@ -3,6 +3,7 @@ import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
 import { getLogSingleton, Logger } from '../log';
 import { base64StringToBlob } from '../utils/image';
+import { convertAudio } from '../utils/others/audio';
 import { createLlmModel } from './llm';
 import { warpLLMParams } from './model_middleware';
 import { requestChatCompletionsV2 } from './request';
@@ -102,10 +103,14 @@ export class GoogleImage extends GoogleBase implements ImageAgent {
             throw new Error(`No images found:\n${text || JSON.stringify(data)}`);
         }
 
-        if (data.usageMetadata) {
+        const usage = result.usageMetadata;
+        if (usage) {
             const log = getLogSingleton(context);
-            log.chat.model.add(data.modelVersion || this.model(context));
-            log.tokens.push(`${data.usageMetadata.promptTokenCount},0`);
+            log.model = result.modelVersion || this.model(context);
+            log.tokens = {
+                prompt: usage.promptTokenCount,
+                completion: usage.candidatesTokenCount,
+            };
         }
         return this.render(images, text || prompt);
     };
@@ -115,8 +120,78 @@ export class GoogleImage extends GoogleBase implements ImageAgent {
         return {
             type: 'image',
             raw: await Promise.all(images.map(({ inlineData: { data } }) => base64StringToBlob(data))),
-            caption: [prompt],
+            text: prompt,
         };
+    };
+}
+
+export class GoogleTTS extends GoogleBase {
+    readonly modelKey = 'GOOGLE_TTS_MODEL';
+
+    model = (ctx: AgentUserConfig): string => {
+        return ctx.GOOGLE_TTS_MODEL;
+    };
+
+    readonly request = async (text: string, context: AgentUserConfig): Promise<Blob> => {
+        const url = `${context.GOOGLE_API_BASE}/models/${this.model(context)}:generateContent?key=${context.GOOGLE_API_KEY}`;
+        const speech_config: { voice_config?: { prebuilt_voice_config: { voice_name: string } }; multi_speaker_voice_config?: Record<string, any> } = {
+            voice_config: {
+                prebuilt_voice_config: { voice_name: context.GOOGLE_TTS_VOICE },
+            },
+            ...context.GOOGLE_TTS_EXTRA_PARAMS,
+        };
+        if (speech_config.multi_speaker_voice_config) {
+            delete speech_config.voice_config;
+        }
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{
+                        text: `${context.GOOGLE_TTS_PROMPT}\n${text}`,
+                    }],
+                }],
+                generation_config: {
+                    response_modalities: ['audio'],
+                    speech_config,
+                },
+            }),
+        });
+        if (resp.ok) {
+            const result = await resp.json();
+            const { data, mimeType } = result.candidates?.[0]?.content?.parts?.[0]?.inlineData || {};
+            if (!data || !mimeType) {
+                throw new Error(`Data is not complete:\n${JSON.stringify(result)}`);
+            }
+            const command = mimeType.split(';').map((i: string) => {
+                const [arg, value] = i.trim().split('=');
+                switch (arg) {
+                    // default little endian
+                    case 'audio/L16':
+                        return ['-f', 's16le'];
+                    case 'audio/L24':
+                        return ['-f', 's24le'];
+                    case 'audio/L32':
+                        return ['-f', 's32le'];
+                    case 'rate':
+                        return ['-ar', value];
+                    case 'bitrate':
+                        return ['-b:a', value];
+                    case 'channels':
+                        return ['-ac', value];
+                    case 'codec':
+                    default:
+                        return [];
+                }
+            }).flat();
+            const audio = await convertAudio({ file: new Blob([Buffer.from(data, 'base64')]), target: 'blob', inputType: 'raw', outputType: 'oga', command }) as Blob;
+            return audio;
+        } else {
+            throw new Error(`${resp.status} ${resp.statusText}\n\n${await resp.text()}`);
+        }
     };
 }
 

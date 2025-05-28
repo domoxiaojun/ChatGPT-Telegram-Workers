@@ -11,11 +11,13 @@
                 },
                 "lang": {
                     "type": "string",
-                    "description": "Language setting for the response. Based on the language used by the user. Default is 'zh-hans'. Example values: 'zh-hant', 'en', 'de'"
+                    "description": "Language setting for the response. Based on the language used by the user. Example values: 'zh-hant', 'en', 'de'",
+                    "default": "zh-hans"
                 },
                 "unit": {
                     "type": "string",
-                    "description": "Unit of measurement for the response data. Options include unit=m (metric units, default) and unit=i (imperial units). Default is 'm'. Example values: 'i'"
+                    "description": "Unit of measurement for the response data. Options include unit=m (metric units, default) and unit=i (imperial units). Example values: 'i'",
+                    "default": "m"
                 }
             },
             "required": [
@@ -24,7 +26,7 @@
         }
     },
     "payload": {
-        "url": "https://api.qweather.com/v7/weather/now?location={{location}}&lang={{lang}}&unit={{unit}}",
+        "url": "https://api.qweather.com/v7/weather/now?location={{location}}&lang={{lang=zh-hans}}&unit={{unit=m}}",
         "headers": {
             "X-QW-Api-Key": "{{QWEATHER_TOKEN}}",
             "Content-Type": "application/json"

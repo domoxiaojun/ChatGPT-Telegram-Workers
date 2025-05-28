@@ -1,5 +1,5 @@
 /* eslint-disable unused-imports/no-unused-vars */
-import type { FilePart, TextPart, ToolResultPart } from 'ai';
+import type { FilePart, TextPart } from 'ai';
 import type * as Telegram from 'telegram-bot-api-types';
 import type { ChatStreamTextHandler, HistoryModifier, ImageResult, LLMChatRequestParams } from '../../agent/types';
 import type { WorkerContext } from '../../config/context';
@@ -8,13 +8,12 @@ import type { ChosenInlineSender } from '../utils/send';
 import type { UnionData } from '../utils/tg_utils';
 import type { MessageHandler } from './types';
 import { APICallError } from 'ai';
-import { loadASRLLM, loadChatLLM, loadImageGen, loadTTSLLM } from '../../agent';
+import { loadASRLLM, loadChatLLM, loadImageGen, loadTTSLLM, TTS_AGENTS } from '../../agent';
 import { loadHistory, requestCompletionsFromLLM } from '../../agent/chat';
 import { ENV } from '../../config/env';
 import { clearLog, getLog, log } from '../../log';
-import { sendToolResult } from '../../tools';
 import { imageToBase64String } from '../../utils/image';
-import { convertOgaToMp3 } from '../../utils/others/audio';
+import { convertAudio } from '../../utils/others/audio';
 import { createTelegramBotAPI } from '../api';
 import { escape } from '../utils/md2tgmd';
 import { MessageSender, sendAction, TelegraphSender } from '../utils/send';
@@ -43,17 +42,11 @@ export async function chatWithLLM(
         const answer = await requestCompletionsFromLLM(params, context, agent, modifier, ENV.STREAM_MODE && !isMiddle ? streamSender : null);
         log.info(`chat with LLM done`);
 
-        if (answer.messages.at(-1)?.role === 'tool') {
-            await sendToolResult(answer.messages.at(-1)?.content as ToolResultPart[], streamSender.sender!, context.USER_CONFIG);
-            return new Response('Success');
-        }
-
         if (isMiddle) {
             return answer.content;
         }
         return streamSender.end!(answer.content);
     } catch (e) {
-        streamSender.clearHeartbeat!();
         log.error((e as Error).message, (e as Error).stack);
         let errMsg = '';
         if ((e as Error).name === 'AbortError') {
@@ -93,8 +86,8 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
             streamSender.clearHeartbeat!();
             const sender = streamSender.sender as MessageSender;
             log.error((e as Error).stack);
-            if ((e as Error).message.includes(' 524')) {
-                return sender.sendRichText(`\`\`\`Error\nOccur 524 error.\n\`\`\``, undefined, 'tip');
+            if ((e as Error).message.includes('524')) {
+                return sender.sendRichText(`\`\`\`Error\nMaybe occur 524 error, see logs for more details.\n\`\`\``, undefined, 'tip');
             }
             const errMsg = (e as Error).message.replaceAll(context.SHARE_CONTEXT.botToken, '[REDACTED]').substring(0, 2048);
             return sender.sendRichText(`\`\`\`Error\n${errMsg}\n\`\`\``, undefined, 'tip');
@@ -192,7 +185,7 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
                     if (!response.body) {
                         throw new Error('Failed to fetch audio data');
                     }
-                    audioData = await convertOgaToMp3(response, 'base64') as string;
+                    audioData = await convertAudio({ file: response, target: 'base64' }) as string;
                 }
                 params.content.push({
                     type: 'file',
@@ -320,7 +313,7 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
                 return;
             }
 
-            const data = context ? mergeLogMessages(text, context.USER_CONFIG) : text;
+            const data = mergeLogMessages(text, context?.USER_CONFIG);
             expandParams.addQuote = addQuotePrerequisites && data.length > ENV.ADD_QUOTE_LIMIT;
             log.info(`sent message ids: ${isMessageSender ? sender.context.sentMessageIds : sender.context.inline_message_id}`);
             isMessageSender && sendAction(sender.api.token, sender.context.chat_id, 'typing');
@@ -358,7 +351,7 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
             text = `${cache}\n${text}`;
         }
         if (isSendDocument(text)) {
-            return sendDocument(sender as MessageSender, { question: question || 'Redo Question', answer: text, log: getLog(context?.USER_CONFIG || {} as AgentUserConfig, false, true) });
+            return sendDocument(sender as MessageSender, { question: question || 'Redo Question', answer: text, log: getLog(context?.USER_CONFIG || {} as AgentUserConfig, { onlyModel: false, isParagraph: true }) });
         }
         if (isSendTelegraph(text)) {
             return sendTelegraph(telegraphContext(true, false), question || 'Redo Question', text);
@@ -416,8 +409,8 @@ async function sendTelegraph(sendContext: {
     }
     const prefix = `#Question\n\`\`\`\n${trimedQuestion}\n\`\`\`\n---`;
 
-    const telegraph_prefix = `${prefix}\n#Answer\n🤖 **${getLog(context.USER_CONFIG, true, true)}**\n`;
-    const debug_info = `${getLog(context.USER_CONFIG, false, true)}`;
+    const telegraph_prefix = `${prefix}\n#Answer\n🤖 **${getLog(context.USER_CONFIG, { onlyModel: true, isParagraph: true })}**\n`;
+    const debug_info = `${getLog(context.USER_CONFIG, { onlyModel: false, isParagraph: true })}`;
     const telegraph_suffix = `\n---\n\`\`\`\n${debug_info}\n\`\`\``;
     const textLength = (telegraph_prefix + text + telegraph_suffix).length;
     try {
@@ -526,6 +519,7 @@ async function handleTextToImage(
     streamSender: ChatStreamTextHandler,
     handleKey: string,
 ): Promise<Response> {
+    streamSender.clearHeartbeat!();
     const agent = loadImageGen(context.USER_CONFIG);
     const sender = streamSender.sender!;
     if (!agent) {
@@ -559,15 +553,16 @@ async function handleAudio(
         return new Response('audio handle done');
     }
     clearLog(context.USER_CONFIG);
-    !ENV.HIDE_MIDDLE_MESSAGE && (sender.context.sentMessageIds.length = 0);
+    !ENV.HIDE_MIDDLE_MESSAGE && (sender.context.sentMessageIds = []);
     const isMiddle = handleKey === 'audio:audio';
     const otherText = (params.content as TextPart[]).filter(c => c.type === 'text').map(c => c.text).join('\n').trim();
     const resp = await chatWithLLM(message, { role: 'user', content: `[AUDIO TRANSCRIPTION]: ${text}\n${otherText}` }, context, null, streamSender, isMiddle);
     if (isMiddle) {
-        const voice = await tts(resp as unknown as string, context.USER_CONFIG);
+        const audio = await tts(resp as unknown as string, context.USER_CONFIG);
+        console.log(`audio size: ${(audio.size / 1024 / 1024).toFixed(3)}mb`);
         ENV.HIDE_MIDDLE_MESSAGE && sender.api.deleteMessage({ chat_id: sender.context.chat_id, message_id: sender.context.message_id! });
         sendAction(context.SHARE_CONTEXT.botToken, sender.context.chat_id, 'upload_voice');
-        return sender.sendVoice(voice);
+        return sender.sendVoice(audio);
     }
     return resp;
 }
@@ -579,6 +574,7 @@ async function handleTextToAudio(
     streamSender: ChatStreamTextHandler,
     handleKey: string,
 ): Promise<Response> {
+    streamSender.clearHeartbeat!();
     let text = params.content as string;
     const sender = streamSender.sender!;
     if (handleKey === 'text:audio') {
@@ -587,6 +583,7 @@ async function handleTextToAudio(
         !ENV.HIDE_MIDDLE_MESSAGE && streamSender.send('Chat with LLM done');
     }
     const audio = await tts(text, context.USER_CONFIG);
+    console.log(`audio size: ${(audio.size / 1024 / 1024).toFixed(3)}mb`);
     sendAction(context.SHARE_CONTEXT.botToken, sender.context.chat_id, 'upload_voice');
     const resp = await sender.sendVoice(audio, context.USER_CONFIG.AUDIO_CONTAINS_TEXT ? text : undefined);
     if (resp.ok) {
@@ -601,27 +598,26 @@ export async function sendImages(img: ImageResult, sendAsFile: boolean, sender: 
         return sender.sendPlainText('ERROR: No image found');
     }
 
-    const caption = img.caption?.map(t => `>${t}`?.slice(0, 800)?.trim()) || [img.text?.slice(0, 800) || ''];
-    if (img.url?.length === 1 || img.raw?.length === 1) {
+    const caption = img.caption?.map(t => t?.slice(0, 800)?.trim()) || [img.text?.slice(0, 800) || ''];
+    if ((img.url?.length === 1 || img.raw?.length === 1) && sender.context.message_id) {
         return sender.editMessageMedia({
             type: sendAsFile ? 'document' : 'photo',
             media: img.url?.[0] || '',
-            caption: escape(mergeLogMessages(caption[0], config), { quoteExpandable: false, addQuote: true }),
+            caption: escape(mergeLogMessages(caption[0], config), { quoteExpandable: true, addQuote: true }),
         }, ENV.DEFAULT_PARSE_MODE as Telegram.ParseMode, img.raw?.[0] && new File([img.raw[0]], 'image.png', { type: 'image/png' }));
-    } else {
-        const medias = (img.url || img.raw)!.map((media: string | Blob, index: number) => ({
-            type: sendAsFile ? 'document' : 'photo',
-            media: typeof media === 'string' ? media : '',
-            caption: caption[index] && escape((index === 0 ? mergeLogMessages(caption[index], config) : caption[index]), { quoteExpandable: true, addQuote: true }),
-            parse_mode: ENV.DEFAULT_PARSE_MODE as Telegram.ParseMode,
-        })) as Telegram.InputMedia[];
-
-        if (img.raw && img.raw.length > 0) {
-            const files = img.raw.map((_, i) => new File([img.raw![i]], 'image.png', { type: 'image/png' }));
-            return sender.sendMediaGroup(medias, files);
-        }
-        return sender.sendMediaGroup(medias);
     }
+    const medias = (img.url || img.raw)!.map((media: string | Blob, index: number) => ({
+        type: sendAsFile ? 'document' : 'photo',
+        media: typeof media === 'string' ? media : '',
+        caption: caption[index] && escape(caption[index], { quoteExpandable: true, addQuote: true }),
+        parse_mode: ENV.DEFAULT_PARSE_MODE as Telegram.ParseMode,
+    })) as Telegram.InputMedia[];
+
+    if (img.raw && img.raw.length > 0) {
+        const files = img.raw.map((_, i) => new File([img.raw![i]], 'image.png', { type: 'image/png' }));
+        return sender.sendMediaGroup(medias, files);
+    }
+    return sender.sendMediaGroup(medias);
 }
 
 function injectHistory(context: WorkerContext, result: UnionData, nextType: string = 'text') {
@@ -630,10 +626,10 @@ function injectHistory(context: WorkerContext, result: UnionData, nextType: stri
     context.MIDDLE_CONTEXT.history.push({ role: 'user', content: result.text || '', ...(result.url && result.url.length > 0 && { images: result.url }) });
 }
 
-function tts(text: string, config: AgentUserConfig) {
+export async function tts(text: string, config: AgentUserConfig): Promise<Blob> {
     const agent = loadTTSLLM(config);
     if (!agent) {
-        throw new Error('TTS agent not found');
+        throw new Error(`TTS agent ${config.AI_TTS_PROVIDER} not found, available: ${TTS_AGENTS.map(a => a.name).join(', ')}`);
     }
     return agent.request(text, config);
 }
@@ -645,15 +641,15 @@ async function asr(audio: Blob, config: AgentUserConfig) {
     }
     if (agent.name === 'oailike') {
         const start = Date.now();
-        audio = await convertOgaToMp3(audio, 'blob') as Blob;
+        audio = await convertAudio({ file: audio, target: 'blob' }) as Blob;
         log.info(`transform audio time: ${((Date.now() - start) / 1000).toFixed(2)}s`);
     }
     return agent.request(audio, config);
 }
 
-function mergeLogMessages(text: string, config: AgentUserConfig) {
+function mergeLogMessages(text: string, config: AgentUserConfig | undefined): string {
     if (ENV.LOG_POSITION_ON_TOP) {
-        return `${getLog(config)}\n${text.trim()}`.trim();
+        return `${config ? getLog(config) : ''}\n${text.trim()}`;
     }
-    return `${text.trim()}\n${getLog(config)}`;
+    return `${text.trim()}\n${config ? getLog(config) : ''}`;
 }

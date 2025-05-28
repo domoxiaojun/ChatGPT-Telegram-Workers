@@ -75,7 +75,7 @@ export interface Agent<AgentRequest> {
     render?: (result: Response | GeneratedImage[] | string[], prompt: string) => Promise<ImageResult>;
 }
 
-export interface ImageResult extends UnionData {
+export interface ImageResult extends Pick<UnionData, 'url' | 'raw' | 'text'> {
     type: 'image';
     message?: string;
     caption?: string[];

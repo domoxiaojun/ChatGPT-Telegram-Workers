@@ -160,3 +160,32 @@ export class OpenAITTS extends OpenAIBase implements TTSAgent {
         }
     };
 }
+
+export class OpenAIFM implements TTSAgent {
+    readonly modelKey = 'OPENAI_TTS_MODEL';
+    readonly name = 'openai-fm';
+
+    model = (ctx: AgentUserConfig): string => {
+        return `fm-${ctx.OPENAI_TTS_VOICE}`;
+    };
+
+    enable = () => true;
+
+    request = async (text: string, context: AgentUserConfig): Promise<Blob> => {
+        const url = `https://www.openai.fm/api/generate`;
+        const formData = new FormData();
+        formData.append('input', text);
+        formData.append('prompt', context.OPENAI_TTS_PROMPT);
+        formData.append('voice', context.OPENAI_TTS_VOICE);
+
+        const resp = await fetch(url, {
+            method: 'POST',
+            body: formData,
+        });
+        if (resp.ok) {
+            return resp.blob();
+        } else {
+            throw new Error(`${resp.status} ${resp.statusText}\n\n${await resp.text()}`);
+        }
+    };
+}

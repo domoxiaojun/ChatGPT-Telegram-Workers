@@ -1,11 +1,10 @@
-import type { CoreMessage, LanguageModelV1, StepResult, TextStreamPart, ToolCallPart, ToolResultPart } from 'ai';
+import type { CoreMessage, LanguageModelV1, StepResult, TextStreamPart } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { MessageInfo, ToolChoice } from './model_middleware';
 import type { ChatStreamTextHandler, OpenAIFuncCallData, ResponseMessage } from './types';
 import { generateText, streamText, TypeValidationError, wrapLanguageModel } from 'ai';
 import { ENV } from '../config/env';
-import { getLogSingleton, log } from '../log';
-import { manualRequestTool } from '../tools';
+import { log } from '../log';
 import { createLlmModel } from './llm';
 import { AIMiddleware, metaDataExtractor } from './model_middleware';
 import { Stream } from './stream';
@@ -80,6 +79,7 @@ export async function requestChatCompletions(url: string, header: Record<string,
     const { signal } = controller;
     const messageInfo: MessageInfo = {
         content: '',
+        occured_error: false,
     };
 
     let timeoutID = null;
@@ -137,12 +137,11 @@ function clearTimeoutID(timeoutID: any) {
         clearTimeout(timeoutID);
 }
 
-export async function streamHandler(stream: AsyncIterable<any>, contentExtractor: (data: any) => string | null, onStream: ChatStreamTextHandler, messageInfo: MessageInfo, errorReferencer: boolean[] = [false]): Promise<string> {
+export async function streamHandler(stream: AsyncIterable<any>, contentExtractor: (data: any) => string | null, onStream: ChatStreamTextHandler, messageInfo: MessageInfo): Promise<string> {
     log.info(`start handle stream`);
 
     let lengthDelta = 0;
     let updateStep = 5;
-    let lastChunk = '';
     const maxLength = 10_000;
 
     try {
@@ -151,20 +150,16 @@ export async function streamHandler(stream: AsyncIterable<any>, contentExtractor
             if (textPart === null || textPart === '') {
                 continue;
             }
-            // 已有delta + 上次chunk的长度
-            lengthDelta += lastChunk.length;
-            // 当前内容为上次迭代后的数据 （减少一次迭代）
-            messageInfo.content += lastChunk;
-            // 更新chunk
-            lastChunk = textPart;
+            // 已有delta + chunk的长度
+            lengthDelta += textPart.length;
+            messageInfo.content += textPart;
 
-            if (lastChunk && lengthDelta > updateStep) {
+            if (lengthDelta > updateStep) {
                 lengthDelta = 0;
                 updateStep = Math.min(updateStep + 40, maxLength);
                 onStream.send(`${messageInfo.content.trimEnd()}●`);
             }
         }
-        messageInfo.content += lastChunk;
     } catch (e) {
         if (messageInfo.content === '') {
             throw e;
@@ -175,7 +170,7 @@ export async function streamHandler(stream: AsyncIterable<any>, contentExtractor
             content = (e.value as any)?.choices?.[0]?.delta?.content;
         }
         messageInfo.content += (content ?? `\n\n\`\`\`Error\n${(e as Error).message}\n\`\`\``);
-        errorReferencer[0] = true;
+        messageInfo.occured_error = true;
     }
 
     return messageInfo.content;
@@ -185,6 +180,7 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
     // 引入多轮对话 拼接提示
     const messageInfo: MessageInfo = {
         content: cache?.join() ?? '',
+        occured_error: false,
     };
     const middleware = await AIMiddleware({
         config: context,
@@ -199,7 +195,6 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
 
     let responseMessages: ResponseMessage[] = [];
     let contentFull = '';
-    const errorReferencer = [false];
 
     if (onStream !== null) {
         // const stream = streamText({ ...hander_params, ...mockParams(middleware) });
@@ -208,74 +203,25 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
             onChunk: middleware.onChunk as (data: any) => void,
         });
 
-        const contentExtractor = thinkingExtractor(messageInfo, getLogSingleton(context));
-        contentFull = await streamHandler(stream.fullStream, contentExtractor, onStream, messageInfo, errorReferencer);
-        responseMessages = errorReferencer[0] ? [{ role: 'assistant', content: contentFull }] : (await stream.response).messages;
-        contentFull = errorReferencer[0] ? contentFull : metaDataExtractor(await stream.providerMetadata, model.provider, contentFull);
+        const contentExtractor = thinkingExtractor(messageInfo);
+        contentFull = await streamHandler(stream.fullStream, contentExtractor, onStream, messageInfo);
+        responseMessages = messageInfo.occured_error ? [{ role: 'assistant', content: contentFull }] : (await stream.response).messages;
+        contentFull = messageInfo.occured_error ? contentFull : metaDataExtractor(await stream.providerMetadata, model.provider, contentFull);
     } else {
         const result = await generateText(handeredParams);
         contentFull = `${result.reasoning ? `>\`Thought for several seconds\`\n>${result.reasoning.replace(/\n/g, '\n>')}\n>✹\n` : ''}${result.text}`;
         responseMessages = result.response.messages;
         contentFull = metaDataExtractor(result.providerMetadata, model.provider, contentFull);
     }
-    try {
-        // when last message is tool, avoid ai message not sent complete
-        const lastMessageContent = responseMessages.at(-1)?.content;
-        if (contentFull.trim() !== '' && Array.isArray(lastMessageContent) && (lastMessageContent as (ToolCallPart | ToolResultPart)[]).some(c => c.type === 'tool-call') && onStream) {
-            await onStream.end?.(contentFull);
-        }
-        await manualRequestTool(responseMessages, context);
-    } catch (e) {
-        streamErrorHandler(e as Error, contentFull, responseMessages);
-    }
-    return toolResultExtractor(responseMessages, contentFull);
+
+    return { messages: responseMessages, content: contentFull };
 }
 
-function streamErrorHandler(e: Error, contentFull: string, responseMessages: ResponseMessage[]) {
-    if (contentFull.trim() === '') {
-        throw e;
-    }
-    log.error((e as Error).message, (e as Error).stack);
-    responseMessages.push({
-        role: 'tool',
-        content: [{
-            type: 'tool-result',
-            toolCallId: 'tool-call-id',
-            toolName: 'tool-name',
-            result: {
-                content: `\`\`\`Error\n${(e as Error).message}\n\`\`\``,
-            },
-            isError: true,
-        }],
-    });
-}
-
-function toolResultExtractor(responseMessages: ResponseMessage[], contentFull: string) {
-    return {
-        messages: responseMessages.map(({ role, content }) => {
-            if (role === 'tool' && content.some(i => i.type === 'tool-result')) {
-                content.forEach((j: any) => {
-                    j.result?.time && (delete j.result.time);
-                });
-            }
-            return { role, content };
-        }) as ResponseMessage[],
-        content: contentFull,
-    };
-}
-
-function thinkingExtractor(messageInfo: MessageInfo, logs: any) {
+function thinkingExtractor(messageInfo: MessageInfo) {
     let thinkingStart = false;
-    let thinkingEnd = false;
     let thinkingStartTime: undefined | number;
     const thinkingTag = '>`Thinking\\.\\.\\.`';
-    let recordFtt = false;
     return (data: TextStreamPart<any>) => {
-        if (!recordFtt) {
-            recordFtt = true;
-            const startTime = logs.ongoing.at(-1)?.startTime;
-            startTime && (logs.first_chunk_time = `${(Date.now() - startTime)}ms`);
-        }
         switch (data.type) {
             case 'reasoning':
                 if (!thinkingStart) {
@@ -288,8 +234,8 @@ function thinkingExtractor(messageInfo: MessageInfo, logs: any) {
             case 'text-delta':
             case 'step-finish':
             case 'finish':
-                if (thinkingStart && !thinkingEnd) {
-                    thinkingEnd = true;
+                if (thinkingStart) {
+                    thinkingStart = false;
                     const thinkingTime = ((Date.now() - thinkingStartTime!) / 1e3).toFixed(1);
                     messageInfo.content = messageInfo.content
                         .replace(thinkingTag, `>\`Thought for ${thinkingTime} seconds\``);
@@ -319,6 +265,7 @@ async function combineParams({ context, middleware, model, messages, activeTools
         maxTokens: context.MAX_TOKENS,
         activeTools,
         onStepFinish: middleware.onStepFinish as (data: StepResult<any>) => void,
+        // onFinish: middleware.onFinish as (data: any) => void,
         ...(ENV.CHAT_TOTAL_DURATION_LIMIT > 0 && { abortSignal: AbortSignal.timeout(ENV.CHAT_TOTAL_DURATION_LIMIT * 1e3) }),
     };
 }

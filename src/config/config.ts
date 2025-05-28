@@ -213,6 +213,11 @@ export class EnvironmentConfig {
     MESSAGE_COMPATIBLE = true;
     // whether to display search source
     ENABLE_SEARCH_SOURCE = true;
+
+    // TODO: override command auth, key is command, value is auth role, support: 'creator', 'administrator', null
+    // COMMAND_AUTH_OVERRIDE: Record<string, string[]> = {
+    //     '/tts': ['creator', 'administrator'],
+    // };
 }
 
 // -- 通用配置 --
@@ -265,6 +270,7 @@ export class OpenAIConfig {
     OPENAI_REASONING_EFFORT: 'low' | 'medium' | 'high' | undefined = undefined;
     OPENAI_MODELS = [];
     OPENAI_MODELS_API = '/models';
+    OPENAI_TTS_PROMPT = '';
 }
 
 // -- DALLE 配置 --
@@ -339,6 +345,34 @@ export class GeminiConfig {
     GOOGLE_MODELS_API = '/models';
     GOOGLE_BUILDIN = ['googleSearch', 'codeExecution', 'urlContext'];
     USE_GOOGLE_BUILDIN: string[] = [];
+    GOOGLE_TTS_MODEL = 'gemini-2.5-flash-preview-tts';
+    // available voices: https://ai.google.dev/gemini-api/docs/speech-generation#voices
+    GOOGLE_TTS_VOICE = 'Zephyr';
+    GOOGLE_TTS_PROMPT = '';
+    // It is mutually exclusive with GOOGLE_TTS_VOICE
+    GOOGLE_TTS_EXTRA_PARAMS: Record<string, any> = {
+    //     multi_speaker_voice_config: {
+    //         speaker_voice_configs: [
+    //             {
+    //                 speaker: 'Speaker1',
+    //                 voice_config: {
+    //                     prebuilt_voice_config: {
+    //                         voice_name: 'Kore',
+    //                     },
+    //                 },
+    //             },
+    //             {
+    //                 speaker: 'Speaker2',
+    //                 voice_config: {
+    //                     prebuilt_voice_config: {
+    //                         voice_name: 'Puck',
+    //                     },
+    //                 },
+    //             },
+    //         ],
+    //     },
+    //     language_code: 'en-US',
+    };
 }
 
 // -- Mistral 配置 --

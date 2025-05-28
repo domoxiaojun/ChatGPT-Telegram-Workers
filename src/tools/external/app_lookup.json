@@ -1,7 +1,7 @@
 {
     "schema": {
         "name": "app_lookup",
-        "description": "Retrive five sets of related app id and app name through region code and keywords. This tool should only be called once, and the app id is the same in different regions.",
+        "description": "Retrive several sets of related app id and app name through keywords.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -11,22 +11,23 @@
                 },
                 "country": {
                     "type": "string",
-                    "description": "The country code for App Store search, default value is 'us'"
+                    "description": "The country code for App Store search.",
+                    "default": "us"
                 },
                 "entity": {
                     "type": "string",
-                    "description": "Types of search software, software means ios app, iPadSoftware means ipad app, macSoftware means mac app. Default value is 'software'. Enum values: software, iPadSoftware, macSoftware"
+                    "description": "Types of search software, software means ios app, iPadSoftware means ipad app, macSoftware means mac app.",
+                    "enum": ["software", "iPadSoftware", "macSoftware"],
+                    "default": "software"
                 }
             },
             "required": [
-                "app_name",
-                "country",
-                "entity"
+                "app_name"
             ]
         }
     },
     "payload": {
-        "url": "https://itunes.apple.com/search?entity={{entity}}&limit=5&term={{app_name}}&country={{country}}&fields=trackId,trackCensoredName",
+        "url": "https://itunes.apple.com/search?entity={{entity=software}}&limit=5&term={{app_name}}&country={{country=us}}&fields=trackId,trackCensoredName",
         "method": "GET",
         "headers": {
             "Accept": "application/json"

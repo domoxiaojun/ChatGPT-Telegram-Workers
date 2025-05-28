@@ -1,7 +1,7 @@
 import type { ImageResult } from '../../agent/types';
-import type { AgentUserConfig } from '../../config/env';
+import type { AgentUserConfig } from '../../config/types';
 
-import type { ToolResult } from '../types';
+import type { MediaToolResultContent, ToolResult } from '../types';
 import { IMAGE_AGENTS } from '../../agent';
 import { log } from '../../log/logger';
 
@@ -14,8 +14,9 @@ export default {
             properties: {
                 agent: {
                     type: 'string',
-                    description: 'The agent to use, You can only set values from the following options: \'openai\', \'workers\', \'azure\', \'vertex\', \'oailike\', \'kling\', \'google\', where openai is aliased as dalle, google is aliased as vertex, and if the information provided by the user is incorrect, please use the most similar option. if user dont specify, use openai. Default value is openai',
-                    enum: ['openai', 'workers', 'azure', 'vertex', 'oailike', 'kling', 'google'],
+                    description: 'The agent to use, where openai is aliased as dalle, and if the information provided by the user is incorrect, please use the most similar option.',
+                    enum: ['default', 'dalle', 'openai', 'workers', 'azure', 'vertex', 'oailike', 'kling', 'google'],
+                    default: 'default',
                 },
                 prompts: {
                     type: 'array',
@@ -24,39 +25,55 @@ export default {
                 },
                 quantity: {
                     type: 'integer',
-                    description: 'The number of images to generate, the maximum is 4. If the user does not specify a specific number of images, set it to 1. Default value is 1',
+                    description: 'The number of images to generate, the maximum is 4.',
+                    default: 1,
                 },
                 size: {
                     type: 'string',
-                    // enum: ['1024x1024', '1792x1024', '1024x1792'],
-                    description: 'The size of the images to generate, default is 1024x1024. Enum values: 1024x1024, 1792x1024, 1024x1792',
+                    enum: ['1024x1024', '1792x1024', '1024x1792'],
+                    description: 'The size of the images to generate.',
+                    default: '1024x1024',
                 },
                 radio: {
                     type: 'string',
-                    description: 'The raido of the images to generate, default is 1:1. Default value is 1:1. Enum values: 1:1, 16:9, 9:16',
-                    // enum: ['1:1', '16:9', '9:16'],
+                    description: 'The raido of the images to generate.',
+                    enum: ['1:1', '16:9', '9:16'],
+                    default: '16:9',
                 },
                 style: {
                     type: 'string',
-                    description: 'The style of the images to generate, default is vivid. Default value is vivid. Enum values: vivid, natural',
-                    // enum: ['vivid', 'natural'],
+                    description: 'The style of the images to generate.',
+                    enum: ['vivid', 'natural'],
+                    default: 'vivid',
                 },
             },
             required: ['agent', 'prompts', 'quantity', 'size', 'radio', 'style'],
         },
+        required: ['prompts'],
     },
 
-    func: async (args: Record<string, any>, options?: { signal?: AbortSignal; [key: string]: any }, config?: AgentUserConfig): Promise<ToolResult> => {
+    func: async ({
+        agent: agent_name = 'default',
+        prompts,
+        quantity = 1,
+        size = '1024x1024',
+        radio = '16:9',
+        style = 'vivid',
+    }: { agent: string; prompts: string[]; quantity: number; size: string; radio: string; style: string }, _env: Record<string, any>, config: AgentUserConfig): Promise<ToolResult> => {
         if (!config) {
-            throw new Error('Missing config');
+            return { content: [{ type: 'text', text: 'Missing config' }] };
         }
-        const startTime = Date.now();
-        const { agent: agent_name, prompts, quantity, size, radio, style } = args;
+        if (agent_name === 'dalle') {
+            agent_name = 'openai';
+        }
+        if (agent_name === 'default') {
+            agent_name = config.AI_IMAGE_PROVIDER;
+        }
         log.info(`tool image_gen request start: agent: ${agent_name}`);
-        log.info(`params: ${JSON.stringify(args)}`);
+        log.info(`params: ${JSON.stringify({ agent: agent_name, prompts, quantity, size, radio, style })}`);
         const agent = IMAGE_AGENTS.find(a => a.name === agent_name);
         if (!agent?.enable(config)) {
-            throw new Error(`Image agent ${agent_name} is not available`);
+            return { content: [{ type: 'text', text: `Image agent ${agent_name} is not available` }] };
         }
         const result: ImageResult[] = [];
         for (const prompt of prompts) {
@@ -64,12 +81,19 @@ export default {
             result.push(res);
         }
         log.info(`${agent_name} result: ${JSON.stringify(result)}`);
-        return { content: result, time: ((Date.now() - startTime) / 1e3).toFixed(1) };
+        const type = result[0].url ? 'url' : 'blob';
+        return {
+            content: result.flatMap(r => (r.url || r.raw || []).map(data => ({
+                type: 'image',
+                data_type: type,
+                data,
+                mimeType: 'image/png',
+                text: result[0].text ?? '',
+            }))) as MediaToolResultContent[],
+        };
     },
 
     extra_params: { temperature: 1.2 },
     type: 'text2image',
-    not_send_to_ai: true,
-    buildin: true,
-    result_type: 'image',
+    send_type: 'message',
 };

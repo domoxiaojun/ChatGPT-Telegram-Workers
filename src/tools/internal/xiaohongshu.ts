@@ -1,5 +1,3 @@
-import { ENV } from '../../config/env';
-
 interface SearchNotesParams {
     keyword: string;
     page: number;
@@ -8,7 +6,7 @@ interface SearchNotesParams {
     note_type: 0 | 1 | 2; // 0: 全部, 1: 视频, 2: 图文
 }
 
-async function searchNotes({ keyword, page, sort, note_type, limit = 10 }: SearchNotesParams) {
+async function searchNotes({ keyword, page, sort, note_type, limit = 10 }: SearchNotesParams, cookie: string) {
     const body = {
         keyword,
         page,
@@ -20,14 +18,11 @@ async function searchNotes({ keyword, page, sort, note_type, limit = 10 }: Searc
         geo: '',
         image_formats: ['jpg', 'webp', 'avif'],
     };
-    if (!ENV.PLUGINS_ENV.XHS_COOKIE) {
-        throw new Error('Xiaohongshu cookie is not set, please set it in the environment variables: PLUGIN_ENV_XHS_COOKIE');
-    }
     const res = await fetch('https://edith.xiaohongshu.com/api/sns/web/v1/search/notes', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Cookie': ENV.PLUGINS_ENV.XHS_COOKIE,
+            'Cookie': cookie,
         },
         body: JSON.stringify(body),
     }).then(res => res.json());
@@ -36,7 +31,6 @@ async function searchNotes({ keyword, page, sort, note_type, limit = 10 }: Searc
         throw new Error(res.msg || 'Failed to search notes');
     }
     // console.debug(JSON.stringify(res.data, null, 2));
-
     const notes = res.data?.items?.slice(0, limit).map((note: any) => getNoteDetail(note.id, note.xsec_token));
     return Promise.all(notes);
 }
@@ -97,20 +91,19 @@ export default {
             required: ['keyword'],
         },
     },
-    func: async ({ keyword, page = 1, sort = 'general', note_type = 2, limit = 10 }: any) => {
-        const startTime = Date.now();
-        let notes, time;
+    func: async ({ keyword, page = 1, sort = 'general', note_type = 2, limit = 10 }: any, { XHS_COOKIE }: { XHS_COOKIE: string }) => {
+        if (!XHS_COOKIE) {
+            return { content: [{ type: 'text', text: 'Xiaohongshu cookie is not set, please set it in the environment variables: PLUGIN_ENV_XHS_COOKIE' }] };
+        }
+        let notes;
         let errorMsg = '';
         try {
-            notes = await searchNotes({ keyword, page, sort, note_type, limit });
+            notes = await searchNotes({ keyword, page, sort, note_type, limit }, XHS_COOKIE);
         } catch (error) {
             errorMsg = (error as Error).message;
-        } finally {
-            const endTime = Date.now();
-            time = `${((endTime - startTime) / 1000).toFixed(2)}s`;
         }
 
-        return { content: notes ?? errorMsg, time };
+        return { content: [{ type: 'text', text: JSON.stringify(notes) ?? errorMsg }] };
     },
     buildin: true,
     prompt: 'You should comprehensively summarize the content of the post in detail, without omitting any details, and attribute quotations with proper citations.',
