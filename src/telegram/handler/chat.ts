@@ -8,12 +8,12 @@ import type { ChosenInlineSender } from '../utils/send';
 import type { UnionData } from '../utils/tg_utils';
 import type { MessageHandler } from './types';
 import { APICallError } from 'ai';
-import { loadASRLLM, loadChatLLM, loadImageGen, loadTTSLLM } from '../../agent';
+import { loadASRLLM, loadChatLLM, loadImageGen, loadTTSLLM, TTS_AGENTS } from '../../agent';
 import { loadHistory, requestCompletionsFromLLM } from '../../agent/chat';
 import { ENV } from '../../config/env';
 import { clearLog, getLog, log } from '../../log';
 import { imageToBase64String } from '../../utils/image';
-import { convertOgaToMp3 } from '../../utils/others/audio';
+import { convertAudio } from '../../utils/others/audio';
 import { createTelegramBotAPI } from '../api';
 import { escape } from '../utils/md2tgmd';
 import { MessageSender, sendAction, TelegraphSender } from '../utils/send';
@@ -47,7 +47,6 @@ export async function chatWithLLM(
         }
         return streamSender.end!(answer.content);
     } catch (e) {
-        streamSender.clearHeartbeat!();
         log.error((e as Error).message, (e as Error).stack);
         let errMsg = '';
         if ((e as Error).name === 'AbortError') {
@@ -87,8 +86,8 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
             streamSender.clearHeartbeat!();
             const sender = streamSender.sender as MessageSender;
             log.error((e as Error).stack);
-            if ((e as Error).message.includes(' 524')) {
-                return sender.sendRichText(`\`\`\`Error\nOccur 524 error.\n\`\`\``, undefined, 'tip');
+            if ((e as Error).message.includes('524')) {
+                return sender.sendRichText(`\`\`\`Error\nMaybe occur 524 error, see logs for more details.\n\`\`\``, undefined, 'tip');
             }
             const errMsg = (e as Error).message.replaceAll(context.SHARE_CONTEXT.botToken, '[REDACTED]').substring(0, 2048);
             return sender.sendRichText(`\`\`\`Error\n${errMsg}\n\`\`\``, undefined, 'tip');
@@ -186,7 +185,7 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
                     if (!response.body) {
                         throw new Error('Failed to fetch audio data');
                     }
-                    audioData = await convertOgaToMp3(response, 'base64') as string;
+                    audioData = await convertAudio({ file: response, target: 'base64' }) as string;
                 }
                 params.content.push({
                     type: 'file',
@@ -520,6 +519,7 @@ async function handleTextToImage(
     streamSender: ChatStreamTextHandler,
     handleKey: string,
 ): Promise<Response> {
+    streamSender.clearHeartbeat!();
     const agent = loadImageGen(context.USER_CONFIG);
     const sender = streamSender.sender!;
     if (!agent) {
@@ -558,10 +558,11 @@ async function handleAudio(
     const otherText = (params.content as TextPart[]).filter(c => c.type === 'text').map(c => c.text).join('\n').trim();
     const resp = await chatWithLLM(message, { role: 'user', content: `[AUDIO TRANSCRIPTION]: ${text}\n${otherText}` }, context, null, streamSender, isMiddle);
     if (isMiddle) {
-        const voice = await tts(resp as unknown as string, context.USER_CONFIG);
+        const audio = await tts(resp as unknown as string, context.USER_CONFIG);
+        console.log(`audio size: ${(audio.size / 1024 / 1024).toFixed(3)}mb`);
         ENV.HIDE_MIDDLE_MESSAGE && sender.api.deleteMessage({ chat_id: sender.context.chat_id, message_id: sender.context.message_id! });
         sendAction(context.SHARE_CONTEXT.botToken, sender.context.chat_id, 'upload_voice');
-        return sender.sendVoice(voice);
+        return sender.sendVoice(audio);
     }
     return resp;
 }
@@ -573,6 +574,7 @@ async function handleTextToAudio(
     streamSender: ChatStreamTextHandler,
     handleKey: string,
 ): Promise<Response> {
+    streamSender.clearHeartbeat!();
     let text = params.content as string;
     const sender = streamSender.sender!;
     if (handleKey === 'text:audio') {
@@ -580,9 +582,10 @@ async function handleTextToAudio(
         text = await chatWithLLM(message, params, context, null, streamSender, true) as string;
         !ENV.HIDE_MIDDLE_MESSAGE && streamSender.send('Chat with LLM done');
     }
-    const voice = await tts(text, context.USER_CONFIG);
+    const audio = await tts(text, context.USER_CONFIG);
+    console.log(`audio size: ${(audio.size / 1024 / 1024).toFixed(3)}mb`);
     sendAction(context.SHARE_CONTEXT.botToken, sender.context.chat_id, 'upload_voice');
-    const resp = await sender.sendVoice(voice, context.USER_CONFIG.AUDIO_CONTAINS_TEXT ? text : undefined);
+    const resp = await sender.sendVoice(audio, context.USER_CONFIG.AUDIO_CONTAINS_TEXT ? text : undefined);
     if (resp.ok) {
         return sender.api.deleteMessage({ chat_id: sender.context.chat_id, message_id: sender.context.message_id! });
     }
@@ -626,7 +629,7 @@ function injectHistory(context: WorkerContext, result: UnionData, nextType: stri
 function tts(text: string, config: AgentUserConfig) {
     const agent = loadTTSLLM(config);
     if (!agent) {
-        throw new Error('TTS agent not found');
+        throw new Error(`TTS agent ${config.AI_TTS_PROVIDER} not found, available: ${TTS_AGENTS.map(a => a.name).join(', ')}`);
     }
     return agent.request(text, config);
 }
@@ -638,7 +641,7 @@ async function asr(audio: Blob, config: AgentUserConfig) {
     }
     if (agent.name === 'oailike') {
         const start = Date.now();
-        audio = await convertOgaToMp3(audio, 'blob') as Blob;
+        audio = await convertAudio({ file: audio, target: 'blob' }) as Blob;
         log.info(`transform audio time: ${((Date.now() - start) / 1000).toFixed(2)}s`);
     }
     return agent.request(audio, config);

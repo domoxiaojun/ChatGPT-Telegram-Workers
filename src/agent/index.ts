@@ -5,10 +5,10 @@ import { getTools } from '../tools';
 import { Anthropic } from './anthropic';
 import { AzureChatAI, AzureImageAI } from './azure';
 import { Cohere } from './cohere';
-import { Google, GoogleImage } from './google';
+import { Google, GoogleImage, GoogleTTS } from './google';
 import { KlingAI } from './kling';
 import { Mistral } from './mistralai';
-import { Dalle, OpenAI, OpenAIASR, OpenAITTS } from './openai';
+import { Dalle, OpenAI, OpenAIASR, OpenAIFM, OpenAITTS } from './openai';
 import { OpenAILike, OpenAILikeASR, OpenAILikeImage, OpenAILikeTTS } from './openailike';
 import { Vertex, VertexImage } from './vertex';
 import { WorkersChat, WorkersImage } from './workersai';
@@ -83,7 +83,9 @@ export function loadASRLLM(context: AgentUserConfig) {
 
 export const TTS_AGENTS: TTSAgent[] = [
     new OpenAITTS(),
+    new OpenAIFM(),
     new OpenAILikeTTS(),
+    new GoogleTTS(),
 ];
 
 export function loadTTSLLM(context: AgentUserConfig) {
