@@ -626,7 +626,7 @@ function injectHistory(context: WorkerContext, result: UnionData, nextType: stri
     context.MIDDLE_CONTEXT.history.push({ role: 'user', content: result.text || '', ...(result.url && result.url.length > 0 && { images: result.url }) });
 }
 
-function tts(text: string, config: AgentUserConfig) {
+export async function tts(text: string, config: AgentUserConfig): Promise<Blob> {
     const agent = loadTTSLLM(config);
     if (!agent) {
         throw new Error(`TTS agent ${config.AI_TTS_PROVIDER} not found, available: ${TTS_AGENTS.map(a => a.name).join(', ')}`);

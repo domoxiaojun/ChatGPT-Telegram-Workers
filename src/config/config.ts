@@ -213,6 +213,11 @@ export class EnvironmentConfig {
     MESSAGE_COMPATIBLE = true;
     // whether to display search source
     ENABLE_SEARCH_SOURCE = true;
+
+    // TODO: override command auth, key is command, value is auth role, support: 'creator', 'administrator', null
+    // COMMAND_AUTH_OVERRIDE: Record<string, string[]> = {
+    //     '/tts': ['creator', 'administrator'],
+    // };
 }
 
 // -- 通用配置 --

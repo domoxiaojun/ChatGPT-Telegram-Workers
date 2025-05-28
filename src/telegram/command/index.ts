@@ -26,6 +26,7 @@ import {
     SetEnvsCommandHandler,
     StartCommandHandler,
     SystemCommandHandler,
+    TTSCommandHandler,
     VersionCommandHandler,
 } from './system';
 
@@ -47,6 +48,7 @@ const SYSTEM_COMMANDS: CommandHandler[] = [
     new KlingAICommandHandler(),
     new HistoryCommandHandler(),
     new MapCommandHandler(),
+    new TTSCommandHandler(),
 ];
 
 // const commandHanders: any[] = [
