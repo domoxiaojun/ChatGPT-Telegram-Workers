@@ -63,6 +63,27 @@ abstract class RenewConfig implements CommandHandler {
     };
 }
 
+function tokenizeSubcommand(subcommand: string): { flags: { flag: string; value: string | undefined }[]; remainingText: string } {
+    const regex = /^\s*-(\w+)(?:\s+("[^"]*"|'[^']*'|\S+|$)|$)/;
+    const flags: { flag: string; value: string | undefined }[] = [];
+    let text = subcommand;
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(text)) !== null) {
+        const flag = match[1];
+        let value = match[2];
+        if ((value?.startsWith('"') && value?.endsWith('"')) || (value?.startsWith('\'') && value?.endsWith('\''))) {
+            value = value.slice(1, -1);
+        }
+        flags.push({ flag, value });
+        text = text.slice(match[0].length);
+    }
+
+    const remainingText = text.trim();
+    log.info(`flags: ${JSON.stringify(flags, null, 2)}, remainingText: ${remainingText}`);
+    return { flags, remainingText };
+}
+
 export class ImgCommandHandler implements CommandHandler {
     command = '/img';
     scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
@@ -370,7 +391,7 @@ export class EchoCommandHandler implements CommandHandler {
     };
 }
 
-export class SetCommandHandler extends RenewConfig {
+export class SetCommandHandler extends RenewConfig implements CommandHandler {
     command = '/set';
     relaxAuth = true;
     handle = async (
@@ -386,7 +407,7 @@ export class SetCommandHandler extends RenewConfig {
             }
 
             const { keys, values } = this.parseMappings(context);
-            const { flags, remainingText } = this.tokenizeSubcommand(subcommand);
+            const { flags, remainingText } = tokenizeSubcommand(subcommand);
             const needUpdate = remainingText === '';
             let msg = '';
             const updatedKeys: string[] = [];
@@ -451,27 +472,6 @@ export class SetCommandHandler extends RenewConfig {
         const keys = parseMapping(context.USER_CONFIG.MAPPING_KEY, 'key');
         const values = parseMapping(context.USER_CONFIG.MAPPING_VALUE, 'value');
         return { keys, values };
-    }
-
-    private tokenizeSubcommand(subcommand: string): { flags: { flag: string; value: string | undefined }[]; remainingText: string } {
-        const regex = /^\s*-(\w+)(?:\s+("[^"]*"|'[^']*'|\S+|$)|$)/;
-        const flags: { flag: string; value: string | undefined }[] = [];
-        let text = subcommand;
-        let match: RegExpExecArray | null;
-
-        while ((match = regex.exec(text)) !== null) {
-            const flag = match[1];
-            let value = match[2];
-            if ((value?.startsWith('"') && value?.endsWith('"')) || (value?.startsWith('\'') && value?.endsWith('\''))) {
-                value = value.slice(1, -1);
-            }
-            flags.push({ flag, value });
-            text = text.slice(match[0].length);
-        }
-
-        const remainingText = text.trim();
-        log.info(`/set flags: ${JSON.stringify(flags, null, 2)}, remainingText: ${remainingText}`);
-        return { flags, remainingText };
     }
 
     private async processSubcommand(
@@ -992,14 +992,26 @@ export class TTSCommandHandler implements CommandHandler {
     scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
     needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
-        const text = subcommand.trim();
-        if (text === '') {
+        const { flags, remainingText } = tokenizeSubcommand(subcommand.trim());
+        if (remainingText === '') {
             return sender.sendPlainText('Please input your text');
         }
+        let agentName = context.USER_CONFIG.AI_TTS_PROVIDER;
+        if (agentName === 'openai-fm') {
+            agentName = 'openai';
+        }
+        for (const { flag, value } of flags) {
+            if (flag === 'v') {
+                context.USER_CONFIG[`${agentName.toUpperCase()}_TTS_VOICE`] = value;
+            }
+            if (flag === 'p' && ['google', 'openai'].includes(agentName)) {
+                context.USER_CONFIG[`${agentName.toUpperCase()}_TTS_PROMPT`] = value;
+            }
+        }
         await sender.sendRichText(`>Using agent \`${context.USER_CONFIG.AI_TTS_PROVIDER}\` to generate audio...`, 'MarkdownV2', 'tip');
-        const audio = await tts(text, context.USER_CONFIG);
+        const audio = await tts(remainingText, context.USER_CONFIG);
         sendAction(context.SHARE_CONTEXT.botToken, sender.context.chat_id, 'upload_voice');
-        const resp = await sender.sendVoice(audio, context.USER_CONFIG.AUDIO_CONTAINS_TEXT ? text : undefined);
+        const resp = await sender.sendVoice(audio, context.USER_CONFIG.AUDIO_CONTAINS_TEXT ? remainingText : undefined);
         if (resp.ok) {
             return sender.api.deleteMessage({ chat_id: sender.context.chat_id, message_id: sender.context.message_id! });
         }
