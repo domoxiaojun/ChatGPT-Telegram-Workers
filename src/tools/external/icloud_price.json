@@ -1,18 +1,17 @@
 {
     "schema": {
         "name": "icloud_price",
-        "description": "Retrieve iCloud prices for different countries or regions. Always return the US iCloud price as a reference in case some countries do not have corresponding prices. When users do not specify a country/region, they often want to know the price information for countries/regions such as Turkey, Nigeria, India, and Pakistan, and of course, not just these few countries are supported.",
+        "description": "Retrieve iCloud prices for different countries or regions.",
         "parameters": {
             "type": "object",
             "properties": {
                 "countries": {
                     "type": "string",
-                    "description": "Full country/region English Name to query, separated by |. Example values: 'Japan', 'Turkey|China', 'Nigeria|Turkey|India'"
+                    "description": "Full country/region English Name to query, separated by |. Example values: 'Japan', 'Turkey|China', 'Nigeria|Turkey|India'",
+                    "default": "Turkey|Nigeria|India"
                 }
             },
-            "required": [
-                "countries"
-            ]
+            "required": []
         }
     },
     "payload": {
@@ -33,7 +32,7 @@
         ],
         "dynamic_patterns": [
             {
-                "pattern": "^\\s*(United States|Turkey|Nigeria|Egypt|{{countries}})[\\s\\S]+",
+                "pattern": "^\\s*({{countries=Turkey|Nigeria|India}})[\\s\\S]+",
                 "clean": [["^\\s*([\\w\\s]+?)\\d+", "$1"]]
             }
         ]

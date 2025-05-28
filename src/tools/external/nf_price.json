@@ -1,18 +1,17 @@
 {
     "schema": {
         "name": "nf_price",
-        "description": "Query Netflix prices in different regions. When users do not specify a country/region, they often want to know the price information for countries/regions such as Turkey, Nigeria, India, and Pakistan, and of course, not just these few countries are supported.",
+        "description": "Query Netflix prices in different regions.",
         "parameters": {
             "type": "object",
             "properties": {
                 "country": {
                     "type": "string",
-                    "description": "The English abbreviation of the countries or regions to be queried, default is 'US|TR|NG|EG', separated by |. Example values: 'TR', 'US|UK', 'NG|IN|EG'"
+                    "description": "The English abbreviation of the countries or regions to be queried, default is 'US|TR|NG|EG', separated by |. Example values: 'TR', 'US|UK', 'NG|IN|EG'",
+                    "default": "US|TR|NG|EG"
                 }
             },
-            "required": [
-                "country"
-            ]
+            "required": []
         }
     },
     "payload": {
@@ -26,7 +25,7 @@
         "type": "webclean",
         "dynamic_patterns": [
             {
-                "pattern": "\\{\"country_code\":\"(US|TR|NG|EG|{{country}})[\\s\\S]+?\\]\\s*?\\}"
+                "pattern": "\\{\"country_code\":\"({{country=US|TR|NG|EG}})[\\s\\S]+?\\]\\s*?\\}"
             }
         ]
     },

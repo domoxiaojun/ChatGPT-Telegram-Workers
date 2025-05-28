@@ -6,7 +6,7 @@ export default {
         description: 'Google veo video generation tool, you can specify the aspect ratio and person generation.',
         parameters: {
             type: 'object',
-            required: ['prompt', 'aspectRatio', 'personGeneration'],
+            required: ['prompt'],
             properties: {
                 prompt: {
                     type: 'string',
@@ -24,6 +24,16 @@ export default {
                     enum: ['allow_adult', 'dont_allow'],
                     default: 'dont_allow',
                 },
+                durationSeconds: {
+                    type: 'number',
+                    description: 'The duration of the video; minimum 5, maximum 8',
+                    default: 5,
+                },
+                numberOfVideos: {
+                    type: 'number',
+                    description: 'The number of videos to generate; minimum 1, maximum 4',
+                    default: 1,
+                },
             },
         },
     },
@@ -35,7 +45,15 @@ async function generateVideo({
     prompt,
     aspectRatio = '16:9',
     personGeneration = 'dont_allow',
-}: { prompt: string; aspectRatio: string; personGeneration: string }, _env: Record<string, any>, config: AgentUserConfig) {
+    durationSeconds = 5,
+    numberOfVideos = 1,
+}: {
+    prompt: string;
+    aspectRatio: string;
+    personGeneration: string;
+    durationSeconds: number;
+    numberOfVideos: number;
+}, _env: Record<string, any>, config: AgentUserConfig) {
     const model = 'veo-2.0-generate-001';
     const url = `${config.GOOGLE_API_BASE}/models/${model}:predictLongRunning?key=${config.GOOGLE_API_KEY}`;
     const resp = await fetch(url, {
@@ -50,6 +68,15 @@ async function generateVideo({
             parameters: {
                 aspectRatio,
                 personGeneration,
+                durationSeconds,
+                sampleCount: numberOfVideos,
+                // negativePrompt: temporary not support
+                // enhancePrompt: gemini api not support
+                // fps: gemini api not support
+                // outputGcsUri: gemini api not support
+                // seed: gemini api not support
+                // resolution: gemini api not support
+                // pubsubTopic: gemini api not support
             },
         }),
     });
@@ -66,7 +93,7 @@ async function generateVideo({
     const operationUrl = `${config.GOOGLE_API_BASE}/${op_name}?key=${config.GOOGLE_API_KEY}`;
     // max wait time: 15 minutes
     const MAX_TIME = 15 * 60 * 1000;
-    let duration = 0;
+    let elapsedTime = 0;
     const video_urls = [];
     while (true) {
         const resp = await fetch(operationUrl);
@@ -80,8 +107,8 @@ async function generateVideo({
             }
         }
         await new Promise(resolve => setTimeout(resolve, 10_000));
-        duration += 10_000;
-        if (duration > MAX_TIME) {
+        elapsedTime += 10_000;
+        if (elapsedTime > MAX_TIME) {
             throw new Error(`Failed to generate video: timeout, please see the operation in log`);
         }
     }

@@ -382,7 +382,7 @@ async function handleToolResult({ tools, toolResults, onStream, config }: { tool
         // TODO: 非流式模式下，无法直接发送工具结果
         sender && await sendToolResult(need_send_result, sender, config);
         need_send_result.forEach((result) => {
-            result.content = [{ type: 'text', text: 'tool result has been sent to user.' }];
+            result.content = [{ type: 'text', text: 'data has been sent to user.' }];
         });
     }
 }

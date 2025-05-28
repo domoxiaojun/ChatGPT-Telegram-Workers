@@ -70,18 +70,22 @@ export default {
                     items: { type: 'string' },
                     description: `Keyword list for search. For example: ['Python', 'machine learning', 'latest developments']. The list should have a length of at least 3 and maximum of 4. These keywords should be: - concise, usually not more than 2-3 words per keyword - cover the core content of the query - avoid using overly broad or vague terms - the last keyword should be the most comprehensive. Also, do not generate keywords based on current time.`,
                 },
+                max_length: {
+                    type: 'number',
+                    description: 'The maximum number of search results to return.',
+                    default: 12,
+                },
             },
             required: ['keywords'],
             // additionalProperties: false,
         },
     },
 
-    func: async (args: any, options?: { signal?: AbortSignal }): Promise<ToolResult> => {
-        const { keywords } = args;
+    func: async ({ keywords, max_length = 12 }: { keywords: string[]; max_length: number }, options?: { signal?: AbortSignal }): Promise<ToolResult> => {
         log.info(`tool duckduckgo request start`);
         let result;
         try {
-            result = await search(keywords.join(' '), 12, options?.signal);
+            result = await search(keywords.join(' '), max_length, options?.signal);
             log.info(`tool duckduckgo request end`);
         } catch (e) {
             console.error(e);

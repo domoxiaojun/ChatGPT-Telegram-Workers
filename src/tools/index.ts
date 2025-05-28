@@ -39,7 +39,10 @@ export function executeTool(toolName: string, env: Record<string, any>, _config:
             signal = AbortSignal.timeout(ENV.TOOL_TIMEOUT * 1000);
         }
         let filledPayload = JSON.stringify(tools[toolName].payload)
-            .replace(/\{\{([^}]+)\}\}/g, (match, p1) => args[p1] || match);
+            .replace(/\{\{([^}]+)\}\}/g, (match, p1) => {
+                const [key, ...defaultValue] = p1.split('=');
+                return args[key] || defaultValue.join('=') || match;
+            });
 
         (tools[toolName].required || []).forEach((key: string) => {
             if (!env[key]) {
@@ -251,7 +254,10 @@ function injectPatterns(handler: ToolHandler, args: Record<string, string>) {
         handler.patterns = [];
     }
     for (const p of dynamic_patterns) {
-        p.pattern = p?.pattern?.replace(/\{\{([^}]+)\}\}/g, (match, p1) => args[p1] || match);
+        p.pattern = p?.pattern?.replace(/\{\{([^}]+)\}\}/g, (match, p1) => {
+            const [key, ...defaultValue] = p1.split('=');
+            return args[key] || defaultValue.join('=') || match;
+        });
         handler.patterns.push(p);
     }
     log.debug(JSON.stringify(handler.patterns, null, 2));
