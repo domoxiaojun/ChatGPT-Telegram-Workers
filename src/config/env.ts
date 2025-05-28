@@ -13,6 +13,7 @@ import {
     DefineKeys,
     EnvironmentConfig,
     ExtraUserConfig,
+    FishConfig,
     GeminiConfig,
     MistralConfig,
     OpenAIConfig,
@@ -37,7 +38,8 @@ export type AgentUserConfig = Record<string, any> &
     OpenAILikeConfig &
     ExtraUserConfig &
     VertexConfig &
-    XAIConfig;
+    XAIConfig &
+    FishConfig;
 
 function createAgentUserConfig(): AgentUserConfig {
     return Object.assign(
@@ -56,6 +58,7 @@ function createAgentUserConfig(): AgentUserConfig {
         new ExtraUserConfig(),
         new VertexConfig(),
         new XAIConfig(),
+        new FishConfig(),
     );
 }
 

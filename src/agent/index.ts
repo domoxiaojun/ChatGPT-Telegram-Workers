@@ -5,6 +5,7 @@ import { getTools } from '../tools';
 import { Anthropic } from './anthropic';
 import { AzureChatAI, AzureImageAI } from './azure';
 import { Cohere } from './cohere';
+import { FishTTS } from './fish';
 import { Google, GoogleImage, GoogleTTS } from './google';
 import { KlingAI } from './kling';
 import { Mistral } from './mistralai';
@@ -86,6 +87,7 @@ export const TTS_AGENTS: TTSAgent[] = [
     new OpenAIFM(),
     new OpenAILikeTTS(),
     new GoogleTTS(),
+    new FishTTS(),
 ];
 
 export function loadTTSLLM(context: AgentUserConfig) {

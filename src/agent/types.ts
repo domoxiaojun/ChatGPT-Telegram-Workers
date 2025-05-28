@@ -70,7 +70,7 @@ export interface Agent<AgentRequest> {
     modelKey: string;
     enable: (context: AgentUserConfig) => boolean;
     request: AgentRequest;
-    model?: (ctx: AgentUserConfig, params?: LLMChatRequestParams) => string;
+    model: (ctx: AgentUserConfig, params?: LLMChatRequestParams) => string;
     models?: (ctx: AgentUserConfig) => Promise<string[]>;
     render?: (result: Response | GeneratedImage[] | string[], prompt: string) => Promise<ImageResult>;
 }
@@ -83,22 +83,7 @@ export interface ImageResult extends Pick<UnionData, 'url' | 'raw' | 'text'> {
 
 export type ASRAgentRequest = (audio: Blob, context: AgentUserConfig) => Promise<string>;
 
-export interface ASRAgent {
-    name: string;
-    modelKey: string;
-    enable: (context: AgentUserConfig) => boolean;
-    request: ASRAgentRequest;
-    model: (ctx: AgentUserConfig) => string;
-}
 export type TTSAgentRequest = (text: string, context: AgentUserConfig) => Promise<Blob>;
-
-export interface TTSAgent {
-    name: string;
-    modelKey: string;
-    enable: (context: AgentUserConfig) => boolean;
-    request: TTSAgentRequest;
-    model: (ctx: AgentUserConfig) => string;
-}
 
 export type Image2ImageAgentRequest = (message: any, context: AgentUserConfig) => Promise<string | string[] | Blob>;
 
@@ -113,6 +98,10 @@ export interface Image2ImageAgent {
 export type ChatAgent = Agent<ChatAgentRequest>;
 
 export type ImageAgent = Agent<ImageAgentRequest>;
+
+export type TTSAgent = Agent<TTSAgentRequest>;
+
+export type ASRAgent = Agent<ASRAgentRequest>;
 
 export interface GeneratedImage {
     base64: string;

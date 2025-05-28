@@ -79,9 +79,8 @@ function tokenizeSubcommand(subcommand: string): { flags: { flag: string; value:
         text = text.slice(match[0].length);
     }
 
-    const remainingText = text.trim();
-    log.info(`flags: ${JSON.stringify(flags, null, 2)}, remainingText: ${remainingText}`);
-    return { flags, remainingText };
+    log.info(`flags: ${JSON.stringify(flags, null, 2)}, remainingText: ${text}`);
+    return { flags, remainingText: text.trim() };
 }
 
 export class ImgCommandHandler implements CommandHandler {
@@ -992,7 +991,11 @@ export class TTSCommandHandler implements CommandHandler {
     scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
     needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
-        const { flags, remainingText } = tokenizeSubcommand(subcommand.trim());
+        if (ENV.EXTRA_MESSAGE_CONTEXT) {
+            const reply_text = message.reply_to_message?.text || message.reply_to_message?.caption || '';
+            reply_text && (subcommand = subcommand.substring(0, subcommand.length - (reply_text.length + '\n> '.length)));
+        }
+        const { flags, remainingText } = tokenizeSubcommand(subcommand);
         if (remainingText === '') {
             return sender.sendPlainText('Please input your text');
         }
@@ -1008,7 +1011,7 @@ export class TTSCommandHandler implements CommandHandler {
                 context.USER_CONFIG[`${agentName.toUpperCase()}_TTS_PROMPT`] = value;
             }
         }
-        await sender.sendRichText(`>Using agent \`${context.USER_CONFIG.AI_TTS_PROVIDER}\` to generate audio...`, 'MarkdownV2', 'tip');
+        await sender.sendPlainText(`Using agent ${context.USER_CONFIG.AI_TTS_PROVIDER} to generate audio...`);
         const audio = await tts(remainingText, context.USER_CONFIG);
         sendAction(context.SHARE_CONTEXT.botToken, sender.context.chat_id, 'upload_voice');
         const resp = await sender.sendVoice(audio, context.USER_CONFIG.AUDIO_CONTAINS_TEXT ? remainingText : undefined);

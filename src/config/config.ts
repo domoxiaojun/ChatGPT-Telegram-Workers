@@ -502,6 +502,17 @@ export class XAIConfig {
     XAI_MODELS_API = '/models';
 }
 
+export class FishConfig {
+    // Fish api key
+    FISH_API_KEY: string | null = null;
+    // Fish api base
+    FISH_API_BASE = ' https://api.fish.audio/v1';
+    // Fish reference id, if not set, will use tts model
+    FISH_TTS_VOICE = '';
+    // Fish TTS Model
+    FISH_TTS_MODEL = 'speech-1.6';
+}
+
 export class DefineKeys {
     DEFINE_KEYS: string[] = [];
 }
