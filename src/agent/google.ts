@@ -237,7 +237,7 @@ function extractUrls(str: string, isVertex = false): { data?: { type: string; ur
         txt: 'text/plain',
         md: 'text/markdown',
     };
-    const urlRegex = new RegExp(`https?://\\S+\\.(${Object.keys(supportTypes).join('|')})`, 'g');
+    const urlRegex = new RegExp(`https?://\\S+\\.(${Object.keys(supportTypes).join('|')})$`, 'g');
     const matches = [...str.matchAll(urlRegex)];
     if (isVertex) {
         matches.push(...str.matchAll(/https?:\/\/(youtu\.be|www\.youtube\.com)\/.+/g));

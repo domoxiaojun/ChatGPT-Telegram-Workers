@@ -223,17 +223,21 @@ export async function warpLLMParams(params: { messages: CoreMessage[]; model: La
     const tools = await getTools();
 
     const messages = params.messages.at(-1) as CoreUserMessage;
-    let tool = typeof messages.content === 'string'
+    const tool = typeof messages.content === 'string'
         ? await validTools(context)
         : undefined;
 
-    const activeTools = tool?.activeToolAlias.map((t: string) => tools[t]?.schema?.name || t) || [];
-    // if vertex use search grounding, do not use other tools
-    if (params.model.provider.startsWith('google') && (context.SEARCH_GROUNDING || context.USE_GOOGLE_BUILDIN.length > 0)) {
-        activeTools.length = 0;
-        tool = undefined;
-        // only use first system message and last user message
-        // params.messages = [params.messages.find(p => p.role === 'system')!, params.messages.findLast(p => p.role === 'user')!];
+    let activeTools = tool?.activeToolAlias.map((t: string) => tools[t]?.schema?.name || t) || [];
+    // // if vertex use search grounding, do not use other tools
+    // if (params.model.provider.startsWith('google') && (context.SEARCH_GROUNDING || context.USE_GOOGLE_BUILDIN.length > 0)) {
+    //     activeTools = [];
+    //     tool = undefined;
+    //     // only use first system message and last user message
+    //     // params.messages = [params.messages.find(p => p.role === 'system')!, params.messages.findLast(p => p.role === 'user')!];
+    // }
+    // only gemini-2 support google_buildin
+    if (!params.model.modelId.startsWith('gemini-2')) {
+        activeTools = activeTools.filter(t => t !== 'google_buildin');
     }
 
     let toolChoice;
