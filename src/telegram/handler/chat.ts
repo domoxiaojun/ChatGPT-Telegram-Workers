@@ -647,7 +647,7 @@ async function asr(audio: Blob, config: AgentUserConfig) {
 
 function mergeLogMessages(text: string, config: AgentUserConfig | undefined): string {
     if (ENV.LOG_POSITION_ON_TOP) {
-        return `${config ? getLog(config) : ''}\n${text.trim()}`;
+        return `${config ? getLog(config) : ''}\n\n${text.trim()}`;
     }
-    return `${text.trim()}\n${config ? getLog(config) : ''}`;
+    return `${text.trim()}\n\n${config ? getLog(config) : ''}`;
 }
