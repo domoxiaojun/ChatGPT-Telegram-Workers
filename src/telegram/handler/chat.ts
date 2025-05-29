@@ -119,8 +119,6 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
             return params;
 
         const urls = await getTelegramFile(id, context.SHARE_CONTEXT.botToken, 'url') as string[];
-        log.info(`File URLs:\n${urls.join('\n')}`);
-
         if (urls.length === 0)
             return params;
 
@@ -574,7 +572,6 @@ async function handleTextToAudio(
     streamSender: ChatStreamTextHandler,
     handleKey: string,
 ): Promise<Response> {
-    streamSender.clearHeartbeat!();
     let text = params.content as string;
     const sender = streamSender.sender!;
     if (handleKey === 'text:audio') {
@@ -586,6 +583,7 @@ async function handleTextToAudio(
     console.log(`audio size: ${(audio.size / 1024 / 1024).toFixed(3)}mb`);
     sendAction(context.SHARE_CONTEXT.botToken, sender.context.chat_id, 'upload_voice');
     const resp = await sender.sendVoice(audio, context.USER_CONFIG.AUDIO_CONTAINS_TEXT ? text : undefined);
+    streamSender.clearHeartbeat!();
     if (resp.ok) {
         return sender.api.deleteMessage({ chat_id: sender.context.chat_id, message_id: sender.context.message_id! });
     }

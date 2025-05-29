@@ -174,6 +174,35 @@ export class EnvironmentConfig {
     // qstash timeout
     // free account max timeout 15m
     QSTASH_TIMEOUT = '15m';
+
+    FISH_REFERENCE_IDS: Record<string, string> = {
+        '丁真': '54a5170264694bfc8e9ad98df7bd89c3',
+        '雷军': '4462fa28f3824bff808a94a6075570e5',
+        '小明剑魔': '4f77d5137e15401b96617895a2275923',
+        '央视配音': '59cb5986671546eaa6ca8ae6f29f6d22',
+        '麦当劳': '4066d617322e41abb30ed70eaeaf273f',
+        '赛马娘': '0eb38bc974e1459facca38b359e13511',
+        '郑翔洲': '63393102cf1248849477da56ee5dc3ae',
+        '蔡徐坤': 'e4642e5edccd4d9ab61a69e82d4f8a14',
+        '女大学生': '5c353fdb312f4888836a9a5680099ef0',
+        '董宇辉': '8f454f665d214e4284ba05f703b63960',
+        '黑手': 'f7561ff309bd4040a59f1e600f4f4338',
+        '奶龙(效果最好的一个)': '3d1cb00d75184099992ddbaf0fdd7387',
+        '陶矜': 'acb16651a5e14be89b7826a2e24687cd',
+        '邓紫琪': '3b55b3d84d2f453a98d8ca9bb24182d6',
+        '郭德纲': '4914b8e04e2148118c91f322d409ccc6',
+        '毕业季温情女学生': 'a1417155aa234890aab4a18686d12849',
+        '女主播': '57eab548c7ed4ddc974c4c153cb015b2',
+        '影视解说': 'b4bdf5dc66004241a21ff2df165bf442',
+        '麦克阿瑟': '405736979e244634914add64e37290b0',
+        '甜美女主播': 'e752df7d20cd4576af9a207520349a33',
+        '男科医生': '610ab13942834060ba4f3fbd1ca94aa6',
+        '台灣彭總 新聲2025': '9f3de3329541472d9b16f9ac2c345351',
+        '懒羊羊': '131c6b3a889543139680d8b3aa26b98d',
+        '骚气御姐音': 'f44181a3d6d444beae284ad585a1af37',
+        '刘德华': 'cb03a4a3ff6a4784b319cde85a07e31c',
+    };
+
     // Only relax /set command temporarily modifies permissions
     RELAX_AUTH_KEYS: string[] = [];
     // inline query send interval
@@ -511,6 +540,7 @@ export class FishConfig {
     FISH_TTS_VOICE = '';
     // Fish TTS Model
     FISH_TTS_MODEL = 'speech-1.6';
+    FISH_TTS_EXTRA_PARAMS: Record<string, any> = {};
 }
 
 export class DefineKeys {
