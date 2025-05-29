@@ -11,19 +11,17 @@
                 },
                 "country": {
                     "type": "string",
-                    "description": "The country code for App Store search.",
+                    "description": "The country code for App Store search. Default: 'us'",
                     "default": "us"
                 },
                 "entity": {
                     "type": "string",
-                    "description": "Types of search software, software means ios app, iPadSoftware means ipad app, macSoftware means mac app.",
+                    "description": "Types of search software, software means ios app, iPadSoftware means ipad app, macSoftware means mac app. Default: 'software'",
                     "enum": ["software", "iPadSoftware", "macSoftware"],
                     "default": "software"
                 }
             },
-            "required": [
-                "app_name"
-            ]
+            "required": ["app_name"]
         }
     },
     "payload": {

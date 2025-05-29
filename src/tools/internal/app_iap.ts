@@ -1,14 +1,14 @@
 export default {
     schema: {
         name: 'app_iap',
-        description: 'Retrive detailed in-app purchase information based on country code, app id. You should calculate the price list that the user wants to see by combining the exchange rate.',
+        description: 'Retrive multiple detailed in-app purchase information based on country code, app id. You should calculate the price list that the user wants to see by combining the exchange rate.',
         parameters: {
             type: 'object',
             properties: {
                 countries: {
                     type: 'array',
                     items: { type: 'string' },
-                    description: 'The country code list for App Store search.',
+                    description: 'The country code list for App Store search, default: ["us", "tr", "ng", "eg"]',
                     default: ['us', 'tr', 'ng', 'eg'],
                 },
                 trackId: {

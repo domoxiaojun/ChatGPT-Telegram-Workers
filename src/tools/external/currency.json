@@ -7,12 +7,12 @@
             "properties": {
                 "base_currency": {
                     "type": "string",
-                    "description": "The base currency, needs English lowercase. Default value is 'cny'",
+                    "description": "The base currency, needs English lowercase. Default: 'cny'",
                     "default": "cny"
                 },
                 "exchange_currencies": {
                     "type": "string",
-                    "description": "Currency names for which exchange rates need to be retrieved, English lowercase. Multiple currencies separated by |.",
+                    "description": "Currency names for which exchange rates need to be retrieved, English lowercase. Multiple currencies separated by |. Default: 'usd|try|ngn'",
                     "default": "usd|try|ngn"
                 }
             },
