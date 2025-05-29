@@ -137,7 +137,7 @@ function clearTimeoutID(timeoutID: any) {
         clearTimeout(timeoutID);
 }
 
-export async function streamHandler(stream: AsyncIterable<any>, contentExtractor: (data: any) => string | null, onStream: ChatStreamTextHandler, messageInfo: MessageInfo): Promise<string> {
+export async function streamHandler(stream: AsyncIterable<any>, contentExtractor: ((data: any) => string | null), onStream: ChatStreamTextHandler, messageInfo: MessageInfo): Promise<string> {
     log.info(`start handle stream`);
 
     let lengthDelta = 0;
@@ -203,8 +203,7 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
             onChunk: middleware.onChunk as (data: any) => void,
         });
 
-        const contentExtractor = thinkingExtractor(messageInfo);
-        contentFull = await streamHandler(stream.fullStream, contentExtractor, onStream, messageInfo);
+        contentFull = await streamHandler(stream.fullStream, thinkingExtractor(messageInfo), onStream, messageInfo);
         responseMessages = messageInfo.occured_error ? [{ role: 'assistant', content: contentFull }] : (await stream.response).messages;
         contentFull = messageInfo.occured_error ? contentFull : metaDataExtractor(await stream.providerMetadata, model.provider, contentFull);
     } else {
@@ -224,6 +223,9 @@ function thinkingExtractor(messageInfo: MessageInfo) {
     return (data: TextStreamPart<any>) => {
         switch (data.type) {
             case 'reasoning':
+                if (!ENV.SHOW_THINKING_TEXT) {
+                    return '';
+                }
                 if (!thinkingStart) {
                     thinkingStart = true;
                     thinkingStartTime = Date.now();
@@ -238,7 +240,8 @@ function thinkingExtractor(messageInfo: MessageInfo) {
                     thinkingStart = false;
                     const thinkingTime = ((Date.now() - thinkingStartTime!) / 1e3).toFixed(1);
                     messageInfo.content = messageInfo.content
-                        .replace(thinkingTag, `>\`Thought for ${thinkingTime} seconds\``);
+                        .replace(thinkingTag, `>\`Thought for ${thinkingTime} seconds\``)
+                        .replace(/(\n>)*$/g, '');
                     return `\n>✹\n${data.type === 'text-delta' ? data.textDelta : ''}`;
                 }
                 return data.type === 'text-delta' ? data.textDelta : '';
