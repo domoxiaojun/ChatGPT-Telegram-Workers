@@ -31,17 +31,10 @@ export const CHAT_AGENTS: ChatAgent[] = [
 export function loadChatLLM(context: AgentUserConfig): ChatAgent {
     // let CHAT_AGENTS = CHAT_AGENTS_ITER();
     for (const llm of CHAT_AGENTS) {
-        if (llm.name !== context.AI_CHAT_PROVIDER)
-            continue;
-        if (!llm.enable(context)) {
-            throw new Error(`Agent ${llm.name} api key is not set.`);
-        }
-        return llm;
-    }
-    // 找不到指定的AI，使用第一个可用的AI
-    // CHAT_AGENTS = CHAT_AGENTS_ITER();
-    for (const llm of CHAT_AGENTS) {
-        if (llm.enable(context)) {
+        if (llm.name === context.AI_CHAT_PROVIDER) {
+            if (!llm.enable(context)) {
+                throw new Error(`Chat agent ${llm.name} api key is not set.`);
+            }
             return llm;
         }
     }
@@ -61,10 +54,12 @@ export const IMAGE_AGENTS: ImageAgent[] = [
 export function loadImageGen(context: AgentUserConfig): ImageAgent {
     for (const imgGen of IMAGE_AGENTS) {
         if (imgGen.name === context.AI_IMAGE_PROVIDER) {
+            if (!imgGen.enable(context)) {
+                throw new Error(`Image generator ${imgGen.name} api key is not set.`);
+            }
             return imgGen;
         }
     }
-
     throw new Error(`Image generator not found: ${context.AI_IMAGE_PROVIDER}\nAvailable: ${IMAGE_AGENTS.map(i => i.name).join(', ')}`);
 }
 
@@ -76,10 +71,13 @@ export const ASR_AGENTS: ASRAgent[] = [
 export function loadASRLLM(context: AgentUserConfig) {
     for (const llm of ASR_AGENTS) {
         if (llm.name === context.AI_ASR_PROVIDER) {
+            if (!llm.enable(context)) {
+                throw new Error(`ASR agent ${llm.name} api key is not set.`);
+            }
             return llm;
         }
     }
-    return null;
+    throw new Error(`ASR agent not found: ${context.AI_ASR_PROVIDER}\nAvailable: ${ASR_AGENTS.map(i => i.name).join(', ')}`);
 }
 
 export const TTS_AGENTS: TTSAgent[] = [
@@ -93,10 +91,13 @@ export const TTS_AGENTS: TTSAgent[] = [
 export function loadTTSLLM(context: AgentUserConfig) {
     for (const llm of TTS_AGENTS) {
         if (llm.name === context.AI_TTS_PROVIDER) {
+            if (!llm.enable(context)) {
+                throw new Error(`TTS agent ${llm.name} api key is not set.`);
+            }
             return llm;
         }
     }
-    return null;
+    throw new Error(`TTS agent not found: ${context.AI_TTS_PROVIDER}\nAvailable: ${TTS_AGENTS.map(i => i.name).join(', ')}`);
 }
 
 /**
