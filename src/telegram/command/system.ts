@@ -991,7 +991,7 @@ export class TTSCommandHandler implements CommandHandler {
     scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
     needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
-        if (ENV.EXTRA_MESSAGE_CONTEXT) {
+        if (ENV.EXTRA_MESSAGE_CONTEXT && message.reply_to_message?.from?.id !== context.SHARE_CONTEXT.botId) {
             const reply_text = message.reply_to_message?.text || message.reply_to_message?.caption || '';
             reply_text && (subcommand = subcommand.substring(0, subcommand.length - (reply_text.length + '\n> '.length)));
         }
@@ -1013,6 +1013,7 @@ export class TTSCommandHandler implements CommandHandler {
         }
         await sender.sendPlainText(`Using agent ${context.USER_CONFIG.AI_TTS_PROVIDER} to generate audio...`);
         const audio = await tts(remainingText, context.USER_CONFIG);
+        console.log(`audio size: ${(audio.size / 1024 / 1024).toFixed(3)}mb`);
         sendAction(context.SHARE_CONTEXT.botToken, sender.context.chat_id, 'upload_voice');
         const resp = await sender.sendVoice(audio, context.USER_CONFIG.AUDIO_CONTAINS_TEXT ? remainingText : undefined);
         if (resp.ok) {
