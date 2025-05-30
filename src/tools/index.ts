@@ -224,7 +224,9 @@ export async function sendToolResult(toolResult: ToolResult[], sender: MessageSe
                 break;
             case 'text':
             default:
-                sendResp = await sender.sendRichText((data as TextToolResultContent[]).map(d => d.text).join('\n'));
+                if (!data.some((d: any) => d.is_error)) {
+                    sendResp = await sender.sendRichText((data as TextToolResultContent[]).map(d => d.text).join('\n'));
+                }
                 break;
         }
         sendResp && sendStatus.push(sendResp.statusText);

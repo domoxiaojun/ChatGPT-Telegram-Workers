@@ -100,7 +100,7 @@ export function getLog(context: AgentUserConfig, { onlyModel = false, isParagrap
         // tool
         if (log.functions.length > 0 && show.tool) {
             logStr += '\n';
-            logStr += log.functions.map(func => `${func.name}: ${JSON.stringify(func.arguments).substring(0, 80)} ${func.time}s`).join('\n');
+            logStr += log.functions.map(({ name, args, error, time }) => `${name}: ${JSON.stringify(args).substring(0, 80)} ${time}s ${error ? `\n[ERROR: ${error}]` : ''}`).join('\n');
         }
 
         logList.push(logStr);
@@ -134,7 +134,7 @@ export function clearLog(context: AgentUserConfig) {
 
 export interface LogStruct {
     model: string;
-    functions: { name: string; arguments: any; error?: string; time: number }[];
+    functions: { name: string; args: any; error?: string; time: number }[];
     tokens?: { prompt: number; completion: number; reasoning?: number; cached?: number };
     start_time: number;
     end_time?: number;
