@@ -166,6 +166,15 @@ function extractResultText(result: { messages: ResponseMessage[]; content: strin
 };
 
 export function injectSystemMessage(messages: CoreMessage[], systemMessage: string | null) {
+    // const firstMessageContent = messages[0].content;
+    // const firstMessageIsToolCall = Array.isArray(firstMessageContent) && firstMessageContent.some((c: any) => c.type === 'tool-call');
+    // // if the first message is tool call, inject a user message to use the tool to avoid gemini error
+    // if (firstMessageIsToolCall) {
+    //     messages.unshift({
+    //         role: 'user',
+    //         content: 'Use the tool to answer my question.',
+    //     });
+    // }
     if (systemMessage) {
         // 注入{{CURRENT_TIME}}
         systemMessage = systemMessage.replace('{{CURRENT_TIME}}', new Date().toISOString());

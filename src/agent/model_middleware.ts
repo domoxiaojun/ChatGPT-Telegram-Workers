@@ -195,10 +195,21 @@ function warpMessages(params: LanguageModelV1CallOptions, tools: Record<string, 
     if (ENV.MESSAGE_COMPATIBLE) {
         params.prompt = trimMessages(messages);
     } else {
-        const systemMessage = messages.find(i => i.role === 'system');
+        const systemMessage = messages[0].role === 'system' ? messages[0] : undefined;
         if (systemMessage) {
             systemMessage.content = getSystemContent();
+            params.prompt.shift();
         }
+        // if the first message is tool call, inject a user message to use the tool to avoid gemini error
+        const firstMessage = params.prompt[0];
+        const firstIsToolCall = Array.isArray(firstMessage?.content) && firstMessage?.content.some((c: any) => c.type === 'tool-call');
+        if (firstIsToolCall) {
+            params.prompt.unshift({
+                role: 'user',
+                content: [{ type: 'text', text: 'Use the tool to answer my question.' }],
+            });
+        }
+        systemMessage && params.prompt.unshift(systemMessage);
     }
 }
 
