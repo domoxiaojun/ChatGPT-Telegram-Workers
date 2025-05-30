@@ -71,7 +71,7 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
                 hasRecordFirstChunkTime = true;
             }
             if (chunk.type === 'tool-call') {
-                onStream?.send(`${messageInfo.content.trimEnd()}\n` + `tool call start: \`${chunk.toolName}\``);
+                onStream?.send(`${messageInfo.content.trimEnd()}\n\n` + `tool call start: \`${chunk.toolName}\``);
                 log.info(`start tool: ${chunk.toolName}`);
             }
         },
@@ -106,7 +106,7 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
 
                 const toolNames = [...new Set(toolResults.map(i => i.toolName))];
                 log.info(`finish tools: ${toolNames}`);
-                onStream?.send(`${messageInfo.content}\n` + `finish tools: \`${toolNames}\``);
+                onStream?.send(`${messageInfo.content.trimEnd()}\n\n` + `finish tools: \`${toolNames}\``);
             }
 
             // record token

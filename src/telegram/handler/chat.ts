@@ -15,7 +15,7 @@ import { clearLog, getLog, log } from '../../log';
 import { imageToBase64String } from '../../utils/image';
 import { convertAudio } from '../../utils/others/audio';
 import { createTelegramBotAPI } from '../api';
-import { escape } from '../utils/md2tgmd';
+import { escape, SEGMENTATION_MARK } from '../utils/md2tgmd';
 import { MessageSender, sendAction, TelegraphSender } from '../utils/send';
 import { getTelegramFile, waitUntil } from '../utils/tg_utils';
 
@@ -647,7 +647,7 @@ async function asr(audio: Blob, config: AgentUserConfig) {
 
 function mergeLogMessages(text: string, config: AgentUserConfig | undefined): string {
     if (ENV.LOG_POSITION_ON_TOP) {
-        return `${config ? getLog(config) : ''}\n\n${text.trim()}`;
+        return `${config ? getLog(config) : ''}\n${SEGMENTATION_MARK}\n${text.trim()}`;
     }
-    return `${text.trim()}\n\n${config ? getLog(config) : ''}`;
+    return `${text.trim()}\n${SEGMENTATION_MARK}\n${config ? getLog(config) : ''}`;
 }
