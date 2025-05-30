@@ -62,7 +62,7 @@ function extractAppIap(xml: string, country: string) {
         price: item[1].match(iap_price_reg)?.[1],
     }));
     const app_price_reg = /<li class=.*?--price">(.*?)<\/li>/;
-    const app_price = xml.match(app_price_reg)?.[1] ?? 'get app price error';
+    const app_price = xml.match(app_price_reg)?.[1] ?? 'Cannot get app price';
     return {
         country,
         app_price,

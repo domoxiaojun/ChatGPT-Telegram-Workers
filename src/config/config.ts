@@ -243,7 +243,7 @@ export class EnvironmentConfig {
     // whether to display search source
     ENABLE_SEARCH_SOURCE = true;
     // Whether to show thinking text
-    SHOW_THINKING_TEXT = false;
+    SHOW_THINKING_TEXT = true;
 
     // TODO: override command auth, key is command, value is auth role, support: 'creator', 'administrator', null
     // COMMAND_AUTH_OVERRIDE: Record<string, string[]> = {

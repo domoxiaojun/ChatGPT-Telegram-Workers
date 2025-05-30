@@ -1,5 +1,6 @@
 /* eslint-disable regexp/no-super-linear-backtracking */
 const escapeChars = /[_*[\]()\\~`>#+\-=|{}.!]/g;
+export const SEGMENTATION_MARK = '//SEGMENTATIONMARK//';
 export const escapedChars = {
     '\\*': 'ESCAPEASTERISK',
     '\\_': 'ESCAPEUNDERSCORE',
@@ -279,12 +280,15 @@ export interface ExpandParams {
 }
 
 function quoteMessage(text: string, addQuote: boolean) {
+    // 不添加引用时，若下一行不为引用，则删除分隔符与换行符 否则只删除分隔符
     if (!addQuote) {
-        return text;
+        return text.replace(new RegExp(`^${SEGMENTATION_MARK}(?:\n([^>]))?`, 'gm'), '$1');
     }
     const textList = text.split('\n');
     textList.forEach((line, index) => {
-        if (!line.trimStart().startsWith('>')) {
+        if (line === SEGMENTATION_MARK) {
+            textList[index] = '';
+        } else {
             textList[index] = `>${line}`;
         }
     });

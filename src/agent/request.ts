@@ -5,6 +5,7 @@ import type { ChatStreamTextHandler, OpenAIFuncCallData, ResponseMessage } from 
 import { generateText, streamText, TypeValidationError, wrapLanguageModel } from 'ai';
 import { ENV } from '../config/env';
 import { log } from '../log';
+import { SEGMENTATION_MARK } from '../telegram/utils/md2tgmd';
 import { createLlmModel } from './llm';
 import { AIMiddleware, metaDataExtractor } from './model_middleware';
 import { Stream } from './stream';
@@ -242,7 +243,7 @@ function thinkingExtractor(messageInfo: MessageInfo) {
                     messageInfo.content = messageInfo.content
                         .replace(thinkingTag, `>\`Thought for ${thinkingTime} seconds\``)
                         .replace(/(\n>)*$/g, '');
-                    return `\n>✹\n${data.type === 'text-delta' ? data.textDelta : ''}`;
+                    return `\n>✹\n${SEGMENTATION_MARK}\n${data.type === 'text-delta' ? data.textDelta : ''}`;
                 }
                 return data.type === 'text-delta' ? data.textDelta : '';
             case 'error':
