@@ -1,7 +1,7 @@
 import type { ImageResult } from '../../agent/types';
 import type { AgentUserConfig } from '../../config/types';
 
-import type { MediaToolResultContent, ToolResult } from '../types';
+import type { MediaToolResultContent, TextToolResultContent, ToolResult } from '../types';
 import { IMAGE_AGENTS } from '../../agent';
 import { log } from '../../log/logger';
 
@@ -75,21 +75,28 @@ export default {
         if (!agent?.enable(config)) {
             return { content: [{ type: 'text', text: `Image agent ${agent_name} is not available` }] };
         }
-        const result: ImageResult[] = [];
-        for (const prompt of prompts) {
-            const res = await agent.request(prompt, config, { quantity, size, radio, style });
-            result.push(res);
-        }
+        const result: ImageResult[] = await Promise.all(prompts.map(async (prompt) => {
+            try {
+                return await agent.request(prompt, config, { quantity, size, radio, style });
+            } catch (e) {
+                return { message: (e as Error).message };
+            }
+        }));
         log.info(`${agent_name} result: ${JSON.stringify(result)}`);
         const type = result[0].url ? 'url' : 'blob';
+        const messages = result.map(({ message }) => ({
+            type: 'text',
+            text: message,
+        })) as TextToolResultContent[];
+        const images = result.flatMap(r => (r.url || r.raw || []).map(data => ({
+            type: 'image',
+            data_type: type,
+            data,
+            mimeType: 'image/png',
+            text: result[0].text ?? '',
+        }))) as MediaToolResultContent[];
         return {
-            content: result.flatMap(r => (r.url || r.raw || []).map(data => ({
-                type: 'image',
-                data_type: type,
-                data,
-                mimeType: 'image/png',
-                text: result[0].text ?? '',
-            }))) as MediaToolResultContent[],
+            content: [...messages, ...images],
         };
     },
 

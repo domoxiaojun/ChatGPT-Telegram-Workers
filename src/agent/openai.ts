@@ -2,6 +2,7 @@ import type { CoreUserMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ASRAgent, ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage, TTSAgent } from './types';
 import { log, Logger } from '../log';
+import { base64StringToBlob } from '../utils';
 import { requestText2Image } from './image';
 import { createLlmModel } from './llm';
 import { warpLLMParams } from './model_middleware';
@@ -73,20 +74,7 @@ export class Dalle extends OpenAIBase implements ImageAgent {
         return requestText2Image(url, header, body, this.render);
     };
 
-    readonly render = async (response: Response | GeneratedImage[] | string[], prompt: string): Promise<ImageResult> => {
-        const resp = await (response as Response).json();
-        if (resp.error?.message) {
-            throw new Error(resp.error.message);
-        }
-        if (!Array.isArray(resp.data) || resp.data.length === 0) {
-            throw new Error(`Data is invalid: ${JSON.stringify(resp)}`);
-        }
-        return {
-            type: 'image',
-            url: resp.data?.map((i: { url: any }) => i?.url),
-            text: resp.data?.[0]?.revised_prompt || prompt,
-        };
-    };
+    readonly render = renderImage;
 }
 
 export class OpenAIASR extends OpenAIBase implements ASRAgent {
@@ -189,3 +177,20 @@ export class OpenAIFM implements TTSAgent {
         }
     };
 }
+
+export async function renderImage(response: Response | GeneratedImage[] | string[], prompt: string): Promise<ImageResult> {
+    const resp = response as Response;
+    if (!resp.ok)
+        throw new Error(await resp.text());
+    const respJson = await resp.json();
+    if (respJson.error?.message) {
+        throw new Error(respJson.error.message);
+    }
+    const image_type = respJson.data?.[0]?.b64_json ? 'b64' : 'url';
+    let data: (string | Blob)[] = [];
+    respJson.data?.forEach(({ url, b64_json }: { url: string; b64_json: string }) => data.push(url ?? (b64_json)));
+    if (image_type === 'b64') {
+        data = await Promise.all(data.map(b64_json => base64StringToBlob(b64_json as string)));
+    }
+    return { [image_type === 'b64' ? 'raw' : 'url']: data, text: prompt };
+};

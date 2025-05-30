@@ -76,7 +76,6 @@ export interface Agent<AgentRequest> {
 }
 
 export interface ImageResult extends Pick<UnionData, 'url' | 'raw' | 'text'> {
-    type: 'image';
     message?: string;
     caption?: string[];
 }

@@ -198,7 +198,6 @@ export async function sendToolResult(toolResult: ToolResult[], sender: MessageSe
             case 'image':
                 const imageData = await base64OrUrlToBlob(data as MediaToolResultContent[]);
                 sendResp = await sendImages({
-                    type: 'image',
                     raw: imageData,
                     caption: (data as MediaToolResultContent[]).map(d => d.text),
                 }, ENV.SEND_IMAGE_AS_FILE, sender, config);

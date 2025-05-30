@@ -118,7 +118,6 @@ export class GoogleImage extends GoogleBase implements ImageAgent {
     readonly render = async (result: Response | GeneratedImage[] | any[], prompt: string): Promise<ImageResult> => {
         const images = result as { inlineData: { mimeType: string; data: string } }[];
         return {
-            type: 'image',
             raw: await Promise.all(images.map(({ inlineData: { data } }) => base64StringToBlob(data))),
             text: prompt,
         };

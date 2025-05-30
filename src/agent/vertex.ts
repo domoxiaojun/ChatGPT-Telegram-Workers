@@ -79,7 +79,6 @@ export class VertexImage extends VertexBase implements ImageAgent {
             throw new Error(`Data is invalid: ${JSON.stringify(images)}`);
         }
         return {
-            type: 'image',
             raw: images.map(({ uint8Array }) => new Blob([uint8Array], { type: 'image/png' })),
             text: prompt,
         };

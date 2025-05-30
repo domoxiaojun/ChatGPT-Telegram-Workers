@@ -125,6 +125,6 @@ export class KlingAI implements ImageAgent {
     };
 
     readonly render = async (data: Response | GeneratedImage[] | string[], prompt: string): Promise<ImageResult> => {
-        return { type: 'image', url: data as string[], text: prompt };
+        return { url: data as string[], text: prompt };
     };
 }

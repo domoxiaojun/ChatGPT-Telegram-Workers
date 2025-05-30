@@ -1,4 +1,5 @@
 import type * as Telegram from 'telegram-bot-api-types';
+import type { ImageResult } from '../../agent/types';
 import type { UnionData } from '../utils/tg_utils';
 // import type { ShareContext } from '../../config/context';
 
@@ -12,7 +13,7 @@ import type { UnionData } from '../utils/tg_utils';
 // 2. 当函数返回 Response 对象时，结束消息处理，返回 Response 对象
 // 3. 当函数返回 null 时，继续下一个中间件处理
 export interface MessageHandler<Ctx = any> {
-    handle: (message: Telegram.Message, context: Ctx) => Promise<Response | UnionData | null>;
+    handle: (message: Telegram.Message, context: Ctx) => Promise<Response | UnionData | ImageResult | null>;
 }
 
 export interface CallbackQueryHandler<Ctx = any> {

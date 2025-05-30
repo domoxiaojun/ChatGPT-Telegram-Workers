@@ -1,4 +1,5 @@
 import type * as Telegram from 'telegram-bot-api-types';
+import type { ImageResult } from '../../agent/types';
 import type { WorkerContext } from '../../config/context';
 import type { RequestTemplate } from '../../plugins/template';
 import type { UnionData } from '../utils/tg_utils';
@@ -72,7 +73,7 @@ const SYSTEM_COMMANDS: CommandHandler[] = [
 //     }
 // };
 
-async function handleSystemCommand(message: Telegram.Message, raw: string, command: CommandHandler, context: WorkerContext): Promise<Response | UnionData | null> {
+async function handleSystemCommand(message: Telegram.Message, raw: string, command: CommandHandler, context: WorkerContext): Promise<Response | UnionData | ImageResult | null> {
     const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
     try {
         // 如果存在权限条件
@@ -120,7 +121,7 @@ async function handlePluginCommand(message: Telegram.Message, command: string, r
     }
 }
 
-export async function handleCommandMessage(message: Telegram.Message, context: WorkerContext): Promise<Response | UnionData | null> {
+export async function handleCommandMessage(message: Telegram.Message, context: WorkerContext): Promise<Response | UnionData | ImageResult | null> {
     let text = (message.text || message.caption || '').trim();
 
     if (ENV.CUSTOM_COMMAND[text]) {
