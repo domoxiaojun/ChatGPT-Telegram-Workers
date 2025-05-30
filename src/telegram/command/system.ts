@@ -99,7 +99,10 @@ export class ImgCommandHandler implements CommandHandler {
             await sender.sendPlainText('Please wait a moment...');
             sendAction(context.SHARE_CONTEXT.botToken, message.chat.id, 'upload_photo');
             const img = await agent.request(subcommand, context.USER_CONFIG, extraParams);
-            log.info('img', img);
+            log.info(`img has been generated: ${JSON.stringify(img.url || img.message)} prompt: ${img.text}`);
+            if ((img.raw || img.url)?.length === 0) {
+                return sender.sendPlainText(`${img.text || 'ERROR: No image found'}`);
+            }
             const resp = await sendImages(img, ENV.SEND_IMAGE_AS_FILE, sender, context.USER_CONFIG);
 
             if (!resp.ok) {

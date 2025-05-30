@@ -77,6 +77,7 @@ export type ToolResultType = 'text' | 'image' | 'audio' | 'video' | 'file' | 're
 export interface TextToolResultContent {
     type: 'text';
     text: string;
+    is_error?: boolean;
 }
 
 export interface ResourceToolResultContent {

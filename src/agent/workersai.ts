@@ -99,8 +99,8 @@ export class WorkersImage extends WorkerBase implements ImageAgent {
             if (typeof image !== 'string') {
                 throw new TypeError('Invalid image response');
             }
-            return { type: 'image', raw: [await base64StringToBlob(image)] };
+            return { raw: [await base64StringToBlob(image)] };
         }
-        return { type: 'image', raw: [await raw.blob()], text: prompt };
+        return { raw: [await raw.blob()], text: prompt };
     };
 }

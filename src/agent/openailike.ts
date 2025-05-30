@@ -1,10 +1,11 @@
 import type { CoreUserMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
-import type { ASRAgent, ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
+import type { ASRAgent, ChatAgent, ChatStreamTextHandler, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
 import { log, Logger } from '../log';
 import { requestText2Image } from './image';
 import { createLlmModel } from './llm';
 import { warpLLMParams } from './model_middleware';
+import { renderImage } from './openai';
 import { requestChatCompletionsV2 } from './request';
 
 export class OpenAILikeBase {
@@ -63,16 +64,7 @@ export class OpenAILikeImage extends OpenAILikeBase implements ImageAgent {
         return requestText2Image(url, header, body, this.render);
     };
 
-    readonly render = async (response: Response | GeneratedImage[] | string[], prompt: string): Promise<ImageResult> => {
-        const resp = response as Response;
-        if (!resp.ok)
-            return { type: 'image', message: await resp.text() };
-        const data = await resp.json();
-        if (data.message) {
-            return { type: 'image', message: data.message };
-        }
-        return { type: 'image', url: data?.images?.map((i: { url: string }) => i?.url), text: prompt };
-    };
+    readonly render = renderImage;
 }
 
 export class OpenAILikeASR extends OpenAILikeBase implements ASRAgent {

@@ -89,8 +89,8 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
             if (toolResults.length > 0) {
                 const func_logs = toolResults.map(({ toolName, args, result }) => ({
                     name: toolName,
-                    arguments: Object.values(args),
-                    ...(result.error && { error: result.error }),
+                    args: Object.values(args),
+                    ...(result.content.some((i: any) => i.is_error) && { error: result.content.map((i: any) => i.text).join('\n') }),
                     ...(result.time && { time: result.time }),
                 }));
 
@@ -386,7 +386,8 @@ async function handleToolResult({ tools, toolResults, onStream, config }: { tool
         // TODO: 非流式模式下，无法直接发送工具结果
         sender && await sendToolResult(need_send_result, sender, config);
         need_send_result.forEach((result) => {
-            result.content = [{ type: 'text', text: 'data has been sent to user.' }];
+            const is_error = result.content.some((i: any) => i.is_error);
+            !is_error && (result.content = [{ type: 'text', text: 'data has been sent to user.' }]);
         });
     }
 }

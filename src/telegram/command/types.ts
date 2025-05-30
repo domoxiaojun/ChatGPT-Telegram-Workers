@@ -1,5 +1,6 @@
 /* eslint-disable unused-imports/no-unused-vars */
 import type * as Telegram from 'telegram-bot-api-types';
+import type { ImageResult } from '../../agent/types';
 import type { WorkerContext } from '../../config/context';
 import type { MessageSender } from '../utils/send';
 import type { UnionData } from '../utils/tg_utils';
@@ -20,7 +21,7 @@ export interface CommandHandler {
     command: string;
     scopes?: ScopeType[];
     relaxAuth?: boolean;
-    handle: (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender) => Promise<Response | UnionData | null>;
+    handle: (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender) => Promise<Response | UnionData | ImageResult | null>;
     needAuth?: (chatType: string) => string[] | null;
 }
 

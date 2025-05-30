@@ -7,9 +7,6 @@ export async function requestText2Image(url: string, headers: Record<string, any
         headers,
         body: JSON.stringify(body),
     });
-    const result = await render(resp, body.prompt);
-    if (result.message) {
-        throw new Error(result.message);
-    }
-    return result;
+
+    return render(resp, body.prompt);
 }

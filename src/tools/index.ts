@@ -198,7 +198,6 @@ export async function sendToolResult(toolResult: ToolResult[], sender: MessageSe
             case 'image':
                 const imageData = await base64OrUrlToBlob(data as MediaToolResultContent[]);
                 sendResp = await sendImages({
-                    type: 'image',
                     raw: imageData,
                     caption: (data as MediaToolResultContent[]).map(d => d.text),
                 }, ENV.SEND_IMAGE_AS_FILE, sender, config);
@@ -225,7 +224,9 @@ export async function sendToolResult(toolResult: ToolResult[], sender: MessageSe
                 break;
             case 'text':
             default:
-                sendResp = await sender.sendRichText((data as TextToolResultContent[]).map(d => d.text).join('\n'));
+                if (!data.some((d: any) => d.is_error)) {
+                    sendResp = await sender.sendRichText((data as TextToolResultContent[]).map(d => d.text).join('\n'));
+                }
                 break;
         }
         sendResp && sendStatus.push(sendResp.statusText);

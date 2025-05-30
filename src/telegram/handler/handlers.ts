@@ -1,5 +1,6 @@
 /* eslint-disable unused-imports/no-unused-vars */
 import type * as Telegram from 'telegram-bot-api-types';
+import type { ImageResult } from '../../agent/types';
 import type { WorkerContextBase } from '../../config/context';
 import type { UnionData } from '../utils/tg_utils';
 import type { MessageHandler } from './types';
@@ -121,7 +122,7 @@ export class MessageFilter implements MessageHandler<WorkerContextBase> {
 }
 
 export class CommandHandler implements MessageHandler<WorkerContext> {
-    handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | UnionData | null> => {
+    handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | UnionData | ImageResult | null> => {
         if (message.text || message.caption) {
             return await handleCommandMessage(message, context);
         }

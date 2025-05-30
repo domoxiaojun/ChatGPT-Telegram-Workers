@@ -82,7 +82,6 @@ export class AzureImageAI implements ImageAgent {
             throw new Error(resp.error.message);
         }
         return {
-            type: 'image',
             url: resp?.data?.map((i: { url: any }) => i?.url),
             text: resp?.data?.[0]?.revised_prompt || prompt,
         };

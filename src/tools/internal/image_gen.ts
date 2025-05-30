@@ -1,7 +1,7 @@
 import type { ImageResult } from '../../agent/types';
 import type { AgentUserConfig } from '../../config/types';
 
-import type { MediaToolResultContent, ToolResult } from '../types';
+import type { MediaToolResultContent, TextToolResultContent, ToolResult } from '../types';
 import { IMAGE_AGENTS } from '../../agent';
 import { log } from '../../log/logger';
 
@@ -14,7 +14,7 @@ export default {
             properties: {
                 agent: {
                     type: 'string',
-                    description: 'The agent to use, where openai is aliased as dalle, and if the information provided by the user is incorrect, please use the most similar option.',
+                    description: 'The image agent to use. Default is "default".',
                     enum: ['default', 'dalle', 'openai', 'workers', 'azure', 'vertex', 'oailike', 'kling', 'google'],
                     default: 'default',
                 },
@@ -25,31 +25,30 @@ export default {
                 },
                 quantity: {
                     type: 'integer',
-                    description: 'The number of images to generate, the maximum is 4.',
+                    description: 'The number of images to generate, the maximum is 4. Default is 1.',
                     default: 1,
                 },
                 size: {
                     type: 'string',
                     enum: ['1024x1024', '1792x1024', '1024x1792'],
-                    description: 'The size of the images to generate.',
+                    description: 'The size of the images to generate. Default is "1024x1024".',
                     default: '1024x1024',
                 },
                 radio: {
                     type: 'string',
-                    description: 'The raido of the images to generate.',
+                    description: 'The raido of the images to generate. Default is "16:9".',
                     enum: ['1:1', '16:9', '9:16'],
                     default: '16:9',
                 },
                 style: {
                     type: 'string',
-                    description: 'The style of the images to generate.',
+                    description: 'The style of the images to generate. Default is "vivid".',
                     enum: ['vivid', 'natural'],
                     default: 'vivid',
                 },
             },
-            required: ['agent', 'prompts', 'quantity', 'size', 'radio', 'style'],
+            required: ['prompts'],
         },
-        required: ['prompts'],
     },
 
     func: async ({
@@ -73,23 +72,30 @@ export default {
         log.info(`params: ${JSON.stringify({ agent: agent_name, prompts, quantity, size, radio, style })}`);
         const agent = IMAGE_AGENTS.find(a => a.name === agent_name);
         if (!agent?.enable(config)) {
-            return { content: [{ type: 'text', text: `Image agent ${agent_name} is not available` }] };
+            return { content: [{ type: 'text', text: `Image agent ${agent_name} is not available`, is_error: true }] };
         }
-        const result: ImageResult[] = [];
-        for (const prompt of prompts) {
-            const res = await agent.request(prompt, config, { quantity, size, radio, style });
-            result.push(res);
-        }
+        const result: ImageResult[] = await Promise.all(prompts.map(async (prompt) => {
+            try {
+                return await agent.request(prompt, config, { quantity, size, radio, style });
+            } catch (e) {
+                return { message: (e as Error).message };
+            }
+        }));
         log.info(`${agent_name} result: ${JSON.stringify(result)}`);
         const type = result[0].url ? 'url' : 'blob';
+        const messages = result.filter(({ message }) => message).map(({ message }) => ({
+            type: 'text',
+            text: message,
+        })) as TextToolResultContent[];
+        const images = result.flatMap(r => (r.url || r.raw || []).map(data => ({
+            type: 'image',
+            data_type: type,
+            data,
+            mimeType: 'image/png',
+            text: result[0].text ?? '',
+        }))) as MediaToolResultContent[];
         return {
-            content: result.flatMap(r => (r.url || r.raw || []).map(data => ({
-                type: 'image',
-                data_type: type,
-                data,
-                mimeType: 'image/png',
-                text: result[0].text ?? '',
-            }))) as MediaToolResultContent[],
+            content: [...messages, ...images],
         };
     },
 
