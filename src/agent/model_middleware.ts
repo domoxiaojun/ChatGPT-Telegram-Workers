@@ -44,8 +44,10 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
             record = getLogSingleton(config, step);
             recordModelLog({ config, model, record });
             if (params.prompt.at(-1)?.role === 'tool') {
+                log.info(`detect last message is tool result, handle tool result`);
                 const toolResults = params.prompt.at(-1)?.content as unknown as LanguageModelV1ToolResultPart[];
                 await handleToolResult({ tools, toolResults, onStream, config });
+                log.debug(`last tool result: ${JSON.stringify(toolResults, null, 2)}`);
             }
             return extractReasoning.wrapStream!({ doStream: () => doStream(), doGenerate: () => model.doGenerate(params), params, model });
         },
@@ -394,6 +396,8 @@ async function handleToolResult({ tools, toolResults, onStream, config }: { tool
     }
     if (need_send_result.length > 0) {
         const sender = onStream?.sender;
+        const tool_names = toolResults.map(i => i.toolName).filter(i => message_tool.includes(i));
+        log.info(`start send tool result: ${tool_names.join(', ')}`);
         // TODO: 非流式模式下，无法直接发送工具结果
         sender && await sendToolResult(need_send_result, sender, config);
         need_send_result.forEach((result) => {
