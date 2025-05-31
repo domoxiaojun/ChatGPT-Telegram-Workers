@@ -57,7 +57,7 @@ export async function initializeMcp() {
         log.debug('MCP:', JSON.stringify(Object.entries(mcpTools).map(([name, tools]) => ({ [name]: Object.entries(tools).map(([tname, t]) => ({ name: tname, description: t.description })) })), null, 1));
     }
     log.info('initialize mcp done');
-    log.info('mcpTools:', JSON.stringify(Object.keys(mcpTools)));
+    log.info(`mcpTools: ${Object.keys(mcpTools)}`);
 }
 
 export async function getMcp() {
