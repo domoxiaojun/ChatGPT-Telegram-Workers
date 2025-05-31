@@ -43,12 +43,7 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
             log.info(`modelId: ${model.modelId}`);
             record = getLogSingleton(config, step);
             recordModelLog({ config, model, record });
-            if (params.prompt.at(-1)?.role === 'tool') {
-                log.info(`detect last message is tool result, handle tool result`);
-                const toolResults = params.prompt.at(-1)?.content as unknown as LanguageModelV1ToolResultPart[];
-                await handleToolResult({ tools, toolResults, onStream, config });
-                log.debug(`last tool result: ${JSON.stringify(toolResults, null, 2)}`);
-            }
+
             return extractReasoning.wrapStream!({ doStream: () => doStream(), doGenerate: () => model.doGenerate(params), params, model });
         },
 
@@ -61,6 +56,12 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
                 params.mode.toolChoice = toolChoice[step] as any;
                 log.info(`toolChoice changed: ${JSON.stringify(toolChoice[step])}`);
                 params.mode.tools = params.mode.tools?.filter(i => activeTools.includes(i.name));
+            }
+            if (params.prompt.at(-1)?.role === 'tool') {
+                log.info(`detect last message is tool result, handle tool result`);
+                const toolResults = params.prompt.at(-1)?.content as unknown as LanguageModelV1ToolResultPart[];
+                await handleToolResult({ tools, toolResults, onStream, config });
+                log.debug(`last tool result: ${JSON.stringify(toolResults, null, 2)}`);
             }
             warpMessages(params, tools, activeTools, rawSystemPrompt);
 
