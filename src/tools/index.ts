@@ -132,7 +132,7 @@ export async function initializeTools() {
         }));
         if (!isCfWorker) {
             const localTools = await getLocalTools();
-            console.log('local tools:', Object.keys(localTools));
+            log.info(`local tools: ${Object.keys(localTools)}`);
             Object.assign(tools, localTools);
         }
         toolsInitialized = true;
@@ -231,7 +231,7 @@ export async function sendToolResult(toolResult: ToolResult[], sender: MessageSe
         }
         sendResp && sendStatus.push(sendResp.statusText);
     }
-    console.log(`tool result send status: ${sendStatus.join(', ')}`);
+    log.info(`tool result send status: ${sendStatus.join(', ')}`);
     // recover messgae id
     sender.context.message_id = record.message_id;
     sender.context.sentMessageIds = record.sentMessageIds;

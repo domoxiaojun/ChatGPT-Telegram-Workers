@@ -289,7 +289,7 @@ function quoteMessage(text: string, addQuote: boolean) {
         if (line === SEGMENTATION_MARK) {
             textList[index] = '';
         } else {
-            textList[index] = `>${line}`;
+            !line.startsWith('>') && (textList[index] = `>${line}`);
         }
     });
     return textList.join('\n');
