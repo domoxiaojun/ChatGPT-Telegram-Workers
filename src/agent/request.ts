@@ -184,7 +184,7 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
     };
     const { prepareStepPre, onStepFinish, onChunk, ...middleware } = await AIMiddleware({
         config: context,
-        activeTools: activeTools || [],
+        activeTools,
         onStream,
         toolChoice: toolChoice || [],
         chatModel: model.modelId,
@@ -206,7 +206,7 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
         contentFull = messageInfo.occured_error ? contentFull : metaDataExtractor(await stream.providerMetadata, model.provider, contentFull);
     } else {
         const result = await generateText(handeredParams);
-        contentFull = `${result.reasoning ? `>\`Thought for several seconds\`\n>${result.reasoning.join('').replace(/\n/g, '\n>')}\n>✹\n` : ''}${result.text}`;
+        contentFull = `${result.reasoning ? `>\`Thought for several seconds\`\n>${(result.reasoningText ?? '').trim().replace(/\n/g, '\n>')}\n>✹\n` : ''}${result.text}`;
         responseMessages = result.response.messages;
         contentFull = metaDataExtractor(result.providerMetadata, model.provider, contentFull);
     }

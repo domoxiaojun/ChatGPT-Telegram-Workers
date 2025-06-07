@@ -506,7 +506,10 @@ export class VertexConfig {
     VERTEX_CHAT_MODEL = 'gemini-2.0-flash';
     // Vertex Vision Model
     VERTEX_VISION_MODEL = 'gemini-2.0-flash';
-    // when use search grounding, do not use other tools at the same time, otherwise errors occur.
+    /**
+     * @deprecated
+     * when use search grounding, do not use other tools at the same time, otherwise errors occur.
+     */
     SEARCH_GROUNDING = false;
     // Vertex Image Model
     VERTEX_IMAGE_MODEL = 'imagen-3.0-fast-generate-001';
