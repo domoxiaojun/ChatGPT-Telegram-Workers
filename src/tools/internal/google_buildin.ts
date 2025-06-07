@@ -26,19 +26,21 @@ export default {
             additionalProperties: false,
         },
     },
-    func: (params: { tool: string[] }, _env: Record<string, any>, config: AgentUserConfig) => {
-        const { tool } = params;
-        if (tool.length > 1) {
-            return { content: [{ type: 'text', text: 'google_buildin: only support turn on one tool' }] };
+    func: ({ tool }: { tool: string[] }, _env: Record<string, any>, config: AgentUserConfig) => {
+        // if (tool.length > 1) {
+        //     return { content: [{ type: 'text', text: 'google_buildin: only support turn on one tool' }] };
+        // }
+        if (!tool.every(t => config.GOOGLE_BUILDIN.includes(t))) {
+            return { content: [{ type: 'text', text: `Contain not support tool: ${tool.filter(t => !config.GOOGLE_BUILDIN.includes(t)).join(', ')}` }] };
         }
-        const builtInTools = config.GOOGLE_BUILDIN;
-        const toolName = tool[0];
-        if (!builtInTools.includes(toolName)) {
-            return { content: [{ type: 'text', text: `google_buildin: not support tool: ${toolName}` }] };
+        const agentName = config.AI_CHAT_PROVIDER;
+        if (agentName === 'oailike') {
+            config.USE_OAILIKE_RELAY_TOOLS = tool;
         }
-        config.USE_GOOGLE_BUILDIN = [toolName];
-        config.USE_OAILIKE_RELAY_TOOLS = [toolName];
-        return { content: [{ type: 'text', text: `Has turned on the google gemini built-in tool: ${toolName}` }] };
+        if (agentName === 'google' || agentName === 'vertex' || agentName === 'gemini') {
+            config.USE_GOOGLE_BUILDIN = tool;
+        }
+        return { content: [{ type: 'text', text: `Has turned on the google gemini built-in tool: ${tool.join(', ')}` }] };
     },
-    prompt: 'Only one tool can be enabled at a time. When enabling a built-in tool, you should call this tool internally, then answer user questions.',
+    prompt: 'When enabling built-in tool, you should use the tools internally and answer user questions.',
 };

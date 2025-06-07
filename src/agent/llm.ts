@@ -230,7 +230,7 @@ interface MockParams {
 
 function mockParams({ modelId, config, provider, options }: MockParams) {
     const extraParams = (config[`${provider.toUpperCase()}_API_EXTRA_PARAMS` as keyof AgentUserConfig] as Record<string, Record<string, any>>) || {};
-    const { PARAMS_MODIFIER: modifier, OAILIKE_RELAY_TOOLS: relayTools, USE_OAILIKE_RELAY_TOOLS: relayToolsList, GOOGLE_BUILDIN, USE_GOOGLE_BUILDIN } = config;
+    const { PARAMS_MODIFIER: modifier, OAILIKE_RELAY_TOOLS: relayTools, USE_OAILIKE_RELAY_TOOLS: relayToolsList, GOOGLE_BUILDIN, USE_GOOGLE_BUILDIN, SEARCH_GROUNDING } = config;
 
     if (provider === 'oailike') {
         const relayKey = Object.keys(relayTools).find(key => modelId.includes(key));
@@ -257,15 +257,18 @@ function mockParams({ modelId, config, provider, options }: MockParams) {
             { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
             { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' },
         ];
-        const usedBuildIn = GOOGLE_BUILDIN.filter(t => USE_GOOGLE_BUILDIN.includes(t));
-        if (usedBuildIn.length > 0) {
-            options.tools = {};
-            Object.assign(options.tools, ...usedBuildIn.map(t => ({
-                [t]: {},
-            })));
-            // options.tools = usedBuildIn.map(t => ({
+        const usedBuildIn = new Set(GOOGLE_BUILDIN.filter(t => USE_GOOGLE_BUILDIN.includes(t)));
+        if (SEARCH_GROUNDING) {
+            usedBuildIn.add('googleSearch');
+        }
+        if (usedBuildIn.size > 0) {
+            // options.tools = {};
+            // Object.assign(options.tools, ...usedBuildIn.map(t => ({
             //     [t]: {},
-            // }));
+            // })));
+            options.tools = [...usedBuildIn].map(t => ({
+                [t]: {},
+            }));
         }
     }
 

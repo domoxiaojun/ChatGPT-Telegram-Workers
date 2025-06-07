@@ -1,7 +1,7 @@
 /* eslint-disable no-case-declarations */
 /* eslint-disable unused-imports/no-unused-vars */
 import type { LanguageModelV1ToolCallPart, LanguageModelV1ToolResultPart, LanguageModelV2, LanguageModelV2CallOptions } from '@ai-sdk/provider';
-import type { ModelMessage, StepResult, TextStreamPart, ToolResultPart, UserModelMessage } from 'ai';
+import type { ModelMessage, StepResult, TextStreamPart, ToolResultPart } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { LogStruct } from '../log';
 import type { ToolResult } from '../tools/types';
@@ -92,14 +92,14 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
             return extractReasoning.wrapStream!({ doStream, doGenerate: () => model.doGenerate(params), params, model });
         },
 
-        transformParams: async ({ type, params }: { type: 'generate' | 'stream'; params: any }) => {
+        transformParams: async ({ type, params }: { type: 'generate' | 'stream'; params: LanguageModelV2CallOptions }) => {
             log.info(`start ${type} call`);
 
             // transform tool choice
-            if (toolChoice.length > 0 && step < params.toolChoice.length) {
-                toolChoice = toolChoice[step] as any;
-                log.info(`toolChoice changed: ${JSON.stringify(toolChoice[step])}`);
-                params.tools = params.mode.tools?.filter((i: any) => activeTools.includes(i.name));
+            if (activeTools.length > 0 && toolChoice.length > 0 && step < toolChoice.length) {
+                const toolChoiceItem = toolChoice[step] as any;
+                log.info(`toolChoice changed: ${JSON.stringify(toolChoiceItem)}`);
+                params.toolChoice = toolChoiceItem;
             }
             // tool result as message
             if (params.prompt.at(-1)?.role === 'tool') {
@@ -109,7 +109,7 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
                 log.debug(`last tool result: ${JSON.stringify(toolResults, null, 2)}`);
             }
             if (!rawSystemPrompt) {
-                rawSystemPrompt = params.prompt.find((i: any) => i.role === 'system')?.content;
+                rawSystemPrompt = params.prompt.find((i: any) => i.role === 'system')?.content as string;
             }
             // warp messages
             warpMessages(params, tools, activeTools, rawSystemPrompt);
@@ -271,42 +271,44 @@ function warpModel(model: LanguageModelV2, config: AgentUserConfig, activeTools:
     }
 }
 
-export async function warpLLMParams(params: { messages: ModelMessage[]; model: LanguageModelV2; cache?: string[] }, context: AgentUserConfig) {
-    const tools = await getTools();
+export async function warpLLMParams({ messages, model, cache }: { messages: ModelMessage[]; model: LanguageModelV2; cache?: string[] }, context: AgentUserConfig) {
+    const allTools = await getTools();
+    const userMessage = messages.findLast(m => m.role === 'user')!;
+    // support text message and text part
+    const userText = Array.isArray(userMessage.content) ? userMessage.content.find(c => c.type === 'text')?.text ?? '' : userMessage.content;
+    let { tools = {}, activeToolAlias = [] } = await validTools(context);
 
-    const messages = params.messages.at(-1) as UserModelMessage;
-    const tool = typeof messages.content === 'string'
-        ? await validTools(context)
-        : undefined;
-
-    let activeTools = tool?.activeToolAlias.map((t: string) => tools[t]?.schema?.name || t) || [];
+    let activeTools = activeToolAlias.map((t: string) => allTools[t]?.schema?.name || t) || [];
     // // if vertex use search grounding, do not use other tools
-    // if (params.model.provider.startsWith('google') && (context.SEARCH_GROUNDING || context.USE_GOOGLE_BUILDIN.length > 0)) {
-    //     activeTools = [];
-    //     tool = undefined;
-    //     // only use first system message and last user message
-    //     // params.messages = [params.messages.find(p => p.role === 'system')!, params.messages.findLast(p => p.role === 'user')!];
-    // }
+    if (model.provider.startsWith('google') && (context.SEARCH_GROUNDING || context.USE_GOOGLE_BUILDIN.length > 0)) {
+        activeTools = [];
+        tools = {};
+        // only use first system message and last user message
+        // params.messages = [params.messages.find(p => p.role === 'system')!, params.messages.findLast(p => p.role === 'user')!];
+    }
     // only gemini-2 support google_buildin
-    if (!params.model.modelId.startsWith('gemini-2')) {
+    if (!model.modelId.startsWith('gemini-2')) {
         activeTools = activeTools.filter(t => t !== 'google_buildin');
     }
 
     let toolChoice;
-    if (tool?.activeToolAlias && tool?.activeToolAlias.length > 0) {
-        const userMessageIsString = typeof messages.content === 'string';
-        const choiceResult = await wrapToolChoice(tool?.activeToolAlias, userMessageIsString ? messages.content as string : '');
-        userMessageIsString && (messages.content = choiceResult.message);
+    if (activeToolAlias.length > 0 && userText) {
+        const choiceResult = await wrapToolChoice(activeToolAlias, userText);
+        if (Array.isArray(userMessage.content)) {
+            userMessage.content.find(c => c.type === 'text')!.text = choiceResult.message;
+        } else {
+            userMessage.content = choiceResult.message;
+        }
         toolChoice = choiceResult.toolChoices;
     }
 
     log.info(`[warpLLMParams] activeTools: ${activeTools}`);
 
     return {
-        model: params.model,
-        messages: params.messages,
-        cache: params.cache,
-        tools: tool?.tools,
+        model,
+        messages,
+        cache,
+        tools,
         activeTools,
         toolChoice,
         context,
