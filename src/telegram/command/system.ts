@@ -604,7 +604,7 @@ export class PerplexityCommandHandler implements CommandHandler {
         // });
 
         const onStream = OnStreamHander(sender, context, subcommand);
-        const logs = getLogSingleton(context.USER_CONFIG);
+        const logs = getLogSingleton({ config: context.USER_CONFIG });
         logs.model = `Perplexity ${mode}`;
         logs.start_time = Date.now();
         const result = await WssRequest(perplexityWsUrl, null, perplexityWsOptions, perplexityMessage, { onStream }).catch(console.error);

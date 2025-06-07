@@ -582,7 +582,7 @@ export class ExtraUserConfig {
     // chat max tokens
     MAX_TOKENS: number | undefined = undefined;
     // chat agent max steps
-    MAX_STEPS = 3;
+    MAX_STEPS = 5;
     // chat agent max retries
     MAX_RETRIES = 0;
     // Rerank Agent, jina or openai or oailikeV1 or oailikeV2 or google
@@ -635,14 +635,14 @@ export class ExtraUserConfig {
             next: string;
         }[];
     } = {
-            // think: [{
-            //     agent: 'oailike',
-            //     model: 'deepseek-reasoner',
-            //     temperature: 0.3,
-            //     max_tokens: 1,
-            //     next: `思考内容: {{result}}\n\n基于以上思考回答问题: {{question}}`,
-            // }],
-        };
+        // think: [{
+        //     agent: 'oailike',
+        //     model: 'deepseek-reasoner',
+        //     temperature: 0.3,
+        //     max_tokens: 1,
+        //     next: `思考内容: {{result}}\n\n基于以上思考回答问题: {{question}}`,
+        // }],
+    };
 
     // whether to enable workflow
     ENABLE_WORKFLOW = false;

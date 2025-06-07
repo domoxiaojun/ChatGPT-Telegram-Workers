@@ -1,5 +1,5 @@
 /* eslint-disable unused-imports/no-unused-vars */
-import type { FilePart, TextPart } from 'ai';
+import type { FilePart, ImagePart, TextPart, UserModelMessage } from 'ai';
 import type * as Telegram from 'telegram-bot-api-types';
 import type { ChatStreamTextHandler, HistoryModifier, ImageResult, LLMChatRequestParams } from '../../agent/types';
 import type { WorkerContext } from '../../config/context';
@@ -138,80 +138,14 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
                             : `Please explain the ${type}`,
             });
         }
-        switch (type) {
-            case 'image':
-            case 'photo':
-            {
-                const isUrl = ENV.TELEGRAM_IMAGE_TRANSFER_MODE === 'url';
-                for (const url of urls) {
-                    const { data, format } = isUrl ? { data: url, format: `image/${url.split('.').pop()}` } : await imageToBase64String(url);
-                    params.content.push({
-                        type: 'image',
-                        image: data,
-                        mimeType: format,
-                    });
-                }
-                break;
-            }
-            case 'sticker':
-            {
-                const isUrl = ENV.TELEGRAM_IMAGE_TRANSFER_MODE === 'url';
-                const format = urls[0].split('.').pop();
-                if (format === 'webm') {
-                    params.content.push({
-                        type: 'file',
-                        data: urls[0],
-                        mimeType: 'video/webm',
-                    });
-                } else {
-                    const { data, format: mimeType } = isUrl ? { data: urls[0], format: `image/${format}` } : await imageToBase64String(urls[0]);
-                    params.content.push({
-                        type: 'image',
-                        image: data,
-                        mimeType,
-                    });
-                }
-                break;
-            }
-            case 'audio':
-            case 'voice':
-            {
-                const isChat = context.USER_CONFIG.AUDIO_HANDLE_TYPE === 'chat';
-                let audioData = urls[0];
-                if (isChat && context.USER_CONFIG.AI_CHAT_PROVIDER === 'openai') {
-                    const response = await fetch(urls[0]);
-                    if (!response.body) {
-                        throw new Error('Failed to fetch audio data');
-                    }
-                    audioData = await convertAudio({ file: response, target: 'base64' }) as string;
-                }
-                params.content.push({
-                    type: 'file',
-                    data: audioData,
-                    mimeType: `audio/${audioData.split('.').pop()}`,
-                });
-                break;
-            }
-            case 'text':
-            {
-                const text = await Promise.all(urls.map(url => fetch(url).then(r => r.text()))).then(t => t.join('\n'));
-                params.content = [
-                    {
-                        type: 'text',
-                        text: `${message.text || message.caption}\n${text}`.trim(),
-                    },
-                ];
-                break;
-            }
-            case 'video':
-                params.content.push({
-                    type: 'file',
-                    data: urls[0],
-                    mimeType: `video/${urls[0].split('.').pop()}`,
-                });
-                break;
-        }
-        return params;
+
+        return fileUrlToBase64Message({
+            urls,
+            type,
+            params,
+            text: message.text || message.caption || '',
+            AUDIO_HANDLE_TYPE: context.USER_CONFIG.AUDIO_HANDLE_TYPE,
+        });
     }
 }
 
@@ -650,4 +584,84 @@ function mergeLogMessages(text: string, config: AgentUserConfig | undefined): st
         return `${config ? getLog(config) : ''}\n${SEGMENTATION_MARK}\n${text.trim()}`;
     }
     return `${text.trim()}\n${SEGMENTATION_MARK}\n${config ? getLog(config) : ''}`;
+}
+
+// v5: Breaking change in file type extraction logic.
+// Manual download and explicit MIME type specification are now required.
+async function fileUrlToBase64Message({ urls, type, params, AUDIO_HANDLE_TYPE = 'chat', text }: { urls: string[]; type: string; params: UserModelMessage; AUDIO_HANDLE_TYPE: string; text: string }): Promise<any> {
+    async function fileUrlToBase64Message(type = 'image') {
+        const responses = await Promise.all(urls.map(url => fetch(url))).then(r => r.filter(r => r.ok));
+        const mediaTypes = urls.map(url => `${type}/${url.split('.').pop()}`);
+        let files: string[] = [];
+        if (!responses.length) {
+            throw new Error('Failed to fetch file data');
+        }
+        if (type === 'image') {
+            const imageData = await Promise.all(urls.map(url => imageToBase64String(url)));
+            imageData.forEach(({ data, format }, i) => {
+                mediaTypes[i] = format;
+                files[i] = data;
+            });
+        }
+        if (type === 'audio') {
+            files = await Promise.all(responses.map(r => convertAudio({ file: r, target: 'base64' }))) as string[];
+        }
+        if (type === 'video') {
+            files = await Promise.all(responses.map(r => r.arrayBuffer().then(buffer => Buffer.from(buffer).toString('base64'))));
+        }
+        return files.map((f, i) => ({
+            type: type === 'image' || type === 'photo' ? 'image' : 'file',
+            [type === 'image' ? 'image' : 'data']: f,
+            mediaType: mediaTypes[i],
+        })) as unknown as (FilePart | ImagePart)[];
+    }
+    switch (type) {
+        case 'image':
+        case 'photo':
+        case 'sticker':
+        {
+            const isUrl = ENV.TELEGRAM_IMAGE_TRANSFER_MODE === 'url';
+            const format = urls[0].split('.').pop();
+            const type = format === 'webm' ? 'file' : 'image';
+            const mediaTypePrefix = format === 'webm' ? 'video' : 'image';
+            if (isUrl) {
+                (params.content as any[]).push(...urls.map(url => ({ type, [format === 'webm' ? 'data' : 'image']: url, mediaType: `${mediaTypePrefix}/${url.split('.').pop()}` }) as unknown as FilePart | ImagePart));
+            } else {
+                const images = await fileUrlToBase64Message(mediaTypePrefix) as ImagePart[];
+                (params.content as any[]).push(...images);
+            }
+            break;
+        }
+        case 'video':
+        case 'audio':
+        case 'voice':
+        {
+            const t = type === 'video' ? 'video' : 'audio';
+            const isChat = AUDIO_HANDLE_TYPE === 'chat';
+            if (isChat || type === 'video') {
+                const files = await fileUrlToBase64Message(t);
+                (params.content as any[]).push(...files);
+            } else {
+                const mediaTypes = urls.map(url => `${t}/${url.split('.').pop()}`);
+                (params.content as any[]).push(...urls.map((audio, i) => ({
+                    type: 'file' as const,
+                    data: audio,
+                    mediaType: mediaTypes[i],
+                })));
+            }
+            break;
+        }
+        case 'text':
+        {
+            const fileText = await Promise.all(urls.map(url => fetch(url).then(r => r.text()))).then(t => t.join('\n'));
+            params.content = [
+                {
+                    type: 'text',
+                    text: `${text}\n${fileText}`.trim(),
+                },
+            ];
+            break;
+        }
+    }
+    return params;
 }

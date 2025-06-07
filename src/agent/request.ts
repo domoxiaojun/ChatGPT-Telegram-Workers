@@ -1,12 +1,13 @@
-import type { CoreMessage, LanguageModelV1, StepResult, TextStreamPart } from 'ai';
+/* eslint-disable no-case-declarations */
+import type { LanguageModelV2 } from '@ai-sdk/provider';
+import type { ModelMessage, StepResult, TextStreamPart } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { MessageInfo, ToolChoice } from './model_middleware';
 import type { ChatStreamTextHandler, OpenAIFuncCallData, ResponseMessage } from './types';
-import { generateText, streamText, TypeValidationError, wrapLanguageModel } from 'ai';
+import { generateText, stepCountIs, streamText, TypeValidationError, wrapLanguageModel } from 'ai';
 import { ENV } from '../config/env';
 import { log } from '../log';
 import { SEGMENTATION_MARK } from '../telegram/utils/md2tgmd';
-import { createLlmModel } from './llm';
 import { AIMiddleware, metaDataExtractor } from './model_middleware';
 import { Stream } from './stream';
 
@@ -138,9 +139,7 @@ function clearTimeoutID(timeoutID: any) {
         clearTimeout(timeoutID);
 }
 
-export async function streamHandler(stream: AsyncIterable<any>, contentExtractor: ((data: any) => string | null), onStream: ChatStreamTextHandler, messageInfo: MessageInfo): Promise<string> {
-    log.info(`start handle stream`);
-
+export async function streamHandler(stream: AsyncIterable<any>, contentExtractor: (data: any) => string | null, onStream: ChatStreamTextHandler, messageInfo: MessageInfo): Promise<string> {
     let lengthDelta = 0;
     let updateStep = 5;
     const maxLength = 10_000;
@@ -148,7 +147,7 @@ export async function streamHandler(stream: AsyncIterable<any>, contentExtractor
     try {
         for await (const part of stream) {
             const textPart = contentExtractor(part);
-            if (textPart === null || textPart === '') {
+            if (textPart === null || textPart === undefined || textPart === '') {
                 continue;
             }
             // 已有delta + chunk的长度
@@ -177,13 +176,13 @@ export async function streamHandler(stream: AsyncIterable<any>, contentExtractor
     return messageInfo.content;
 }
 
-export async function requestChatCompletionsV2({ model, messages, tools, activeTools, toolChoice, context, cache }: { model: LanguageModelV1; toolModel?: LanguageModelV1; prompt?: string; messages: CoreMessage[]; tools?: any; activeTools: string[]; toolChoice?: ToolChoice[] | undefined; context: AgentUserConfig; cache?: string[] }, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> {
+export async function requestChatCompletionsV2({ model, messages, tools, activeTools, toolChoice, context, cache }: { model: LanguageModelV2; toolModel?: LanguageModelV2; prompt?: string; messages: ModelMessage[]; tools?: any; activeTools: string[]; toolChoice?: ToolChoice[] | undefined; context: AgentUserConfig; cache?: string[] }, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> {
     // 引入多轮对话 拼接提示
     const messageInfo: MessageInfo = {
         content: cache?.join() ?? '',
         occured_error: false,
     };
-    const middleware = await AIMiddleware({
+    const { prepareStepPre, onStepFinish, onChunk, ...middleware } = await AIMiddleware({
         config: context,
         activeTools: activeTools || [],
         onStream,
@@ -192,24 +191,22 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
         messageInfo,
     });
 
-    const handeredParams = await combineParams({ context, middleware, model, messages, activeTools, tools });
+    const handeredParams = await combineParams({ context, middleware, model, messages, activeTools, tools, prepareStepPre, onStepFinish, onChunk });
 
     let responseMessages: ResponseMessage[] = [];
     let contentFull = '';
 
     if (onStream !== null) {
         // const stream = streamText({ ...hander_params, ...mockParams(middleware) });
-        const stream = streamText({
-            ...handeredParams,
-            onChunk: middleware.onChunk as (data: any) => void,
-        });
+        const stream = streamText(handeredParams);
+        const dataExtractor = thinkingExtractor(messageInfo);
 
-        contentFull = await streamHandler(stream.fullStream, thinkingExtractor(messageInfo), onStream, messageInfo);
+        contentFull = await streamHandler(stream.fullStream, dataExtractor, onStream, messageInfo);
         responseMessages = messageInfo.occured_error ? [{ role: 'assistant', content: contentFull }] : (await stream.response).messages;
         contentFull = messageInfo.occured_error ? contentFull : metaDataExtractor(await stream.providerMetadata, model.provider, contentFull);
     } else {
         const result = await generateText(handeredParams);
-        contentFull = `${result.reasoning ? `>\`Thought for several seconds\`\n>${result.reasoning.replace(/\n/g, '\n>')}\n>✹\n` : ''}${result.text}`;
+        contentFull = `${result.reasoning ? `>\`Thought for several seconds\`\n>${result.reasoning.join('').replace(/\n/g, '\n>')}\n>✹\n` : ''}${result.text}`;
         responseMessages = result.response.messages;
         contentFull = metaDataExtractor(result.providerMetadata, model.provider, contentFull);
     }
@@ -231,21 +228,18 @@ function thinkingExtractor(messageInfo: MessageInfo) {
                     thinkingStart = true;
                     thinkingStartTime = Date.now();
                     // thinking转为引用
-                    return `${thinkingTag}\n>${data.textDelta.replace(/\n/g, '\n>')}`;
+                    return `${thinkingTag}\n>${data.text.replace(/\n/g, '\n>')}`;
                 }
-                return data.textDelta.replace(/\n/g, '\n>');
-            case 'text-delta':
-            case 'step-finish':
-            case 'finish':
-                if (thinkingStart) {
-                    thinkingStart = false;
-                    const thinkingTime = ((Date.now() - thinkingStartTime!) / 1e3).toFixed(1);
-                    messageInfo.content = messageInfo.content
-                        .replace(thinkingTag, `>\`Thought for ${thinkingTime} seconds\``)
-                        .replace(/(\n>)*$/g, '');
-                    return `\n>✹\n${SEGMENTATION_MARK}\n${data.type === 'text-delta' ? data.textDelta : ''}`;
-                }
-                return data.type === 'text-delta' ? data.textDelta : '';
+                return data.text.replace(/\n/g, '\n>');
+            case 'text':
+                if (!thinkingStart)
+                    return data.text ?? '';
+                thinkingStart = false;
+                const thinkingTime = ((Date.now() - thinkingStartTime!) / 1e3).toFixed(1);
+                messageInfo.content = messageInfo.content
+                    .replace(thinkingTag, `>\`Thought for ${thinkingTime} seconds\``)
+                    .replace(/(\n>)*$/g, '');
+                return `\n>✹\n${SEGMENTATION_MARK}\n${data.text}`;
             case 'error':
                 throw data.error;
             default:
@@ -254,22 +248,23 @@ function thinkingExtractor(messageInfo: MessageInfo) {
     };
 }
 
-async function combineParams({ context, middleware, model, messages, activeTools, tools }: { context: AgentUserConfig; middleware: any; model: LanguageModelV1; messages: CoreMessage[]; activeTools: string[]; tools: any }) {
+async function combineParams({ context, middleware, model, messages, activeTools, tools, prepareStepPre, onStepFinish, onChunk }: { context: AgentUserConfig; middleware: any; model: LanguageModelV2; messages: ModelMessage[]; activeTools: string[]; tools: any; prepareStepPre: (middleware: (...args: any[]) => any) => any; onStepFinish: (data: StepResult<any>) => void; onChunk: (data: { chunk: TextStreamPart<any> }) => void }) {
     return {
         model: wrapLanguageModel({
-            model: activeTools?.length ? await createLlmModel(context.TOOL_MODEL, context) : model,
+            model,
             middleware,
         }),
         messages,
-        maxSteps: context.MAX_STEPS,
         experimental_continueSteps: context.CONTINUE_STEP,
         maxRetries: context.MAX_RETRIES,
         temperature: (activeTools?.length || 0) > 0 ? context.FUNCTION_CALL_TEMPERATURE : context.CHAT_TEMPERATURE,
         tools,
         maxTokens: context.MAX_TOKENS,
         activeTools,
-        onStepFinish: middleware.onStepFinish as (data: StepResult<any>) => void,
-        // onFinish: middleware.onFinish as (data: any) => void,
+        prepareStep: prepareStepPre(middleware),
+        stopWhen: stepCountIs(context.MAX_STEPS),
+        onStepFinish,
+        onChunk,
         ...(ENV.CHAT_TOTAL_DURATION_LIMIT > 0 && { abortSignal: AbortSignal.timeout(ENV.CHAT_TOTAL_DURATION_LIMIT * 1e3) }),
     };
 }

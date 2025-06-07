@@ -1,3 +1,4 @@
+import type { ImageModelV2 } from '@ai-sdk/provider';
 import type { CoreUserMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, GoogleVertexImageModelId, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
@@ -58,7 +59,7 @@ export class VertexImage extends VertexBase implements ImageAgent {
                 googleAuthOptions: {
                     credentials: context.VERTEX_CREDENTIALS,
                 },
-            }).image(this.model(context) as GoogleVertexImageModelId),
+            }).image(this.model(context) as GoogleVertexImageModelId) as unknown as ImageModelV2,
             prompt,
             n,
             providerOptions: {
@@ -79,7 +80,7 @@ export class VertexImage extends VertexBase implements ImageAgent {
             throw new Error(`Data is invalid: ${JSON.stringify(images)}`);
         }
         return {
-            raw: images.map(({ uint8Array }) => new Blob([uint8Array], { type: 'image/png' })),
+            raw: images.map(({ uint8Array }) => new Blob([Buffer.from(uint8Array)], { type: 'image/png' })),
             text: prompt,
         };
     };

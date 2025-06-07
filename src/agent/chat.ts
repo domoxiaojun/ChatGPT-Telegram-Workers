@@ -58,9 +58,11 @@ export async function requestCompletionsFromLLM(params: LLMChatRequestParams | n
     }
 
     const trimer = (list: HistoryItem[], maxLength: number) => {
+        // 裁剪超出上下文长度的历史消息
         if (list.length > 0 && list.length > maxLength) {
             list = list.slice(list.length - maxLength);
         }
+
         // 裁剪开始的tool result 以避免报错
         let validStart = 0;
         for (const h of list) {
@@ -83,13 +85,16 @@ export async function requestCompletionsFromLLM(params: LLMChatRequestParams | n
     if (!historyDisable && raw_messages.at(-1)?.role === 'assistant') {
         // only push valid chat history
         history.push(params);
-        history.push(...raw_messages.filter((i) => {
-            if (i.role === 'assistant') {
-                // assistant message is raw text or has text part
-                return typeof i.content === 'string' ? i.content !== '' : i.content.some(c => c.type !== 'text') || i.content.every(c => c.type === 'text' && c.text !== '');
+        // last message cannot be tool-call
+        let validEnd = raw_messages.length;
+        for (const m of raw_messages.toReversed()) {
+            if (m.role === 'assistant' && Array.isArray(m.content) && m.content.find(i => i.type === 'tool-call')) {
+                validEnd--;
+                continue;
             }
-            return true;
-        }));
+            break;
+        }
+        history.push(...raw_messages.slice(0, validEnd));
         await storeHistory(history, context);
     }
     return answer;
@@ -166,15 +171,6 @@ function extractResultText(result: { messages: ResponseMessage[]; content: strin
 };
 
 export function injectSystemMessage(messages: CoreMessage[], systemMessage: string | null) {
-    // const firstMessageContent = messages[0].content;
-    // const firstMessageIsToolCall = Array.isArray(firstMessageContent) && firstMessageContent.some((c: any) => c.type === 'tool-call');
-    // // if the first message is tool call, inject a user message to use the tool to avoid gemini error
-    // if (firstMessageIsToolCall) {
-    //     messages.unshift({
-    //         role: 'user',
-    //         content: 'Use the tool to answer my question.',
-    //     });
-    // }
     if (systemMessage) {
         // 注入{{CURRENT_TIME}}
         systemMessage = systemMessage.replace('{{CURRENT_TIME}}', new Date().toISOString());

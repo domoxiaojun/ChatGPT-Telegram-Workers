@@ -36,6 +36,7 @@ export default antfu(
             'eslint-comments/no-unlimited-disable': 'off',
             'padding-line-between-statements': 'off',
             'no-console': 'off',
+            'comma-dangle': 'off',
             'style/brace-style': ['error', '1tbs', { allowSingleLine: true }],
         },
     },

@@ -24,22 +24,22 @@ import {
 } from './config';
 import { ConfigMerger } from './merger';
 
-export type AgentUserConfig = Record<string, any> &
-    DefineKeys &
-    AgentShareConfig &
-    OpenAIConfig &
-    DalleAIConfig &
-    AzureConfig &
-    WorkersConfig &
-    GeminiConfig &
-    MistralConfig &
-    CohereConfig &
-    AnthropicConfig &
-    OpenAILikeConfig &
-    ExtraUserConfig &
-    VertexConfig &
-    XAIConfig &
-    FishConfig;
+export type AgentUserConfig = Record<string, any>
+    & DefineKeys
+    & AgentShareConfig
+    & OpenAIConfig
+    & DalleAIConfig
+    & AzureConfig
+    & WorkersConfig
+    & GeminiConfig
+    & MistralConfig
+    & CohereConfig
+    & AnthropicConfig
+    & OpenAILikeConfig
+    & ExtraUserConfig
+    & VertexConfig
+    & XAIConfig
+    & FishConfig;
 
 function createAgentUserConfig(): AgentUserConfig {
     return Object.assign(
