@@ -105,7 +105,7 @@ export class GoogleImage extends GoogleBase implements ImageAgent {
 
         const usage = result.usageMetadata;
         if (usage) {
-            const log = getLogSingleton(context);
+            const log = getLogSingleton({ config: context, init: false });
             log.model = result.modelVersion || this.model(context);
             log.tokens = {
                 prompt: usage.promptTokenCount,

@@ -9,6 +9,7 @@ const server = new McpServer({
     version: '1.0.0',
 });
 
+// @ts-nocheck
 server.tool(
     'get-pokemon',
     'Get Pokemon details by name',

@@ -18,7 +18,7 @@ export function Logger(
 
             return async function (this: any, ...args: any[]) {
                 const config: AgentUserConfig = args[configIndex];
-                const log = getLogSingleton(config);
+                const log = getLogSingleton({ config });
                 log.model = args[0]?.model || this.model(config, args[0]);
                 log.start_time = Date.now();
                 const result: CompletionData = await initialValue.apply(this, args);
@@ -38,7 +38,7 @@ export function Logger(
     if (context.kind === 'method' && typeof value === 'function') {
         return async function (this: { context: WorkerContext }, ...args: any[]) {
             const config: AgentUserConfig = this.context.USER_CONFIG;
-            const log = getLogSingleton(config);
+            const log = getLogSingleton({ config });
             log.start_time = Date.now();
             const result = await value.apply(this, args);
             log.end_time = Date.now();
@@ -49,7 +49,7 @@ export function Logger(
     return value;
 }
 
-export function getLogSingleton(config: AgentUserConfig, index: number = 0): LogStruct {
+export function getLogSingleton({ config, init = true }: { config: AgentUserConfig; init?: boolean }): LogStruct {
     const initLog: LogStruct = {
         model: '',
         functions: [],
@@ -58,12 +58,12 @@ export function getLogSingleton(config: AgentUserConfig, index: number = 0): Log
         first_chunk_time: null,
     };
     if (!logSingleton.has(config)) {
-        logSingleton.set(config, [initLog]);
+        logSingleton.set(config, []);
     }
-    if (index >= logSingleton.get(config)!.length) {
+    if (init) {
         logSingleton.get(config)!.push(initLog);
     }
-    return logSingleton.get(config)![index];
+    return logSingleton.get(config)!.at(-1)!;
 }
 
 // 获取日志
@@ -116,9 +116,9 @@ export function getLog(context: AgentUserConfig, { onlyModel = false, isParagrap
             if (tokens?.completion)
                 tokenStr += `,${tokens.completion}`;
             if (tokens?.reasoning)
-                tokenStr += `,r:${tokens.reasoning}`;
+                tokenStr += `,*${tokens.reasoning}`;
             if (tokens?.cached)
-                tokenStr += `,c:${tokens.cached}`;
+                tokenStr += `,-${tokens.cached}`;
             return tokenStr;
         }).join('|')}`);
     }

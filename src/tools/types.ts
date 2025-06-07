@@ -12,13 +12,8 @@ export interface SchemaData<T extends Record<string, any>> {
     };
 }
 
-export type ToolHandler =
-    // | {
-    //     type: 'function';
-    //     data?: string;
-    //     patterns?: PatternInfo[];
-    // }
-    | {
+export type ToolHandler
+    = | {
         type: 'template';
         data: string;
         patterns?: PatternInfo[];
@@ -102,3 +97,7 @@ type ContentItem = TextToolResultContent | ResourceToolResultContent | MediaTool
 export interface ToolResult {
     content: Array<Extract<ContentItem, { type: ToolResultType }>>;
 }
+
+export type Prettify<T> = {
+    [K in keyof T]: T[K];
+} & {};

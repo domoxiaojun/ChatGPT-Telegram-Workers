@@ -1,6 +1,6 @@
 /* eslint-disable no-case-declarations */
 import type { MetadataExtractor } from '@ai-sdk/openai-compatible';
-import type { LanguageModelV1 } from '@ai-sdk/provider';
+import type { LanguageModelV2 } from '@ai-sdk/provider';
 import type { AgentUserConfig } from '../config/types';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createCohere } from '@ai-sdk/cohere';
@@ -11,7 +11,7 @@ import { createXai } from '@ai-sdk/xai';
 import { isCfWorker } from '../telegram/utils/tg_utils';
 import { CHAT_AGENTS } from './index';
 
-export async function createLlmModel(model: string, context: AgentUserConfig): Promise<LanguageModelV1> {
+export async function createLlmModel(model: string, context: AgentUserConfig): Promise<LanguageModelV2> {
     let [agent, model_id] = model.includes(':') ? model.trim().split(':') : [context.AI_CHAT_PROVIDER, model];
     // if agent not exists, fallback to model
     if (!CHAT_AGENTS.some(a => a.name === agent)) {
@@ -24,20 +24,12 @@ export async function createLlmModel(model: string, context: AgentUserConfig): P
             throw new Error(`Model ${model} not found`);
         }
     }
-    const GOOGLE_SAFETY: { category: 'HARM_CATEGORY_UNSPECIFIED' | 'HARM_CATEGORY_DANGEROUS_CONTENT' | 'HARM_CATEGORY_HARASSMENT' | 'HARM_CATEGORY_HATE_SPEECH' | 'HARM_CATEGORY_SEXUALLY_EXPLICIT' | 'HARM_CATEGORY_CIVIC_INTEGRITY'; threshold: 'BLOCK_NONE' | 'BLOCK_LOW_AND_ABOVE' | 'BLOCK_MEDIUM_AND_ABOVE' | 'BLOCK_ONLY_HIGH' }[] = [
-        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' },
-    ];
 
     switch (agent) {
         case 'openai':
             return createOpenAI({
                 baseURL: context.OPENAI_API_BASE,
                 apiKey: context.OPENAI_API_KEY[Math.floor(Math.random() * context.OPENAI_API_KEY.length)],
-                compatibility: 'strict',
                 fetch: mockFetch(model_id, context, agent),
             }).languageModel(model_id);
         case 'anthropic':
@@ -51,10 +43,7 @@ export async function createLlmModel(model: string, context: AgentUserConfig): P
                 baseURL: context.GOOGLE_API_BASE,
                 apiKey: context.GOOGLE_API_KEY || undefined,
                 fetch: mockFetch(model_id, context, agent),
-            }).languageModel(model_id, {
-                safetySettings: GOOGLE_SAFETY,
-                useSearchGrounding: context.SEARCH_GROUNDING,
-            });
+            }).languageModel(model_id);
         case 'cohere':
             return createCohere({
                 baseURL: context.COHERE_API_BASE,
@@ -72,10 +61,7 @@ export async function createLlmModel(model: string, context: AgentUserConfig): P
                     credentials: context.VERTEX_CREDENTIALS,
                 },
                 fetch: mockFetch(model_id, context, agent),
-            }).languageModel(model_id, {
-                safetySettings: GOOGLE_SAFETY,
-                useSearchGrounding: context.SEARCH_GROUNDING,
-            });
+            }).languageModel(model_id);
         case 'xai':
             return createXai({
                 baseURL: context.XAI_API_BASE,
@@ -84,13 +70,13 @@ export async function createLlmModel(model: string, context: AgentUserConfig): P
             }).languageModel(model_id);
         case 'oailike':
         default:
-            return new OpenAICompatibleChatLanguageModel(model_id, {}, {
+            return new OpenAICompatibleChatLanguageModel(model_id, {
                 provider: 'oailike',
                 url: ({ path }: { path: string }) => `${context.OAILIKE_API_BASE}${path}`,
                 headers: () => ({
                     Authorization: `Bearer ${context.OAILIKE_API_KEY}`,
                 }),
-                defaultObjectGenerationMode: 'json',
+                includeUsage: true,
                 metadataExtractor: extraMetadataExtractor(model_id),
                 fetch: mockFetch(model_id, context, agent),
             });
@@ -126,11 +112,11 @@ function extraMetadataExtractor(modelId: string): MetadataExtractor | undefined 
     return {
         extractMetadata: ({ parsedBody }: { parsedBody: unknown }) => {
             const body = parsedBody as Record<string, any>;
-            return {
+            return Promise.resolve({
                 [type]: {
                     citations: body.citations || body.choices[0]?.delta?.annotations,
                 },
-            };
+            });
         },
         createStreamExtractor: () => {
             const citations: string[] = [];
@@ -264,6 +250,13 @@ function mockParams({ modelId, config, provider, options }: MockParams) {
     }
 
     if (provider === 'google' || provider === 'gemini' || provider === 'vertex') {
+        options.safetySettings = [
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' },
+        ];
         const usedBuildIn = GOOGLE_BUILDIN.filter(t => USE_GOOGLE_BUILDIN.includes(t));
         if (usedBuildIn.length > 0) {
             options.tools = {};

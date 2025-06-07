@@ -1,78 +1,127 @@
 /* eslint-disable no-case-declarations */
 /* eslint-disable unused-imports/no-unused-vars */
-import type { LanguageModelV1ToolCallPart, LanguageModelV1ToolResultPart } from '@ai-sdk/provider';
-import type { CoreMessage, CoreUserMessage, LanguageModelV1, LanguageModelV1CallOptions, LanguageModelV1Middleware, LanguageModelV1Prompt, StepResult, TextStreamPart, ToolResultPart } from 'ai';
+import type { LanguageModelV1ToolCallPart, LanguageModelV1ToolResultPart, LanguageModelV2, LanguageModelV2CallOptions } from '@ai-sdk/provider';
+import type { ModelMessage, StepResult, TextStreamPart, ToolResultPart, UserModelMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { LogStruct } from '../log';
 import type { ToolResult } from '../tools/types';
 import type { ChatStreamTextHandler } from './types';
 import {
     extractReasoningMiddleware,
+    wrapLanguageModel,
 } from 'ai';
 import { ENV } from '../config/env';
 import { getLogSingleton, log } from '../log';
 import { getTools, sendToolResult, validTools } from '../tools';
+import { createLlmModel } from './llm';
 
-type Writeable<T> = { -readonly [P in keyof T]: T[P] };
+type Writeable<T> = { -readonly [P in keyof T as P extends 'modelId' ? P : never]: T[P] };
 export interface MessageInfo {
     content: string;
     // reasoning: string;
     occured_error?: boolean;
 };
 
-export async function AIMiddleware({ config, activeTools, onStream, toolChoice, messageInfo, chatModel }: { config: AgentUserConfig; activeTools: string[]; onStream: ChatStreamTextHandler | null; toolChoice: ToolChoice[] | []; messageInfo: MessageInfo; chatModel: string }): Promise<LanguageModelV1Middleware & { onChunk: (data: any) => void; onStepFinish: (data: StepResult<any>) => void; onFinish?: (data: any) => void }> {
+export async function AIMiddleware({ config, activeTools, onStream, toolChoice, messageInfo, chatModel }: { config: AgentUserConfig; activeTools: string[]; onStream: ChatStreamTextHandler | null; toolChoice: ToolChoice[] | []; messageInfo: MessageInfo; chatModel: string }): Promise<Record<string, ((...args: any[]) => any)>> {
     let step = 0;
     let rawSystemPrompt: string | undefined;
     const extractReasoning = extractReasoningMiddleware({ tagName: 'think' });
     const tools = await getTools();
     let hasRecordFirstChunkTime = false;
     let record: LogStruct;
+    let currentModel: LanguageModelV2;
+    // chunk内容修改导致收集的message一并修改，暂恢复原think处理逻辑
+    // const thinkingTag = '>`Thinking\\.\\.\\.`';
+    // let thinkingStart = false;
+    // const chunkWrapper = (data: TextStreamPart<any>) => {
+    //     switch (data.type) {
+    //         case 'reasoning':
+    //             if (!ENV.SHOW_THINKING_TEXT) {
+    //                 data.text = '';
+    //                 break;
+    //             }
+    //             if (!thinkingStart) {
+    //                 thinkingStart = true;
+    //                 // thinking转为引用
+    //                 data.text = `${thinkingTag}\n>${data.text.replace(/\n/g, '\n>')}`;
+    //                 break;
+    //             }
+    //             data.text = data.text.replace(/\n/g, '\n>');
+    //             break;
+    //         case 'text':
+    //             if (!thinkingStart)
+    //                 break;
+    //             thinkingStart = false;
+    //             const thinkingTime = ((Date.now() - record!.start_time) / 1e3).toFixed(1);
+    //             messageInfo.content = messageInfo.content
+    //                 .replace(thinkingTag, `>\`Thought for ${thinkingTime} seconds\``)
+    //                 .replace(/(\n>)*$/g, '');
+    //             data.text = `\n>✹\n${SEGMENTATION_MARK}\n${data.text}`;
+    //             break;
+    //         case 'tool-call':
+    //             onStream?.send(`${messageInfo.content.trimEnd()}\n\n` + `tool call start: \`${data.toolName}\``);
+    //             log.info(`start tool: ${data.toolName}`);
+    //             break;
+    //     }
+    // };
+
     return {
-        wrapGenerate: async ({ doGenerate, params, model }) => {
-            warpModel(model, config, activeTools, (params.mode as any).toolChoice, chatModel);
-            log.info(`modelId: ${model.modelId}`);
-            record = getLogSingleton(config, step);
-            recordModelLog({ config, model, record });
-            const result = await extractReasoning.wrapGenerate!({ doGenerate: () => doGenerate(), doStream: () => model.doStream(params), params, model });
-            log.debug(`generate result: ${JSON.stringify(result)}`);
-            return result;
+        prepareStepPre: (middleware: any) => async ({ model, stepNumber, steps }: { model: LanguageModelV2; stepNumber: number; steps: StepResult<any>[] }) => {
+            currentModel = model;
+            if (activeTools.length > 0) {
+                // (model as Writeable<LanguageModelV2>).modelId = config.TOOL_MODEL;
+                currentModel = wrapLanguageModel({
+                    model: await createLlmModel(config.TOOL_MODEL, config),
+                    middleware,
+                });
+            }
+            record = getLogSingleton({ config });
+            // record model log
+            recordModelLog({ config, model: currentModel, record });
+
+            return {
+                model,
+            };
         },
 
-        wrapStream: async ({ doStream, params, model }) => {
-            warpModel(model, config, activeTools, (params.mode as any).toolChoice, chatModel);
-            log.info(`modelId: ${model.modelId}`);
-            record = getLogSingleton(config, step);
-            recordModelLog({ config, model, record });
-
-            return extractReasoning.wrapStream!({ doStream: () => doStream(), doGenerate: () => model.doGenerate(params), params, model });
+        wrapGenerate: async ({ doGenerate, params, model }: { doGenerate: () => Promise<any>; params: any; model: LanguageModelV2 }) => {
+            return extractReasoning.wrapGenerate!({ doGenerate, doStream: () => model.doStream(params), params, model });
         },
 
-        transformParams: async ({ type, params }) => {
+        wrapStream: async ({ doStream, params, model }: { doStream: () => Promise<any>; params: any; model: LanguageModelV2 }) => {
+            return extractReasoning.wrapStream!({ doStream, doGenerate: () => model.doGenerate(params), params, model });
+        },
+
+        transformParams: async ({ type, params }: { type: 'generate' | 'stream'; params: any }) => {
             log.info(`start ${type} call`);
-            if (!rawSystemPrompt) {
-                rawSystemPrompt = params.prompt.find(i => i.role === 'system')?.content;
-            }
-            if (toolChoice.length > 0 && step < toolChoice.length && params.mode.type === 'regular') {
-                params.mode.toolChoice = toolChoice[step] as any;
+
+            // transform tool choice
+            if (toolChoice.length > 0 && step < params.toolChoice.length) {
+                toolChoice = toolChoice[step] as any;
                 log.info(`toolChoice changed: ${JSON.stringify(toolChoice[step])}`);
-                params.mode.tools = params.mode.tools?.filter(i => activeTools.includes(i.name));
+                params.tools = params.mode.tools?.filter((i: any) => activeTools.includes(i.name));
             }
+            // tool result as message
             if (params.prompt.at(-1)?.role === 'tool') {
                 log.info(`detect last message is tool result, handle tool result`);
                 const toolResults = params.prompt.at(-1)?.content as unknown as LanguageModelV1ToolResultPart[];
                 await handleToolResult({ tools, toolResults, onStream, config });
                 log.debug(`last tool result: ${JSON.stringify(toolResults, null, 2)}`);
             }
+            if (!rawSystemPrompt) {
+                rawSystemPrompt = params.prompt.find((i: any) => i.role === 'system')?.content;
+            }
+            // warp messages
             warpMessages(params, tools, activeTools, rawSystemPrompt);
-
             return params;
         },
 
-        onChunk: ({ chunk }: { chunk: Extract<TextStreamPart<any>, { type: 'reasoning' | 'tool-call' | 'tool-call-streaming-start' | 'tool-call-delta' | 'tool-result' | 'step-start' | 'step-finish' }> }) => {
+        onChunk: ({ chunk }: { chunk: TextStreamPart<any> }) => {
             if (!hasRecordFirstChunkTime) {
                 record.first_chunk_time = Date.now() - record.start_time;
                 hasRecordFirstChunkTime = true;
             }
+            // chunkWrapper(chunk);
             if (chunk.type === 'tool-call') {
                 onStream?.send(`${messageInfo.content.trimEnd()}\n\n` + `tool call start: \`${chunk.toolName}\``);
                 log.info(`start tool: ${chunk.toolName}`);
@@ -92,7 +141,7 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
             if (toolResults.length > 0) {
                 const func_logs = toolResults.map(({ toolName, args, result }) => ({
                     name: toolName,
-                    args: Object.values(args),
+                    args: Object.values(args as any),
                     ...(result.content.some((i: any) => i.is_error) && { error: result.content.map((i: any) => i.text).join('\n') }),
                     ...(result.time && { time: result.time }),
                 }));
@@ -113,12 +162,12 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
             }
 
             // record token
-            if (usage && !Number.isNaN(usage.promptTokens) && !Number.isNaN(usage.completionTokens)) {
+            if (usage && usage.inputTokens && usage.outputTokens) {
                 record.tokens = {
-                    prompt: usage.promptTokens,
-                    completion: usage.completionTokens,
-                    // reasoning: usage.reasoningTokens,
-                    // cached: usage.cachedTokens,
+                    prompt: usage.inputTokens,
+                    completion: usage.outputTokens,
+                    reasoning: usage.reasoningTokens,
+                    cached: usage.cachedInputTokens,
                 };
                 log.info(`tokens: ${JSON.stringify(usage)}`);
             } else {
@@ -129,30 +178,27 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
             hasRecordFirstChunkTime = false;
             step++;
         },
-        // onFinish: async (result: any) => {
-        //     log.debug(`onFinish: ${JSON.stringify(result)}`);
-        // },
     };
 }
 
-function warpMessages(params: LanguageModelV1CallOptions, tools: Record<string, any>, activeTools: string[], rawSystemPrompt: string | undefined) {
-    const { prompt: messages, mode } = params;
+function warpMessages(params: LanguageModelV2CallOptions, allTools: Record<string, any>, activeTools: string[], rawSystemPrompt: string | undefined) {
+    const { prompt: messages, tools } = params;
 
     const getSystemContent = () => {
         let systemContent = rawSystemPrompt ?? '';
         // 插入工具prompt
         if (activeTools.length > 0) {
             systemContent += `\nYou can consider using the following tools:\n${activeTools.map(name =>
-                `### ${name}\n- desc: ${tools[name]?.schema?.description || ''} \n${tools[name]?.prompt || ''}`,
+                `### ${name}\n- desc: ${allTools[name]?.schema?.description || ''} \n${allTools[name]?.prompt || ''}`,
             ).join('\n\n')}`
-            + `\n\n${activeTools.map(name => tools[name]?.prompt && `## For tool \`${name}\`, you should follow these rules:\n - ${tools[name]?.prompt}`)
+            + `\n\n${activeTools.map(name => allTools[name]?.prompt && `## For tool \`${name}\`, you should follow these rules:\n - ${allTools[name]?.prompt}`)
                 .join('\n')}`;
         }
         return systemContent ?? 'You are a helpful assistant';
     };
 
-    const trimMessages = (messages: LanguageModelV1Prompt) => {
-        const modifiedMessages: LanguageModelV1Prompt = [];
+    const trimMessages = (messages: ModelMessage[]) => {
+        const modifiedMessages: any[] = [];
         for (const [i, message] of messages.entries()) {
             switch (message.role) {
                 case 'system':
@@ -162,7 +208,7 @@ function warpMessages(params: LanguageModelV1CallOptions, tools: Record<string, 
                     });
                     continue;
                 case 'assistant':
-                    if (message.content.every(i => i.type !== 'tool-call')) {
+                    if (Array.isArray(message.content) && message.content.every(i => i.type !== 'tool-call')) {
                         modifiedMessages.push(message);
                     }
                     continue;
@@ -192,8 +238,8 @@ function warpMessages(params: LanguageModelV1CallOptions, tools: Record<string, 
         return modifiedMessages;
     };
 
-    if (activeTools.length === 0) {
-        (mode as any).tools = undefined;
+    if (tools && activeTools.length === 0) {
+        tools.length = 0;
     }
     if (ENV.MESSAGE_COMPATIBLE) {
         params.prompt = trimMessages(messages);
@@ -216,27 +262,19 @@ function warpMessages(params: LanguageModelV1CallOptions, tools: Record<string, 
     }
 }
 
-function warpModel(model: LanguageModelV1, config: AgentUserConfig, activeTools: string[], toolChoice: ToolChoice, chatModel: string) {
-    const mutableModel = model as Writeable<LanguageModelV1>;
+function warpModel(model: LanguageModelV2, config: AgentUserConfig, activeTools: string[], toolChoice: ToolChoice, chatModel: string) {
+    const mutableModel = model as Writeable<LanguageModelV2>;
     const effectiveModel = (activeTools.length > 0 && toolChoice?.type !== 'none') ? (config.TOOL_MODEL || chatModel) : chatModel;
     if (effectiveModel !== mutableModel.modelId) {
-        let newModel: LanguageModelV1 | undefined;
-        // Not support cross-provider functionality.
-        // if (effectiveModel.includes(':')) {
-        //     newModel = await createLlmModel(effectiveModel, config);
-        //     // mutableModel.provider = newModel.provider;
-        //     mutableModel.specificationVersion = newModel.specificationVersion;
-        //     mutableModel.doStream = newModel.doStream;
-        //     mutableModel.doGenerate = newModel.doGenerate;
-        // }
+        let newModel: LanguageModelV2 | undefined;
         mutableModel.modelId = newModel?.modelId ?? effectiveModel;
     }
 }
 
-export async function warpLLMParams(params: { messages: CoreMessage[]; model: LanguageModelV1; cache?: string[] }, context: AgentUserConfig) {
+export async function warpLLMParams(params: { messages: ModelMessage[]; model: LanguageModelV2; cache?: string[] }, context: AgentUserConfig) {
     const tools = await getTools();
 
-    const messages = params.messages.at(-1) as CoreUserMessage;
+    const messages = params.messages.at(-1) as UserModelMessage;
     const tool = typeof messages.content === 'string'
         ? await validTools(context)
         : undefined;
@@ -311,7 +349,7 @@ function trimActiveTools(activeTools: string[], toolNames: string[]) {
     return activeTools.length > 0 ? activeTools.filter(name => !toolNames.includes(name)) : [];
 }
 
-function recordModelLog({ config, model, record }: { config: AgentUserConfig; model: LanguageModelV1; record: LogStruct }) {
+function recordModelLog({ config, model, record }: { config: AgentUserConfig; model: LanguageModelV2; record: LogStruct }) {
     log.info(`provider: ${model.provider}, modelId: ${model.modelId} `);
     record.start_time = Date.now();
     record.model = model.modelId;

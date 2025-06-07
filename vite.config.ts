@@ -5,7 +5,7 @@ import cleanup from 'rollup-plugin-cleanup';
 import nodeExternals from 'rollup-plugin-node-externals';
 import { defineConfig } from 'vite';
 import checker from 'vite-plugin-checker';
-import dts from 'vite-plugin-dts';
+// import dts from 'vite-plugin-dts';
 import { createDockerPlugin } from './scripts/plugins/docker';
 import { createVersionPlugin, versionDefine } from './scripts/plugins/version';
 
@@ -46,9 +46,9 @@ switch (BUILD_MODE) {
     case 'pack':
         entry = 'src/index.ts';
         formats = ['es', 'cjs'];
-        plugins.push(dts({
-            rollupTypes: true,
-        }));
+        // plugins.push(dts({
+        //     rollupTypes: true,
+        // }));
         plugins.push(nodeExternals());
         break;
     default:
