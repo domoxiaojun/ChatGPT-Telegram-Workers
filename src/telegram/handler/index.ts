@@ -6,6 +6,7 @@ import { handleCallbackQuery, handleChosenInlineQuery, handleInlineQuery } from 
 import { ChatHandler } from './chat';
 import { GroupMention } from './group';
 import {
+    BlocklistFilter,
     CheckForwarding,
     ChunkMessageHandler,
     CommandHandler,
@@ -55,7 +56,7 @@ async function handleMessage(token: string, message: Telegram.Message, isForward
     const SHARE_HANDLER: MessageHandler<any>[] = [
         // 检查环境是否准备好: DATABASE
         new EnvChecker(),
-        // 过滤非白名单用户, 提前过滤减少KV消耗
+        // 过滤非白名单群组/用户, 提前过滤减少KV消耗
         new WhiteListFilter(),
         // 过滤不支持的消息 抽离文件ID
         new MessageFilter(),
@@ -73,6 +74,8 @@ async function handleMessage(token: string, message: Telegram.Message, isForward
         new MergeQuote(),
         // 初始化用户配置
         new InitUserConfig(),
+        // 过滤被屏蔽的用户
+        new BlocklistFilter(),
         // 替换消息
         new SubstituteHandler(),
         // 动态模型处理

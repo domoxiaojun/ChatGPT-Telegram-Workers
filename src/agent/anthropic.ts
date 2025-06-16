@@ -1,4 +1,4 @@
-import type { CoreUserMessage } from 'ai';
+import type { UserModelMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
 import { createLlmModel } from './llm';
@@ -25,7 +25,7 @@ export class Anthropic implements ChatAgent {
     };
 
     readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> => {
-        const modelId = this.model(context, params.messages.at(-1) as CoreUserMessage);
+        const modelId = this.model(context, params.messages.at(-1) as UserModelMessage);
         const model = await createLlmModel(modelId, context);
         return requestChatCompletionsV2(await warpLLMParams({
             model,

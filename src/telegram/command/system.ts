@@ -1,6 +1,6 @@
 /* eslint-disable unused-imports/no-unused-vars */
 /* eslint-disable no-cond-assign */
-import type { CoreUserMessage } from 'ai';
+import type { UserModelMessage } from 'ai';
 import type * as Telegram from 'telegram-bot-api-types';
 import type { HistoryItem, ImageResult } from '../../agent/types';
 import type { WorkerContext } from '../../config/context';
@@ -40,6 +40,9 @@ export const COMMAND_AUTH_CHECKER = {
             return ['administrator', 'creator'];
         }
         return null;
+    },
+    whiteList(chatType: string): string[] {
+        return ['whitelist'];
     },
 };
 
@@ -352,7 +355,7 @@ export class RedoCommandHandler implements CommandHandler {
     command = '/redo';
     scopes: ScopeType[] = ['all_private_chats', 'all_group_chats', 'all_chat_administrators'];
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext): Promise<Response> => {
-        const mf = (history: HistoryItem[], message: CoreUserMessage | null): any => {
+        const mf = (history: HistoryItem[], message: UserModelMessage | null): any => {
             let nextMessage = message;
             if (!(history && Array.isArray(history) && history.length > 0)) {
                 throw new Error('History not found');
@@ -919,7 +922,7 @@ export class KlingAICommandHandler implements CommandHandler {
 export class HistoryCommandHandler implements CommandHandler {
     command = '/history';
     scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
-    needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
+    needAuth = COMMAND_AUTH_CHECKER.whiteList;
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
         const length = Number.parseInt(subcommand.trim()) || ENV.STORE_HISTORY_LENGTH;
         const history = await loadHistory(context.SHARE_CONTEXT.chatHistoryKey, length);
@@ -1023,5 +1026,77 @@ export class TTSCommandHandler implements CommandHandler {
             return sender.api.deleteMessage({ chat_id: sender.context.chat_id, message_id: sender.context.message_id! });
         }
         throw new Error(`Failed to send voice message: ${resp.status} ${await resp.json().then(j => j.description)}`);
+    };
+}
+
+export class BlockUserCommandHandler implements CommandHandler {
+    command = '/block';
+    scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
+    needAuth = COMMAND_AUTH_CHECKER.whiteList;
+    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
+        const replyId = message.reply_to_message?.from?.id;
+        let blockedId = replyId?.toString() ?? '';
+
+        let op = '+';
+        if (subcommand) {
+            const [, operator, id] = subcommand.trim().match(/^([+-]?)(\d+)?/) ?? [];
+            id && (blockedId = id);
+            op = operator || '+';
+        }
+        if (!blockedId) {
+            return sender.sendPlainText('Please input a valid user id');
+        }
+        if (ENV.CHAT_WHITE_LIST.includes(blockedId) && op === '+') {
+            return sender.sendPlainText('You cannot block a user in the chat whitelist');
+        }
+        if (blockedId === context.SHARE_CONTEXT.botId.toString()) {
+            return sender.sendPlainText('You cannot block the bot');
+        }
+        const blocklist = context.USER_CONFIG.BLOCKLIST;
+        if (blocklist.includes(blockedId) && op === '+') {
+            return sender.sendRichText(`User \`${blockedId}\` has already been blocked`, 'MarkdownV2', 'tip');
+        }
+        if (!blocklist.includes(blockedId) && op === '-') {
+            return sender.sendRichText(`User \`${blockedId}\` is not in the blocklist`, 'MarkdownV2', 'tip');
+        }
+
+        if (op === '+') {
+            blocklist.push(blockedId);
+        } else {
+            context.USER_CONFIG.BLOCKLIST = blocklist.filter(id => id !== blockedId);
+        }
+        context.USER_CONFIG.DEFINE_KEYS.push('BLOCKLIST');
+        context.USER_CONFIG.DEFINE_KEYS = Array.from(new Set(context.USER_CONFIG.DEFINE_KEYS));
+        await ENV.DATABASE.put(
+            context.SHARE_CONTEXT.configStoreKey,
+            JSON.stringify(ConfigMerger.trim(context.USER_CONFIG, ENV.LOCK_USER_CONFIG_KEYS)),
+        );
+        return sender.sendRichText(`${op === '+' ? 'Blocked' : 'Unblocked'} user ${message.from?.username ?? message.from?.first_name ?? ''}, id: \`${blockedId}\``, 'MarkdownV2', 'tip');
+    };
+}
+
+export class BlocklistCommandHandler implements CommandHandler {
+    command = '/blocklist';
+    scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
+    needAuth = COMMAND_AUTH_CHECKER.whiteList;
+    handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
+        const blocklist = context.USER_CONFIG.BLOCKLIST;
+        const isClear = subcommand.trim() === 'clear';
+        if (isClear) {
+            context.USER_CONFIG.BLOCKLIST = [];
+            await ENV.DATABASE.put(
+                context.SHARE_CONTEXT.configStoreKey,
+                JSON.stringify(ConfigMerger.trim(context.USER_CONFIG, ENV.LOCK_USER_CONFIG_KEYS)),
+            );
+            return sender.sendRichText(`Blocked users cleared`, 'MarkdownV2', 'tip');
+        }
+        let tip = 'No blocked users';
+        if (blocklist.length > 0) {
+            tip = `Blocked users:\n${blocklist.map(id => `- \`${id}\``).join('\n')}`;
+        }
+        return sender.sendRichText(tip, 'MarkdownV2', 'tip', {
+            addQuote: true,
+            quoteExpandable: true,
+        });
     };
 }

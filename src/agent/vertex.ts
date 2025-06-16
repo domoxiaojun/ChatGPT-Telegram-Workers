@@ -1,5 +1,5 @@
 import type { ImageModelV2 } from '@ai-sdk/provider';
-import type { CoreUserMessage } from 'ai';
+import type { UserModelMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, GoogleVertexImageModelId, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
 import { createVertex } from '@ai-sdk/google-vertex';
@@ -32,7 +32,7 @@ export class Vertex extends VertexBase implements ChatAgent {
     readonly modelKey = 'VERTEX_CHAT_MODEL';
 
     readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> => {
-        const userMessage = handleUrl(params.messages.at(-1) as CoreUserMessage, true);
+        const userMessage = handleUrl(params.messages.at(-1) as UserModelMessage, true);
         const model = await createLlmModel(this.model(context, userMessage), context);
         return requestChatCompletionsV2(await warpLLMParams({
             model,

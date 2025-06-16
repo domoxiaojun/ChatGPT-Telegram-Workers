@@ -1,4 +1,4 @@
-import type { CoreUserMessage } from 'ai';
+import type { UserModelMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ASRAgent, ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage, TTSAgent } from './types';
 import { log, Logger } from '../log';
@@ -36,7 +36,7 @@ export class OpenAI extends OpenAIBase implements ChatAgent {
     };
 
     readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> => {
-        const modelId = this.model(context, params.messages.at(-1) as CoreUserMessage);
+        const modelId = this.model(context, params.messages.at(-1) as UserModelMessage);
         const model = await createLlmModel(modelId, context);
 
         return requestChatCompletionsV2(await warpLLMParams({

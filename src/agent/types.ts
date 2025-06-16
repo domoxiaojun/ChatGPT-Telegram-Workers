@@ -1,4 +1,4 @@
-import type { CoreAssistantMessage, CoreMessage, CoreToolMessage, CoreUserMessage } from 'ai';
+import type { CoreAssistantMessage, CoreMessage, CoreToolMessage, UserModelMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { MessageSender } from '../telegram/utils/send';
 import type { UnionData } from '../telegram/utils/tg_utils';
@@ -16,7 +16,7 @@ export type HistoryItem = CoreMessage;
 
 export interface HistoryModifierResult {
     history: HistoryItem[];
-    message: CoreUserMessage;
+    message: UserModelMessage;
 }
 
 export interface CompletionData {
@@ -51,9 +51,9 @@ export interface ChatStreamTextHandler {
 }
 
 export type ImageAgentRequest = (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>) => Promise<ImageResult>;
-export type HistoryModifier = (history: HistoryItem[], message: CoreUserMessage | null) => HistoryModifierResult;
+export type HistoryModifier = (history: HistoryItem[], message: UserModelMessage | null) => HistoryModifierResult;
 
-export type LLMChatRequestParams = CoreUserMessage;
+export type LLMChatRequestParams = UserModelMessage;
 
 export interface LLMChatParams {
     prompt?: string;
