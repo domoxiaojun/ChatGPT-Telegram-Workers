@@ -1,5 +1,6 @@
 import type { LogLevelType } from './types';
 import prompts_default from '../utils/others/prompt';
+
 // -- 只能通过环境变量覆盖的配置 --
 export class EnvironmentConfig {
     // 多语言支持
@@ -58,7 +59,7 @@ export class EnvironmentConfig {
     CHAT_GROUP_WHITE_LIST: string[] = [];
     // 群组机器人开关
     GROUP_CHAT_BOT_ENABLE = true;
-    // 群组机器人共享模式,关闭后，一个群组只有一个会话和配置。开启的话群组的每个人都有自己的会话上下文
+    // 群组机器人共享模式，开启后，一个群组只有一个会话和配置。关闭的话群组的每个人都有自己的会话上下文
     GROUP_CHAT_BOT_SHARE_MODE = true;
 
     // -- 历史记录相关 --
@@ -653,4 +654,6 @@ export class ExtraUserConfig {
     ENABLE_ALIAS = false;
     // 音频提示词
     AUDIO_PROMPT = 'Please listen to the audio file. Identify and understand the question being asked in the audio. Then, provide a detailed explanation and answer to this question. Ensure your answer is helpful and explains the solution or information clearly.';
+    // use blocklist to block someone
+    BLOCKLIST: string[] = [];
 }

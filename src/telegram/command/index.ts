@@ -10,6 +10,8 @@ import { executeRequest, formatInput } from '../../plugins/template';
 import { MessageSender, sendAction } from '../utils/send';
 import { loadChatRoleWithContext } from './auth';
 import {
+    BlocklistCommandHandler,
+    BlockUserCommandHandler,
     ClearEnvCommandHandler,
     DelEnvCommandHandler,
     EchoCommandHandler,
@@ -50,6 +52,8 @@ const SYSTEM_COMMANDS: CommandHandler[] = [
     new HistoryCommandHandler(),
     new MapCommandHandler(),
     new TTSCommandHandler(),
+    new BlockUserCommandHandler(),
+    new BlocklistCommandHandler(),
 ];
 
 // const commandHanders: any[] = [
@@ -154,7 +158,7 @@ export async function handleCommandMessage(message: Telegram.Message, context: W
 
     // 查找系统命令
     for (const cmd of SYSTEM_COMMANDS) {
-        if (text === cmd.command || text.startsWith(`${cmd.command} `)) {
+        if (text === cmd.command || text.startsWith(`${cmd.command} `) || text.startsWith(`${cmd.command}\n`)) {
             log.info(`[SYSTEM COMMAND] handle system command: ${cmd.command}`);
             return handleSystemCommand(message, text, cmd, context);
         }
@@ -222,6 +226,12 @@ export function commandsDocument(): { description: string; command: string }[] {
 }
 
 export async function authChecker(command: CommandHandler, message: Telegram.Message, context: WorkerContext) {
+    if (command.needAuth && command.needAuth(message.chat?.type ?? 'private')?.includes('whitelist')) {
+        if (ENV.CHAT_WHITE_LIST.includes(message.from?.id?.toString() ?? '')) {
+            return;
+        }
+        throw new Error('Permission denied, need whitelist');
+    }
     if (ENV.CHAT_WHITE_LIST.includes(message.from?.id?.toString() ?? '')) {
         return;
     }

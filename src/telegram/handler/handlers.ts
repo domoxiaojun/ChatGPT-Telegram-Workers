@@ -75,7 +75,7 @@ export class WhiteListFilter implements MessageHandler<WorkerContextBase> {
         if (message.chat.type === 'private') {
             // 白名单判断
             if (!ENV.CHAT_WHITE_LIST.includes(`${message.chat.id}`)) {
-                log.error(`[WHITE LIST] ${message.chat.id} ${message.chat.username} not in white list`);
+                log.error(`[WHITE LIST] ${message.chat.id} ${message.from?.username ?? message.from?.first_name ?? ''} not in white list`);
                 // return sender.sendPlainText(text);
                 return new Response('success', { status: 200 });
             }
@@ -90,7 +90,7 @@ export class WhiteListFilter implements MessageHandler<WorkerContextBase> {
             }
             // 白名单判断
             if (!ENV.CHAT_GROUP_WHITE_LIST.includes(`${message.chat.id}`)) {
-                log.error(`[WHITE LIST] ${message.chat.id} ${message.chat.username} not in white list`);
+                log.error(`[WHITELIST] ${message.chat.id} ${message.chat.username ?? ''} not in whitelist`);
                 // return sender.sendPlainText(text);
                 return new Response('success', { status: 200 });
             }
@@ -362,6 +362,19 @@ export class ChunkMessageHandler implements MessageHandler<WorkerContext> {
             return HandleMediaGroupMessage.handle(message, context);
         } else if (message.text) {
             return HandleChunkMessage.handle(message, context);
+        }
+        return null;
+    };
+}
+
+export class BlocklistFilter implements MessageHandler<WorkerContext> {
+    handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | null> => {
+        const blocklist = context.USER_CONFIG.BLOCKLIST;
+        const userId = message.from?.id?.toString() ?? '';
+        // if user in global whitelist, not block
+        if (!ENV.CHAT_WHITE_LIST.includes(userId) && blocklist.includes(userId)) {
+            log.info(`[BLOCK] ${message.from?.id} ${message.from?.username ?? message.from?.first_name ?? ''} in blocklist`);
+            return new Response('success', { status: 200 });
         }
         return null;
     };

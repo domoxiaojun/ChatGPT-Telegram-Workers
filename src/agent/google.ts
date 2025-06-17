@@ -1,4 +1,4 @@
-import type { CoreUserMessage, FilePart, ImagePart, UserContent } from 'ai';
+import type { FilePart, ImagePart, UserContent, UserModelMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
 import { getLogSingleton, Logger } from '../log';
@@ -30,7 +30,7 @@ export class Google extends GoogleBase implements ChatAgent {
     readonly modelKey = 'GOOGLE_CHAT_MODEL';
 
     readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> => {
-        const userMessage = handleUrl(params.messages.at(-1) as CoreUserMessage);
+        const userMessage = handleUrl(params.messages.at(-1) as UserModelMessage);
         const model = await createLlmModel(this.model(context, userMessage), context);
         return requestChatCompletionsV2(await warpLLMParams({
             model,
@@ -194,7 +194,7 @@ export class GoogleTTS extends GoogleBase {
     };
 }
 
-export function handleUrl(messages: CoreUserMessage, isVertex: boolean = false): CoreUserMessage {
+export function handleUrl(messages: UserModelMessage, isVertex: boolean = false): UserModelMessage {
     if (typeof messages.content === 'string') {
         const { data = [], text } = extractUrls(messages.content, isVertex);
         if (data.length > 0) {
