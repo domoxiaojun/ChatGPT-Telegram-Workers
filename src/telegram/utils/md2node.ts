@@ -1,4 +1,5 @@
-import { escapedChars, escapedCharsReverseMap, escapedRegexp } from './md2tgmd';
+import { escapedChars, escapedCharsReverseMap, escapedRegexp, SEGMENTATION_MARK } from './md2tgmd';
+
 /* eslint-disable no-cond-assign */
 /* eslint-disable style/brace-style */
 interface Node {
@@ -20,7 +21,7 @@ function markdownToTelegraphNodes(markdown: string): Node[] {
     //     markdown = markdown.split(match[0]).join(escapedChars[match[0] as keyof typeof escapedChars]);
     // }
     markdown = markdown.replace(escapedRegexp, match => escapedChars[match as keyof typeof escapedChars]);
-    const lines = markdown.split('\n');
+    const lines = markdown.split('\n').filter(line => line !== SEGMENTATION_MARK);
     const nodes = [];
     // let currentList = null;
     let inCodeBlock = 0;
@@ -81,7 +82,7 @@ function markdownToTelegraphNodes(markdown: string): Node[] {
         }
         // 引用
         else if (_line.startsWith('>')) {
-            const text = line.slice(2);
+            const text = line.slice(1);
             nodes.push({ tag: 'blockquote', children: processInlineElements(text) });
         }
         // 无序列表
@@ -129,7 +130,26 @@ function markdownToTelegraphNodes(markdown: string): Node[] {
             ],
         });
     }
-    return revertEscapedChar(nodes);
+    // 合并相同节点
+    function mergeSameNode(nodes: Node[]): Node[] {
+        const mergedNodes: Node[] = [];
+        for (let i = 0; i < nodes.length; i++) {
+            if (i === 0) {
+                mergedNodes.push(nodes[i]);
+                continue;
+            }
+            const lastNode = mergedNodes[mergedNodes.length - 1];
+            if (lastNode.tag === nodes[i].tag && lastNode.children) {
+                const children = nodes[i].children || [];
+                lastNode.children.push(...(['\n', ...children]));
+            } else {
+                mergedNodes.push(nodes[i]);
+            }
+        }
+        return mergedNodes;
+    }
+    // 还原转义字符
+    return revertEscapedChar(mergeSameNode(nodes));
 }
 
 function revertEscapedChar(nodes: Node[]): Node[] {

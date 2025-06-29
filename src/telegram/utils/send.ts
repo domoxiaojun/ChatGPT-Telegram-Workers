@@ -345,6 +345,7 @@ export class TelegraphSender {
         const url = `https://api.telegra.ph/createAccount?short_name=${short_name}&author_name=${author_name}`;
         const resp = await fetch(url).then(r => r.json());
         if (resp.ok) {
+            console.log('create telegraph account success:', resp.result.access_token);
             return resp.result.access_token;
         } else {
             throw new Error('create telegraph account failed');
