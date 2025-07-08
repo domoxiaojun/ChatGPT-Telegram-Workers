@@ -1071,7 +1071,7 @@ export class BlockUserCommandHandler implements CommandHandler {
             context.SHARE_CONTEXT.configStoreKey,
             JSON.stringify(ConfigMerger.trim(context.USER_CONFIG, ENV.LOCK_USER_CONFIG_KEYS)),
         );
-        return sender.sendRichText(`${op === '+' ? 'Blocked' : 'Unblocked'} user ${message.from?.username ?? message.from?.first_name ?? ''}, id: \`${blockedId}\``, 'MarkdownV2', 'tip');
+        return sender.sendRichText(`${op === '+' ? 'Blocked' : 'Unblocked'} user ${replyId ?? message.reply_to_message!.from!.first_name ?? ''}, id: \`${blockedId}\``, 'MarkdownV2', 'tip');
     };
 }
 
