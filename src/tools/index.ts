@@ -158,7 +158,7 @@ export async function validTools(config: AgentUserConfig) {
         .reduce((acc: Record<string, any>, [name, t]) => {
             acc[t.schema.name] = tool({
                 description: t.schema.description,
-                parameters: jsonSchema(t.schema.parameters as any),
+                inputSchema: jsonSchema(t.schema.parameters as any),
                 execute: executeTool(name, env, config) as any,
             });
             return acc;

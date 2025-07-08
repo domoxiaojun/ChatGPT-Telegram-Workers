@@ -9,12 +9,12 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { OpenAICompatibleChatLanguageModel } from '@ai-sdk/openai-compatible';
 import { createXai } from '@ai-sdk/xai';
 import { isCfWorker } from '../telegram/utils/tg_utils';
-import { CHAT_AGENTS } from './index';
 
 export async function createLlmModel(model: string, context: AgentUserConfig): Promise<LanguageModelV2> {
     let [agent, model_id] = model.includes(':') ? model.trim().split(':') : [context.AI_CHAT_PROVIDER, model];
     // if agent not exists, fallback to model
-    if (!CHAT_AGENTS.some(a => a.name === agent)) {
+    const availableAgents = ['openai', 'anthropic', 'google', 'cohere', 'vertex', 'xai', 'oailike'];
+    if (!availableAgents.includes(agent)) {
         model_id = model;
     }
 
@@ -31,25 +31,25 @@ export async function createLlmModel(model: string, context: AgentUserConfig): P
                 baseURL: context.OPENAI_API_BASE,
                 apiKey: context.OPENAI_API_KEY[Math.floor(Math.random() * context.OPENAI_API_KEY.length)],
                 fetch: mockFetch(model_id, context, agent),
-            }).languageModel(model_id);
+            }).languageModel(model_id) as LanguageModelV2;
         case 'anthropic':
             return createAnthropic({
                 baseURL: context.ANTHROPIC_API_BASE,
                 apiKey: context.ANTHROPIC_API_KEY || undefined,
                 fetch: mockFetch(model_id, context, agent),
-            }).languageModel(model_id);
+            }).languageModel(model_id) as LanguageModelV2;
         case 'google':
             return createGoogleGenerativeAI({
                 baseURL: context.GOOGLE_API_BASE,
                 apiKey: context.GOOGLE_API_KEY || undefined,
                 fetch: mockFetch(model_id, context, agent),
-            }).languageModel(model_id);
+            }).languageModel(model_id) as LanguageModelV2;
         case 'cohere':
             return createCohere({
                 baseURL: context.COHERE_API_BASE,
                 apiKey: context.COHERE_API_KEY || undefined,
                 fetch: mockFetch(model_id, context, agent),
-            }).languageModel(model_id);
+            }).languageModel(model_id) as LanguageModelV2;
         case 'vertex':
             if (isCfWorker)
                 throw new Error('Vertex is not supported in Cloudflare Workers');
@@ -61,13 +61,13 @@ export async function createLlmModel(model: string, context: AgentUserConfig): P
                     credentials: context.VERTEX_CREDENTIALS,
                 },
                 fetch: mockFetch(model_id, context, agent),
-            }).languageModel(model_id);
+            }).languageModel(model_id) as LanguageModelV2;
         case 'xai':
             return createXai({
                 baseURL: context.XAI_API_BASE,
                 apiKey: context.XAI_API_KEY || undefined,
                 fetch: mockFetch(model_id, context, agent),
-            }).languageModel(model_id);
+            }).languageModel(model_id) as LanguageModelV2;
         case 'oailike':
         default:
             return new OpenAICompatibleChatLanguageModel(model_id, {
@@ -79,7 +79,7 @@ export async function createLlmModel(model: string, context: AgentUserConfig): P
                 includeUsage: true,
                 metadataExtractor: extraMetadataExtractor(model_id),
                 fetch: mockFetch(model_id, context, agent),
-            });
+            }) as LanguageModelV2;
     }
     // if (model.includes(':')) {
     //     if (model.startsWith('google:') || model.startsWith('vertex:')) {

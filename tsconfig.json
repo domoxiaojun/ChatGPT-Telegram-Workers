@@ -18,7 +18,8 @@
         "declarationMap": true,
         "outDir": "dist",
         "removeComments": true,
-        "esModuleInterop": true
+        "esModuleInterop": true,
+        "skipLibCheck": true
     },
     "include": [
         "src/**/*"
