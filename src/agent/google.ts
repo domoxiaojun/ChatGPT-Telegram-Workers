@@ -194,9 +194,9 @@ export class GoogleTTS extends GoogleBase {
     };
 }
 
-export function handleUrl(messages: UserModelMessage, isVertex: boolean = false): UserModelMessage {
+export function handleUrl(messages: UserModelMessage): UserModelMessage {
     if (typeof messages.content === 'string') {
-        const { data = [], text } = extractUrls(messages.content, isVertex);
+        const { data = [], text } = extractUrls(messages.content);
         if (data.length > 0) {
             const newMessage: UserContent = [];
             newMessage.push({
@@ -206,7 +206,7 @@ export function handleUrl(messages: UserModelMessage, isVertex: boolean = false)
             data.forEach(i => newMessage.push({
                 type: i.type as 'image' | 'file',
                 [i.type === 'image' ? 'url' : 'data']: i.url,
-                mimeType: i.mimeType,
+                mediaType: i.mimeType,
             } as unknown as FilePart | ImagePart));
             messages.content = newMessage;
         }
@@ -214,7 +214,7 @@ export function handleUrl(messages: UserModelMessage, isVertex: boolean = false)
     return messages;
 }
 
-function extractUrls(str: string, isVertex = false): { data?: { type: string; url: string; mimeType: string }[]; text: string } {
+function extractUrls(str: string): { data?: { type: string; url: string; mimeType: string }[]; text: string } {
     const supportTypes = {
         pdf: 'application/pdf',
         mp3: 'audio/mpeg',
@@ -238,9 +238,7 @@ function extractUrls(str: string, isVertex = false): { data?: { type: string; ur
     };
     const urlRegex = new RegExp(`https?://\\S+\\.(${Object.keys(supportTypes).join('|')})$`, 'g');
     const matches = [...str.matchAll(urlRegex)];
-    if (isVertex) {
-        matches.push(...str.matchAll(/https?:\/\/(youtu\.be|www\.youtube\.com)\/.+/g));
-    }
+    matches.push(...str.matchAll(/https?:\/\/(youtu\.be|www\.youtube\.com)\/.+/g));
 
     return {
         data: matches.map((i) => {

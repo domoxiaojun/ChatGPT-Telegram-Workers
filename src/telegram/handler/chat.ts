@@ -48,6 +48,9 @@ export async function chatWithLLM(
         return streamSender.end!(answer.content);
     } catch (e) {
         log.error((e as Error).message, (e as Error).stack);
+        if (APICallError.isInstance(e)) {
+            log.error(e.responseBody);
+        }
         let errMsg = '';
         if ((e as Error).name === 'AbortError') {
             errMsg += 'Chat with LLM timeout';
@@ -199,9 +202,6 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
 
     const updateHeartbeat = () => {
         heartbeatId && clearInterval(heartbeatId);
-        // if (heartWaitedTime > 600) {
-        //     throw new Error('Heartbeat timeout');
-        // }
         heartbeatId = setInterval(async () => {
             heartWaitedTime += HEARTBEAT_INTERVAL / 1000;
             await sentPromise;
@@ -589,7 +589,7 @@ function mergeLogMessages(text: string, config: AgentUserConfig | undefined): st
 // v5: Breaking change in file type extraction logic.
 // Manual download and explicit MIME type specification are now required.
 async function fileUrlToBase64Message({ urls, type, params, AUDIO_HANDLE_TYPE = 'chat', text }: { urls: string[]; type: string; params: UserModelMessage; AUDIO_HANDLE_TYPE: string; text: string }): Promise<any> {
-    async function fileUrlToBase64Message(type = 'image') {
+    async function urlToBase64Message(type = 'image') {
         const responses = await Promise.all(urls.map(url => fetch(url))).then(r => r.filter(r => r.ok));
         const mediaTypes = urls.map(url => `${type}/${url.split('.').pop()}`);
         let files: string[] = [];
@@ -627,7 +627,7 @@ async function fileUrlToBase64Message({ urls, type, params, AUDIO_HANDLE_TYPE = 
             if (isUrl) {
                 (params.content as any[]).push(...urls.map(url => ({ type, [format === 'webm' ? 'data' : 'image']: url, mediaType: `${mediaTypePrefix}/${url.split('.').pop()}` }) as unknown as FilePart | ImagePart));
             } else {
-                const images = await fileUrlToBase64Message(mediaTypePrefix) as ImagePart[];
+                const images = await urlToBase64Message(mediaTypePrefix) as ImagePart[];
                 (params.content as any[]).push(...images);
             }
             break;
@@ -639,7 +639,7 @@ async function fileUrlToBase64Message({ urls, type, params, AUDIO_HANDLE_TYPE = 
             const t = type === 'video' ? 'video' : 'audio';
             const isChat = AUDIO_HANDLE_TYPE === 'chat';
             if (isChat || type === 'video') {
-                const files = await fileUrlToBase64Message(t);
+                const files = await urlToBase64Message(t);
                 (params.content as any[]).push(...files);
             } else {
                 const mediaTypes = urls.map(url => `${t}/${url.split('.').pop()}`);

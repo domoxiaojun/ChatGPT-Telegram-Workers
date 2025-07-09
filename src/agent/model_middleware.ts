@@ -1,7 +1,7 @@
 /* eslint-disable no-case-declarations */
 /* eslint-disable unused-imports/no-unused-vars */
-import type { LanguageModelV1ToolCallPart, LanguageModelV1ToolResultPart, LanguageModelV2, LanguageModelV2CallOptions } from '@ai-sdk/provider';
-import type { ModelMessage, StepResult, TextStreamPart, ToolResultPart } from 'ai';
+import type { LanguageModelV2, LanguageModelV2CallOptions, LanguageModelV2Prompt } from '@ai-sdk/provider';
+import type { ModelMessage, StepResult, TextStreamPart, ToolCallPart, ToolResultPart } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { LogStruct } from '../log';
 import type { ToolResult } from '../tools/types';
@@ -78,9 +78,15 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
             record = getLogSingleton({ config });
             // record model log
             recordModelLog({ config, model: currentModel, record });
+            // google已支持youtube url以及内部文件url，但未支持其他外部url
+            if (currentModel.provider.startsWith('google') && model.modelId.startsWith('gemini-2')) {
+                currentModel.supportedUrls = {
+                    '*': [/^https:\/\/generativelanguage.googleapis.com\/v1beta\/files\/.*$/, /^https?:\/\/(youtu\.be|www\.youtube\.com)\/.+/],
+                };
+            }
 
             return {
-                model,
+                model: currentModel,
             };
         },
 
@@ -104,7 +110,7 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
             // tool result as message
             if (params.prompt.at(-1)?.role === 'tool') {
                 log.info(`detect last message is tool result, handle tool result`);
-                const toolResults = params.prompt.at(-1)?.content as unknown as LanguageModelV1ToolResultPart[];
+                const toolResults = params.prompt.at(-1)?.content as unknown as ToolResultPart[];
                 await handleToolResult({ tools, toolResults, onStream, config });
                 log.debug(`last tool result: ${JSON.stringify(toolResults, null, 2)}`);
             }
@@ -112,7 +118,8 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
                 rawSystemPrompt = params.prompt.find((i: any) => i.role === 'system')?.content as string;
             }
             // warp messages
-            warpMessages(params, tools, activeTools, rawSystemPrompt);
+            const isResponseApi = currentModel.provider.endsWith('.responses');
+            warpMessages(params, tools, activeTools, isResponseApi, rawSystemPrompt);
             return params;
         },
 
@@ -139,11 +146,11 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
 
             // record tool call detail4
             if (toolResults.length > 0) {
-                const func_logs = toolResults.map(({ toolName, args, result }) => ({
+                const func_logs = toolResults.map(({ toolName, input, output }: { toolName: string; input: any; output: any }) => ({
                     name: toolName,
-                    args: Object.values(args as any),
-                    ...(result.content.some((i: any) => i.is_error) && { error: result.content.map((i: any) => i.text).join('\n') }),
-                    ...(result.time && { time: result.time }),
+                    args: Object.values(input as any),
+                    ...(output.content.some((i: any) => i.is_error) && { error: output.map((i: any) => i.text).join('\n') }),
+                    ...(output.time && { time: output.time }),
                 }));
 
                 // record function log
@@ -151,7 +158,7 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
 
                 // delete time
                 // ai sdk无api能调整函数结果，但内部记录stepMessages， result未做深拷贝 由此可以直接对数据直接进行修改
-                toolResults.forEach(({ result }) => result.time && (delete result.time));
+                toolResults.forEach(({ output }: any) => output.time && (delete output.time));
 
                 log.info(`tool details: ${JSON.stringify(func_logs, null, 2)}`);
                 log.debug(`tool results: ${JSON.stringify(toolResults, null, 2)}`);
@@ -181,7 +188,7 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
     };
 }
 
-function warpMessages(params: LanguageModelV2CallOptions, allTools: Record<string, any>, activeTools: string[], rawSystemPrompt: string | undefined) {
+function warpMessages(params: LanguageModelV2CallOptions, allTools: Record<string, any>, activeTools: string[], isResponseApi: boolean, rawSystemPrompt: string | undefined) {
     const { prompt: messages, tools } = params;
 
     const getSystemContent = () => {
@@ -213,18 +220,20 @@ function warpMessages(params: LanguageModelV2CallOptions, allTools: Record<strin
                     }
                     continue;
                 case 'tool':
+                    const preMessage = messages[i - 1];
+                    // if (i > 0 && isResponseApi && messages[i - 1].content)
                     let text = '';
                     const toolNames: Set<string> = new Set();
                     for (const toolResultPart of message.content) {
-                        const { toolCallId, toolName, result: { content }, content: arrayResult } = toolResultPart as LanguageModelV1ToolResultPart & { result: { content: unknown } };
+                        const { toolCallId, toolName, output: { value: arrayResult } } = toolResultPart as ToolResultPart;
                         toolNames.add(toolName);
                         let toolArgs = 'UNKNOWN';
-                        if (messages[i - 1]?.role === 'assistant' && (messages[i - 1]?.content as any[])?.some(i => i.type === 'tool-call')) {
-                            toolArgs = JSON.stringify((messages[i - 1]?.content as LanguageModelV1ToolCallPart[])?.find(i => i.toolCallId === toolCallId)?.args) || 'UNKNOWN';
+                        if (preMessage?.role === 'assistant' && (preMessage?.content as any[])?.some(i => i.type === 'tool-call')) {
+                            toolArgs = JSON.stringify((preMessage?.content as ToolCallPart[])?.find(i => i.toolCallId === toolCallId)?.input) || 'UNKNOWN';
                         }
-                        text += `#### [tool \`${toolName}\` invoke detail]\n - args: ${toolArgs}\n - result:\n${JSON.stringify(content || arrayResult)}\n\n`;
+                        text += `#### [tool \`${toolName}\` invoke detail]\n - args: ${toolArgs}\n - result:\n${JSON.stringify(arrayResult)}\n\n`;
                     }
-                    text = `### Please use the following retrieved data to answer user's question:\n${text}`;
+                    text = `### Please use the following retrieved data to answer my question:\n${text}`;
                     modifiedMessages.push({
                         role: 'user',
                         content: [{ type: 'text', text }],
@@ -260,6 +269,8 @@ function warpMessages(params: LanguageModelV2CallOptions, allTools: Record<strin
         }
         systemMessage && params.prompt.unshift(systemMessage);
     }
+    // 处理response api异常情况
+    isResponseApi && (params.prompt = handleResponseApiMessage(messages));
 }
 
 function warpModel(model: LanguageModelV2, config: AgentUserConfig, activeTools: string[], toolChoice: ToolChoice, chatModel: string) {
@@ -430,9 +441,9 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
 async function handleToolResult({ tools, toolResults, onStream, config }: { tools: Record<string, any>; toolResults: ToolResultPart[]; onStream: ChatStreamTextHandler | null; config: AgentUserConfig }) {
     const message_tool = Object.values(tools).filter(({ send_type }) => send_type === 'message').map(({ schema: { name } }) => name);
     const need_send_result: ToolResult[] = [];
-    for (const { result, toolName } of toolResults) {
+    for (const { output, toolName } of toolResults) {
         if (message_tool.includes(toolName)) {
-            need_send_result.push(result as ToolResult);
+            need_send_result.push({ content: (output as any).value?.content ?? [] });
         }
     }
     if (need_send_result.length > 0) {
@@ -441,9 +452,37 @@ async function handleToolResult({ tools, toolResults, onStream, config }: { tool
         log.info(`start send tool result: ${tool_names.join(', ')}`);
         // TODO: 非流式模式下，无法直接发送工具结果
         sender && await sendToolResult(need_send_result, sender, config);
-        need_send_result.forEach((result) => {
-            const is_error = result.content.some((i: any) => i.is_error);
-            !is_error && (result.content = [{ type: 'text', text: 'data has been sent to user.' }]);
+        // Unable to modify the response message anymore due to:
+        // https://github.com/vercel/ai/blob/42fcd32dd81e5071a864943dbdcd4be69a8cae8c/packages/ai/core/generate-text/generate-text.ts#L488
+        toolResults.forEach(({ toolName, output }) => {
+            const is_error = ((output.value as any)?.content ?? []).some((i: any) => i.type === 'error');
+            if (message_tool.includes(toolName) && !is_error) {
+                output.value = { content: [{ type: 'text', text: 'Data has been sent to user already.' }] };
+            }
         });
     }
+}
+
+function handleResponseApiMessage(messages: LanguageModelV2Prompt) {
+    // Issue: When the message contains inference messages, tool calls and tool results do not contain ref_id.
+    // https://github.com/vercel/ai/issues/7099
+    // temporary fix: remove reasoning text
+    for (const [i, message] of messages.entries()) {
+        if (message.role === 'assistant' && Array.isArray(message.content)) {
+            // 移除所有reasoning text
+            message.content = message.content.filter(i => i.type !== 'reasoning');
+            // 下一条消息不是tool时，移除 reasoning
+            // const nextNotTool = messages[i + 1]?.role !== 'tool';
+            // nextNotTool && (message.content = message.content.filter(i => i.type !== 'reasoning'));
+        }
+        // if (message.role === 'tool') {
+        //     const prev = messages[i - 1];
+        //     // 不是assistant 或者 不包含reasoning
+        //     const occurErr = prev?.role !== 'assistant' || !Array.isArray(prev?.content) || !prev?.content.find(i => i.type === 'reasoning');
+        //     if (occurErr) {
+        //         throw new Error('Please clear history to avoid response api error.');
+        //     }
+        // }
+    }
+    return messages;
 }

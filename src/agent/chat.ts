@@ -87,6 +87,17 @@ export async function requestCompletionsFromLLM(params: LLMChatRequestParams | n
         history.push(params);
         // last message cannot be tool-call
         let validEnd = raw_messages.length;
+        for (const m of raw_messages) {
+            if (m.role === 'assistant' && Array.isArray(m.content)) {
+                // ai 5.0.0-beta.9 contain too many empty reasoning content
+                m.content = m.content.filter((i) => {
+                    if (i.type === 'reasoning')
+                        return i.text !== '';
+                    return true;
+                });
+            }
+        }
+        // When the last message is tool call message, delete it.
         for (const m of raw_messages.toReversed()) {
             if (m.role === 'assistant' && Array.isArray(m.content) && m.content.find(i => i.type === 'tool-call')) {
                 validEnd--;
