@@ -1,6 +1,6 @@
 /* eslint-disable no-case-declarations */
 /* eslint-disable unused-imports/no-unused-vars */
-import type { LanguageModelV2, LanguageModelV2CallOptions } from '@ai-sdk/provider';
+import type { LanguageModelV2, LanguageModelV2CallOptions, LanguageModelV2Prompt } from '@ai-sdk/provider';
 import type { ModelMessage, StepResult, TextStreamPart, ToolCallPart, ToolResultPart } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { LogStruct } from '../log';
@@ -118,7 +118,8 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
                 rawSystemPrompt = params.prompt.find((i: any) => i.role === 'system')?.content as string;
             }
             // warp messages
-            warpMessages(params, tools, activeTools, rawSystemPrompt);
+            const isResponseApi = currentModel.provider.endsWith('.responses');
+            warpMessages(params, tools, activeTools, isResponseApi, rawSystemPrompt);
             return params;
         },
 
@@ -187,7 +188,7 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
     };
 }
 
-function warpMessages(params: LanguageModelV2CallOptions, allTools: Record<string, any>, activeTools: string[], rawSystemPrompt: string | undefined) {
+function warpMessages(params: LanguageModelV2CallOptions, allTools: Record<string, any>, activeTools: string[], isResponseApi: boolean, rawSystemPrompt: string | undefined) {
     const { prompt: messages, tools } = params;
 
     const getSystemContent = () => {
@@ -219,14 +220,16 @@ function warpMessages(params: LanguageModelV2CallOptions, allTools: Record<strin
                     }
                     continue;
                 case 'tool':
+                    const preMessage = messages[i - 1];
+                    // if (i > 0 && isResponseApi && messages[i - 1].content)
                     let text = '';
                     const toolNames: Set<string> = new Set();
                     for (const toolResultPart of message.content) {
                         const { toolCallId, toolName, output: { value: arrayResult } } = toolResultPart as ToolResultPart;
                         toolNames.add(toolName);
                         let toolArgs = 'UNKNOWN';
-                        if (messages[i - 1]?.role === 'assistant' && (messages[i - 1]?.content as any[])?.some(i => i.type === 'tool-call')) {
-                            toolArgs = JSON.stringify((messages[i - 1]?.content as ToolCallPart[])?.find(i => i.toolCallId === toolCallId)?.input) || 'UNKNOWN';
+                        if (preMessage?.role === 'assistant' && (preMessage?.content as any[])?.some(i => i.type === 'tool-call')) {
+                            toolArgs = JSON.stringify((preMessage?.content as ToolCallPart[])?.find(i => i.toolCallId === toolCallId)?.input) || 'UNKNOWN';
                         }
                         text += `#### [tool \`${toolName}\` invoke detail]\n - args: ${toolArgs}\n - result:\n${JSON.stringify(arrayResult)}\n\n`;
                     }
@@ -266,6 +269,8 @@ function warpMessages(params: LanguageModelV2CallOptions, allTools: Record<strin
         }
         systemMessage && params.prompt.unshift(systemMessage);
     }
+    // 处理response api异常情况
+    isResponseApi && (params.prompt = handleResponseApiMessage(messages));
 }
 
 function warpModel(model: LanguageModelV2, config: AgentUserConfig, activeTools: string[], toolChoice: ToolChoice, chatModel: string) {
@@ -456,4 +461,28 @@ async function handleToolResult({ tools, toolResults, onStream, config }: { tool
             }
         });
     }
+}
+
+function handleResponseApiMessage(messages: LanguageModelV2Prompt) {
+    // Issue: When the message contains inference messages, tool calls and tool results do not contain ref_id.
+    // https://github.com/vercel/ai/issues/7099
+    // temporary fix: remove reasoning text
+    for (const [i, message] of messages.entries()) {
+        if (message.role === 'assistant' && Array.isArray(message.content)) {
+            // 移除所有reasoning text
+            message.content = message.content.filter(i => i.type !== 'reasoning');
+            // 下一条消息不是tool时，移除 reasoning
+            // const nextNotTool = messages[i + 1]?.role !== 'tool';
+            // nextNotTool && (message.content = message.content.filter(i => i.type !== 'reasoning'));
+        }
+        // if (message.role === 'tool') {
+        //     const prev = messages[i - 1];
+        //     // 不是assistant 或者 不包含reasoning
+        //     const occurErr = prev?.role !== 'assistant' || !Array.isArray(prev?.content) || !prev?.content.find(i => i.type === 'reasoning');
+        //     if (occurErr) {
+        //         throw new Error('Please clear history to avoid response api error.');
+        //     }
+        // }
+    }
+    return messages;
 }

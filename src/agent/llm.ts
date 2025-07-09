@@ -27,11 +27,17 @@ export async function createLlmModel(model: string, context: AgentUserConfig): P
 
     switch (agent) {
         case 'openai':
-            return createOpenAI({
+            const isResponseApi = context.OPENAI_RESPONSE_MODELS.includes('*') || context.OPENAI_RESPONSE_MODELS.includes(model_id);
+
+            const provider = createOpenAI({
                 baseURL: context.OPENAI_API_BASE,
                 apiKey: context.OPENAI_API_KEY[Math.floor(Math.random() * context.OPENAI_API_KEY.length)],
                 fetch: mockFetch(model_id, context, agent),
-            }).languageModel(model_id) as LanguageModelV2;
+            });
+            if (isResponseApi) {
+                return provider.responses(model_id) as LanguageModelV2;
+            }
+            return provider.languageModel(model_id) as LanguageModelV2;
         case 'anthropic':
             return createAnthropic({
                 baseURL: context.ANTHROPIC_API_BASE,

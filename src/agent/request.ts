@@ -238,7 +238,10 @@ function thinkingExtractor(messageInfo: MessageInfo) {
                 const thinkingTime = ((Date.now() - thinkingStartTime!) / 1e3).toFixed(1);
                 messageInfo.content = messageInfo.content
                     .replace(thinkingTag, `>\`Thought for ${thinkingTime} seconds\``)
-                    .replace(/(\n>)*$/g, '');
+                    // remove trailing blank lines
+                    .replace(/(\n>)*$/, '')
+                    // three or more newlines are trimmed to 2 newlines
+                    .replace(/(\n>){3,}$/g, '\n>\n>');
                 return `\n>✹\n${SEGMENTATION_MARK}\n${data.text}`;
             case 'error':
                 throw data.error;
@@ -249,11 +252,18 @@ function thinkingExtractor(messageInfo: MessageInfo) {
 }
 
 async function combineParams({ context, middleware, model, messages, activeTools, tools, prepareStepPre, onStepFinish, onChunk }: { context: AgentUserConfig; middleware: any; model: LanguageModelV2; messages: ModelMessage[]; activeTools: string[]; tools: any; prepareStepPre: (middleware: (...args: any[]) => any) => any; onStepFinish: (data: StepResult<any>) => void; onChunk: (data: { chunk: TextStreamPart<any> }) => void }) {
+    const providerOptions = {
+        openai: context.OPENAI_PROVIDER_OPTIONS,
+        anthropic: context.ANTHROPIC_PROVIDER_OPTIONS,
+        google: context.GOOGLE_PROVIDER_OPTIONS,
+        xai: context.XAI_PROVIDER_OPTIONS,
+    };
     return {
         model: wrapLanguageModel({
             model,
             middleware,
         }),
+        providerOptions,
         messages,
         experimental_continueSteps: context.CONTINUE_STEP,
         maxRetries: context.MAX_RETRIES,

@@ -202,9 +202,6 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
 
     const updateHeartbeat = () => {
         heartbeatId && clearInterval(heartbeatId);
-        // if (heartWaitedTime > 600) {
-        //     throw new Error('Heartbeat timeout');
-        // }
         heartbeatId = setInterval(async () => {
             heartWaitedTime += HEARTBEAT_INTERVAL / 1000;
             await sentPromise;

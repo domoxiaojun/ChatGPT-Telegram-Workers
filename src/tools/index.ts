@@ -177,8 +177,11 @@ export async function sendToolResult(toolResult: ToolResult[], sender: MessageSe
         message_id: sender.context.message_id,
         sentMessageIds: sender.context.sentMessageIds,
     };
-    sender.context.message_id = null;
-    sender.context.sentMessageIds = [];
+    const clearMessageId = () => {
+        console.log('clear message id');
+        sender.context.message_id = null;
+        sender.context.sentMessageIds = [];
+    };
     const collect: { type: ToolResultType; data: Array<Omit<ToolResult['content'][number], 'type'>> }[] = [];
     let index = 0;
     const content = toolResult.map(r => r.content).flat();
@@ -197,6 +200,9 @@ export async function sendToolResult(toolResult: ToolResult[], sender: MessageSe
         switch (type) {
             case 'image':
                 const imageData = await base64OrUrlToBlob(data as MediaToolResultContent[]);
+                // 文件数据获取缓慢
+                // stepFinish发送tool tip未进行等待，文件数据获取时间大于tool tip响应时间，则消息会刷新message_id
+                clearMessageId();
                 sendResp = await sendImages({
                     raw: imageData,
                     caption: (data as MediaToolResultContent[]).map(d => d.text),
@@ -205,6 +211,7 @@ export async function sendToolResult(toolResult: ToolResult[], sender: MessageSe
                 break;
             case 'video':
                 const videoData = await base64OrUrlToBlob(data as MediaToolResultContent[]);
+                clearMessageId();
                 sendResp = await sender.sendMediaGroup(videoData.map((d, i) => ({
                     type: 'video',
                     media: '',
@@ -215,15 +222,18 @@ export async function sendToolResult(toolResult: ToolResult[], sender: MessageSe
                 break;
             case 'audio':
                 const audioData = await base64OrUrlToBlob(data as MediaToolResultContent[]);
+                clearMessageId();
                 const resp = await Promise.all(audioData.map((d, i) => sender.sendVoice(d, (data as MediaToolResultContent[])[i].text)));
                 sendStatus.push(resp.map(r => r.statusText).join(', '));
                 break;
 
             case 'resource':
+                clearMessageId();
                 sendResp = await sender.sendRichText((data as ResourceToolResultContent[]).map(d => d.resource.text).join('\n'));
                 break;
             case 'text':
             default:
+                clearMessageId();
                 if (!data.some((d: any) => d.is_error)) {
                     sendResp = await sender.sendRichText((data as TextToolResultContent[]).map(d => d.text).join('\n'));
                 }

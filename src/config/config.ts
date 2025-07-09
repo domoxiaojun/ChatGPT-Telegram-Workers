@@ -303,6 +303,23 @@ export class OpenAIConfig {
     OPENAI_MODELS = [];
     OPENAI_MODELS_API = '/models';
     OPENAI_TTS_PROMPT = '';
+    // Response api.
+    // Set the model id that needs to use the response api. When * is included, it means to always use the response api.
+    OPENAI_RESPONSE_MODELS = ['*'];
+    // The API_EXTRA_PARAMS variable will override this option.
+    OPENAI_PROVIDER_OPTIONS = {
+        // metadata: {},
+        parallelToolCalls: true,
+        // previousResponseId: '',
+        // store: false,
+        // user: 'user1',
+        // reasoningEffort: 'medium', // 'low' | 'medium' | 'high', default is 'medium'
+        // strictJsonSchema: true,
+        // instructions: '',
+        reasoningSummary: 'auto', // auto, concise, or detailed
+        // serviceTier: 'auto',
+        // include: ['reasoning.encrypted_content'],
+    };
 }
 
 // -- DALLE 配置 --
@@ -354,9 +371,9 @@ export class GeminiConfig {
     // Google Gemini API: Cloudflare AI gateway: https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_name}/google-ai-studio/v1/models
     GOOGLE_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
     // Google Gemini Model
-    GOOGLE_CHAT_MODEL = 'gemini-2.0-flash';
+    GOOGLE_CHAT_MODEL = 'gemini-2.5-flash';
     // Google Gemini Vision Model
-    GOOGLE_VISION_MODEL = 'gemini-2.0-flash';
+    GOOGLE_VISION_MODEL = 'gemini-2.5-flash';
     // Google Gemini Image Model
     GOOGLE_IMAGE_MODEL = 'gemini-2.0-flash-exp';
     // Google Embedding Model
@@ -404,6 +421,29 @@ export class GeminiConfig {
     //         ],
     //     },
     //     language_code: 'en-US',
+    };
+
+    GOOGLE_PROVIDER_OPTIONS = {
+        // responseModalities: ['TEXT'],
+        // thinkingConfig: {
+        //     thinkingBudget: '1024',
+        //     includeThoughts: false,
+        // },
+        // cachedContent: '',
+        // structuredOutputs: false,
+        safetySettings: [
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' },
+        ],
+        threshold: 'OFF',
+        // useSearchGrounding: true,
+        // dynamicRetrievalConfig: {
+        //     // mode: 'MODE_DYNAMIC', // 'MODE_UNSPECIFIED' | 'MODE_DYNAMIC'
+        //     // dynamicThreshold: 5,
+        // },
     };
 }
 
@@ -455,6 +495,13 @@ export class AnthropicConfig {
 
     ANTHROPIC_MODELS = [];
     ANTHROPIC_MODELS_API = '/models';
+    ANTHROPIC_PROVIDER_OPTIONS = {
+        // sendReasoning: true,
+        // thinking: {
+        //     type: 'enabled', // 'enabled' | 'disabled'
+        //     budgetTokens: '1024',
+        // },
+    };
 }
 
 export class OpenAILikeConfig {
@@ -504,9 +551,9 @@ export class VertexConfig {
     VERTEX_CREDENTIALS: Record<string, any> = {};
 
     // Vertex Model
-    VERTEX_CHAT_MODEL = 'gemini-2.0-flash';
+    VERTEX_CHAT_MODEL = 'gemini-2.5-flash';
     // Vertex Vision Model
-    VERTEX_VISION_MODEL = 'gemini-2.0-flash';
+    VERTEX_VISION_MODEL = 'gemini-2.5-flash';
     /**
      * @deprecated
      * when use search grounding, do not use other tools at the same time, otherwise errors occur.
@@ -535,6 +582,9 @@ export class XAIConfig {
     XAI_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
     XAI_MODELS = [];
     XAI_MODELS_API = '/models';
+    XAI_PROVIDER_OPTIONS = {
+        // reasoningEffort: 'high',
+    };
 }
 
 export class FishConfig {
