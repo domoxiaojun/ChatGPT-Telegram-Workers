@@ -478,10 +478,11 @@ async function handleAudio(
     const text = await asr(audio, context.USER_CONFIG);
     context.MIDDLE_CONTEXT.history.push({ role: 'user', content: text });
     const sender = streamSender.sender!;
-    if (handleKey === 'audio:text' || !ENV.HIDE_MIDDLE_MESSAGE) {
-        await sender.sendRichText(mergeLogMessages(text, context.USER_CONFIG));
+    if (handleKey.endsWith('text') || !ENV.HIDE_MIDDLE_MESSAGE) {
+        await streamSender.end!(mergeLogMessages(text, context.USER_CONFIG));
     }
     if (handleKey.startsWith('stt')) {
+        streamSender.clearHeartbeat!();
         return new Response('audio handle done');
     }
     clearLog(context.USER_CONFIG);
@@ -489,6 +490,7 @@ async function handleAudio(
     const isMiddle = handleKey === 'audio:audio';
     const otherText = (params.content as TextPart[]).filter(c => c.type === 'text').map(c => c.text).join('\n').trim();
     const resp = await chatWithLLM(message, { role: 'user', content: `[AUDIO TRANSCRIPTION]: ${text}\n${otherText}` }, context, null, streamSender, isMiddle);
+    streamSender.clearHeartbeat!();
     if (isMiddle) {
         const audio = await tts(resp as unknown as string, context.USER_CONFIG);
         console.log(`audio size: ${(audio.size / 1024 / 1024).toFixed(3)}mb`);
