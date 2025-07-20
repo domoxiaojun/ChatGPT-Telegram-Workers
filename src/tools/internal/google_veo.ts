@@ -54,7 +54,7 @@ async function generateVideo({
     durationSeconds: number;
     numberOfVideos: number;
 }, _env: Record<string, any>, config: AgentUserConfig) {
-    const model = 'veo-2.0-generate-001';
+    const model = 'veo-3.0-fast-generate-preview';
     const url = `${config.GOOGLE_API_BASE}/models/${model}:predictLongRunning?key=${config.GOOGLE_API_KEY}`;
     const resp = await fetch(url, {
         method: 'POST',
