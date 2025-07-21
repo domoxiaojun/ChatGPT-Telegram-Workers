@@ -52,8 +52,8 @@
         "@ai-sdk/xai": "2.0.0-beta.10",
         "@ffmpeg.wasm/core-st": "^0.13.2",
         "@ffmpeg.wasm/main": "^0.13.1",
-        "@modelcontextprotocol/sdk": "^1.15.1",
-        "ai": "5.0.0-beta.24",
+        "@modelcontextprotocol/sdk": "^1.16.0",
+        "ai": "5.0.0-beta.25",
         "cf-worker-adapter": "^1.4.0",
         "node-cron": "^4.2.1"
     },
