@@ -220,20 +220,30 @@ function thinkingExtractor(messageInfo: MessageInfo) {
     const thinkingTag = '>`Thinking\\.\\.\\.`';
     return (data: TextStreamPart<any>) => {
         switch (data.type) {
-            case 'reasoning':
+            case 'reasoning-start':
                 if (!ENV.SHOW_THINKING_TEXT) {
                     return '';
                 }
                 if (!thinkingStart) {
                     thinkingStart = true;
                     thinkingStartTime = Date.now();
-                    // thinking转为引用
-                    return `${thinkingTag}\n>${data.text.replace(/\n/g, '\n>')}`;
+                    return thinkingTag;
                 }
-                return data.text.replace(/\n/g, '\n>');
-            case 'text':
+                return '';
+            case 'reasoning-delta':
+                if (!ENV.SHOW_THINKING_TEXT) {
+                    return '';
+                }
+                // thinking转为引用
+                return `\n>${data.text.replace(/\n/g, '\n>')}`;
+            case 'reasoning-end':
+                if (!ENV.SHOW_THINKING_TEXT) {
+                    return '';
+                }
+                return '';
+            case 'text-start':
                 if (!thinkingStart)
-                    return data.text ?? '';
+                    return '';
                 thinkingStart = false;
                 const thinkingTime = ((Date.now() - thinkingStartTime!) / 1e3).toFixed(1);
                 messageInfo.content = messageInfo.content
@@ -242,7 +252,11 @@ function thinkingExtractor(messageInfo: MessageInfo) {
                     .replace(/(\n>)*$/, '')
                     // three or more newlines are trimmed to 2 newlines
                     .replace(/(\n>){3,}$/g, '\n>\n>');
-                return `\n>✹\n${SEGMENTATION_MARK}\n${data.text}`;
+                return `\n>✹\n${SEGMENTATION_MARK}\n`;
+            case 'text-delta':
+                return data.text;
+            case 'text-end':
+                return '';
             case 'error':
                 throw data.error;
             default:
