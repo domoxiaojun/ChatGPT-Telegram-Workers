@@ -217,7 +217,6 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
 function thinkingExtractor(messageInfo: MessageInfo) {
     let thinkingStart = false;
     let thinkingStartTime: undefined | number;
-    let reasoningBuffer = '';
     const thinkingTag = '>`Thinking\\.\\.\\.`';
     return (data: TextStreamPart<any>) => {
         switch (data.type) {
@@ -228,7 +227,6 @@ function thinkingExtractor(messageInfo: MessageInfo) {
                 if (!thinkingStart) {
                     thinkingStart = true;
                     thinkingStartTime = Date.now();
-                    reasoningBuffer = '';
                     return thinkingTag;
                 }
                 return '';
@@ -236,26 +234,13 @@ function thinkingExtractor(messageInfo: MessageInfo) {
                 if (!ENV.SHOW_THINKING_TEXT) {
                     return '';
                 }
-                // 积累思考文本，避免逐字符输出
-                reasoningBuffer += data.text;
-                // 当积累到一定长度或遇到标点符号时输出
-                if (reasoningBuffer.length >= 10 || /[。！？.,!?]/.test(data.text)) {
-                    const output = `\n>${reasoningBuffer.replace(/\n/g, '\n>')}`;
-                    reasoningBuffer = '';
-                    return output;
-                }
-                return '';
+                // thinking转为引用，直接输出不缓存
+                return `\n>${data.text.replace(/\n/g, '\n>')}`;
             case 'reasoning-end':
                 if (!ENV.SHOW_THINKING_TEXT) {
                     return '';
                 }
-                // 输出剩余的缓冲内容
-                let output = '';
-                if (reasoningBuffer.length > 0) {
-                    output = `\n>${reasoningBuffer.replace(/\n/g, '\n>')}`;
-                    reasoningBuffer = '';
-                }
-                return output;
+                return '';
             case 'text-start':
                 if (!thinkingStart)
                     return '';
@@ -267,7 +252,7 @@ function thinkingExtractor(messageInfo: MessageInfo) {
                     .replace(/(\n>)*$/, '')
                     // three or more newlines are trimmed to 2 newlines
                     .replace(/(\n>){3,}$/g, '\n>\n>');
-                return `\n>✹\n\n${SEGMENTATION_MARK}\n`;
+                return `\n>✹\n${SEGMENTATION_MARK}\n`;
             case 'text-delta':
                 return data.text;
             case 'text-end':
