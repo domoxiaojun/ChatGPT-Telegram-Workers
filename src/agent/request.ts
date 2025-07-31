@@ -267,7 +267,7 @@ function thinkingExtractor(messageInfo: MessageInfo) {
                     .replace(/(\n>)*$/, '')
                     // three or more newlines are trimmed to 2 newlines
                     .replace(/(\n>){3,}$/g, '\n>\n>');
-                return `\n>✹\n${SEGMENTATION_MARK}\n`;
+                return `\n>✹\n\n${SEGMENTATION_MARK}\n`;
             case 'text-delta':
                 return data.text;
             case 'text-end':
