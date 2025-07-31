@@ -217,6 +217,8 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
 function thinkingExtractor(messageInfo: MessageInfo) {
     let thinkingStart = false;
     let thinkingStartTime: undefined | number;
+    let reasoningBuffer = '';
+    let lastOutputTime = 0;
     const thinkingTag = '>`Thinking\\.\\.\\.`';
     return (data: TextStreamPart<any>) => {
         switch (data.type) {
@@ -227,6 +229,8 @@ function thinkingExtractor(messageInfo: MessageInfo) {
                 if (!thinkingStart) {
                     thinkingStart = true;
                     thinkingStartTime = Date.now();
+                    reasoningBuffer = '';
+                    lastOutputTime = Date.now();
                     return thinkingTag;
                 }
                 return '';
@@ -234,13 +238,31 @@ function thinkingExtractor(messageInfo: MessageInfo) {
                 if (!ENV.SHOW_THINKING_TEXT) {
                     return '';
                 }
-                // thinking转为引用，直接输出不缓存
-                return `\n>${data.text.replace(/\n/g, '\n>')}`;
+                // 积累思考文本
+                reasoningBuffer += data.text;
+                const now = Date.now();
+                
+                // 当积累到足够长度、遇到句末标点、或距上次输出时间超过500ms时输出
+                if (reasoningBuffer.length >= 50 || 
+                    /[。！？.!?]\s*$/.test(reasoningBuffer.trim()) ||
+                    (now - lastOutputTime > 500 && reasoningBuffer.length >= 20)) {
+                    const output = `\n>${reasoningBuffer.replace(/\n/g, '\n>')}`;
+                    reasoningBuffer = '';
+                    lastOutputTime = now;
+                    return output;
+                }
+                return '';
             case 'reasoning-end':
                 if (!ENV.SHOW_THINKING_TEXT) {
                     return '';
                 }
-                return '';
+                // 输出剩余的缓冲内容
+                let output = '';
+                if (reasoningBuffer.length > 0) {
+                    output = `\n>${reasoningBuffer.replace(/\n/g, '\n>')}`;
+                    reasoningBuffer = '';
+                }
+                return output;
             case 'text-start':
                 if (!thinkingStart)
                     return '';
