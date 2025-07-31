@@ -217,6 +217,7 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
 function thinkingExtractor(messageInfo: MessageInfo) {
     let thinkingStart = false;
     let thinkingStartTime: undefined | number;
+    let reasoningBuffer = '';
     const thinkingTag = '>`Thinking\\.\\.\\.`';
     return (data: TextStreamPart<any>) => {
         switch (data.type) {
@@ -227,6 +228,7 @@ function thinkingExtractor(messageInfo: MessageInfo) {
                 if (!thinkingStart) {
                     thinkingStart = true;
                     thinkingStartTime = Date.now();
+                    reasoningBuffer = '';
                     return thinkingTag;
                 }
                 return '';
@@ -234,13 +236,26 @@ function thinkingExtractor(messageInfo: MessageInfo) {
                 if (!ENV.SHOW_THINKING_TEXT) {
                     return '';
                 }
-                // thinking转为引用
-                return `${thinkingTag}\n>${data.text.replace(/\n/g, '\n>')}`;
+                // 积累思考文本，避免逐字符输出
+                reasoningBuffer += data.text;
+                // 当积累到一定长度或遇到标点符号时输出
+                if (reasoningBuffer.length >= 10 || /[。！？.,!?]/.test(data.text)) {
+                    const output = `\n>${reasoningBuffer.replace(/\n/g, '\n>')}`;
+                    reasoningBuffer = '';
+                    return output;
+                }
+                return '';
             case 'reasoning-end':
                 if (!ENV.SHOW_THINKING_TEXT) {
                     return '';
                 }
-                return '';
+                // 输出剩余的缓冲内容
+                let output = '';
+                if (reasoningBuffer.length > 0) {
+                    output = `\n>${reasoningBuffer.replace(/\n/g, '\n>')}`;
+                    reasoningBuffer = '';
+                }
+                return output;
             case 'text-start':
                 if (!thinkingStart)
                     return '';
