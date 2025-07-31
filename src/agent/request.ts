@@ -227,8 +227,7 @@ function thinkingExtractor(messageInfo: MessageInfo) {
                 if (!thinkingStart) {
                     thinkingStart = true;
                     thinkingStartTime = Date.now();
-                    // thinking转为引用
-                    return `${thinkingTag}\n>${data.text.replace(/\n/g, '\n>')}`;
+                    return thinkingTag;
                 }
                 return '';
             case 'reasoning-delta':
@@ -236,7 +235,7 @@ function thinkingExtractor(messageInfo: MessageInfo) {
                     return '';
                 }
                 // thinking转为引用
-                return `\n>${data.text.replace(/\n/g, '\n>')}`;
+                return `${thinkingTag}\n>${data.text.replace(/\n/g, '\n>')}`;
             case 'reasoning-end':
                 if (!ENV.SHOW_THINKING_TEXT) {
                     return '';
