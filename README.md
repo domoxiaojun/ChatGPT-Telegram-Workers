@@ -1,114 +1,171 @@
+# ChatGPT Telegram Workers
+
 [![Build and Push Docker Image](https://github.com/adolphnov/ChatGPT-Telegram-Workers/actions/workflows/build-docker.yml/badge.svg)](https://github.com/adolphnov/ChatGPT-Telegram-Workers/actions/workflows/build-docker.yml)
-<h1 align="center">
-ChatGPT-Telegram-Workers
-</h1>
 
 <p align="center">
     <br> English | <a href="README_CN.md">中文</a>
 </p>
+
 <p align="center">
-    <em>Deploy your own Telegram ChatGPT bot on Cloudflare Workers with ease.</em>
+    <em>A powerful multi-AI provider Telegram bot with flexible deployment options</em>
 </p>
 
-## This project is a modified version of the original project.
+## 📚 Overview
 
-> There are many modifications, please directly check [config doc](./doc/en/CONFIG.md).
+This is a significantly refactored ChatGPT Telegram bot project that supports multiple AI service providers, rich features, and flexible deployment options.
 
-Modifications include but are not limited to:
+### 🌟 Key Features
 
-- All except workerAI are switched to AI SDK
-- Added display of information such as model name and usage time
-- Supports function calling, with several built-in functions, and allows additional functions to be added via environment variables
-- Added additional agents such as Vertex AI on the original project
-- Supports custom trigger words
-- Supports custom replacement words, simplifying the steps to modify environment variables, and also supports temporary adjustments of variables for AI conversations without modifying the variables
-- Added several commands, such as `/set`, `/settings`, `/history`
-- Supports image generation via function calls, supports Google image generation
-- Supports real-time rendering of markdownV2, with special optimization for code blocks
-- Supports ultra-long text segmentation and rendering (code blocks are still rendered normally after chunking)
-- Supports custom domain folding function to prevent excessively long text from interfering with normal communication when replying in groups
-- Supports different media sending methods
-- Supports TTS ASR
-- Supports processing text/voice in different ways (e.g., text input, voice output, etc.)
-- Supports a smoother message sending mechanism, with almost 0 delay in sending text (optimizes 429 errors caused by overly frequent sending), and the final message is still sent normally even with 429 errors.
-- Supports the function of deleting different types of messages on a schedule
-- Supports reading multiple images; supports processing of ultra-long text after being segmented
-- Supports Kling AI image generation
-- Supports special parameter processing, allowing specific models to remove or add specific parameters
-- Supports intelligent adjustment of dialogue models
-- Supports inline messages (you need to enable inline mode in BotFather and adjust inlinefeedback to 100%)
-- OAILIKE special agent is specially optimized for newapi, allowing the opening of special built-in tools such as Google Search
-- Supports GPT-4o-search model search source reading, supports Google Vertex OAILIKE search source reading
-- Supports long text replies to be converted to Telegraph or text files
-- Supports folding of model thinking content (folding function needs to be enabled)
-etc.
+**🤖 Multi-AI Provider Support**
+- OpenAI (GPT-3.5, GPT-4, GPT-4o, etc.)
+- Azure OpenAI
+- Anthropic Claude
+- Google Gemini & Vertex AI
+- xAI Grok
+- Mistral AI
+- Cohere
+- Cloudflare Workers AI
+- And more OpenAI-compatible services
 
-### Note
+**🛠️ Powerful Capabilities**
+- **Function Calling**: Built-in tool functions with support for custom functions via environment variables
+- **Image Generation**: Support for DALL-E, Google Image Generation, Kling AI, etc.
+- **Voice Processing**: TTS (Text-to-Speech) and ASR (Speech Recognition) support
+- **Real-time Streaming**: Optimized message sending with near-zero latency
+- **Intelligent Model Switching**: Automatically adjust AI models based on conversation context
+- **Inline Queries**: Support for Telegram inline message functionality
+- **Plugin System**: Customizable plugins with template interpolation
+- **MCP Support**: Model Context Protocol integration
 
-- Due to the use of AI SDK, CPU time is greatly increased, which is not suitable for use in Cloudflare Worker (Worker free tier limit CPU time: 10ms). Also, due to processing via webhook, the maximum running time is only 60s.
-- Cloudflare Worker artifacts are not compiled. If needed, please compile them yourself.
+**💬 Chat Enhancements**
+- **Multi-language Support**: Chinese, English, Portuguese, etc.
+- **Custom Trigger Words**: Configurable bot response keywords
+- **Message Replacement**: Custom replacement rules to simplify environment variable management
+- **Long Text Processing**: Smart splitting of ultra-long text with Telegraph and file output support
+- **Quote Message Merging**: Automatic handling of reply messages
+- **Group Management**: Smart group responses with @mention detection
 
-> It is recommended to use Docker deployment, polling mode.
-> The deployment method is the same as the original project.
+**🔧 Management Features**
+- **Multiple Commands**: `/set`, `/settings`, `/history`, `/model`, etc.
+- **User Configuration**: Personalized settings with multi-user support
+- **Whitelist/Blacklist**: Fine-grained access control
+- **Scheduled Message Deletion**: Automatic cleanup of different message types
+- **Usage Statistics**: Display model names, usage time, and other information
 
-> The deployment method is consistent with the original project, please refer to [local/docker document](./doc/en/LOCAL.md). 
-> Other deployment methods, please check [deployment documentation](./doc/en/PLATFORM.md)
+### 🚀 Deployment Options
+
+Multiple deployment methods to suit different needs:
+
+#### Docker Deployment (Recommended)
+```bash
+# Using Docker Compose
+docker-compose up -d
+
+# Or directly with Docker
+docker run -d \
+  --name chatgpt-telegram-workers \
+  -p 8787:8787 \
+  -v ./config.json:/app/config.json:ro \
+  -v ./wrangler.toml:/app/config.toml:ro \
+  chatgpt-telegram-workers:latest
+```
+
+#### Cloudflare Workers
+```bash
+npm run build
+npm run deploy:dist
+```
+
+#### Vercel
+```bash
+npm run build:vercel
+npm run deploy:vercel
+```
+
+#### Local Development
+```bash
+npm install
+npm run start:local
+```
+
+### 📦 Project Structure
+
+```
+src/
+├── adapter/          # Adapter layer (Vercel, Local, etc.)
+├── agent/           # AI service agents
+│   ├── openai.ts    # OpenAI integration
+│   ├── anthropic.ts # Anthropic integration
+│   ├── google.ts    # Google AI integration
+│   └── ...          # Other AI services
+├── config/          # Configuration management
+├── telegram/        # Telegram API handling
+│   ├── handler/     # Message handlers
+│   ├── command/     # Command processing
+│   └── utils/       # Utility functions
+├── tools/           # Tool function system
+│   ├── internal/    # Built-in tools
+│   └── external/    # External tool configurations
+├── plugins/         # Plugin system
+├── mcp/            # MCP protocol support
+└── utils/          # Common utilities
+```
+
+### ⚙️ Configuration
+
+The project uses environment variables for configuration, supporting multiple configuration methods:
+
+1. **Environment Variables**: Direct environment variable settings
+2. **config.json**: Local configuration file
+3. **wrangler.toml**: Cloudflare Workers configuration
+
+Key configuration options:
+- `TELEGRAM_AVAILABLE_TOKENS`: Telegram bot tokens
+- `OPENAI_API_KEY`: OpenAI API key
+- `ANTHROPIC_API_KEY`: Anthropic API key
+- `GOOGLE_API_KEY`: Google API key
+- For more configurations, see [Configuration Documentation](./doc/en/CONFIG.md)
+
+### 🔍 Tech Stack
+
+- **Framework**: TypeScript + Vite
+- **AI SDK**: [@ai-sdk](https://www.npmjs.com/package/ai) for unified AI interfaces
+- **Deployment**: Cloudflare Workers / Vercel / Docker
+- **API**: Telegram Bot API
+- **Tools**: ESLint, Vitest
+
+### 📖 Documentation
+
+- [Configuration Guide](./doc/en/CONFIG.md)
+- [Deployment Guide](./doc/en/DEPLOY.md)
+- [Local Development](./doc/en/LOCAL.md)
+- [Platform Deployment](./doc/en/PLATFORM.md)
+- [Changelog](./doc/en/CHANGELOG.md)
+
+### ⚠️ Important Notes
+
+- Due to the use of AI SDK, CPU time consumption is high, not suitable for Cloudflare Worker free tier (10ms limit)
+- Docker deployment with polling mode is recommended
+- Webhook mode has a maximum runtime of 60 seconds
+
+### 🤝 Contributing
+
+Issues and Pull Requests are welcome. Before contributing code, please ensure:
+
+1. Code follows project standards (`npm run lint`)
+2. All tests pass (`npm test`)
+3. Update relevant documentation
+
+### 📄 License
+
+This project is open-sourced under the [MIT License](LICENSE).
+
+### 🙏 Acknowledgments
+
+- Thanks to the original [ChatGPT-Telegram-Workers](https://github.com/TBXark/ChatGPT-Telegram-Workers) project for the foundational architecture
+- Thanks to [JetBrains](https://www.jetbrains.com/?from=tbxark) for providing open-source development licenses
+- Thanks to all contributors for their support
 
 ---
 
-## About
-
-The simplest and fastest way to deploy your own ChatGPT Telegram bot. Use Cloudflare Workers, single file, copy and paste directly, no dependencies required, no need to configure local development environment, no domain name required, serverless.
-
-You can customize the system initialization information so that your debugged personality never disappears.
-
-<details>
-<summary>example</summary>
-<img style="max-width: 600px;" alt="image" src="./doc/demo.jpg">
-</details>
-
-
-## Features
-
-- Serverless deployment
-- Multi-platform deployment support (Cloudflare Workers, Vercel, Docker[...](doc/en/PLATFORM.md))
-- Adaptation to multiple AI service providers (OpenAI, Azure OpenAI, Cloudflare AI, Cohere, Anthropic, Mistral...)
-- Custom commands (can achieve quick switching of models, switching of robot presets)
-- Support for multiple Telegram bots
-- Streaming output
-- Multi-language support
-- Text-to-image generation
-- [Plugin System](plugins), customizable plugins.
-
-
-## Documentation
-
-- [Deploy Cloudflare Workers](./doc/en/DEPLOY.md)
-- [Local (or Docker) deployment](./doc/en/LOCAL.md)
-- [Deploy other platforms](./doc/en/PLATFORM.md)
-- [Configuration and Commands](./doc/en/CONFIG.md)
-- [Automatic update](./doc/en/ACTION.md)
-- [Change Log](./doc/en/CHANGELOG.md)
-
-
-## Related Projects
-
-- [cloudflare-worker-adapter](https://github.com/TBXark/cloudflare-worker-adapter)  A simple Cloudflare Worker adapter that allows this project to run independently of Cloudflare Worker.
-- [telegram-bot-api-types](https://github.com/TBXark/telegram-bot-api-types)  Telegram Bot API SDK with 0 output after compilation, complete documentation, supports all APIs.
-
-
-## Special thanks
-
-![https://www.jetbrains.com/?from=tbxark](https://user-images.githubusercontent.com/9513891/236592683-1ea579cf-08ff-4703-b313-db038f62bab0.svg)
-
-Thanks for the open-source development license provided by [JetBrains](https://www.jetbrains.com/?from=tbxark).
-
-
-## Contributors
-
-This project exists thanks to all the people who contribute. [Contribute](https://github.com/tbxark/ChatGPT-Telegram-Workers/graphs/contributors).
-
-
-## License
-
-**ChatGPT-Telegram-Workers** is released under the MIT license. [See LICENSE](LICENSE) for details.
+**If this project helps you, please give it a ⭐️!**
