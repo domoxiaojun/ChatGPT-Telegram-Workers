@@ -34,10 +34,6 @@ export default {
                     description: 'The number of videos to generate; minimum 1, maximum 4',
                     default: 1,
                 },
-                negativePrompt: {
-                    type: 'string',
-                    description: 'Negative prompt to exclude specific elements from the generated video',
-                },
             },
         },
     },
@@ -51,16 +47,14 @@ async function generateVideo({
     personGeneration = 'dont_allow',
     durationSeconds = 5,
     numberOfVideos = 1,
-    negativePrompt,
 }: {
     prompt: string;
     aspectRatio: string;
     personGeneration: string;
     durationSeconds: number;
     numberOfVideos: number;
-    negativePrompt?: string;
 }, _env: Record<string, any>, config: AgentUserConfig) {
-    const model = 'veo-3.0-fast-generate-preview';
+    const model = 'veo-3.0-generate-preview';
     const url = `${config.GOOGLE_API_BASE}/models/${model}:predictLongRunning?key=${config.GOOGLE_API_KEY}`;
     const resp = await fetch(url, {
         method: 'POST',
@@ -76,7 +70,6 @@ async function generateVideo({
                 personGeneration,
                 durationSeconds,
                 sampleCount: numberOfVideos,
-                ...(negativePrompt && { negativePrompt }),
                 // enhancePrompt: gemini api not support
                 // fps: gemini api not support
                 // outputGcsUri: gemini api not support
@@ -106,10 +99,8 @@ async function generateVideo({
         if (resp.ok) {
             const { done, response } = await resp.json();
             if (done) {
-                for (const sample of response?.generateVideoResponse?.generatedSamples || []) {
-                    if (sample.video) {
-                        video_urls.push(`${sample.video.uri}&key=${config.GOOGLE_API_KEY}`);
-                    }
+                for (const { video } of response?.generateVideoResponse?.generatedSamples || []) {
+                    video_urls.push(`${video.uri}&key=${config.GOOGLE_API_KEY}`);
                 }
                 break;
             }
@@ -121,8 +112,7 @@ async function generateVideo({
         }
     }
 
-    console.log(`Google veo operation ${op_name} generated ${video_urls.length} videos with native audio: ${video_urls.join(', ')}`);
-    
+    console.log(`Google veo operation ${op_name} generated ${video_urls.length} videos: ${video_urls.join(', ')}`);
     return {
         content: video_urls.map(url => ({
             type: 'video',
