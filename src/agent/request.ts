@@ -221,7 +221,8 @@ function thinkingExtractor(messageInfo: MessageInfo) {
     let lastOutputTime = 0;
     const thinkingTag = '>`Thinking\\.\\.\\.`';
     return (data: TextStreamPart<any>) => {
-        switch (data.type) {
+        const dataType = (data as any).type;
+        switch (dataType) {
             case 'reasoning-start':
                 if (!ENV.SHOW_THINKING_TEXT) {
                     return '';
@@ -239,7 +240,7 @@ function thinkingExtractor(messageInfo: MessageInfo) {
                     return '';
                 }
                 // 积累思考文本
-                reasoningBuffer += data.text;
+                reasoningBuffer += (data as any).text || '';
                 const now = Date.now();
                 
                 // 当积累到足够长度、遇到句末标点、或距上次输出时间超过500ms时输出
@@ -276,11 +277,11 @@ function thinkingExtractor(messageInfo: MessageInfo) {
                     .replace(/(\n>){3,}$/g, '\n>\n>');
                 return `\n>✹\n${SEGMENTATION_MARK}\n`;
             case 'text-delta':
-                return data.text;
+                return (data as any).text || '';
             case 'text-end':
                 return '';
             case 'error':
-                throw data.error;
+                throw (data as any).error;
             default:
                 return '';
         }
