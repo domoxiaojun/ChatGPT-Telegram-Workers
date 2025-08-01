@@ -58,12 +58,12 @@
         "node-cron": "^4.2.1"
     },
     "devDependencies": {
-        "@antfu/eslint-config": "^4.16.2",
-        "@cloudflare/workers-types": "^4.20250708.0",
+        "@antfu/eslint-config": "^4.17.0",
+        "@cloudflare/workers-types": "^4.20250726.0",
         "@rollup/plugin-node-resolve": "^16.0.1",
-        "@types/node": "^24.0.10",
+        "@types/node": "^24.1.0",
         "@types/node-cron": "^3.0.11",
-        "@types/react": "^19.1.8",
+        "@types/react": "^19.1.9",
         "@types/react-dom": "^19.1.6",
         "@types/ws": "^8.18.1",
         "@vercel/node": "^5.3.4",
