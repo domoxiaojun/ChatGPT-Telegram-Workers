@@ -70,13 +70,13 @@ async function generateVideo({
         body: JSON.stringify({
             instances: [{
                 prompt,
-                ...(negativePrompt && { negativePrompt }),
             }],
             parameters: {
                 aspectRatio,
                 personGeneration,
                 durationSeconds,
                 sampleCount: numberOfVideos,
+                ...(negativePrompt && { negativePrompt }),
                 // enhancePrompt: gemini api not support
                 // fps: gemini api not support
                 // outputGcsUri: gemini api not support
