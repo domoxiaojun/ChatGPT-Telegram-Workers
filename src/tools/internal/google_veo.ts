@@ -57,25 +57,16 @@ async function generateVideo({
     const model = 'veo-3.0-fast-generate-preview';
     const url = `${config.GOOGLE_API_BASE}/models/${model}:predictLongRunning?key=${config.GOOGLE_API_KEY}`;
     const requestBody = {
-        instances: [{
-            prompt,
-        }],
-        parameters: {
+        prompt,
+        config: {
             aspectRatio,
             personGeneration,
-            durationSeconds,
+            // Gemini API 不支持 durationSeconds 参数
             sampleCount: numberOfVideos,
-            // negativePrompt: temporary not support
-            // enhancePrompt: gemini api not support
-            // fps: gemini api not support
-            // outputGcsUri: gemini api not support
-            // seed: gemini api not support
-            // resolution: gemini api not support
-            // pubsubTopic: gemini api not support
         },
     };
     
-    console.log('=== DEBUG: Google Veo Request ===');
+    console.log('=== DEBUG: Google Veo Request (Gemini API format) ===');
     console.log('URL:', url);
     console.log('Model:', model);
     console.log('Request Body:', JSON.stringify(requestBody, null, 2));

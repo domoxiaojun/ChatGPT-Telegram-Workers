@@ -218,60 +218,69 @@ function thinkingExtractor(messageInfo: MessageInfo) {
     let thinkingStart = false;
     let thinkingStartTime: undefined | number;
     let reasoningBuffer = '';
+    let lastOutputTime = 0;
     const thinkingTag = '>`Thinking\\.\\.\\.`';
     return (data: TextStreamPart<any>) => {
-        const dataType = (data as any).type;
-        switch (dataType) {
+        switch (data.type) {
             case 'reasoning-start':
                 if (!ENV.SHOW_THINKING_TEXT) {
                     return '';
                 }
-                thinkingStart = true;
-                thinkingStartTime = Date.now();
-                reasoningBuffer = '';
-                return thinkingTag;
-            
+                if (!thinkingStart) {
+                    thinkingStart = true;
+                    thinkingStartTime = Date.now();
+                    reasoningBuffer = '';
+                    lastOutputTime = Date.now();
+                    return thinkingTag;
+                }
+                return '';
             case 'reasoning-delta':
                 if (!ENV.SHOW_THINKING_TEXT) {
                     return '';
                 }
-                // 积累所有 reasoning 内容，模拟旧版本的单次 reasoning 事件
-                reasoningBuffer += (data as any).text || '';
+                // 积累思考文本
+                reasoningBuffer += data.text;
+                const now = Date.now();
+                
+                // 当积累到足够长度、遇到句末标点、或距上次输出时间超过500ms时输出
+                if (reasoningBuffer.length >= 50 || 
+                    /[。！？.!?]\s*$/.test(reasoningBuffer.trim()) ||
+                    (now - lastOutputTime > 500 && reasoningBuffer.length >= 20)) {
+                    const output = `\n>${reasoningBuffer.replace(/\n/g, '\n>')}`;
+                    reasoningBuffer = '';
+                    lastOutputTime = now;
+                    return output;
+                }
                 return '';
-            
             case 'reasoning-end':
                 if (!ENV.SHOW_THINKING_TEXT) {
                     return '';
                 }
-                // 在 reasoning-end 时输出完整内容，模拟旧版本行为
-                if (reasoningBuffer) {
-                    return `\n>${reasoningBuffer.replace(/\n/g, '\n>')}`;
+                // 输出剩余的缓冲内容
+                let output = '';
+                if (reasoningBuffer.length > 0) {
+                    output = `\n>${reasoningBuffer.replace(/\n/g, '\n>')}`;
+                    reasoningBuffer = '';
                 }
-                return '';
-            
+                return output;
             case 'text-start':
-                // 模拟旧版本的 'text' 事件开始
-                if (!thinkingStart) {
+                if (!thinkingStart)
                     return '';
-                }
                 thinkingStart = false;
                 const thinkingTime = ((Date.now() - thinkingStartTime!) / 1e3).toFixed(1);
                 messageInfo.content = messageInfo.content
                     .replace(thinkingTag, `>\`Thought for ${thinkingTime} seconds\``)
+                    // remove trailing blank lines
                     .replace(/(\n>)*$/, '')
+                    // three or more newlines are trimmed to 2 newlines
                     .replace(/(\n>){3,}$/g, '\n>\n>');
                 return `\n>✹\n${SEGMENTATION_MARK}\n`;
-            
             case 'text-delta':
-                // 直接返回文本内容，模拟旧版本的 'text' 事件
-                return (data as any).text || '';
-            
+                return data.text;
             case 'text-end':
                 return '';
-            
             case 'error':
-                throw (data as any).error;
-            
+                throw data.error;
             default:
                 return '';
         }
