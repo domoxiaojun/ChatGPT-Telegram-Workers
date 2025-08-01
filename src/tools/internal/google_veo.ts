@@ -24,11 +24,6 @@ export default {
                     enum: ['allow_adult', 'dont_allow'],
                     default: 'dont_allow',
                 },
-                durationSeconds: {
-                    type: 'number',
-                    description: 'The duration of the video; minimum 5, maximum 8',
-                    default: 5,
-                },
                 numberOfVideos: {
                     type: 'number',
                     description: 'The number of videos to generate; minimum 1, maximum 4',
@@ -54,7 +49,6 @@ async function generateVideo({
     prompt,
     aspectRatio = '16:9',
     personGeneration = 'dont_allow',
-    durationSeconds = 5,
     numberOfVideos = 1,
     includeAudio = true,
     negativePrompt,
@@ -62,7 +56,6 @@ async function generateVideo({
     prompt: string;
     aspectRatio: string;
     personGeneration: string;
-    durationSeconds: number;
     numberOfVideos: number;
     includeAudio?: boolean;
     negativePrompt?: string;
@@ -82,7 +75,6 @@ async function generateVideo({
             parameters: {
                 aspectRatio,
                 personGeneration,
-                durationSeconds,
                 sampleCount: numberOfVideos,
                 includeAudio,
                 // enhancePrompt: gemini api not support
