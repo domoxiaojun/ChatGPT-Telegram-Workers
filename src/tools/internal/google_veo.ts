@@ -20,9 +20,9 @@ export default {
                 },
                 personGeneration: {
                     type: 'string',
-                    description: 'The person generation of the video',
-                    enum: ['allow_adult', 'dont_allow'],
-                    default: 'dont_allow',
+                    description: 'The person generation of the video. For text-to-video, use "allow_all". Some regions may have restrictions.',
+                    enum: ['allow_all', 'allow_adult', 'dont_allow'],
+                    default: 'allow_all',
                 },
                 numberOfVideos: {
                     type: 'number',
@@ -43,7 +43,7 @@ export default {
 async function generateVideo({
     prompt,
     aspectRatio = '16:9',
-    personGeneration = 'dont_allow',
+    personGeneration = 'allow_all',
     numberOfVideos = 1,
     negativePrompt,
 }: {
