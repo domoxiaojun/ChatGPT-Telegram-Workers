@@ -22,7 +22,7 @@ Before you start, you'll need:
 
 ### One-Click Setup
 
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/TBXark/ChatGPT-Telegram-Workers)
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/SzeMeng76/ChatGPT-Telegram-Workers)
 
 > ⚠️ **Important**: Due to AI SDK usage, CPU time is high. Not suitable for Cloudflare Workers free tier (10ms limit). Consider Docker deployment for heavy usage.
 
@@ -184,7 +184,7 @@ wrangler login
 
 ```bash
 # Clone and setup
-git clone https://github.com/TBXark/ChatGPT-Telegram-Workers.git
+git clone https://github.com/SzeMeng76/ChatGPT-Telegram-Workers.git
 cd ChatGPT-Telegram-Workers
 npm install
 
@@ -339,7 +339,7 @@ LOG_LEVEL = "debug"
 ### Getting Help
 
 1. **Check logs**: Cloudflare Dashboard → Workers → Your Worker → Logs
-2. **GitHub Issues**: [Report bugs or ask questions](https://github.com/TBXark/ChatGPT-Telegram-Workers/issues)
+2. **GitHub Issues**: [Report bugs or ask questions](https://github.com/SzeMeng76/ChatGPT-Telegram-Workers/issues)
 3. **Documentation**: Review [Configuration Guide](CONFIG.md)
 4. **Community**: Join discussions in project repository
 

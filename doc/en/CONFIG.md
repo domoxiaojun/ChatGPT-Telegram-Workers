@@ -413,7 +413,7 @@ LOG_LEVEL=debug
 
 ### Getting Help
 
-1. Check [GitHub Issues](https://github.com/TBXark/ChatGPT-Telegram-Workers/issues)
+1. Check [GitHub Issues](https://github.com/SzeMeng76/ChatGPT-Telegram-Workers/issues)
 2. Review [Deployment Guide](DEPLOY.md)
 3. Join our community discussions
 

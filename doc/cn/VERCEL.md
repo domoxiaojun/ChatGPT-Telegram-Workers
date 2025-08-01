@@ -50,7 +50,7 @@ Vercel 为部署此机器人提供了出色的无服务器平台，具有以下�
 
 ### 一键部署
 
-[![使用 Vercel 部署](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FTBXark%2FChatGPT-Telegram-Workers&env=UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,VERCEL_DOMAIN,TELEGRAM_AVAILABLE_TOKENS&project-name=chatgpt-telegram-workers&repository-name=ChatGPT-Telegram-Workers&demo-title=ChatGPT-Telegram-Workers&demo-description=Deploy%20your%20own%20Telegram%20ChatGPT%20bot%20on%20Vercel%20with%20ease.&demo-url=https%3A%2F%2Fchatgpt-telegram-workers.vercel.app)
+[![使用 Vercel 部署](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/SzeMeng76/ChatGPT-Telegram-Workers&env=UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,VERCEL_DOMAIN,TELEGRAM_AVAILABLE_TOKENS&project-name=chatgpt-telegram-workers&repository-name=ChatGPT-Telegram-Workers&demo-title=ChatGPT-Telegram-Workers&demo-description=Deploy%20your%20own%20Telegram%20ChatGPT%20bot%20on%20Vercel%20with%20ease.&demo-url=https%3A%2F%2Fchatgpt-telegram-workers.vercel.app)
 
 ### 必需的环境变量
 
@@ -83,7 +83,7 @@ npx vercel --version
 
 ```bash
 # 克隆仓库
-git clone https://github.com/TBXark/ChatGPT-Telegram-Workers.git
+git clone https://github.com/SzeMeng76/ChatGPT-Telegram-Workers.git
 cd ChatGPT-Telegram-Workers
 
 # 安装依赖

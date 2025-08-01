@@ -22,7 +22,7 @@
 
 ### 一键部署
 
-[![部署到Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/TBXark/ChatGPT-Telegram-Workers)
+[![部署到Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/SzeMeng76/ChatGPT-Telegram-Workers)
 
 > ⚠️ **重要**：由于使用AI SDK，CPU时间消耗较高。不适合Cloudflare Workers免费版（10ms限制）。重度使用请考虑Docker部署。
 
@@ -184,7 +184,7 @@ wrangler login
 
 ```bash
 # 克隆和设置
-git clone https://github.com/TBXark/ChatGPT-Telegram-Workers.git
+git clone https://github.com/SzeMeng76/ChatGPT-Telegram-Workers.git
 cd ChatGPT-Telegram-Workers
 npm install
 
@@ -339,7 +339,7 @@ LOG_LEVEL = "debug"
 ### 获取帮助
 
 1. **检查日志**：Cloudflare控制台 → Workers → 您的Worker → 日志
-2. **GitHub Issues**：[报告错误或提问](https://github.com/TBXark/ChatGPT-Telegram-Workers/issues)
+2. **GitHub Issues**：[报告错误或提问](https://github.com/SzeMeng76/ChatGPT-Telegram-Workers/issues)
 3. **文档**：查看[配置指南](CONFIG.md)
 4. **社区**：加入项目仓库的讨论
 

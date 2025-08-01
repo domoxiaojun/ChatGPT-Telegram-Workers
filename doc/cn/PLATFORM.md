@@ -26,13 +26,13 @@
 
 ### 快速开始
 ```bash
-docker pull adolphnov/chatgpt-telegram-workers:latest
+docker pull szemeng76/chatgpt-telegram-workers:latest
 docker run -d \
   --name chatgpt-telegram-bot \
   -p 8787:8787 \
   -v $(pwd)/config.json:/app/config.json:ro \
   -v $(pwd)/wrangler.toml:/app/config.toml:ro \
-  adolphnov/chatgpt-telegram-workers:latest
+  szemeng76/chatgpt-telegram-workers:latest
 ```
 
 **📖 完整指南**: [Docker部署文档](LOCAL.md)
@@ -55,7 +55,7 @@ docker run -d \
 - ⚠️ 执行时间限制60s
 
 ### 快速部署
-[![部署到Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/TBXark/ChatGPT-Telegram-Workers)
+[![部署到Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/SzeMeng76/ChatGPT-Telegram-Workers)
 
 **📖 完整指南**: [Cloudflare Workers部署](DEPLOY.md)
 
@@ -77,7 +77,7 @@ docker run -d \
 - ⚠️ 冷启动延迟
 
 ### 快速部署
-[![使用Vercel部署](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FTBXark%2FChatGPT-Telegram-Workers&env=UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,VERCEL_DOMAIN,TELEGRAM_AVAILABLE_TOKENS&project-name=chatgpt-telegram-workers&repository-name=ChatGPT-Telegram-Workers)
+[![使用Vercel部署](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/SzeMeng76/ChatGPT-Telegram-Workers&env=UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,VERCEL_DOMAIN,TELEGRAM_AVAILABLE_TOKENS&project-name=chatgpt-telegram-workers&repository-name=ChatGPT-Telegram-Workers)
 
 ### 手动设置
 ```bash
@@ -176,13 +176,14 @@ OPENAI_API_KEY=your_openai_key
 - ✅ 内置负载均衡
 
 ### 快速部署
-[![部署到Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?name=chatgpt-telegram-workers&type=docker&image=adolphnov%2Fchatgpt-telegram-workers%3Alatest&instance_type=free&instances_min=0&autoscaling_sleep_idle_delay=300&ports=8787%3Bhttp%3B%2F&env%5BTELEGRAM_AVAILABLE_TOKENS%5D=&env%5BOPENAI_API_KEY%5D=)
+[![部署到Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?name=chatgpt-telegram-workers&type=docker&image=szemeng76/chatgpt-telegram-workers:latest
+&instance_type=free&instances_min=0&autoscaling_sleep_idle_delay=300&ports=8787%3Bhttp%3B%2F&env%5BTELEGRAM_AVAILABLE_TOKENS%5D=&env%5BOPENAI_API_KEY%5D=)
 
 ### 手动设置
 
 **Webhook模式：**
 1. 创建服务 → Web服务 → Docker
-2. 镜像：`adolphnov/chatgpt-telegram-workers:latest`
+2. 镜像：`szemeng76/chatgpt-telegram-workers:latest`
 3. 添加环境变量
 4. 设置端口：`8787`
 5. 部署并复制公共URL
@@ -190,7 +191,7 @@ OPENAI_API_KEY=your_openai_key
 
 **轮询模式（推荐）：**
 1. 创建服务 → Worker → Docker
-2. 镜像：`adolphnov/chatgpt-telegram-workers:latest`
+2. 镜像：`szemeng76/chatgpt-telegram-workers:latest`
 3. 设置`config.json`模式为`polling`
 4. 无需域名
 
@@ -203,7 +204,7 @@ OPENAI_API_KEY=your_openai_key
 version: '3.8'
 services:
   chatgpt-telegram-bot:
-    image: adolphnov/chatgpt-telegram-workers:latest
+    image: szemeng76/chatgpt-telegram-workers:latest
     ports:
       - "8787:8787"
     volumes:
@@ -230,7 +231,7 @@ spec:
     spec:
       containers:
       - name: bot
-        image: adolphnov/chatgpt-telegram-workers:latest
+        image: szemeng76/chatgpt-telegram-workers:latest
         ports:
         - containerPort: 8787
         env:

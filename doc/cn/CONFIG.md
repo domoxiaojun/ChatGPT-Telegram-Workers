@@ -413,7 +413,7 @@ LOG_LEVEL=debug
 
 ### 获取帮助
 
-1. 检查 [GitHub Issues](https://github.com/TBXark/ChatGPT-Telegram-Workers/issues)
+1. 检查 [GitHub Issues](https://github.com/SzeMeng76/ChatGPT-Telegram-Workers/issues)
 2. 查看 [部署指南](DEPLOY.md)
 3. 加入我们的社区讨论
 

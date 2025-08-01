@@ -1,6 +1,6 @@
 # ChatGPT Telegram Workers
 
-[![Build and Push Docker Image](https://github.com/adolphnov/ChatGPT-Telegram-Workers/actions/workflows/build-docker.yml/badge.svg)](https://github.com/adolphnov/ChatGPT-Telegram-Workers/actions/workflows/build-docker.yml)
+[![Build and Push Docker Image](https://github.com/SzeMeng76/ChatGPT-Telegram-Workers/actions/workflows/build-docker.yml/badge.svg)](https://github.com/SzeMeng76/ChatGPT-Telegram-Workers/actions/workflows/build-docker.yml)
 
 <p align="center">
     <br> <a href="README.md">English</a> | 中文
@@ -185,7 +185,7 @@ src/
 
 ### 🙏 致谢
 
-- 感谢原项目 [ChatGPT-Telegram-Workers](https://github.com/TBXark/ChatGPT-Telegram-Workers) 提供的基础架构
+- 感谢原项目 [ChatGPT-Telegram-Workers](https://github.com/adolphnov/ChatGPT-Telegram-Workers) 提供的基础架构
 - 感谢 [JetBrains](https://www.jetbrains.com/?from=tbxark) 提供的开源开发许可证
 - 感谢所有贡献者的支持
 

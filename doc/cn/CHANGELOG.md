@@ -309,8 +309,8 @@
 ## 支持
 
 - 📖 **文档**: [完整文档](../README.md)
-- 🐛 **问题报告**: [GitHub Issues](https://github.com/TBXark/ChatGPT-Telegram-Workers/issues)
-- 💬 **讨论**: [GitHub Discussions](https://github.com/TBXark/ChatGPT-Telegram-Workers/discussions)
+- 🐛 **问题报告**: [GitHub Issues](https://github.com/SzeMeng76/ChatGPT-Telegram-Workers/issues)
+- 💬 **讨论**: [GitHub Discussions](https://github.com/SzeMeng76/ChatGPT-Telegram-Workers/discussions)
 - 📧 **安全问题**: 请私下向维护者报告
 
 ---

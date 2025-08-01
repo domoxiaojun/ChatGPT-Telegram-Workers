@@ -24,7 +24,7 @@ This guide covers local development and Docker deployment options for the ChatGP
 
 ```bash
 # Clone the repository
-git clone https://github.com/TBXark/ChatGPT-Telegram-Workers.git
+git clone https://github.com/SzeMeng76/ChatGPT-Telegram-Workers.git
 cd ChatGPT-Telegram-Workers
 
 # Copy example configs
@@ -112,7 +112,7 @@ GOOGLE_API_KEY = "your_google_key"
 
 ```bash
 # Pull the latest image
-docker pull adolphnov/chatgpt-telegram-workers:latest
+docker pull szemeng76/chatgpt-telegram-workers:latest
 
 # Run with volume mounts
 docker run -d \
@@ -122,7 +122,7 @@ docker run -d \
   -v $(pwd)/wrangler.toml:/app/config.toml:ro \
   -v $(pwd)/data:/app/data \
   --restart unless-stopped \
-  adolphnov/chatgpt-telegram-workers:latest
+  szemeng76/chatgpt-telegram-workers:latest
 ```
 
 ### Method 2: Build from Source
@@ -168,7 +168,7 @@ docker run -d \
 
 ```bash
 # Clone and install
-git clone https://github.com/TBXark/ChatGPT-Telegram-Workers.git
+git clone https://github.com/SzeMeng76/ChatGPT-Telegram-Workers.git
 cd ChatGPT-Telegram-Workers
 npm install
 
@@ -219,7 +219,7 @@ version: '3.8'
 
 services:
   chatgpt-telegram-bot:
-    image: adolphnov/chatgpt-telegram-workers:latest
+    image: szemeng76/chatgpt-telegram-workers:latest
     # Or build from source:
     # build: .
     container_name: chatgpt-telegram-workers
@@ -249,7 +249,7 @@ version: '3.8'
 
 services:
   chatgpt-telegram-bot:
-    image: adolphnov/chatgpt-telegram-workers:latest
+    image: szemeng76/chatgpt-telegram-workers:latest
     container_name: chatgpt-telegram-workers
     ports:
       - "8787:8787"

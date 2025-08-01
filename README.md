@@ -1,6 +1,6 @@
 # ChatGPT Telegram Workers
 
-[![Build and Push Docker Image](https://github.com/adolphnov/ChatGPT-Telegram-Workers/actions/workflows/build-docker.yml/badge.svg)](https://github.com/adolphnov/ChatGPT-Telegram-Workers/actions/workflows/build-docker.yml)
+[![Build and Push Docker Image](https://github.com/SzeMeng76/ChatGPT-Telegram-Workers/actions/workflows/build-docker.yml/badge.svg)](https://github.com/SzeMeng76/ChatGPT-Telegram-Workers/actions/workflows/build-docker.yml)
 
 <p align="center">
     <br> English | <a href="README_CN.md">中文</a>
@@ -162,7 +162,7 @@ This project is open-sourced under the [MIT License](LICENSE).
 
 ### 🙏 Acknowledgments
 
-- Thanks to the original [ChatGPT-Telegram-Workers](https://github.com/TBXark/ChatGPT-Telegram-Workers) project for the foundational architecture
+- Thanks to the original [ChatGPT-Telegram-Workers](https://github.com/adolphnov/ChatGPT-Telegram-Workers) project for the foundational architecture
 - Thanks to [JetBrains](https://www.jetbrains.com/?from=tbxark) for providing open-source development licenses
 - Thanks to all contributors for their support
 

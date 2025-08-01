@@ -26,13 +26,13 @@ This guide covers all supported deployment platforms for the ChatGPT Telegram Wo
 
 ### Quick Start
 ```bash
-docker pull adolphnov/chatgpt-telegram-workers:latest
+docker pull szemeng76/chatgpt-telegram-workers:latest
 docker run -d \
   --name chatgpt-telegram-bot \
   -p 8787:8787 \
   -v $(pwd)/config.json:/app/config.json:ro \
   -v $(pwd)/wrangler.toml:/app/config.toml:ro \
-  adolphnov/chatgpt-telegram-workers:latest
+  szemeng76/chatgpt-telegram-workers:latest
 ```
 
 **📖 Full Guide**: [Docker Deployment Documentation](LOCAL.md)
@@ -55,7 +55,7 @@ docker run -d \
 - ⚠️ Limited to 60s execution time
 
 ### Quick Deploy
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/TBXark/ChatGPT-Telegram-Workers)
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/SzeMeng76/ChatGPT-Telegram-Workers)
 
 **📖 Full Guide**: [Cloudflare Workers Deployment](DEPLOY.md)
 
@@ -77,7 +77,7 @@ docker run -d \
 - ⚠️ Cold start delays
 
 ### Quick Deploy
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FTBXark%2FChatGPT-Telegram-Workers&env=UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,VERCEL_DOMAIN,TELEGRAM_AVAILABLE_TOKENS&project-name=chatgpt-telegram-workers&repository-name=ChatGPT-Telegram-Workers)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/SzeMeng76/ChatGPT-Telegram-Workers&env=UPSTASH_REDIS_REST_URL,UPSTASH_REDIS_REST_TOKEN,VERCEL_DOMAIN,TELEGRAM_AVAILABLE_TOKENS&project-name=chatgpt-telegram-workers&repository-name=ChatGPT-Telegram-Workers)
 
 ### Manual Setup
 ```bash
@@ -176,13 +176,14 @@ OPENAI_API_KEY=your_openai_key
 - ✅ Built-in load balancing
 
 ### Quick Deploy
-[![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?name=chatgpt-telegram-workers&type=docker&image=adolphnov%2Fchatgpt-telegram-workers%3Alatest&instance_type=free&instances_min=0&autoscaling_sleep_idle_delay=300&ports=8787%3Bhttp%3B%2F&env%5BTELEGRAM_AVAILABLE_TOKENS%5D=&env%5BOPENAI_API_KEY%5D=)
+[![Deploy to Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy?name=chatgpt-telegram-workers&type=docker&image=szemeng76/chatgpt-telegram-workers:latest
+&instance_type=free&instances_min=0&autoscaling_sleep_idle_delay=300&ports=8787%3Bhttp%3B%2F&env%5BTELEGRAM_AVAILABLE_TOKENS%5D=&env%5BOPENAI_API_KEY%5D=)
 
 ### Manual Setup
 
 **Webhook Mode:**
 1. Create service → Web Service → Docker
-2. Image: `adolphnov/chatgpt-telegram-workers:latest`
+2. Image: `szemeng76/chatgpt-telegram-workers:latest`
 3. Add environment variables
 4. Set port: `8787`
 5. Deploy and copy public URL
@@ -190,7 +191,7 @@ OPENAI_API_KEY=your_openai_key
 
 **Polling Mode (Recommended):**
 1. Create service → Worker → Docker
-2. Image: `adolphnov/chatgpt-telegram-workers:latest`
+2. Image: `szemeng76/chatgpt-telegram-workers:latest`
 3. Set `config.json` mode to `polling`
 4. No domain needed
 
@@ -203,7 +204,7 @@ OPENAI_API_KEY=your_openai_key
 version: '3.8'
 services:
   chatgpt-telegram-bot:
-    image: adolphnov/chatgpt-telegram-workers:latest
+    image: szemeng76/chatgpt-telegram-workers:latest
     ports:
       - "8787:8787"
     volumes:
@@ -230,7 +231,7 @@ spec:
     spec:
       containers:
       - name: bot
-        image: adolphnov/chatgpt-telegram-workers:latest
+        image: szemeng76/chatgpt-telegram-workers:latest
         ports:
         - containerPort: 8787
         env:

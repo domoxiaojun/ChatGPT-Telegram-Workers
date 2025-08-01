@@ -24,7 +24,7 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/TBXark/ChatGPT-Telegram-Workers.git
+git clone https://github.com/SzeMeng76/ChatGPT-Telegram-Workers.git
 cd ChatGPT-Telegram-Workers
 
 # 复制示例配置
@@ -112,7 +112,7 @@ GOOGLE_API_KEY = "your_google_key"
 
 ```bash
 # 拉取最新镜像
-docker pull adolphnov/chatgpt-telegram-workers:latest
+docker pull szemeng76/chatgpt-telegram-workers:latest
 
 # 运行容器并挂载卷
 docker run -d \
@@ -122,7 +122,7 @@ docker run -d \
   -v $(pwd)/wrangler.toml:/app/config.toml:ro \
   -v $(pwd)/data:/app/data \
   --restart unless-stopped \
-  adolphnov/chatgpt-telegram-workers:latest
+  szemeng76/chatgpt-telegram-workers:latest
 ```
 
 ### 方法2：从源码构建
@@ -168,7 +168,7 @@ docker run -d \
 
 ```bash
 # 克隆并安装
-git clone https://github.com/TBXark/ChatGPT-Telegram-Workers.git
+git clone https://github.com/SzeMeng76/ChatGPT-Telegram-Workers.git
 cd ChatGPT-Telegram-Workers
 npm install
 
@@ -219,7 +219,7 @@ version: '3.8'
 
 services:
   chatgpt-telegram-bot:
-    image: adolphnov/chatgpt-telegram-workers:latest
+    image: szemeng76/chatgpt-telegram-workers:latest
     # 或从源码构建：
     # build: .
     container_name: chatgpt-telegram-workers
@@ -249,7 +249,7 @@ version: '3.8'
 
 services:
   chatgpt-telegram-bot:
-    image: adolphnov/chatgpt-telegram-workers:latest
+    image: szemeng76/chatgpt-telegram-workers:latest
     container_name: chatgpt-telegram-workers
     ports:
       - "8787:8787"

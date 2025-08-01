@@ -309,8 +309,8 @@ Plugin system introduction requires:
 ## Support
 
 - 📖 **Documentation**: [Full Documentation](../README.md)
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/TBXark/ChatGPT-Telegram-Workers/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/TBXark/ChatGPT-Telegram-Workers/discussions)
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/SzeMeng76/ChatGPT-Telegram-Workers/issues)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/SzeMeng76/ChatGPT-Telegram-Workers/discussions)
 - 📧 **Security Issues**: Please report privately to maintainers
 
 ---
