@@ -56,29 +56,37 @@ async function generateVideo({
 }, _env: Record<string, any>, config: AgentUserConfig) {
     const model = 'veo-3.0-fast-generate-preview';
     const url = `${config.GOOGLE_API_BASE}/models/${model}:predictLongRunning?key=${config.GOOGLE_API_KEY}`;
+    const requestBody = {
+        instances: [{
+            prompt,
+        }],
+        parameters: {
+            aspectRatio,
+            personGeneration,
+            durationSeconds,
+            sampleCount: numberOfVideos,
+            // negativePrompt: temporary not support
+            // enhancePrompt: gemini api not support
+            // fps: gemini api not support
+            // outputGcsUri: gemini api not support
+            // seed: gemini api not support
+            // resolution: gemini api not support
+            // pubsubTopic: gemini api not support
+        },
+    };
+    
+    console.log('=== DEBUG: Google Veo Request ===');
+    console.log('URL:', url);
+    console.log('Model:', model);
+    console.log('Request Body:', JSON.stringify(requestBody, null, 2));
+    console.log('================================');
+    
     const resp = await fetch(url, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-            instances: [{
-                prompt,
-            }],
-            parameters: {
-                aspectRatio,
-                personGeneration,
-                durationSeconds,
-                sampleCount: numberOfVideos,
-                // negativePrompt: temporary not support
-                // enhancePrompt: gemini api not support
-                // fps: gemini api not support
-                // outputGcsUri: gemini api not support
-                // seed: gemini api not support
-                // resolution: gemini api not support
-                // pubsubTopic: gemini api not support
-            },
-        }),
+        body: JSON.stringify(requestBody),
     });
     if (!resp.ok) {
         const detail = await resp.json();
