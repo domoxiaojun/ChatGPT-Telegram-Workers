@@ -8,13 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **🎬 Google Veo 3.0 Support**: Upgraded video generation with native audio capabilities
+  - Native audio generation with synchronized sound effects, dialogue, and music
+  - Enhanced video quality with 8-second 720p generation
+  - Support for negative prompts to exclude unwanted elements
+  - Fast generation mode with `veo-3.0-fast-generate-preview`
 - Enhanced documentation with comprehensive guides
 - Advanced deployment configurations
 - Performance monitoring and analytics integration
 
 ### Changed
+- **Google Veo API**: Updated from Veo 2.0 to Veo 3.0 Fast
+  - Fixed `personGeneration` parameter for text-to-video compatibility
+  - Removed `durationSeconds` parameter (fixed 8-second videos)
+  - Improved API request structure and error handling
 - Improved error handling and logging
 - Enhanced security practices documentation
+
+### Fixed
+- **AI SDK Compatibility**: Resolved conflicts with latest AI SDK versions
+- **Veo 3.0 Parameters**: Fixed unsupported parameter issues
+- **Request Processing**: Enhanced TypeScript type safety for streaming responses
 
 ---
 
