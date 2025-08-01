@@ -67,7 +67,7 @@ docker run -d \
   -p 8787:8787 \
   -v ./config.json:/app/config.json:ro \
   -v ./wrangler.toml:/app/config.toml:ro \
-  chatgpt-telegram-workers:latest
+  szemeng76/chatgpt-telegram-workers:latest
 ```
 
 #### Cloudflare Workers
