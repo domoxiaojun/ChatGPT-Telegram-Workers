@@ -3,14 +3,14 @@ import type { AgentUserConfig } from '../../config/types';
 export default {
     schema: {
         name: 'google_veo',
-        description: 'Google veo video generation tool, you can specify the aspect ratio and person generation.',
+        description: 'Google Veo 3.0 video generation tool with native audio support. Generates 8-second videos with synchronized audio.',
         parameters: {
             type: 'object',
             required: ['prompt'],
             properties: {
                 prompt: {
                     type: 'string',
-                    description: 'The text prompt to generate a video from',
+                    description: 'The text prompt to generate a video from. Include audio cues like dialogue, sound effects, or music descriptions.',
                 },
                 aspectRatio: {
                     type: 'string',
@@ -24,15 +24,14 @@ export default {
                     enum: ['allow_adult', 'dont_allow'],
                     default: 'dont_allow',
                 },
-                durationSeconds: {
-                    type: 'number',
-                    description: 'The duration of the video; minimum 5, maximum 8',
-                    default: 5,
-                },
                 numberOfVideos: {
                     type: 'number',
                     description: 'The number of videos to generate; minimum 1, maximum 4',
                     default: 1,
+                },
+                negativePrompt: {
+                    type: 'string',
+                    description: 'Negative prompt to exclude specific elements from the generated video (e.g., "cartoon, drawing, low quality")',
                 },
             },
         },
@@ -45,41 +44,43 @@ async function generateVideo({
     prompt,
     aspectRatio = '16:9',
     personGeneration = 'dont_allow',
-    durationSeconds = 5,
     numberOfVideos = 1,
+    negativePrompt,
 }: {
     prompt: string;
     aspectRatio: string;
     personGeneration: string;
-    durationSeconds: number;
     numberOfVideos: number;
+    negativePrompt?: string;
 }, _env: Record<string, any>, config: AgentUserConfig) {
-    const model = 'veo-2.0-generate-001';
+    const model = 'veo-3.0-generate-preview';
     const url = `${config.GOOGLE_API_BASE}/models/${model}:predictLongRunning?key=${config.GOOGLE_API_KEY}`;
+    
+    const requestBody = {
+        instances: [{
+            prompt,
+        }],
+        parameters: {
+            aspectRatio,
+            personGeneration,
+            sampleCount: numberOfVideos,
+            ...(negativePrompt && { negativePrompt }),
+        },
+    };
+    
+    console.log('=== Google Veo 3.0 Request ===');
+    console.log('Model:', model);
+    console.log('Request Body:', JSON.stringify(requestBody, null, 2));
+    console.log('==============================');
+    
     const resp = await fetch(url, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-            instances: [{
-                prompt,
-            }],
-            parameters: {
-                aspectRatio,
-                personGeneration,
-                durationSeconds,
-                sampleCount: numberOfVideos,
-                // negativePrompt: temporary not support
-                // enhancePrompt: gemini api not support
-                // fps: gemini api not support
-                // outputGcsUri: gemini api not support
-                // seed: gemini api not support
-                // resolution: gemini api not support
-                // pubsubTopic: gemini api not support
-            },
-        }),
+        body: JSON.stringify(requestBody),
     });
+    
     if (!resp.ok) {
         const detail = await resp.json();
         console.error(`Google veo operation failed: ${detail.error.message}`);
@@ -91,6 +92,7 @@ async function generateVideo({
     const { name: op_name } = await resp.json();
     console.log(`Google veo operation name: ${op_name}`);
     const operationUrl = `${config.GOOGLE_API_BASE}/${op_name}?key=${config.GOOGLE_API_KEY}`;
+    
     // max wait time: 15 minutes
     const MAX_TIME = 15 * 60 * 1000;
     let elapsedTime = 0;
@@ -113,7 +115,7 @@ async function generateVideo({
         }
     }
 
-    console.log(`Google veo operation ${op_name} generated ${video_urls.length} videos: ${video_urls.join(', ')}`);
+    console.log(`Google veo operation ${op_name} generated ${video_urls.length} videos with native audio: ${video_urls.join(', ')}`);
     return {
         content: video_urls.map(url => ({
             type: 'video',
