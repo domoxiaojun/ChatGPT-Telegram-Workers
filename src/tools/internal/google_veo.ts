@@ -34,6 +34,15 @@ export default {
                     description: 'The number of videos to generate; minimum 1, maximum 4',
                     default: 1,
                 },
+                includeAudio: {
+                    type: 'boolean',
+                    description: 'Whether to generate synchronized audio (dialogue, effects, and music) with the video',
+                    default: true,
+                },
+                negativePrompt: {
+                    type: 'string',
+                    description: 'Negative prompt to exclude specific elements from the generated video',
+                },
             },
         },
     },
@@ -47,12 +56,16 @@ async function generateVideo({
     personGeneration = 'dont_allow',
     durationSeconds = 5,
     numberOfVideos = 1,
+    includeAudio = true,
+    negativePrompt,
 }: {
     prompt: string;
     aspectRatio: string;
     personGeneration: string;
     durationSeconds: number;
     numberOfVideos: number;
+    includeAudio?: boolean;
+    negativePrompt?: string;
 }, _env: Record<string, any>, config: AgentUserConfig) {
     const model = 'veo-3.0-fast-generate-preview';
     const url = `${config.GOOGLE_API_BASE}/models/${model}:predictLongRunning?key=${config.GOOGLE_API_KEY}`;
@@ -64,13 +77,14 @@ async function generateVideo({
         body: JSON.stringify({
             instances: [{
                 prompt,
+                ...(negativePrompt && { negativePrompt }),
             }],
             parameters: {
                 aspectRatio,
                 personGeneration,
                 durationSeconds,
                 sampleCount: numberOfVideos,
-                // negativePrompt: temporary not support
+                includeAudio,
                 // enhancePrompt: gemini api not support
                 // fps: gemini api not support
                 // outputGcsUri: gemini api not support
@@ -95,13 +109,19 @@ async function generateVideo({
     const MAX_TIME = 15 * 60 * 1000;
     let elapsedTime = 0;
     const video_urls = [];
+    const audio_urls = [];
     while (true) {
         const resp = await fetch(operationUrl);
         if (resp.ok) {
             const { done, response } = await resp.json();
             if (done) {
-                for (const { video } of response?.generateVideoResponse?.generatedSamples || []) {
-                    video_urls.push(`${video.uri}&key=${config.GOOGLE_API_KEY}`);
+                for (const sample of response?.generateVideoResponse?.generatedSamples || []) {
+                    if (sample.video) {
+                        video_urls.push(`${sample.video.uri}&key=${config.GOOGLE_API_KEY}`);
+                    }
+                    if (sample.audio && includeAudio) {
+                        audio_urls.push(`${sample.audio.uri}&key=${config.GOOGLE_API_KEY}`);
+                    }
                 }
                 break;
             }
@@ -113,13 +133,27 @@ async function generateVideo({
         }
     }
 
-    console.log(`Google veo operation ${op_name} generated ${video_urls.length} videos: ${video_urls.join(', ')}`);
-    return {
-        content: video_urls.map(url => ({
-            type: 'video',
+    console.log(`Google veo operation ${op_name} generated ${video_urls.length} videos${audio_urls.length > 0 ? ` and ${audio_urls.length} audio files` : ''}: ${[...video_urls, ...audio_urls].join(', ')}`);
+    
+    const content = [];
+    
+    // Add video content
+    content.push(...video_urls.map(url => ({
+        type: 'video',
+        data_type: 'url',
+        data: url,
+        mimeType: 'video/mp4',
+    })));
+    
+    // Add audio content if available
+    if (audio_urls.length > 0) {
+        content.push(...audio_urls.map(url => ({
+            type: 'audio',
             data_type: 'url',
             data: url,
-            mimeType: 'video/mp4',
-        })),
-    };
+            mimeType: 'audio/wav',
+        })));
+    }
+    
+    return { content };
 }
