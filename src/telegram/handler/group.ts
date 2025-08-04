@@ -114,7 +114,11 @@ export class GroupMention implements MessageHandler {
             isMention = true;
         }
         if (!isMention) {
-            return new Response('Not mention');
+            // 语音和音频消息在群聊中默认允许处理（用户发语音通常是想和机器人交互）
+            const messageType = context.MIDDLE_CONTEXT.messageInfo.type;
+            if (messageType !== 'voice' && messageType !== 'audio') {
+                return new Response('Not mention');
+            }
         }
 
         return this.noneMessage(message, context);
