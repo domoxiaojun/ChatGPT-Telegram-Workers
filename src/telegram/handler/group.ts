@@ -65,7 +65,10 @@ export function CheckTrigger(message: Telegram.Message): boolean {
 
     const textBefore = message.text || message.caption || '';
     const text = textBefore.replace(new RegExp(`^${ENV.CHAT_TRIGGER_PREFIX}`), '');
-    message.text = text;
+    // 只有当原始消息确实有文本内容时才设置 message.text
+    if (message.text !== undefined) {
+        message.text = text;
+    }
     return text !== textBefore;
 }
 
