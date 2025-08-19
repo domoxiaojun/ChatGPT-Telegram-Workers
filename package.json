@@ -47,19 +47,19 @@
         "@ai-sdk/google-vertex": "^3.0.10",
         "@ai-sdk/mistral": "^2.0.7",
         "@ai-sdk/openai": "^2.0.16",
-        "@ai-sdk/openai-compatible": "^1.0.9",
+        "@ai-sdk/openai-compatible": "^1.0.10",
         "@ai-sdk/provider": "^2.0.0",
-        "@ai-sdk/xai": "^2.0.9",
+        "@ai-sdk/xai": "^2.0.10",
         "@ffmpeg.wasm/core-st": "^0.13.2",
         "@ffmpeg.wasm/main": "^0.13.1",
         "@modelcontextprotocol/sdk": "^1.17.3",
-        "ai": "^5.0.16",
+        "ai": "^5.0.17",
         "cf-worker-adapter": "^1.4.0",
         "node-cron": "^4.2.1"
     },
     "devDependencies": {
         "@antfu/eslint-config": "^5.2.1",
-        "@cloudflare/workers-types": "^4.20250813.0",
+        "@cloudflare/workers-types": "^4.20250819.0",
         "@rollup/plugin-node-resolve": "^16.0.1",
         "@types/node": "^24.3.0",
         "@types/node-cron": "^3.0.11",
@@ -71,14 +71,14 @@
         "eslint-plugin-format": "^1.0.1",
         "rollup-plugin-cleanup": "^3.2.1",
         "rollup-plugin-node-externals": "^8.0.1",
-        "telegram-bot-api-types": "^9.1.0",
+        "telegram-bot-api-types": "^9.2.0",
         "toml": "^3.0.0",
         "tsx": "^4.20.4",
         "typescript": "^5.9.2",
-        "vite": "^7.1.2",
+        "vite": "^7.1.3",
         "vite-plugin-checker": "^0.10.2",
         "vite-plugin-dts": "^4.5.4",
         "vitest": "^3.2.4",
-        "wrangler": "^4.30.0"
+        "wrangler": "^4.31.0"
     }
 }
