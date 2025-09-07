@@ -58,19 +58,19 @@
         "node-cron": "^4.2.1"
     },
     "devDependencies": {
-        "@antfu/eslint-config": "^5.2.1",
-        "@cloudflare/workers-types": "^4.20250903.0",
+        "@antfu/eslint-config": "^5.2.2",
+        "@cloudflare/workers-types": "^4.20250906.0",
         "@rollup/plugin-node-resolve": "^16.0.1",
-        "@types/node": "^24.3.0",
+        "@types/node": "^24.3.1",
         "@types/node-cron": "^3.0.11",
-        "@types/react": "^19.1.10",
-        "@types/react-dom": "^19.1.7",
+        "@types/react": "^19.1.12",
+        "@types/react-dom": "^19.1.9",
         "@types/ws": "^8.18.1",
-        "@vercel/node": "^5.3.19",
-        "eslint": "^9.34.0",
+        "@vercel/node": "^5.3.21",
+        "eslint": "^9.35.0",
         "eslint-plugin-format": "^1.0.1",
         "rollup-plugin-cleanup": "^3.2.1",
-        "rollup-plugin-node-externals": "^8.0.1",
+        "rollup-plugin-node-externals": "^8.1.1",
         "telegram-bot-api-types": "^9.2.0",
         "toml": "^3.0.0",
         "tsx": "^4.20.5",
@@ -79,6 +79,6 @@
         "vite-plugin-checker": "^0.10.3",
         "vite-plugin-dts": "^4.5.4",
         "vitest": "^3.2.4",
-        "wrangler": "^4.33.2"
+        "wrangler": "^4.34.0"
     }
 }
