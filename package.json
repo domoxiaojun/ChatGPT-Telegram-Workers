@@ -53,13 +53,13 @@
         "@ffmpeg.wasm/core-st": "^0.13.2",
         "@ffmpeg.wasm/main": "^0.13.1",
         "@modelcontextprotocol/sdk": "^1.17.5",
-        "ai": "^5.0.39",
+        "ai": "^5.0.40",
         "cf-worker-adapter": "^1.4.0",
         "node-cron": "^4.2.1"
     },
     "devDependencies": {
         "@antfu/eslint-config": "^5.3.0",
-        "@cloudflare/workers-types": "^4.20250910.0",
+        "@cloudflare/workers-types": "^4.20250911.0",
         "@rollup/plugin-node-resolve": "^16.0.1",
         "@types/node": "^24.3.1",
         "@types/node-cron": "^3.0.11",
