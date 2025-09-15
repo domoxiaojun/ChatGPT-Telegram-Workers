@@ -40,11 +40,11 @@
         "clean": "rm -rf dist"
     },
     "dependencies": {
-        "@ai-sdk/anthropic": "^2.0.16",
+        "@ai-sdk/anthropic": "^2.0.17",
         "@ai-sdk/azure": "^2.0.30",
         "@ai-sdk/cohere": "^2.0.10",
         "@ai-sdk/google": "^2.0.14",
-        "@ai-sdk/google-vertex": "^3.0.26",
+        "@ai-sdk/google-vertex": "^3.0.27",
         "@ai-sdk/mistral": "^2.0.14",
         "@ai-sdk/openai": "^2.0.30",
         "@ai-sdk/openai-compatible": "^1.0.17",
@@ -79,6 +79,6 @@
         "vite-plugin-checker": "^0.10.3",
         "vite-plugin-dts": "^4.5.4",
         "vitest": "^3.2.4",
-        "wrangler": "^4.36.0"
+        "wrangler": "^4.37.0"
     }
 }
