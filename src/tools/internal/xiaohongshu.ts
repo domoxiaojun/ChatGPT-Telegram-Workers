@@ -93,7 +93,7 @@ export default {
     },
     func: async ({ keyword, page = 1, sort = 'general', note_type = 2, limit = 10 }: any, { XHS_COOKIE }: { XHS_COOKIE: string }) => {
         if (!XHS_COOKIE) {
-            return { content: [{ type: 'text', text: 'Xiaohongshu cookie is not set, please set it in the environment variables: PLUGIN_ENV_XHS_COOKIE' }] };
+            return 'Xiaohongshu cookie is not set, please set it in the environment variables: PLUGIN_ENV_XHS_COOKIE';
         }
         let notes;
         let errorMsg = '';
@@ -103,7 +103,7 @@ export default {
             errorMsg = (error as Error).message;
         }
 
-        return { content: [{ type: 'text', text: JSON.stringify(notes) ?? errorMsg }] };
+        return JSON.stringify(notes) ?? errorMsg;
     },
     buildin: true,
     prompt: 'You should comprehensively summarize the content of the post in detail, without omitting any details, and attribute quotations with proper citations.',

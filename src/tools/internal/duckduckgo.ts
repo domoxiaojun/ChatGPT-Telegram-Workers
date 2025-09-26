@@ -90,7 +90,7 @@ export default {
         } catch (e) {
             console.error(e);
         }
-        return { content: [{ type: 'text', text: JSON.stringify(result) ?? 'Failed to get search results' }] };
+        return JSON.stringify(result) ?? 'Failed to get search results';
     },
 
     type: 'search',

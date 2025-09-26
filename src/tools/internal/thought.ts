@@ -20,7 +20,7 @@ export default {
 
     func: async ({ thought }: { thought: string }): Promise<ToolResult> => {
         log.info(`tool thought start: ${thought}`);
-        return { content: [{ type: 'text', text: 'Thought has been logged' }] };
+        return 'Thought has been logged';
     },
 
     prompt: '## Using the think tool\nBefore taking any action or responding to the user after receiving tool results, use the think tool as a scratchpad to:\n- List the specific rules that apply to the current request\n- Check if all required information is collected\n- Verify that the planned action complies with all policies\n- Iterate over tool results for correctness',
