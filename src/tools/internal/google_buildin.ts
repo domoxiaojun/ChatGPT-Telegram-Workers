@@ -31,7 +31,7 @@ export default {
         //     return { content: [{ type: 'text', text: 'google_buildin: only support turn on one tool' }] };
         // }
         if (!tool.every(t => config.GOOGLE_BUILDIN.includes(t))) {
-            return `Contain not support tool: ${tool.filter(t => !config.GOOGLE_BUILDIN.includes(t)).join(', ')}`;
+            return { content: [{ type: 'text', text: `Contain not support tool: ${tool.filter(t => !config.GOOGLE_BUILDIN.includes(t)).join(', ')}` }] };
         }
         const agentName = config.AI_CHAT_PROVIDER;
         if (agentName === 'oailike') {
@@ -40,7 +40,7 @@ export default {
         if (agentName === 'google' || agentName === 'vertex' || agentName === 'gemini') {
             config.USE_GOOGLE_BUILDIN = tool;
         }
-        return `Has turned on the google gemini built-in tool: ${tool.join(', ')}`;
+        return { content: [{ type: 'text', text: `Has turned on the google gemini built-in tool: ${tool.join(', ')}` }] };
     },
     prompt: 'When enabling built-in tool, you should use the tools internally and answer user questions.',
 };

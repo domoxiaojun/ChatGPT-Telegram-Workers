@@ -60,7 +60,7 @@ export default {
         style = 'vivid',
     }: { agent: string; prompts: string[]; quantity: number; size: string; radio: string; style: string }, _env: Record<string, any>, config: AgentUserConfig): Promise<ToolResult> => {
         if (!config) {
-            return 'Missing config';
+            return { content: [{ type: 'text', text: 'Missing config' }] };
         }
         if (agent_name === 'dalle') {
             agent_name = 'openai';
@@ -72,7 +72,7 @@ export default {
         log.info(`params: ${JSON.stringify({ agent: agent_name, prompts, quantity, size, radio, style })}`);
         const agent = IMAGE_AGENTS.find(a => a.name === agent_name);
         if (!agent?.enable(config)) {
-            return `Image agent ${agent_name} is not available`;
+            return { content: [{ type: 'text', text: `Image agent ${agent_name} is not available`, is_error: true }] };
         }
         const result: ImageResult[] = await Promise.all(prompts.map(async (prompt) => {
             try {
