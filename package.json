@@ -40,26 +40,26 @@
         "clean": "rm -rf dist"
     },
     "dependencies": {
-        "@ai-sdk/anthropic": "^2.1.0-beta.3",
-        "@ai-sdk/azure": "^2.1.0-beta.4",
-        "@ai-sdk/cohere": "^2.1.0-beta.3",
-        "@ai-sdk/google": "^2.1.0-beta.4",
-        "@ai-sdk/google-vertex": "^3.1.0-beta.4",
-        "@ai-sdk/mistral": "^2.1.0-beta.4",
-        "@ai-sdk/openai": "^2.1.0-beta.4",
-        "@ai-sdk/openai-compatible": "^1.1.0-beta.3",
+        "@ai-sdk/anthropic": "^2.1.0-beta.4",
+        "@ai-sdk/azure": "^2.1.0-beta.5",
+        "@ai-sdk/cohere": "^2.1.0-beta.4",
+        "@ai-sdk/google": "^2.1.0-beta.5",
+        "@ai-sdk/google-vertex": "^3.1.0-beta.5",
+        "@ai-sdk/mistral": "^2.1.0-beta.5",
+        "@ai-sdk/openai": "^2.1.0-beta.5",
+        "@ai-sdk/openai-compatible": "^1.1.0-beta.4",
         "@ai-sdk/provider": "^2.1.0-beta.2",
-        "@ai-sdk/xai": "^2.1.0-beta.4",
+        "@ai-sdk/xai": "^2.1.0-beta.5",
         "@ffmpeg.wasm/core-st": "^0.13.2",
         "@ffmpeg.wasm/main": "^0.13.1",
-        "@modelcontextprotocol/sdk": "^1.18.1",
-        "ai": "^5.1.0-beta.9",
+        "@modelcontextprotocol/sdk": "^1.18.2",
+        "ai": "^5.1.0-beta.11",
         "cf-worker-adapter": "^1.4.0",
         "node-cron": "^4.2.1"
     },
     "devDependencies": {
         "@antfu/eslint-config": "^5.4.1",
-        "@cloudflare/workers-types": "^4.20250924.0",
+        "@cloudflare/workers-types": "^4.20250926.0",
         "@rollup/plugin-node-resolve": "^16.0.1",
         "@types/node": "^24.5.2",
         "@types/node-cron": "^3.0.11",
@@ -79,6 +79,6 @@
         "vite-plugin-checker": "^0.10.3",
         "vite-plugin-dts": "^4.5.4",
         "vitest": "^3.2.4",
-        "wrangler": "^4.40.0"
+        "wrangler": "^4.40.1"
     }
 }
