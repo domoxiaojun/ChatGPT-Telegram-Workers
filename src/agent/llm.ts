@@ -263,19 +263,8 @@ function mockParams({ modelId, config, provider, options }: MockParams) {
             { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
             { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' },
         ];
-        const usedBuildIn = new Set(GOOGLE_BUILDIN.filter(t => USE_GOOGLE_BUILDIN.includes(t)));
-        if (SEARCH_GROUNDING) {
-            usedBuildIn.add('googleSearch');
-        }
-        if (usedBuildIn.size > 0) {
-            // options.tools = {};
-            // Object.assign(options.tools, ...usedBuildIn.map(t => ({
-            //     [t]: {},
-            // })));
-            options.tools = [...usedBuildIn].map(t => ({
-                [t]: {},
-            }));
-        }
+        // Note: Google built-in tools should NOT be configured here in model options
+        // They should be passed as tools to generateText/streamText calls using google.tools.*()
     }
 
     return paramsModifier(modelId, options, modifier, extraParams);
