@@ -268,12 +268,13 @@ function mockParams({ modelId, config, provider, options }: MockParams) {
             usedBuildIn.add('googleSearch');
         }
         if (usedBuildIn.size > 0) {
-            // Use single object format for Google built-in tools (compatible with newer AI SDK)
-            const googleTools: Record<string, any> = {};
-            usedBuildIn.forEach(toolName => {
-                googleTools[toolName] = {};
-            });
-            options.tools = googleTools;
+            // options.tools = {};
+            // Object.assign(options.tools, ...usedBuildIn.map(t => ({
+            //     [t]: {},
+            // })));
+            options.tools = [...usedBuildIn].map(t => ({
+                [t]: {},
+            }));
         }
     }
 
