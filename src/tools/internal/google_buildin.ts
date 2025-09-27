@@ -27,20 +27,32 @@ export default {
         },
     },
     func: ({ tool }: { tool: string[] }, _env: Record<string, any>, config: AgentUserConfig) => {
-        // if (tool.length > 1) {
-        //     return { content: [{ type: 'text', text: 'google_buildin: only support turn on one tool' }] };
-        // }
         if (!tool.every(t => config.GOOGLE_BUILDIN.includes(t))) {
             return { content: [{ type: 'text', text: `Contain not support tool: ${tool.filter(t => !config.GOOGLE_BUILDIN.includes(t)).join(', ')}` }] };
         }
+
         const agentName = config.AI_CHAT_PROVIDER;
+
         if (agentName === 'oailike') {
             config.USE_OAILIKE_RELAY_TOOLS = tool;
         }
+
         if (agentName === 'google' || agentName === 'vertex' || agentName === 'gemini') {
             config.USE_GOOGLE_BUILDIN = tool;
+
+            // Store the tool names for use in model middleware
+            // Don't create the actual tools here - let the SDK handle it properly
+            config.GOOGLE_BUILDIN_TOOLS = tool;
+
+            console.log('Google built-in tools configured:', tool);
         }
-        return { content: [{ type: 'text', text: `Has turned on the google gemini built-in tool: ${tool.join(', ')}` }] };
+
+        return {
+            content: [{
+                type: 'text',
+                text: `Successfully enabled Google built-in tools: ${tool.join(', ')}. These tools are now available for use.`
+            }]
+        };
     },
-    prompt: 'When enabling built-in tool, you should use the tools internally and answer user questions.',
+    prompt: 'When built-in tools are enabled, you can use them to search the web, execute code, or analyze URLs to provide better answers.',
 };

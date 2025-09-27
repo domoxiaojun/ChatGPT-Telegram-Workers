@@ -290,10 +290,52 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
     let { tools = {}, activeToolAlias = [] } = await validTools(context);
 
     let activeTools = activeToolAlias.map((t: string) => allTools[t]?.schema?.name || t) || [];
-    // // if vertex use search grounding, do not use other tools
+
+    // if google use search grounding or built-in tools, replace with Google tools
     if (model.provider.startsWith('google') && (context.SEARCH_GROUNDING || context.USE_GOOGLE_BUILDIN.length > 0)) {
         activeTools = [];
-        tools = {};
+
+        // IMPORTANT: Remove google_buildin function tool to avoid mixing with provider-defined tools
+        // This prevents the "Cannot mix function tools with provider-defined tools" error in SDK 5.1
+        const toolsWithoutGoogleBuildin = Object.fromEntries(
+            Object.entries(tools).filter(([toolName]) => toolName !== 'google_buildin')
+        );
+        tools = toolsWithoutGoogleBuildin;
+
+        // For Google built-in tools, we need to create the tools at generateText call time
+        // using the proper google.tools.* API to ensure they are provider-defined tools
+        if (context.GOOGLE_BUILDIN_TOOLS && context.GOOGLE_BUILDIN_TOOLS.length > 0) {
+            // Import google provider
+            const { createGoogleGenerativeAI } = await import('@ai-sdk/google');
+            const google = createGoogleGenerativeAI({
+                baseURL: context.GOOGLE_API_BASE,
+                apiKey: context.GOOGLE_API_KEY || undefined,
+            });
+
+            const googleToolsMap: Record<string, any> = {};
+
+            context.GOOGLE_BUILDIN_TOOLS.forEach((toolName: string) => {
+                switch (toolName) {
+                    case 'googleSearch':
+                        googleToolsMap.google_search = google.tools.googleSearch({});
+                        break;
+                    case 'codeExecution':
+                        googleToolsMap.code_execution = google.tools.codeExecution({});
+                        break;
+                    case 'urlContext':
+                        googleToolsMap.url_context = google.tools.urlContext({});
+                        break;
+                }
+            });
+
+            tools = googleToolsMap;
+            activeTools = Object.keys(googleToolsMap);
+            console.log('Created Google built-in tools for request:', activeTools);
+        } else {
+            tools = {};
+            console.log('No Google built-in tools configured');
+        }
+
         // only use first system message and last user message
         // params.messages = [params.messages.find(p => p.role === 'system')!, params.messages.findLast(p => p.role === 'user')!];
     }
