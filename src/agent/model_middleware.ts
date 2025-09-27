@@ -295,13 +295,6 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
     if (model.provider.startsWith('google') && (context.SEARCH_GROUNDING || context.USE_GOOGLE_BUILDIN.length > 0)) {
         activeTools = [];
 
-        // IMPORTANT: Remove google_buildin function tool to avoid mixing with provider-defined tools
-        // This prevents the "Cannot mix function tools with provider-defined tools" error in SDK 5.1
-        const toolsWithoutGoogleBuildin = Object.fromEntries(
-            Object.entries(tools).filter(([toolName]) => toolName !== 'google_buildin')
-        );
-        tools = toolsWithoutGoogleBuildin;
-
         // For Google built-in tools, we need to create the tools at generateText call time
         // using the proper google.tools.* API to ensure they are provider-defined tools
         if (context.GOOGLE_BUILDIN_TOOLS && context.GOOGLE_BUILDIN_TOOLS.length > 0) {
@@ -328,6 +321,8 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
                 }
             });
 
+            // CRITICAL: Replace tools completely with only Google built-in tools
+            // This prevents mixing function tools with provider-defined tools
             tools = googleToolsMap;
             activeTools = Object.keys(googleToolsMap);
             console.log('Created Google built-in tools for request:', activeTools);
@@ -338,6 +333,15 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
 
         // only use first system message and last user message
         // params.messages = [params.messages.find(p => p.role === 'system')!, params.messages.findLast(p => p.role === 'user')!];
+    } else {
+        // IMPORTANT: If google_buildin tool is present but Google built-in tools are not yet enabled,
+        // remove google_buildin to prevent conflicts during tool execution
+        if (tools.google_buildin && model.provider.startsWith('google')) {
+            const { google_buildin, ...otherTools } = tools;
+            tools = otherTools;
+            activeTools = activeTools.filter(name => name !== 'google_buildin');
+            console.log('Temporarily removed google_buildin tool to prevent conflicts');
+        }
     }
     // only gemini-2 support google_buildin
     if (!model.modelId.startsWith('gemini-2')) {
