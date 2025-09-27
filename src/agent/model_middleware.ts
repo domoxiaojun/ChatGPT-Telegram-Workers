@@ -101,6 +101,41 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
         transformParams: async ({ type, params }: { type: 'generate' | 'stream'; params: LanguageModelV3CallOptions }) => {
             log.info(`start ${type} call`);
 
+            // CRITICAL: Check if Google built-in tools were just enabled by google_buildin tool
+            // If so, dynamically replace tools to prevent mixing function and provider-defined tools
+            if (currentModel.provider.startsWith('google') && config.USE_GOOGLE_BUILDIN.length > 0 && config.GOOGLE_BUILDIN_TOOLS && config.GOOGLE_BUILDIN_TOOLS.length > 0) {
+                log.info('Detected Google built-in tools activation, replacing tools dynamically');
+
+                // Import google provider
+                const { createGoogleGenerativeAI } = await import('@ai-sdk/google');
+                const google = createGoogleGenerativeAI({
+                    baseURL: config.GOOGLE_API_BASE,
+                    apiKey: config.GOOGLE_API_KEY || undefined,
+                });
+
+                const googleToolsMap: Record<string, any> = {};
+
+                config.GOOGLE_BUILDIN_TOOLS.forEach((toolName: string) => {
+                    switch (toolName) {
+                        case 'googleSearch':
+                            googleToolsMap.google_search = google.tools.googleSearch({});
+                            break;
+                        case 'codeExecution':
+                            googleToolsMap.code_execution = google.tools.codeExecution({});
+                            break;
+                        case 'urlContext':
+                            googleToolsMap.url_context = google.tools.urlContext({});
+                            break;
+                    }
+                });
+
+                // Replace tools in params with Google built-in tools
+                if (Object.keys(googleToolsMap).length > 0) {
+                    params.tools = Object.values(googleToolsMap);
+                    log.info('Replaced tools with Google built-in tools:', Object.keys(googleToolsMap));
+                }
+            }
+
             // transform tool choice
             if (activeTools.length > 0 && toolChoice.length > 0 && step < toolChoice.length) {
                 const toolChoiceItem = toolChoice[step] as any;
