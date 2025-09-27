@@ -45,19 +45,12 @@ export default {
             config.GOOGLE_BUILDIN_TOOLS = tool;
 
             console.log('Google built-in tools configured:', tool);
-
-            // IMPORTANT: Remove google_buildin from USE_TOOLS to prevent future conflicts
-            // This ensures google_buildin doesn't appear in subsequent requests
-            if (config.USE_TOOLS.includes('google_buildin')) {
-                config.USE_TOOLS = config.USE_TOOLS.filter(t => t !== 'google_buildin');
-                console.log('Removed google_buildin from USE_TOOLS to prevent tool mixing');
-            }
         }
 
         return {
             content: [{
                 type: 'text',
-                text: `Successfully enabled Google built-in tools: ${tool.join(', ')}. These tools are now available for use. The google_buildin setup tool has been automatically disabled to prevent conflicts.`
+                text: `Successfully enabled Google built-in tools: ${tool.join(', ')}. These tools are now available for use.`
             }]
         };
     },
