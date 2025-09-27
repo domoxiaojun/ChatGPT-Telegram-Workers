@@ -295,11 +295,35 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
     if (model.provider.startsWith('google') && (context.SEARCH_GROUNDING || context.USE_GOOGLE_BUILDIN.length > 0)) {
         activeTools = [];
 
-        // Use Google built-in tools if they have been created by google_buildin tool
-        if (context.GOOGLE_TOOLS_MAP && Object.keys(context.GOOGLE_TOOLS_MAP).length > 0) {
-            tools = context.GOOGLE_TOOLS_MAP;
-            activeTools = Object.keys(context.GOOGLE_TOOLS_MAP);
-            console.log('Using Google built-in tools:', activeTools);
+        // For Google built-in tools, we need to create the tools at generateText call time
+        // using the proper google.tools.* API to ensure they are provider-defined tools
+        if (context.GOOGLE_BUILDIN_TOOLS && context.GOOGLE_BUILDIN_TOOLS.length > 0) {
+            // Import google provider
+            const { createGoogleGenerativeAI } = await import('@ai-sdk/google');
+            const google = createGoogleGenerativeAI({
+                baseURL: context.GOOGLE_API_BASE,
+                apiKey: context.GOOGLE_API_KEY || undefined,
+            });
+
+            const googleToolsMap: Record<string, any> = {};
+
+            context.GOOGLE_BUILDIN_TOOLS.forEach((toolName: string) => {
+                switch (toolName) {
+                    case 'googleSearch':
+                        googleToolsMap.google_search = google.tools.googleSearch({});
+                        break;
+                    case 'codeExecution':
+                        googleToolsMap.code_execution = google.tools.codeExecution({});
+                        break;
+                    case 'urlContext':
+                        googleToolsMap.url_context = google.tools.urlContext({});
+                        break;
+                }
+            });
+
+            tools = googleToolsMap;
+            activeTools = Object.keys(googleToolsMap);
+            console.log('Created Google built-in tools for request:', activeTools);
         } else {
             tools = {};
             console.log('No Google built-in tools configured');
