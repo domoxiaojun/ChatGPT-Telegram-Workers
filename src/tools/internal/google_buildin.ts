@@ -1,4 +1,5 @@
 import type { AgentUserConfig } from '../../config/types';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 
 export default {
     schema: {
@@ -40,11 +41,44 @@ export default {
         if (agentName === 'google' || agentName === 'vertex' || agentName === 'gemini') {
             config.USE_GOOGLE_BUILDIN = tool;
 
-            // Store the tool names for use in model middleware
-            // Don't create the actual tools here - let the SDK handle it properly
-            config.GOOGLE_BUILDIN_TOOLS = tool;
+            // Create Google provider instance for built-in tools
+            try {
+                const google = createGoogleGenerativeAI({
+                    baseURL: config.GOOGLE_API_BASE,
+                    apiKey: config.GOOGLE_API_KEY || undefined,
+                });
 
-            console.log('Google built-in tools configured:', tool);
+                // Create actual Google tools using the proper SDK API
+                const googleToolsMap: Record<string, any> = {};
+
+                tool.forEach(toolName => {
+                    switch (toolName) {
+                        case 'googleSearch':
+                            googleToolsMap.google_search = google.tools.googleSearch({});
+                            break;
+                        case 'codeExecution':
+                            googleToolsMap.code_execution = google.tools.codeExecution({});
+                            break;
+                        case 'urlContext':
+                            googleToolsMap.url_context = google.tools.urlContext({});
+                            break;
+                    }
+                });
+
+                // Store the actual tools for use in generateText/streamText
+                config.GOOGLE_TOOLS_MAP = googleToolsMap;
+
+                console.log('Google built-in tools created:', Object.keys(googleToolsMap));
+
+            } catch (error) {
+                console.error('Failed to create Google built-in tools:', error);
+                return {
+                    content: [{
+                        type: 'text',
+                        text: `Failed to initialize Google built-in tools: ${error instanceof Error ? error.message : 'Unknown error'}`
+                    }]
+                };
+            }
         }
 
         return {
