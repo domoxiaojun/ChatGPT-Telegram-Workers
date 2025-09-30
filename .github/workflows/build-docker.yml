@@ -9,6 +9,7 @@ on:
       - 'src/**'
       - 'scripts/**'
       - 'package.json'
+      - 'Dockerfile'
 
 jobs:
   build-and-push:
