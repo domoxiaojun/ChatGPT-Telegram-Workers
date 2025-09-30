@@ -294,6 +294,30 @@ async function combineParams({ context, middleware, model, messages, activeTools
         google: context.GOOGLE_PROVIDER_OPTIONS,
         xai: context.XAI_PROVIDER_OPTIONS,
     };
+
+    // 添加Google内置工具
+    let finalTools = tools;
+    if (model.provider === 'google' && context.USE_GOOGLE_BUILDIN.length > 0) {
+        const { google } = await import('@ai-sdk/google');
+        const googleBuiltinTools: any = {};
+
+        for (const toolName of context.USE_GOOGLE_BUILDIN) {
+            switch (toolName) {
+                case 'googleSearch':
+                    googleBuiltinTools.google_search = google.tools.googleSearch({});
+                    break;
+                case 'codeExecution':
+                    googleBuiltinTools.code_execution = google.tools.codeExecution;
+                    break;
+                case 'urlContext':
+                    googleBuiltinTools.url_context = google.tools.urlContext({});
+                    break;
+            }
+        }
+
+        finalTools = { ...tools, ...googleBuiltinTools };
+    }
+
     return {
         model: wrapLanguageModel({
             model,
@@ -304,7 +328,7 @@ async function combineParams({ context, middleware, model, messages, activeTools
         experimental_continueSteps: context.CONTINUE_STEP,
         maxRetries: context.MAX_RETRIES,
         temperature: (activeTools?.length || 0) > 0 ? context.FUNCTION_CALL_TEMPERATURE : context.CHAT_TEMPERATURE,
-        tools,
+        tools: finalTools,
         maxTokens: context.MAX_TOKENS,
         activeTools,
         prepareStep: prepareStepPre(middleware),
