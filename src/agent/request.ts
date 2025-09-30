@@ -304,14 +304,18 @@ async function combineParams({ context, middleware, model, messages, activeTools
 
     // 遍历消息历史，查找google_buildin工具的调用结果
     for (const message of messages) {
-        if (message.role === 'tool' && Array.isArray(message.content)) {
-            for (const content of message.content) {
-                if (content.type === 'tool-result' && content.toolName === 'google_buildin') {
-                    // 从工具输入中提取启用的工具
-                    const toolInput = (content as any).input;
-                    if (toolInput && toolInput.tool && Array.isArray(toolInput.tool)) {
-                        enabledGoogleTools = [...enabledGoogleTools, ...toolInput.tool];
-                        console.log('Found google_buildin tool call in history, enabled tools:', toolInput.tool);
+        if (message.role === 'tool') {
+            console.log('Found tool message:', JSON.stringify(message, null, 2));
+            if (Array.isArray(message.content)) {
+                for (const content of message.content) {
+                    console.log('Tool content:', JSON.stringify(content, null, 2));
+                    if (content.type === 'tool-result' && content.toolName === 'google_buildin') {
+                        // 从工具输入中提取启用的工具
+                        const toolInput = (content as any).input;
+                        if (toolInput && toolInput.tool && Array.isArray(toolInput.tool)) {
+                            enabledGoogleTools = [...enabledGoogleTools, ...toolInput.tool];
+                            console.log('Found google_buildin tool call in history, enabled tools:', toolInput.tool);
+                        }
                     }
                 }
             }
