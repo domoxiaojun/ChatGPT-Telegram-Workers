@@ -299,31 +299,12 @@ async function combineParams({ context, middleware, model, messages, activeTools
     let finalTools = tools;
     console.log('Debug - Provider:', model.provider, 'USE_GOOGLE_BUILDIN:', context.USE_GOOGLE_BUILDIN);
 
-    // 检查消息历史中是否有成功的google_buildin工具调用
-    let enabledGoogleTools: string[] = context.USE_GOOGLE_BUILDIN;
-
-    // 遍历消息历史，查找google_buildin工具的调用结果
-    for (const message of messages) {
-        if (message.role === 'tool' && Array.isArray(message.content)) {
-            for (const content of message.content) {
-                if (content.type === 'tool-result' && content.toolName === 'google_buildin') {
-                    // 从工具输入中提取启用的工具
-                    const toolInput = (content as any).input;
-                    if (toolInput && toolInput.tool && Array.isArray(toolInput.tool)) {
-                        enabledGoogleTools = [...enabledGoogleTools, ...toolInput.tool];
-                        console.log('Found google_buildin tool call in history, enabled tools:', toolInput.tool);
-                    }
-                }
-            }
-        }
-    }
-
-    if (model.provider.includes('google') && enabledGoogleTools.length > 0) {
-        console.log('Adding Google built-in tools:', enabledGoogleTools, 'Provider:', model.provider);
+    if (model.provider.includes('google') && context.USE_GOOGLE_BUILDIN.length > 0) {
+        console.log('Adding Google built-in tools:', context.USE_GOOGLE_BUILDIN, 'Provider:', model.provider);
         const { google } = await import('@ai-sdk/google');
         const googleBuiltinTools: any = {};
 
-        for (const toolName of enabledGoogleTools) {
+        for (const toolName of context.USE_GOOGLE_BUILDIN) {
             switch (toolName) {
                 case 'googleSearch':
                     googleBuiltinTools.google_search = google.tools.googleSearch({});
