@@ -11,7 +11,7 @@ WORKDIR /app
 COPY --from=DEV /app/dist/index.js /app/dist/index.js
 COPY --from=DEV /app/package.json /app/
 RUN apk add --no-cache sqlite && \
-    npm install --only=production --omit=dev && \
+    npm install --only=production --omit=dev --ignore-scripts --no-optional && \
     npm cache clean --force
 EXPOSE 8787
 CMD ["npm", "run", "start:dist"]
