@@ -107,6 +107,7 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
                 log.info(`toolChoice changed: ${JSON.stringify(toolChoiceItem)}`);
                 params.toolChoice = toolChoiceItem;
             }
+            console.log('Middleware called - Provider:', currentModel.provider, 'USE_GOOGLE_BUILDIN:', config.USE_GOOGLE_BUILDIN);
             // tool result as message
             if (params.prompt.at(-1)?.role === 'tool') {
                 log.info(`detect last message is tool result, handle tool result`);
@@ -140,6 +141,12 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
             log.debug('step text:', text);
             log.debug('step raw request:', request);
             // log.debug('step raw response:', response);
+
+            // 检查是否有google_buildin工具被调用，如果有则重新设置工具
+            const hasGoogleBuildinTool = toolResults.some(({ toolName }: any) => toolName === 'google_buildin');
+            if (hasGoogleBuildinTool) {
+                console.log('google_buildin tool detected, USE_GOOGLE_BUILDIN should be updated:', config.USE_GOOGLE_BUILDIN);
+            }
 
             // record end time
             record.end_time = Date.now();
