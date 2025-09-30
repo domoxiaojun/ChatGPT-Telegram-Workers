@@ -39,8 +39,16 @@ export default {
         }
         if (agentName === 'google' || agentName === 'vertex' || agentName === 'gemini') {
             config.USE_GOOGLE_BUILDIN = tool;
+            console.log('Set USE_GOOGLE_BUILDIN to:', tool);
         }
-        return { content: [{ type: 'text', text: `Has turned on the google gemini built-in tool: ${tool.join(', ')}` }] };
+
+        // 立即触发工具应用 - 返回特殊指令让AI知道工具已启用
+        return {
+            content: [{
+                type: 'text',
+                text: `Google built-in tools (${tool.join(', ')}) are now enabled and ready to use. You can immediately start using these tools for the user's requests.`
+            }]
+        };
     },
     prompt: 'When enabling built-in tool, you should use the tools internally and answer user questions.',
 };
