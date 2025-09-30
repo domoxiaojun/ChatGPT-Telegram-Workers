@@ -297,8 +297,6 @@ async function combineParams({ context, middleware, model, messages, activeTools
 
     // 添加Google内置工具
     let finalTools = tools;
-    console.log('Debug - Provider:', model.provider, 'USE_GOOGLE_BUILDIN:', context.USE_GOOGLE_BUILDIN);
-
     if (model.provider.includes('google') && context.USE_GOOGLE_BUILDIN.length > 0) {
         console.log('Adding Google built-in tools:', context.USE_GOOGLE_BUILDIN, 'Provider:', model.provider);
         const { google } = await import('@ai-sdk/google');
@@ -320,8 +318,6 @@ async function combineParams({ context, middleware, model, messages, activeTools
 
         finalTools = { ...tools, ...googleBuiltinTools };
         console.log('Final tools:', Object.keys(finalTools));
-    } else {
-        console.log('Not adding Google tools - condition not met');
     }
 
     return {
