@@ -268,8 +268,13 @@ function mockParams({ modelId, config, provider, options }: MockParams) {
             usedBuildIn.add('googleSearch');
         }
         if (usedBuildIn.size > 0) {
-            // 使用正确的格式设置Google内置工具
-            options.tools = Object.fromEntries([...usedBuildIn].map(t => [t, {}]));
+            // options.tools = {};
+            // Object.assign(options.tools, ...usedBuildIn.map(t => ({
+            //     [t]: {},
+            // })));
+            options.tools = [...usedBuildIn].map(t => ({
+                [t]: {},
+            }));
         }
     }
 
