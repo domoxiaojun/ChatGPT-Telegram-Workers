@@ -225,12 +225,14 @@ function warpMessages(params: LanguageModelV3CallOptions, allTools: Record<strin
                     let text = '';
                     const toolNames: Set<string> = new Set();
                     for (const toolResultPart of message.content) {
-                        const { toolCallId, toolName, output: { value: arrayResult } } = toolResultPart as ToolResultPart;
+                        const { toolCallId, toolName, output } = toolResultPart as ToolResultPart;
                         toolNames.add(toolName);
                         let toolArgs = 'UNKNOWN';
                         if (preMessage?.role === 'assistant' && (preMessage?.content as any[])?.some(i => i.type === 'tool-call')) {
                             toolArgs = JSON.stringify((preMessage?.content as ToolCallPart[])?.find(i => i.toolCallId === toolCallId)?.input) || 'UNKNOWN';
                         }
+                        // Handle different output types
+                        const arrayResult = (output.type === 'execution-denied') ? { error: output.reason || 'Execution denied' } : ('value' in output ? output.value : output);
                         text += `#### [tool \`${toolName}\` invoke detail]\n - args: ${toolArgs}\n - result:\n${JSON.stringify(arrayResult)}\n\n`;
                     }
                     text = `### Please use the following retrieved data to answer my question:\n${text}`;
@@ -455,9 +457,14 @@ async function handleToolResult({ tools, toolResults, onStream, config }: { tool
         // Unable to modify the response message anymore due to:
         // https://github.com/vercel/ai/blob/42fcd32dd81e5071a864943dbdcd4be69a8cae8c/packages/ai/core/generate-text/generate-text.ts#L488
         toolResults.forEach(({ toolName, output }) => {
-            const is_error = ((output.value as any)?.content ?? []).some((i: any) => i.type === 'error');
-            if (message_tool.includes(toolName) && !is_error) {
-                output.value = { content: [{ type: 'text', text: 'Data has been sent to user already.' }] };
+            // Check if output has 'value' property and contains error
+            const hasError = output.type !== 'execution-denied' && 'value' in output
+                && ((output.value as any)?.content ?? []).some((i: any) => i.type === 'error');
+            if (message_tool.includes(toolName) && !hasError) {
+                // Only modify if output supports 'value' property
+                if (output.type !== 'execution-denied' && 'value' in output) {
+                    (output as any).value = { content: [{ type: 'text', text: 'Data has been sent to user already.' }] };
+                }
             }
         });
     }
