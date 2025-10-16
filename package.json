@@ -40,28 +40,28 @@
         "clean": "rm -rf dist"
     },
     "dependencies": {
-        "@ai-sdk/anthropic": "^3.0.0-beta.22",
-        "@ai-sdk/azure": "^3.0.0-beta.25",
-        "@ai-sdk/cohere": "^3.0.0-beta.16",
-        "@ai-sdk/google": "^3.0.0-beta.21",
-        "@ai-sdk/google-vertex": "^4.0.0-beta.28",
-        "@ai-sdk/mistral": "^3.0.0-beta.17",
-        "@ai-sdk/openai": "^3.0.0-beta.25",
-        "@ai-sdk/openai-compatible": "^2.0.0-beta.17",
+        "@ai-sdk/anthropic": "^3.0.0-beta.27",
+        "@ai-sdk/azure": "^3.0.0-beta.30",
+        "@ai-sdk/cohere": "^3.0.0-beta.17",
+        "@ai-sdk/google": "^3.0.0-beta.24",
+        "@ai-sdk/google-vertex": "^4.0.0-beta.35",
+        "@ai-sdk/mistral": "^3.0.0-beta.18",
+        "@ai-sdk/openai": "^3.0.0-beta.30",
+        "@ai-sdk/openai-compatible": "^2.0.0-beta.18",
         "@ai-sdk/provider": "^3.0.0-beta.6",
-        "@ai-sdk/xai": "^3.0.0-beta.18",
+        "@ai-sdk/xai": "^3.0.0-beta.19",
         "@ffmpeg.wasm/core-st": "^0.13.2",
         "@ffmpeg.wasm/main": "^0.13.1",
         "@modelcontextprotocol/sdk": "^1.20.0",
-        "ai": "^6.0.0-beta.42",
+        "ai": "^6.0.0-beta.49",
         "cf-worker-adapter": "^1.4.0",
         "node-cron": "^4.2.1"
     },
     "devDependencies": {
-        "@antfu/eslint-config": "^5.4.1",
+        "@antfu/eslint-config": "^6.0.0",
         "@cloudflare/workers-types": "^4.20251011.0",
         "@rollup/plugin-node-resolve": "^16.0.2",
-        "@types/node": "^24.7.1",
+        "@types/node": "^24.8.0",
         "@types/node-cron": "^3.0.11",
         "@types/react": "^19.2.2",
         "@types/react-dom": "^19.2.1",
@@ -75,10 +75,10 @@
         "toml": "^3.0.0",
         "tsx": "^4.20.6",
         "typescript": "^5.9.3",
-        "vite": "^7.1.9",
+        "vite": "^7.1.10",
         "vite-plugin-checker": "^0.11.0",
         "vite-plugin-dts": "^4.5.4",
         "vitest": "^3.2.4",
-        "wrangler": "^4.42.2"
+        "wrangler": "^4.43.0"
     }
 }
