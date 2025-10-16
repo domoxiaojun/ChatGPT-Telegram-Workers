@@ -3,7 +3,7 @@ import type { AgentUserConfig } from '../../config/types';
 export default {
     schema: {
         name: 'google_veo',
-        description: 'Google Veo 3.0 Fast video generation tool with native audio support. Generates 8-second videos with synchronized audio quickly.',
+        description: 'Google Veo 3.1 Fast video generation tool with native audio support. Generates 8-second videos with synchronized audio quickly.',
         parameters: {
             type: 'object',
             required: ['prompt'],
@@ -53,7 +53,7 @@ async function generateVideo({
     numberOfVideos: number;
     negativePrompt?: string;
 }, _env: Record<string, any>, config: AgentUserConfig) {
-    const model = 'veo-3.0-fast-generate-001';
+    const model = 'veo-3.1-fast-generate-preview';
     const url = `${config.GOOGLE_API_BASE}/models/${model}:predictLongRunning?key=${config.GOOGLE_API_KEY}`;
     
     const requestBody = {
@@ -68,7 +68,7 @@ async function generateVideo({
         },
     };
     
-    console.log('=== Google Veo 3.0 Request ===');
+    console.log('=== Google Veo 3.1 Request ===');
     console.log('Model:', model);
     console.log('Request Body:', JSON.stringify(requestBody, null, 2));
     console.log('==============================');
