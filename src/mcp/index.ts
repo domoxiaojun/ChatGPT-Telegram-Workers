@@ -1,5 +1,4 @@
 import type { MCPTransport } from '../config/types';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { experimental_createMCPClient as createMCPClient } from '@ai-sdk/mcp';
 import { ENV } from '../config/env';
 import { log } from '../log';
@@ -37,7 +36,12 @@ export async function initializeMcp() {
                     break;
                 }
                 case 'http':
-                    mcpTransport = new StreamableHTTPClientTransport(new URL(transport.url));
+                    // Use @ai-sdk/mcp's built-in HTTP transport configuration
+                    mcpTransport = {
+                        type: 'http',
+                        url: transport.url,
+                        headers: transport.headers,
+                    };
                     break;
                 default:
                     mcpTransport = transport;
