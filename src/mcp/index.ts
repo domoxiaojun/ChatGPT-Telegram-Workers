@@ -1,7 +1,6 @@
 import type { MCPTransport } from '../config/types';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { experimental_createMCPClient as createMCPClient } from '@ai-sdk/mcp';
-import { Experimental_StdioMCPTransport as MCPStdioTransport } from '@ai-sdk/mcp/mcp-stdio';
 import { ENV } from '../config/env';
 import { log } from '../log';
 import { isCfWorker } from '../telegram/utils/tg_utils';
@@ -24,9 +23,11 @@ export async function initializeMcp() {
     {
         const mcpConfig = Object.entries(ENV.MCP_CONFIG);
         const toolPromises = mcpConfig.map(async ([name, transport]: [string, MCPTransport]) => {
-            let mcpTransport: MCPTransport | MCPStdioTransport | StreamableHTTPClientTransport;
+            let mcpTransport: any;
             switch (transport.type) {
-                case 'stdio':
+                case 'stdio': {
+                    // Dynamic import to avoid bundling Node.js-specific code in browser builds
+                    const { Experimental_StdioMCPTransport: MCPStdioTransport } = await import('@ai-sdk/mcp/mcp-stdio');
                     mcpTransport = new MCPStdioTransport({
                         command: transport.command,
                         args: transport.args,
@@ -34,6 +35,7 @@ export async function initializeMcp() {
                         cwd: transport.cwd,
                     });
                     break;
+                }
                 case 'http':
                     mcpTransport = new StreamableHTTPClientTransport(new URL(transport.url));
                     break;

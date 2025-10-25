@@ -68,9 +68,11 @@ export default defineConfig({
                 'node:buffer',
                 'node-cron',
                 'child_process',
+                'node:child_process',
                 'node:fs',
                 'node:path',
                 'node:fs/promises',
+                '@ai-sdk/mcp/mcp-stdio',
             ],
         },
         lib: {
