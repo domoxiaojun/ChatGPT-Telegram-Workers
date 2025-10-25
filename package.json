@@ -53,10 +53,11 @@
         "@ai-sdk/xai": "^3.0.0-beta.23",
         "@ffmpeg.wasm/core-st": "^0.13.2",
         "@ffmpeg.wasm/main": "^0.13.1",
+        "@modelcontextprotocol/sdk": "^1.20.2",
         "ai": "^6.0.0-beta.72",
         "cf-worker-adapter": "^1.4.0",
         "node-cron": "^4.2.1",
-        "zod": "3.23.8"
+        "zod": "^4.1.12"
     },
     "devDependencies": {
         "@antfu/eslint-config": "^6.0.0",
