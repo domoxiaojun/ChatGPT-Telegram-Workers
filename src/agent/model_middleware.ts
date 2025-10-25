@@ -195,9 +195,11 @@ function warpMessages(params: LanguageModelV3CallOptions, allTools: Record<strin
         let systemContent = rawSystemPrompt ?? '';
         // 插入工具prompt
         if (activeTools.length > 0) {
-            systemContent += `\nYou can consider using the following tools:\n${activeTools.map(name =>
-                `### ${name}\n- desc: ${allTools[name]?.schema?.description || ''} \n${allTools[name]?.prompt || ''}`,
-            ).join('\n\n')}`
+            systemContent += `\nYou can consider using the following tools:\n${activeTools.map(name => {
+                // Support both FuncTool (with schema.description) and AI SDK Tool (with description)
+                const description = allTools[name]?.schema?.description || allTools[name]?.description || '';
+                return `### ${name}\n- desc: ${description} \n${allTools[name]?.prompt || ''}`;
+            }).join('\n\n')}`
             + `\n\n${activeTools.map(name => allTools[name]?.prompt && `## For tool \`${name}\`, you should follow these rules:\n - ${allTools[name]?.prompt}`)
                 .join('\n')}`;
         }
