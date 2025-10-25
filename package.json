@@ -40,11 +40,11 @@
         "clean": "rm -rf dist"
     },
     "dependencies": {
-        "@ai-sdk/anthropic": "^3.0.0-beta.36",
+        "@ai-sdk/anthropic": "^3.0.0-beta.37",
         "@ai-sdk/azure": "^3.0.0-beta.34",
         "@ai-sdk/cohere": "^3.0.0-beta.20",
         "@ai-sdk/google": "^3.0.0-beta.27",
-        "@ai-sdk/google-vertex": "^4.0.0-beta.44",
+        "@ai-sdk/google-vertex": "^4.0.0-beta.45",
         "@ai-sdk/mistral": "^3.0.0-beta.21",
         "@ai-sdk/openai": "^3.0.0-beta.34",
         "@ai-sdk/openai-compatible": "^2.0.0-beta.21",
@@ -52,8 +52,8 @@
         "@ai-sdk/xai": "^3.0.0-beta.23",
         "@ffmpeg.wasm/core-st": "^0.13.2",
         "@ffmpeg.wasm/main": "^0.13.1",
-        "@modelcontextprotocol/sdk": "^1.20.1",
-        "ai": "^6.0.0-beta.67",
+        "@modelcontextprotocol/sdk": "^1.20.2",
+        "ai": "^6.0.0-beta.72",
         "cf-worker-adapter": "^1.4.0",
         "node-cron": "^4.2.1"
     },
@@ -66,7 +66,7 @@
         "@types/react": "^19.2.2",
         "@types/react-dom": "^19.2.2",
         "@types/ws": "^8.18.1",
-        "@vercel/node": "^5.4.1",
+        "@vercel/node": "^5.5.0",
         "eslint": "^9.38.0",
         "eslint-plugin-format": "^1.0.2",
         "rollup-plugin-cleanup": "^3.2.1",
@@ -78,7 +78,7 @@
         "vite": "^7.1.12",
         "vite-plugin-checker": "^0.11.0",
         "vite-plugin-dts": "^4.5.4",
-        "vitest": "^4.0.1",
-        "wrangler": "^4.44.0"
+        "vitest": "^4.0.3",
+        "wrangler": "^4.45.0"
     }
 }
