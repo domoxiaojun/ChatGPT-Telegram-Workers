@@ -1,7 +1,6 @@
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
-import { stepCountIs, streamText } from 'ai';
-import { experimental_createMCPClient as createMCPClient } from '@ai-sdk/mcp';
-import { Experimental_StdioMCPTransport as MCPStdioTransport } from '@ai-sdk/mcp/mcp-stdio';
+import { experimental_createMCPClient as createMCPClient, stepCountIs, streamText } from 'ai';
+import { Experimental_StdioMCPTransport as MCPStdioTransport } from 'ai/mcp-stdio';
 
 let mcpClient;
 

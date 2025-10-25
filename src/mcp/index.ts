@@ -1,7 +1,7 @@
 import type { MCPTransport } from '../config/types';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { experimental_createMCPClient as createMCPClient } from '@ai-sdk/mcp';
-import { Experimental_StdioMCPTransport as MCPStdioTransport } from '@ai-sdk/mcp/mcp-stdio';
+import { experimental_createMCPClient as createMCPClient } from 'ai';
+import { Experimental_StdioMCPTransport as MCPStdioTransport } from 'ai/mcp-stdio';
 import { ENV } from '../config/env';
 import { log } from '../log';
 import { isCfWorker } from '../telegram/utils/tg_utils';
