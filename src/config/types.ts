@@ -47,7 +47,7 @@ export type MCPTransport = {
 } | {
     type: 'http';
     url: string;
-    // opts?: StreamableHTTPClientTransportOptions;
+    headers?: Record<string, string>;
 };
 
 export type LogLevelType = 'debug' | 'info' | 'warn' | 'error';
