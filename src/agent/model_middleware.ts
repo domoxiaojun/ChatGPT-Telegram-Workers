@@ -287,12 +287,11 @@ function warpModel(model: LanguageModelV3, config: AgentUserConfig, activeTools:
 }
 
 export async function warpLLMParams({ messages, model, cache }: { messages: ModelMessage[]; model: LanguageModelV3; cache?: string[] }, context: AgentUserConfig) {
+    const allTools = await getTools();
     const userMessage = messages.findLast(m => m.role === 'user')!;
     // support text message and text part
     const userText = Array.isArray(userMessage.content) ? userMessage.content.find(c => c.type === 'text')?.text ?? '' : userMessage.content;
     let { tools = {}, activeToolAlias = [] } = await validTools(context);
-    // Merge internal tools and MCP tools for description extraction
-    const allTools = { ...await getTools(), ...tools };
 
     let activeTools = activeToolAlias.map((t: string) => allTools[t]?.schema?.name || t) || [];
     // // if vertex use search grounding, do not use other tools
