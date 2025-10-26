@@ -1,5 +1,4 @@
 import type { MCPTransport } from '../config/types';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { experimental_createMCPClient as createMCPClient } from '@ai-sdk/mcp';
 import { Experimental_StdioMCPTransport as MCPStdioTransport } from '@ai-sdk/mcp/mcp-stdio';
 import { ENV } from '../config/env';
@@ -24,7 +23,7 @@ export async function initializeMcp() {
     {
         const mcpConfig = Object.entries(ENV.MCP_CONFIG);
         const toolPromises = mcpConfig.map(async ([name, transport]: [string, MCPTransport]) => {
-            let mcpTransport: MCPTransport | MCPStdioTransport | StreamableHTTPClientTransport;
+            let mcpTransport: any;
             switch (transport.type) {
                 case 'stdio':
                     mcpTransport = new MCPStdioTransport({
@@ -35,7 +34,11 @@ export async function initializeMcp() {
                     });
                     break;
                 case 'http':
-                    mcpTransport = new StreamableHTTPClientTransport(new URL(transport.url));
+                    // Use config object, let createMCPClient create the transport
+                    mcpTransport = {
+                        type: 'http',
+                        url: transport.url,
+                    };
                     break;
                 default:
                     mcpTransport = transport;
@@ -43,7 +46,7 @@ export async function initializeMcp() {
 
             const mcpClient = await createMCPClient({
                 name,
-                transport: mcpTransport as any,
+                transport: mcpTransport,
             });
             mcpClients.push(mcpClient);
             const tools = await mcpClient.tools();

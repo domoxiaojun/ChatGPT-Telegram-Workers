@@ -45,7 +45,7 @@
         "@ai-sdk/cohere": "^3.0.0-beta.20",
         "@ai-sdk/google": "^3.0.0-beta.27",
         "@ai-sdk/google-vertex": "^4.0.0-beta.45",
-        "@ai-sdk/mcp": "^0.0.1",
+        "@ai-sdk/mcp": "^1.0.0-beta.0",
         "@ai-sdk/mistral": "^3.0.0-beta.21",
         "@ai-sdk/openai": "^3.0.0-beta.34",
         "@ai-sdk/openai-compatible": "^2.0.0-beta.21",
@@ -53,7 +53,6 @@
         "@ai-sdk/xai": "^3.0.0-beta.23",
         "@ffmpeg.wasm/core-st": "^0.13.2",
         "@ffmpeg.wasm/main": "^0.13.1",
-        "@modelcontextprotocol/sdk": "^1.20.2",
         "ai": "^6.0.0-beta.73",
         "cf-worker-adapter": "^1.4.0",
         "node-cron": "^4.2.1"
