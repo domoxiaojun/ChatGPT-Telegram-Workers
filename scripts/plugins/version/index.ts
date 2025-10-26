@@ -15,6 +15,7 @@ export function createVersionPlugin(targetDir: string) {
     return {
         name: 'buildInfo',
         async closeBundle() {
+            await fs.mkdir(targetDir, { recursive: true });
             await fs.writeFile(path.resolve(targetDir, 'timestamp'), TIMESTAMP.toString());
             await fs.writeFile(path.resolve(targetDir, 'buildinfo.json'), JSON.stringify({
                 sha: COMMIT_HASH,
