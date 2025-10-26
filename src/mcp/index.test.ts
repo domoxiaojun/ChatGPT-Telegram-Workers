@@ -33,7 +33,7 @@ try {
             name: 'oailike',
         }).languageModel('gemini-2.5-pro'),
         stopWhen: stepCountIs(10),
-        tools: await mcpClient.tools(),
+        tools: await mcpClient.tools() as any,
         prompt: '上海虹桥站到东方明珠最快路径 开车前往 我不知道经纬度 请使用工具后告诉我最快捷路线',
     });
 
