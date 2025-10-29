@@ -10,8 +10,9 @@ FROM node:alpine as prod
 WORKDIR /app
 COPY --from=DEV /app/dist/index.js /app/dist/index.js
 COPY --from=DEV /app/package.json /app/
-RUN apk add --no-cache sqlite && \
-    npm install --omit=dev --ignore-scripts --no-optional && \
-    npm cache clean --force
+RUN apk add --no-cache sqlite python3 make g++ && \
+    npm install --omit=dev && \
+    npm cache clean --force && \
+    apk del python3 make g++
 EXPOSE 8787
 CMD ["npm", "run", "start:dist"]
