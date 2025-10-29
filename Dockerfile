@@ -5,13 +5,13 @@ COPY package.json vite.config.ts tsconfig.json ./
 COPY src ./src
 RUN npm install && npm run build:local
 
-FROM node:alpine AS PROD
+FROM node:alpine as prod
 
 WORKDIR /app
 COPY --from=DEV /app/dist/index.js /app/dist/index.js
 COPY --from=DEV /app/package.json /app/
 RUN apk add --no-cache sqlite && \
-    npm install --only=production --omit=dev --ignore-scripts --no-optional && \
+    npm install --omit=dev --ignore-scripts --no-optional && \
     npm cache clean --force
 EXPOSE 8787
 CMD ["npm", "run", "start:dist"]

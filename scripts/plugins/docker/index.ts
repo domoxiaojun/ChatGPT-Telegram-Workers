@@ -6,8 +6,8 @@ FROM node:20-alpine as PROD
 
 WORKDIR /app
 COPY index.js package.json /app/
-RUN npm install --only=production && \
-apk add --no-cache sqlite && \
+RUN apk add --no-cache sqlite && \
+npm install --omit=dev --ignore-scripts --no-optional && \
 npm cache clean --force
 EXPOSE 8787
 CMD ["node", "index.js"]
