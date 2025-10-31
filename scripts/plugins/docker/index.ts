@@ -5,7 +5,8 @@ const dockerfile = `
 FROM node:20-alpine as prod
 
 WORKDIR /app
-COPY index.js package.json node_modules /app/
+COPY index.js package.json /app/
+COPY node_modules /app/node_modules
 RUN apk add --no-cache sqlite
 EXPOSE 8787
 CMD ["node", "index.js"]
