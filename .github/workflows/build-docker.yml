@@ -38,12 +38,6 @@ jobs:
       - name: Build the project
         run: npm run build:local
 
-      - name: Install and copy production dependencies
-        run: |
-          cd dist
-          npm install --omit=dev --production
-          ls -la
-
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:

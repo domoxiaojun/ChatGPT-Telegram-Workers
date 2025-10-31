@@ -2,11 +2,17 @@ import * as fs from 'node:fs/promises';
 import path from 'node:path';
 
 const dockerfile = `
+FROM --platform=$BUILDPLATFORM node:20-alpine as builder
+
+WORKDIR /build
+COPY package.json /build/
+RUN npm install --omit=dev --production
+
 FROM node:20-alpine as prod
 
 WORKDIR /app
+COPY --from=builder /build/node_modules /app/node_modules
 COPY index.js package.json /app/
-COPY node_modules /app/node_modules
 RUN apk add --no-cache sqlite
 EXPOSE 8787
 CMD ["node", "index.js"]
