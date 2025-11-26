@@ -67,7 +67,7 @@ export class GoogleEmbedding {
             model: createGoogleGenerativeAI({
                 baseURL: context.GOOGLE_API_BASE,
                 apiKey: context.GOOGLE_API_KEY || undefined,
-            }).textEmbeddingModel(context.GOOGLE_EMBEDDING_MODEL),
+            }).embedding(context.GOOGLE_EMBEDDING_MODEL),
             values: data,
             maxRetries: 0,
         });
