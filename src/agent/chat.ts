@@ -1,5 +1,5 @@
 /* eslint-disable unused-imports/no-unused-vars */
-import type { CoreMessage } from 'ai';
+import type { ModelMessage } from 'ai';
 import type { WorkerContext } from '../config/context';
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, HistoryItem, HistoryModifier, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
@@ -90,7 +90,7 @@ export async function requestCompletionsFromLLM(params: LLMChatRequestParams | n
         for (const m of raw_messages) {
             if (m.role === 'assistant' && Array.isArray(m.content)) {
                 // ai 5.0.0-beta.9 contain too many empty reasoning content
-                m.content = m.content.filter((i) => {
+                m.content = m.content.filter((i: any) => {
                     if (i.type === 'reasoning')
                         return i.text !== '';
                     return true;
@@ -99,7 +99,7 @@ export async function requestCompletionsFromLLM(params: LLMChatRequestParams | n
         }
         // When the last message is tool call message, delete it.
         for (const m of raw_messages.toReversed()) {
-            if (m.role === 'assistant' && Array.isArray(m.content) && m.content.find(i => i.type === 'tool-call')) {
+            if (m.role === 'assistant' && Array.isArray(m.content) && m.content.find((i: any) => i.type === 'tool-call')) {
                 validEnd--;
                 continue;
             }
@@ -111,11 +111,11 @@ export async function requestCompletionsFromLLM(params: LLMChatRequestParams | n
     return answer;
 }
 
-export async function storeHistory(history: CoreMessage[], context: WorkerContext) {
+export async function storeHistory(history: ModelMessage[], context: WorkerContext) {
     const historyKey = context.SHARE_CONTEXT.chatHistoryKey;
     const userMessage = history.findLast(h => h.role === 'user');
     if (ENV.HISTORY_IMAGE_PLACEHOLDER && Array.isArray(userMessage?.content) && userMessage.content.length > 0) {
-        userMessage.content = userMessage.content.map(c => c.type === 'text' ? c.text : `[${c.type}]`).join('\n');
+        userMessage.content = userMessage.content.map((c: any) => c.type === 'text' ? c.text : `[${c.type}]`).join('\n');
     }
     await ENV.DATABASE.put(historyKey, JSON.stringify(history)).catch(console.error);
     log.info(`[STORE HISTORY] DONE`);
@@ -175,13 +175,13 @@ async function workflow(agent: ChatAgent, llmParams: LLMChatParams, context: Age
 function extractResultText(result: { messages: ResponseMessage[]; content: string }, llmParams: LLMChatParams) {
     const lastMessage = result.messages.at(-1)!;
     if (Array.isArray(lastMessage.content)) {
-        return lastMessage.content.map(c => ['text', 'reasoning'].includes(c.type) ? (c as any).text || '' : '').join('\n')
+        return lastMessage.content.map((c: any) => ['text', 'reasoning'].includes(c.type) ? (c as any).text || '' : '').join('\n')
             || result.content.slice(llmParams.cache?.join().length || 0);
     }
     return lastMessage.content;
 };
 
-export function injectSystemMessage(messages: CoreMessage[], systemMessage: string | null) {
+export function injectSystemMessage(messages: ModelMessage[], systemMessage: string | null) {
     if (systemMessage) {
         // 注入{{CURRENT_TIME}}
         systemMessage = systemMessage.replace('{{CURRENT_TIME}}', new Date().toISOString());
