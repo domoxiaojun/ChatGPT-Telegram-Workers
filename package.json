@@ -40,11 +40,11 @@
         "clean": "rm -rf dist"
     },
     "dependencies": {
-        "@ai-sdk/anthropic": "^3.0.0-beta.71",
+        "@ai-sdk/anthropic": "^3.0.0-beta.72",
         "@ai-sdk/azure": "^3.0.0-beta.83",
         "@ai-sdk/cohere": "^3.0.0-beta.42",
         "@ai-sdk/google": "^3.0.0-beta.63",
-        "@ai-sdk/google-vertex": "^4.0.0-beta.97",
+        "@ai-sdk/google-vertex": "^4.0.0-beta.98",
         "@ai-sdk/mcp": "^1.0.0-beta.26",
         "@ai-sdk/mistral": "^3.0.0-beta.43",
         "@ai-sdk/openai": "^3.0.0-beta.81",
@@ -59,7 +59,7 @@
         "zod": "^4.1.13"
     },
     "devDependencies": {
-        "@antfu/eslint-config": "^6.3.0",
+        "@antfu/eslint-config": "^6.4.1",
         "@cloudflare/workers-types": "^4.20251202.0",
         "@rollup/plugin-node-resolve": "^16.0.3",
         "@types/node": "^24.10.1",
@@ -69,7 +69,7 @@
         "@types/ws": "^8.18.1",
         "@vercel/node": "^5.5.14",
         "eslint": "^9.39.1",
-        "eslint-plugin-format": "^1.0.2",
+        "eslint-plugin-format": "^1.1.0",
         "rollup-plugin-cleanup": "^3.2.1",
         "rollup-plugin-node-externals": "^8.1.2",
         "telegram-bot-api-types": "^9.2.0",
