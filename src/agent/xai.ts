@@ -25,14 +25,16 @@ export class XAI implements ChatAgent {
             cache: params.cache,
         }, context);
 
-        // Add xAI server-side tools for Responses API
+        // For Responses API: only use xAI provider tools, not user-defined function tools
+        // Responses API doesn't support standard function calling format
         return requestChatCompletionsV2({
             ...wrappedParams,
             tools: {
-                ...wrappedParams.tools,
                 web_search: webSearch(),
                 x_search: xSearch(),
             },
+            // Clear user function tools for Responses API
+            activeTools: [],
         }, onStream);
     };
 }
