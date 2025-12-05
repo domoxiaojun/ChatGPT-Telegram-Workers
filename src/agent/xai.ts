@@ -25,9 +25,8 @@ export class XAI implements ChatAgent {
             cache: params.cache,
         }, context);
 
-        // For Responses API: only use xAI provider tools, not user-defined function tools
-        // Responses API doesn't support standard function calling format
-        // Tools must be an array for Responses API, not an object
+        // For Responses API: use xAI provider tools only
+        // Clear user function tools - Responses API doesn't support them
         const xaiTools = [
             webSearch(),
             xSearch(),
@@ -36,8 +35,7 @@ export class XAI implements ChatAgent {
         return requestChatCompletionsV2({
             ...wrappedParams,
             tools: xaiTools,
-            // Activate xAI provider tools by their names
-            activeTools: ['web_search', 'x_search'],
+            activeTools: [], // Clear activeTools to prevent function tool filtering
         }, onStream);
     };
 }
