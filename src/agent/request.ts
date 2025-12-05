@@ -193,10 +193,6 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
 
     const handeredParams = await combineParams({ context, middleware, model, messages, activeTools, tools, prepareStepPre, onStepFinish, onChunk });
 
-    // DEBUG: Log tools to see what's being passed
-    log.info(`[DEBUG] tools type: ${Array.isArray(tools) ? 'array' : typeof tools}, length: ${Array.isArray(tools) ? tools.length : Object.keys(tools || {}).length}`);
-    log.info(`[DEBUG] handeredParams.tools type: ${Array.isArray(handeredParams.tools) ? 'array' : typeof handeredParams.tools}`);
-
     let responseMessages: ResponseMessage[] = [];
     let contentFull = '';
 
