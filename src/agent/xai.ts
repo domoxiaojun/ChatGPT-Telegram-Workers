@@ -27,13 +27,12 @@ export class XAI implements ChatAgent {
 
         // For Responses API: only use xAI provider tools, not user-defined function tools
         // Responses API doesn't support standard function calling format
-        // Tools must be an array for Responses API, not an object
         return requestChatCompletionsV2({
             ...wrappedParams,
-            tools: [
-                webSearch(),
-                xSearch(),
-            ],
+            tools: {
+                web_search: webSearch(),
+                x_search: xSearch(),
+            },
             // Clear user function tools for Responses API
             activeTools: [],
         }, onStream);
