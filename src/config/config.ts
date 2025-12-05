@@ -584,10 +584,6 @@ export class XAIConfig {
     XAI_MODELS_API = '/models';
     XAI_PROVIDER_OPTIONS = {
         // reasoningEffort: 'high',
-        tools: [
-            { type: 'web_search' },
-            { type: 'x_search' },
-        ],
     };
 }
 
