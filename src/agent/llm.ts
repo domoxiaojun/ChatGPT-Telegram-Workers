@@ -72,7 +72,7 @@ export async function createLlmModel(model: string, context: AgentUserConfig): P
             const xaiProvider = createXai({
                 baseURL: context.XAI_API_BASE,
                 apiKey: context.XAI_API_KEY || undefined,
-                // Don't use mockFetch for xAI Responses API - it interferes with tool formatting
+                fetch: mockFetch(model_id, context, agent),
             });
             // Use Responses API for models that need tools support
             const useResponsesApi = model_id.includes('grok-4');
