@@ -19,14 +19,23 @@ export class XAI implements ChatAgent {
 
     readonly request = async (params: LLMChatParams, context: AgentUserConfig, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> => {
         const model = await createLlmModel(this.model(context), context);
-        return requestChatCompletionsV2(await warpLLMParams({
+        const wrappedParams = await warpLLMParams({
             model,
             messages: params.messages,
             cache: params.cache,
-            tools: [
-                webSearch(),
-                xSearch(),
-            ],
-        }, context), onStream);
+        }, context);
+
+        // Add xAI server-side tools for Responses API
+        const xaiTools = [
+            webSearch(),
+            xSearch(),
+        ];
+
+        return requestChatCompletionsV2({
+            ...wrappedParams,
+            tools: wrappedParams.tools
+                ? { ...wrappedParams.tools, ...Object.fromEntries(xaiTools.map(t => [t.name, t])) }
+                : Object.fromEntries(xaiTools.map(t => [t.name, t])),
+        }, onStream);
     };
 }
