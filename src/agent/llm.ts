@@ -69,11 +69,17 @@ export async function createLlmModel(model: string, context: AgentUserConfig): P
                 fetch: mockFetch(model_id, context, agent),
             }).languageModel(model_id);
         case 'xai':
-            return createXai({
+            const xaiProvider = createXai({
                 baseURL: context.XAI_API_BASE,
                 apiKey: context.XAI_API_KEY || undefined,
                 fetch: mockFetch(model_id, context, agent),
-            }).languageModel(model_id);
+            });
+            // Use Responses API for models that need tools support
+            const useResponsesApi = model_id.includes('grok-4');
+            if (useResponsesApi) {
+                return xaiProvider.responses(model_id);
+            }
+            return xaiProvider.languageModel(model_id);
         case 'oailike':
         default:
             return new OpenAICompatibleChatLanguageModel(model_id, {
