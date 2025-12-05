@@ -255,6 +255,16 @@ function mockParams({ modelId, config, provider, options }: MockParams) {
         }
     }
 
+    if (provider === 'xai') {
+        const grokModelRegex = /grok-/;
+        if (grokModelRegex.test(modelId)) {
+            options.tools = [
+                { type: 'web_search' },
+                { type: 'x_search' },
+            ];
+        }
+    }
+
     if (provider === 'google' || provider === 'gemini' || provider === 'vertex') {
         options.safetySettings = [
             { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
