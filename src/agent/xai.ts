@@ -26,16 +26,13 @@ export class XAI implements ChatAgent {
         }, context);
 
         // Add xAI server-side tools for Responses API
-        const xaiTools = [
-            webSearch(),
-            xSearch(),
-        ];
-
         return requestChatCompletionsV2({
             ...wrappedParams,
-            tools: wrappedParams.tools
-                ? { ...wrappedParams.tools, ...Object.fromEntries(xaiTools.map(t => [t.name, t])) }
-                : Object.fromEntries(xaiTools.map(t => [t.name, t])),
+            tools: {
+                ...wrappedParams.tools,
+                web_search: webSearch(),
+                x_search: xSearch(),
+            },
         }, onStream);
     };
 }
