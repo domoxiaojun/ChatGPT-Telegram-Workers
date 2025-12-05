@@ -1,6 +1,5 @@
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
-import { webSearch, xSearch } from '@ai-sdk/xai';
 import { createLlmModel } from './llm';
 import { warpLLMParams } from './model_middleware';
 import { requestChatCompletionsV2 } from './request';
@@ -23,10 +22,6 @@ export class XAI implements ChatAgent {
             model,
             messages: params.messages,
             cache: params.cache,
-            tools: [
-                webSearch(),
-                xSearch(),
-            ],
         }, context), onStream);
     };
 }
