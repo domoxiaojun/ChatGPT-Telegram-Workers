@@ -261,8 +261,15 @@ function mockParams({ modelId, config, provider, options }: MockParams) {
         }
     }
 
-    // Note: xAI Responses API tools are handled by AI SDK automatically
-    // Do not manually set tools here as it will override the SDK's proper formatting
+    if (provider === 'xai') {
+        const grokModelRegex = /grok-/;
+        if (grokModelRegex.test(modelId)) {
+            options.tools = [
+                { type: 'web_search' },
+                { type: 'x_search' },
+            ];
+        }
+    }
 
     if (provider === 'google' || provider === 'gemini' || provider === 'vertex') {
         options.safetySettings = [
