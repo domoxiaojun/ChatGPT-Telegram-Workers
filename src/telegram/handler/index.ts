@@ -13,7 +13,6 @@ import {
     EnvChecker,
     InitUserConfig,
     IntelligentModelProcess,
-    RecordStatsHandler,
     MergeQuote,
     MessageFilter,
     OldMessageFilter,
@@ -75,8 +74,6 @@ async function handleMessage(token: string, message: Telegram.Message, isForward
         new MergeQuote(),
         // 初始化用户配置
         new InitUserConfig(),
-        // 记录使用统计
-        new RecordStatsHandler(),
         // 过滤被屏蔽的用户
         new BlocklistFilter(),
         // 替换消息
