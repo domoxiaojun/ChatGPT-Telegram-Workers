@@ -23,6 +23,7 @@ import { chatWithLLM, OnStreamHander, sendImages, tts } from '../handler/chat';
 import { escape } from '../utils/md2tgmd';
 import { checkIsNeedTagIds, sendAction } from '../utils/send';
 import { chunkArray, getTelegramFile, isCfWorker, isTelegramChatTypeGroup, UUIDv4 } from '../utils/tg_utils';
+import { getStats } from '../../utils/stats';
 
 export const COMMAND_AUTH_CHECKER = {
     default(chatType: string): string[] | null {
@@ -310,6 +311,7 @@ export class SystemCommandHandler implements CommandHandler {
     needAuth = COMMAND_AUTH_CHECKER.default;
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
         // const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
+        const stats = getStats(context.SHARE_CONTEXT.botId);
         const chatAgent = loadChatLLM(context.USER_CONFIG);
         const imageAgent = loadImageGen(context.USER_CONFIG);
         const asrAgent = loadASRLLM(context.USER_CONFIG);
@@ -324,7 +326,7 @@ export class SystemCommandHandler implements CommandHandler {
             [ttsAgent?.modelKey || 'AI_TTS_PROVIDER_NOT_FOUND']: ttsAgent?.model(context.USER_CONFIG),
             VISION_MODEL: context.USER_CONFIG[`${chatAgent?.name?.toUpperCase()}_VISION_MODEL`] || `Agent ${chatAgent?.name ?? ''} not found`,
         };
-        let msg = `system info:\n\nAGENT: ${JSON.stringify(agent, null, 2).split('\n').map(line => `\`${line}\``).join('\n')}\n\nOTHERS: ${await customInfo(context.USER_CONFIG)}\n`;
+        let msg = `📊 *Usage Statistics*:\n  Total Users: \`${stats.totalUsers}\`\n  Total Groups: \`${stats.totalGroups}\`\n  Total Messages: \`${stats.totalMessages}\`\n  Today Messages: \`${stats.todayMessages}\`\n\nsystem info:\n\nAGENT: ${JSON.stringify(agent, null, 2).split('\n').map(line => `\`${line}\``).join('\n')}\n\nOTHERS: ${await customInfo(context.USER_CONFIG)}\n`;
         if (ENV.DEV_MODE) {
             const shareCtx = { ...context.SHARE_CONTEXT };
             shareCtx.botToken = '******';
