@@ -384,7 +384,7 @@ export class BlocklistFilter implements MessageHandler<WorkerContext> {
 export class RecordStatsHandler implements MessageHandler<WorkerContextBase> {
     handle = async (message: Telegram.Message, context: WorkerContextBase): Promise<Response | null> => {
         // 异步记录统计，不阻塞主流程
-        recordUserActivity(context).catch(e => console.error('Stats error:', e));
+        recordUserActivity(context, message).catch(e => console.error('Stats error:', e));
         return null;
     };
 }

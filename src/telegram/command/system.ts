@@ -311,7 +311,7 @@ export class SystemCommandHandler implements CommandHandler {
     needAuth = COMMAND_AUTH_CHECKER.default;
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
         // const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
-        const stats = getStats(context.SHARE_CONTEXT.botId);
+        const stats = getStats(String(context.SHARE_CONTEXT.botId));
         const chatAgent = loadChatLLM(context.USER_CONFIG);
         const imageAgent = loadImageGen(context.USER_CONFIG);
         const asrAgent = loadASRLLM(context.USER_CONFIG);

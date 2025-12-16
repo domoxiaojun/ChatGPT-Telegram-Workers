@@ -77,18 +77,18 @@ function getStatsStore(botId: string): StatsStore {
  * 记录使用者活动
  * @param context - 上下文对象
  */
-export async function recordUserActivity(context: WorkerContextBase): Promise<void> {
+export async function recordUserActivity(context: WorkerContextBase, message: any): Promise<void> {
     try {
-        const chatId = context.SHARE_CONTEXT.chatId;
-        const speakerId = context.SHARE_CONTEXT.speakerId;
-        const chatType = context.SHARE_CONTEXT.chatType;
+        const chatId = message?.chat?.id;
+        const speakerId = message?.from?.id;
+        const chatType = message?.chat?.type;
         const botId = context.SHARE_CONTEXT.botId;
 
         if (!chatId || !botId) {
             return;
         }
 
-        const store = getStatsStore(botId);
+        const store = getStatsStore(String(botId));
 
         // 1. 记录使用者
         if (speakerId) {
