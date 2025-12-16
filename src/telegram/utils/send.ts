@@ -81,7 +81,10 @@ export class MessageSender {
         return this;
     }
 
-    private async sendMessage(message: string, context: MessageContext): Promise<Response> {
+    private async sendMessage(message: string, context: MessageContext, retryCount = 0): Promise<Response> {
+        const maxRetries = 3;
+        let resp: Response;
+
         if (context?.message_id) {
             const params: Telegram.EditMessageTextParams = {
                 chat_id: context.chat_id,
@@ -94,7 +97,7 @@ export class MessageSender {
                     is_disabled: true,
                 };
             }
-            return this.api.editMessageText(params);
+            resp = await this.api.editMessageText(params);
         } else {
             const params: Telegram.SendMessageParams = {
                 chat_id: context.chat_id,
@@ -114,8 +117,20 @@ export class MessageSender {
                     is_disabled: true,
                 };
             }
-            return this.api.sendMessage(params);
-        };
+            resp = await this.api.sendMessage(params);
+        }
+
+        // Handle 429 rate limit errors with retry
+        if (resp.status === 429 && retryCount < maxRetries) {
+            const errorBody = await resp.clone().json() as { parameters?: { retry_after?: number } };
+            const retryAfter = errorBody.parameters?.retry_after || resp.headers.get('Retry-After');
+            const waitTime = retryAfter ? Number.parseInt(retryAfter as string) : 5;
+            log.error(`Status 429, need wait: ${waitTime}s (retry ${retryCount + 1}/${maxRetries})`);
+            await waitUntil(Date.now() + waitTime * 1000);
+            return this.sendMessage(message, context, retryCount + 1);
+        }
+
+        return resp;
     }
 
     private async sendLongMessage(message: string, context: MessageContext, expandParams?: ExpandParams): Promise<Response> {
