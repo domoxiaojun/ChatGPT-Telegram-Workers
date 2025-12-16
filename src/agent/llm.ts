@@ -242,7 +242,7 @@ interface MockParams {
 
 function mockParams({ modelId, config, provider, options }: MockParams) {
     const extraParams = (config[`${provider.toUpperCase()}_API_EXTRA_PARAMS` as keyof AgentUserConfig] as Record<string, Record<string, any>>) || {};
-    const { PARAMS_MODIFIER: modifier, OAILIKE_RELAY_TOOLS: relayTools, USE_OAILIKE_RELAY_TOOLS: relayToolsList, GOOGLE_BUILDIN, USE_GOOGLE_BUILDIN, SEARCH_GROUNDING } = config;
+    const { PARAMS_MODIFIER: modifier, OAILIKE_RELAY_TOOLS: relayTools, USE_OAILIKE_RELAY_TOOLS: relayToolsList, GOOGLE_BUILDIN, USE_GOOGLE_BUILDIN, SEARCH_GROUNDING, GOOGLE_RETRIEVAL_CONFIG } = config;
 
     if (provider === 'oailike') {
         const relayKey = Object.keys(relayTools).find(key => modelId.includes(key));
@@ -291,6 +291,10 @@ function mockParams({ modelId, config, provider, options }: MockParams) {
             options.tools = [...usedBuildIn].map(t => ({
                 [t]: {},
             }));
+        }
+        // Add retrievalConfig for Google Maps grounding support
+        if (GOOGLE_RETRIEVAL_CONFIG?.latLng) {
+            options.retrievalConfig = GOOGLE_RETRIEVAL_CONFIG;
         }
     }
 

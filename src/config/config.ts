@@ -392,8 +392,10 @@ export class GeminiConfig {
     GOOGLE_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
     GOOGLE_MODELS = [];
     GOOGLE_MODELS_API = '/models';
-    GOOGLE_BUILDIN = ['googleSearch', 'codeExecution', 'urlContext'];
+    GOOGLE_BUILDIN = ['googleSearch', 'codeExecution', 'urlContext', 'googleMaps'];
     USE_GOOGLE_BUILDIN: string[] = [];
+    // Google Maps Grounding - location context for location-aware responses (latitude, longitude)
+    GOOGLE_RETRIEVAL_CONFIG: { latLng?: { latitude: number; longitude: number } } = {};
     GOOGLE_TTS_MODEL = 'gemini-2.5-flash-preview-tts';
     // available voices: https://ai.google.dev/gemini-api/docs/speech-generation#voices
     GOOGLE_TTS_VOICE = 'Zephyr';

@@ -4,20 +4,21 @@ export default {
     schema: {
         name: 'google_buildin',
         description: `Turn on the google gemini built-in tool.
-        Available tools: googleSearch, codeExecution, urlContext.
+        Available tools: googleSearch, codeExecution, urlContext, googleMaps.
         googleSearch: search the web for information.
         codeExecution: execute code.
         urlContext: search the web for information based on the url.
+        googleMaps: search for location-based information and places using Google Maps.
         `,
         parameters: {
             type: 'object',
             properties: {
                 tool: {
                     type: 'array',
-                    description: 'The google built-in tool to turn on, optional values: googleSearch, codeExecution, urlContext',
+                    description: 'The google built-in tool to turn on, optional values: googleSearch, codeExecution, urlContext, googleMaps',
                     items: {
                         type: 'string',
-                        enum: ['googleSearch', 'codeExecution', 'urlContext'],
+                        enum: ['googleSearch', 'codeExecution', 'urlContext', 'googleMaps'],
                     },
                     default: [],
                 },
