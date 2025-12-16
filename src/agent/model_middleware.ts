@@ -397,7 +397,9 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
             // };
 
             const addSupportSource = (content: string) => {
+                const maxSources = 10; // Limit sources to prevent Telegram rate limiting
                 const sources = groundingChunks
+                    ?.slice(0, maxSources) // Only take first N sources
                     ?.map((chunk: any, i: number) => {
                         const web = chunk?.web as { title?: string; uri?: string } | undefined;
                         const maps = chunk?.maps as { title?: string; uri?: string; placeId?: string; text?: string } | undefined;
