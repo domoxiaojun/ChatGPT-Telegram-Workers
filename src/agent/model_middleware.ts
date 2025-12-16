@@ -400,7 +400,10 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
                 const sources = groundingChunks
                     ?.map((chunk: any, i: number) => {
                         const web = chunk?.web as { title?: string; uri?: string } | undefined;
-                        return `[[${i + 1}\\]](${web?.uri ?? '#'})`;
+                        const maps = chunk?.maps as { title?: string; uri?: string; placeId?: string; text?: string } | undefined;
+                        const uri = web?.uri ?? maps?.uri ?? '#';
+                        const title = web?.title ?? maps?.title;
+                        return `[[${i + 1}\\]](${uri})`;
                     })
                     .join('\x20');
 
