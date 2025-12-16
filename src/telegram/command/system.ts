@@ -23,6 +23,7 @@ import { chatWithLLM, OnStreamHander, sendImages, tts } from '../handler/chat';
 import { escape } from '../utils/md2tgmd';
 import { checkIsNeedTagIds, sendAction } from '../utils/send';
 import { chunkArray, getTelegramFile, isCfWorker, isTelegramChatTypeGroup, UUIDv4 } from '../utils/tg_utils';
+import { getStats } from '../../utils/stats';
 
 export const COMMAND_AUTH_CHECKER = {
     default(chatType: string): string[] | null {
@@ -310,6 +311,8 @@ export class SystemCommandHandler implements CommandHandler {
     needAuth = COMMAND_AUTH_CHECKER.default;
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
         // const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
+        // 获取统计数据
+        const stats = getStats(context.SHARE_CONTEXT.botId);
         const chatAgent = loadChatLLM(context.USER_CONFIG);
         const imageAgent = loadImageGen(context.USER_CONFIG);
         const asrAgent = loadASRLLM(context.USER_CONFIG);
@@ -324,7 +327,26 @@ export class SystemCommandHandler implements CommandHandler {
             [ttsAgent?.modelKey || 'AI_TTS_PROVIDER_NOT_FOUND']: ttsAgent?.model(context.USER_CONFIG),
             VISION_MODEL: context.USER_CONFIG[`${chatAgent?.name?.toUpperCase()}_VISION_MODEL`] || `Agent ${chatAgent?.name ?? ''} not found`,
         };
-        let msg = `system info:\n\nAGENT: ${JSON.stringify(agent, null, 2).split('\n').map(line => `\`${line}\``).join('\n')}\n\nOTHERS: ${await customInfo(context.USER_CONFIG)}\n`;
+        // 添加统计信息到消息开头
+        let msg = `📊 *Usage Statistics*:
+`;
+        msg += `  Total Users: \`${stats.totalUsers}\`
+`;
+        msg += `  Total Groups: \`${stats.totalGroups}\`
+`;
+        msg += `  Total Messages: \`${stats.totalMessages}\`
+`;
+        msg += `  Today Messages: \`${stats.todayMessages}\`
+
+`;
+        msg += `system info:
+
+AGENT: ${JSON.stringify(agent, null, 2).split('
+').map(line => `\`${line}\``).join('
+')}
+
+OTHERS: ${await customInfo(context.USER_CONFIG)}
+`;
         if (ENV.DEV_MODE) {
             const shareCtx = { ...context.SHARE_CONTEXT };
             shareCtx.botToken = '******';

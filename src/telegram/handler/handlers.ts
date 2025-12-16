@@ -15,6 +15,7 @@ import { MessageSender } from '../utils/send';
 import { extractMessageInfo, isTelegramChatTypeGroup } from '../utils/tg_utils';
 import { HandleChunkMessage, HandleMediaGroupMessage, substituteMessage } from './msg_trimer';
 
+import { recordUserActivity } from '../../utils/stats';
 export class SaveLastMessage implements MessageHandler<WorkerContextBase> {
     handle = async (message: Telegram.Message, context: WorkerContextBase): Promise<Response | null> => {
         if (!ENV.DEBUG_MODE) {
@@ -376,6 +377,14 @@ export class BlocklistFilter implements MessageHandler<WorkerContext> {
             log.info(`[BLOCK] ${message.from?.id} ${message.from?.username ?? message.from?.first_name ?? ''} in blocklist`);
             return new Response('success', { status: 200 });
         }
+        return null;
+    };
+}
+
+export class RecordStatsHandler implements MessageHandler<WorkerContextBase> {
+    handle = async (message: Telegram.Message, context: WorkerContextBase): Promise<Response | null> => {
+        // 异步记录统计，不阻塞主流程
+        recordUserActivity(context).catch(e => console.error('Stats error:', e));
         return null;
     };
 }
