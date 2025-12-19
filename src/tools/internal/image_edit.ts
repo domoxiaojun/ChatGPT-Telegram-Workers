@@ -41,7 +41,7 @@ Requirements:
                 referenceImages: {
                     type: 'array',
                     items: { type: 'string' },
-                    description: 'CRITICAL: Extract base64 image data from user message content. Look for image parts with inlineData.data field and extract the base64 string. DO NOT use filenames or placeholders. Example: if message has {type:"image", inlineData:{data:"abc123..."}}, pass ["abc123..."] here.',
+                    description: 'The image(s) to edit. Can be URLs or base64-encoded images. Required. Google supports up to 14 images.',
                 },
                 mask: {
                     type: 'string',
