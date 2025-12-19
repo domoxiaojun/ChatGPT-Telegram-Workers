@@ -8,22 +8,25 @@ import { log } from '../../log/logger';
 export default {
     schema: {
         name: 'image_edit',
-        description: `A specialized image editing tool that modifies existing images based on text instructions.
+        description: `**USE THIS TOOL** when the user wants to edit/modify/change an image and their message contains images.
 
-IMPORTANT: When the user message contains images (e.g., user replied to an image), you MUST extract the image URLs from the message content and pass them to the 'referenceImages' parameter.
+CRITICAL RULES:
+1. If user message has images AND mentions editing (改图/edit/change/modify/replace/换/变), USE THIS TOOL
+2. Extract image URLs from message content → pass to 'referenceImages' parameter
+3. User's text becomes the 'prompt' parameter
 
-This tool is ideal for:
-- Editing images the user sent or replied to in the conversation
-- Editing specific parts of an image (using mask for inpainting)
-- Changing image style while preserving structure
-- Making targeted modifications to images
-- Creating variations based on reference images
+Common user requests that should trigger this tool:
+- "改图 X change to Y" / "把X改成Y"
+- "edit the image to make X" / "编辑图片"
+- "change the X to Y" / "将X换成Y"
+- "replace X with Y" / "替换X为Y"
+- User replies to an image with modification instructions
 
-How to use:
-1. Extract image URLs from the user's message content
-2. Pass them to 'referenceImages' parameter (required)
-3. Use the user's text description as the 'prompt' parameter
-4. Optionally provide a mask for targeted editing`,
+DO NOT use code_execution or other tools when user clearly wants image editing.
+
+Supported agents: vertex, google
+Required: referenceImages (extract from message content)
+Optional: mask (for inpainting specific areas)`,
         parameters: {
             type: 'object',
             properties: {

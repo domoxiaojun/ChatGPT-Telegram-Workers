@@ -292,13 +292,14 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
     let { tools = {}, activeToolAlias = [] } = await validTools(context);
 
     let activeTools = activeToolAlias.map((t: string) => allTools[t]?.schema?.name || t) || [];
-    // // if vertex use search grounding, do not use other tools
-    if (model.provider.startsWith('google') && (context.SEARCH_GROUNDING || context.USE_GOOGLE_BUILDIN.length > 0)) {
-        activeTools = [];
-        tools = {};
-        // only use first system message and last user message
-        // params.messages = [params.messages.find(p => p.role === 'system')!, params.messages.findLast(p => p.role === 'user')!];
-    }
+    // Allow custom tools to coexist with Google built-in tools
+    // Commenting out the code that clears all custom tools when using Google built-in tools
+    // if (model.provider.startsWith('google') && (context.SEARCH_GROUNDING || context.USE_GOOGLE_BUILDIN.length > 0)) {
+    //     activeTools = [];
+    //     tools = {};
+    //     // only use first system message and last user message
+    //     // params.messages = [params.messages.find(p => p.role === 'system')!, params.messages.findLast(p => p.role === 'user')!];
+    // }
     // only gemini-2 support google_buildin
     if (!model.modelId.startsWith('gemini-2')) {
         activeTools = activeTools.filter(t => t !== 'google_buildin');
