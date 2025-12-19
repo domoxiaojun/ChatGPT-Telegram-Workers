@@ -3,7 +3,7 @@ import type { UserModelMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, GoogleVertexImageModelId, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
 import { createVertex } from '@ai-sdk/google-vertex';
-import { generateImage } from 'ai';
+import { experimental_generateImage as generateImage } from 'ai';
 import { Logger } from '../log';
 import { handleUrl } from './google';
 import { createLlmModel } from './llm';
@@ -51,7 +51,13 @@ export class VertexImage extends VertexBase implements ImageAgent {
 
     @Logger
     request = async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
-        const { n = 1, radio: aspectRatio = '16:9' } = extraParams || {};
+        const { n = 1, radio: aspectRatio = '16:9', referenceImages, mask } = extraParams || {};
+
+        // Build prompt: support both text-only and image editing
+        const generatePrompt = referenceImages && referenceImages.length > 0
+            ? { text: prompt, images: referenceImages, ...(mask && { mask }) }
+            : prompt;
+
         const { images } = await generateImage({
             model: createVertex({
                 project: context.VERTEX_PROJECT_ID!,
@@ -60,7 +66,7 @@ export class VertexImage extends VertexBase implements ImageAgent {
                     credentials: context.VERTEX_CREDENTIALS,
                 },
             }).image(this.model(context) as GoogleVertexImageModelId) as unknown as ImageModelV3,
-            prompt,
+            prompt: generatePrompt,
             n,
             providerOptions: {
                 vertex: {
