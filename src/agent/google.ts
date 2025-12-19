@@ -2,7 +2,7 @@ import type { FilePart, ImagePart, UserContent, UserModelMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
 import { getLogSingleton, Logger } from '../log';
-import { base64StringToBlob, urlToBase64String } from '../utils/image';
+import { base64StringToBlob } from '../utils/image';
 import { convertAudio } from '../utils/others/audio';
 import { createLlmModel } from './llm';
 import { warpLLMParams } from './model_middleware';
@@ -74,30 +74,15 @@ export class GoogleImage extends GoogleBase implements ImageAgent {
         } as any;
 
         if (referenceImages && referenceImages.length > 0) {
-            // Google API requires base64 inlineData format
-            // Convert URLs to base64 if needed
-            const imageParts = await Promise.all(referenceImages.map(async (img: any) => {
-                const isUrl = typeof img === 'string' && img.startsWith('http');
-                if (isUrl) {
-                    // Download and convert URL to base64
-                    const base64Data = await urlToBase64String(img);
-                    return {
-                        inlineData: {
-                            mimeType: 'image/jpeg',
-                            data: base64Data,
-                        },
-                    };
-                } else {
-                    // Already base64
-                    return {
-                        inlineData: {
-                            mimeType: 'image/jpeg',
-                            data: img,
-                        },
-                    };
-                }
-            }));
-            body.contents[0].parts.push(...imageParts);
+            const isUri = typeof referenceImages[0] === 'string' && referenceImages[0].startsWith('http');
+            const type = isUri ? 'fileUri' : 'data';
+            const dataType = isUri ? 'fileData' : 'inlineData';
+            body.contents[0].parts.push(...referenceImages.map((i: any) => ({
+                [dataType]: {
+                    mimeType: 'image/jpeg',
+                    [type]: i,
+                },
+            })));
         }
         const response = await fetch(url, {
             method: 'POST',

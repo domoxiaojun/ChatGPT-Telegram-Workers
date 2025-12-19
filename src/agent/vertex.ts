@@ -54,8 +54,9 @@ export class VertexImage extends VertexBase implements ImageAgent {
         const { n = 1, radio: aspectRatio = '16:9', referenceImages, mask } = extraParams || {};
 
         // Build prompt: support both text-only and image editing
-        // Note: For image editing, we need to pass files separately to generateImage
-        const isImageEditing = referenceImages && referenceImages.length > 0;
+        const generatePrompt = referenceImages && referenceImages.length > 0
+            ? { text: prompt, images: referenceImages, ...(mask && { mask }) }
+            : prompt;
 
         const { images } = await generateImage({
             model: createVertex({
@@ -65,9 +66,7 @@ export class VertexImage extends VertexBase implements ImageAgent {
                     credentials: context.VERTEX_CREDENTIALS,
                 },
             }).image(this.model(context) as GoogleVertexImageModelId) as unknown as ImageModelV3,
-            prompt,
-            ...(isImageEditing && { files: referenceImages }),
-            ...(mask && { mask }),
+            prompt: generatePrompt,
             n,
             providerOptions: {
                 vertex: {
