@@ -97,8 +97,8 @@ export class ImgCommandHandler implements CommandHandler {
         try {
             const agent = loadImageGen(context.USER_CONFIG);
             const extraParams: Record<string, any> = {};
-            if (agent.name === 'google' && ['image', 'photo'].includes(context.MIDDLE_CONTEXT.messageInfo?.type) && (context.MIDDLE_CONTEXT.messageInfo?.id?.length || 0) > 0) {
-                extraParams.referenceImage = await getTelegramFile(context.MIDDLE_CONTEXT.messageInfo.id!, context.SHARE_CONTEXT.botToken, ENV.TELEGRAM_IMAGE_TRANSFER_MODE as any);
+            if (['google', 'vertex'].includes(agent.name) && ['image', 'photo'].includes(context.MIDDLE_CONTEXT.messageInfo?.type) && (context.MIDDLE_CONTEXT.messageInfo?.id?.length || 0) > 0) {
+                extraParams.referenceImages = await getTelegramFile(context.MIDDLE_CONTEXT.messageInfo.id!, context.SHARE_CONTEXT.botToken, ENV.TELEGRAM_IMAGE_TRANSFER_MODE as any);
             }
             await sender.sendPlainText('Please wait a moment...');
             sendAction(context.SHARE_CONTEXT.botToken, message.chat.id, 'upload_photo');
