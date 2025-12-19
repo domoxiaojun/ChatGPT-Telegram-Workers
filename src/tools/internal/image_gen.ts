@@ -46,6 +46,15 @@ export default {
                     enum: ['vivid', 'natural'],
                     default: 'vivid',
                 },
+                referenceImages: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Reference images for image-to-image generation. Can be URLs or base64-encoded images. Supported by vertex and google agents.',
+                },
+                mask: {
+                    type: 'string',
+                    description: 'Mask image for inpainting (optional). Can be URL or base64-encoded image. Only supported by vertex agent.',
+                },
             },
             required: ['prompts'],
         },
@@ -58,7 +67,9 @@ export default {
         size = '1024x1024',
         radio = '16:9',
         style = 'vivid',
-    }: { agent: string; prompts: string[]; quantity: number; size: string; radio: string; style: string }, _env: Record<string, any>, config: AgentUserConfig): Promise<ToolResult> => {
+        referenceImages,
+        mask,
+    }: { agent: string; prompts: string[]; quantity: number; size: string; radio: string; style: string; referenceImages?: string[]; mask?: string }, _env: Record<string, any>, config: AgentUserConfig): Promise<ToolResult> => {
         if (!config) {
             return { content: [{ type: 'text', text: 'Missing config' }] };
         }
@@ -69,14 +80,14 @@ export default {
             agent_name = config.AI_IMAGE_PROVIDER;
         }
         log.info(`tool image_gen request start: agent: ${agent_name}`);
-        log.info(`params: ${JSON.stringify({ agent: agent_name, prompts, quantity, size, radio, style })}`);
+        log.info(`params: ${JSON.stringify({ agent: agent_name, prompts, quantity, size, radio, style, referenceImages, mask })}`);
         const agent = IMAGE_AGENTS.find(a => a.name === agent_name);
         if (!agent?.enable(config)) {
             return { content: [{ type: 'text', text: `Image agent ${agent_name} is not available`, is_error: true }] };
         }
         const result: ImageResult[] = await Promise.all(prompts.map(async (prompt) => {
             try {
-                return await agent.request(prompt, config, { quantity, size, radio, style });
+                return await agent.request(prompt, config, { quantity, size, radio, style, referenceImages, mask });
             } catch (e) {
                 return { message: (e as Error).message };
             }
