@@ -8,16 +8,22 @@ import { log } from '../../log/logger';
 export default {
     schema: {
         name: 'image_edit',
-        description: `A specialized image editing tool that modifies existing images based on text instructions. This tool is ideal for:
+        description: `A specialized image editing tool that modifies existing images based on text instructions.
+
+IMPORTANT: When the user message contains images (e.g., user replied to an image), you MUST extract the image URLs from the message content and pass them to the 'referenceImages' parameter.
+
+This tool is ideal for:
+- Editing images the user sent or replied to in the conversation
 - Editing specific parts of an image (using mask for inpainting)
 - Changing image style while preserving structure
 - Making targeted modifications to images
 - Creating variations based on reference images
 
-Requirements:
-1. You must provide at least one reference image
-2. Describe clearly what changes you want to make
-3. Optionally provide a mask image to edit only specific regions`,
+How to use:
+1. Extract image URLs from the user's message content
+2. Pass them to 'referenceImages' parameter (required)
+3. Use the user's text description as the 'prompt' parameter
+4. Optionally provide a mask for targeted editing`,
         parameters: {
             type: 'object',
             properties: {
@@ -34,7 +40,7 @@ Requirements:
                 referenceImages: {
                     type: 'array',
                     items: { type: 'string' },
-                    description: 'The image(s) to edit. Can be URLs or base64-encoded images. Required. Google supports up to 14 images.',
+                    description: 'The image(s) to edit. REQUIRED. Extract these from the user message content (look for image URLs in the message). Can be URLs or base64-encoded images. Google supports up to 14 images.',
                 },
                 mask: {
                     type: 'string',
