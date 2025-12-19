@@ -53,7 +53,7 @@ export class GoogleImage extends GoogleBase implements ImageAgent {
             throw new Error('Please provide a prompt.');
         }
 
-        const { referenceImage } = extraParams || {};
+        const { referenceImages } = extraParams || {};
         const url = `${context.GOOGLE_API_BASE}/models/${this.model(context)}:generateContent?key=${context.GOOGLE_API_KEY}`;
         const body = {
             contents: [{
@@ -73,11 +73,11 @@ export class GoogleImage extends GoogleBase implements ImageAgent {
             ],
         } as any;
 
-        if (referenceImage && referenceImage.length > 0) {
-            const isUri = typeof referenceImage[0] === 'string' && referenceImage[0].startsWith('http');
+        if (referenceImages && referenceImages.length > 0) {
+            const isUri = typeof referenceImages[0] === 'string' && referenceImages[0].startsWith('http');
             const type = isUri ? 'fileUri' : 'data';
             const dataType = isUri ? 'fileData' : 'inlineData';
-            body.contents[0].parts.push(...referenceImage.map((i: any) => ({
+            body.contents[0].parts.push(...referenceImages.map((i: any) => ({
                 [dataType]: {
                     mimeType: 'image/jpeg',
                     [type]: i,
