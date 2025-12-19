@@ -8,16 +8,23 @@ import { log } from '../../log/logger';
 export default {
     schema: {
         name: 'image_edit',
-        description: `A specialized image editing tool that modifies existing images based on text instructions. This tool is ideal for:
+        description: `A specialized image editing tool that modifies existing images based on text instructions.
+
+**CRITICAL: This tool can ONLY be used when the user's current message contains images.**
+- Check if the current user message has image/file content parts
+- If no images in current message, tell user to reply to an image or send image with their edit request
+- DO NOT use URLs from chat history
+
+This tool is ideal for:
 - Editing specific parts of an image (using mask for inpainting)
 - Changing image style while preserving structure
 - Making targeted modifications to images
 - Creating variations based on reference images
 
 Requirements:
-1. You must provide at least one reference image
-2. Describe clearly what changes you want to make
-3. Optionally provide a mask image to edit only specific regions`,
+1. Current user message MUST contain image content
+2. Extract image data from current message content (base64 format)
+3. Describe clearly what changes you want to make`,
         parameters: {
             type: 'object',
             properties: {
