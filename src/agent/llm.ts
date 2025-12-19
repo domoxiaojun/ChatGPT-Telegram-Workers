@@ -284,13 +284,18 @@ function mockParams({ modelId, config, provider, options }: MockParams) {
             usedBuildIn.add('googleSearch');
         }
         if (usedBuildIn.size > 0) {
-            // options.tools = {};
-            // Object.assign(options.tools, ...usedBuildIn.map(t => ({
-            //     [t]: {},
-            // })));
-            options.tools = [...usedBuildIn].map(t => ({
+            const googleTools = [...usedBuildIn].map(t => ({
                 [t]: {},
             }));
+
+            // Merge with existing tools instead of replacing
+            if (options.tools && Array.isArray(options.tools)) {
+                // If tools already exist (function declarations from AI SDK), append Google tools
+                options.tools = [...options.tools, ...googleTools];
+            } else {
+                // If no existing tools, just use Google tools
+                options.tools = googleTools;
+            }
         }
         // Add retrievalConfig for Google Maps grounding support
         if (GOOGLE_RETRIEVAL_CONFIG?.latLng) {
