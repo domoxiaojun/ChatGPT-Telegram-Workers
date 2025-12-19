@@ -15,7 +15,7 @@ async function fetchImage(url: string): Promise<Blob> {
         });
 }
 
-async function urlToBase64String(url: string): Promise<string> {
+export async function urlToBase64String(url: string): Promise<string> {
     try {
         const { Buffer } = await import('node:buffer');
         return fetchImage(url)
