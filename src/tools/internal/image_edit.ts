@@ -23,8 +23,8 @@ Requirements:
             properties: {
                 agent: {
                     type: 'string',
-                    description: 'The image agent to use. Supported: vertex, google. Default is "default".',
-                    enum: ['default', 'vertex', 'google'],
+                    description: 'The image agent to use. Use "default" to automatically select based on user config (recommended). Supported agents: google (recommended for most cases), vertex.',
+                    enum: ['default', 'google', 'vertex'],
                     default: 'default',
                 },
                 prompt: {
