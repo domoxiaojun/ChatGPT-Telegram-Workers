@@ -149,7 +149,7 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
                 const func_logs = toolResults.map(({ toolName, input, output }: { toolName: string; input: any; output: any }) => ({
                     name: toolName,
                     args: Object.values(input as any),
-                    ...(output.content.some((i: any) => i.is_error) && { error: output.content.map((i: any) => i.text).join('\n') }),
+                    ...(output.content.some((i: any) => i.is_error) && { error: output.map((i: any) => i.text).join('\n') }),
                     ...(output.time && { time: output.time }),
                 }));
 
