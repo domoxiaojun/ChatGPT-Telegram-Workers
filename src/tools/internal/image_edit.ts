@@ -121,7 +121,20 @@ Optional: mask (for inpainting specific areas)`,
             const messages: TextToolResultContent[] = result.message
                 ? [{ type: 'text', text: result.message }]
                 : [];
-            const images = (result.url || result.raw || []).map(data => ({
+
+            // Ensure result.url or result.raw is an array
+            const imageData = result.url || result.raw;
+            if (!imageData || (Array.isArray(imageData) && imageData.length === 0)) {
+                return {
+                    content: [{
+                        type: 'text',
+                        text: 'No images were generated',
+                        is_error: true,
+                    }],
+                };
+            }
+
+            const images = (Array.isArray(imageData) ? imageData : [imageData]).map(data => ({
                 type: 'image',
                 data_type: type,
                 data,
