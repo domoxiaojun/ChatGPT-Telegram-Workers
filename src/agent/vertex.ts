@@ -3,7 +3,7 @@ import type { UserModelMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, GoogleVertexImageModelId, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
 import { createVertex } from '@ai-sdk/google-vertex';
-import { experimental_generateImage as generateImage } from 'ai';
+import { generateImage } from 'ai';
 import { Logger } from '../log';
 import { handleUrl } from './google';
 import { createLlmModel } from './llm';
