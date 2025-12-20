@@ -579,6 +579,8 @@ export class XAIConfig {
     // XAI api model
     XAI_CHAT_MODEL = 'grok-3';
     XAI_VISION_MODEL = 'grok-2-vision';
+    // XAI image model
+    XAI_IMAGE_MODEL = 'grok-2-image';
     // XAI API Extra Params, key is model name prefix, separated by commas; value is extra Params,  support path(camelCase), split by '.'
     // for example: XAI_API_EXTRA_PARAMS = { 'grok-3': { 'temperature': 0.5 } };
     XAI_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
@@ -587,6 +589,27 @@ export class XAIConfig {
     XAI_PROVIDER_OPTIONS = {
         // reasoningEffort: 'high',
     };
+    // XAI Server-Side Tools (executed on xAI servers)
+    // Enable web search tool (allows Grok to search the web and browse pages)
+    XAI_ENABLE_WEB_SEARCH = false;
+    // Enable X/Twitter search tool (allows Grok to search X posts)
+    XAI_ENABLE_X_SEARCH = false;
+    // Enable code execution tool (allows Grok to run Python code in sandbox)
+    XAI_ENABLE_CODE_EXECUTION = false;
+    // Allowed domains for web search (max 5 domains, empty = no restriction)
+    XAI_WEB_SEARCH_ALLOWED_DOMAINS: string[] = [];
+    // Excluded domains for web search (max 5 domains)
+    XAI_WEB_SEARCH_EXCLUDED_DOMAINS: string[] = [];
+    // Enable image understanding in web search results
+    XAI_WEB_SEARCH_IMAGE_UNDERSTANDING = false;
+    // Allowed X handles for X search (max 10 handles, empty = no restriction)
+    XAI_X_SEARCH_ALLOWED_HANDLES: string[] = [];
+    // Excluded X handles for X search (max 10 handles)
+    XAI_X_SEARCH_EXCLUDED_HANDLES: string[] = [];
+    // Enable image understanding in X search results
+    XAI_X_SEARCH_IMAGE_UNDERSTANDING = false;
+    // Enable video understanding in X search results
+    XAI_X_SEARCH_VIDEO_UNDERSTANDING = false;
 }
 
 export class FishConfig {

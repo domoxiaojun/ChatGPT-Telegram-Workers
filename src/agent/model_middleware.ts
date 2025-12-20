@@ -292,6 +292,53 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
     let { tools = {}, activeToolAlias = [] } = await validTools(context);
 
     let activeTools = activeToolAlias.map((t: string) => allTools[t]?.schema?.name || t) || [];
+
+    // xAI Server-Side Tools Support
+    // xAI tools are executed on xAI servers and need to be added separately
+    if (model.provider === 'xai.chat' || model.provider === 'xai.responses') {
+        const { webSearch, xSearch, codeExecution } = await import('@ai-sdk/xai');
+
+        if (context.XAI_ENABLE_WEB_SEARCH) {
+            const webSearchConfig: any = {};
+            if (context.XAI_WEB_SEARCH_ALLOWED_DOMAINS.length > 0) {
+                webSearchConfig.allowedDomains = context.XAI_WEB_SEARCH_ALLOWED_DOMAINS.slice(0, 5);
+            }
+            if (context.XAI_WEB_SEARCH_EXCLUDED_DOMAINS.length > 0) {
+                webSearchConfig.excludedDomains = context.XAI_WEB_SEARCH_EXCLUDED_DOMAINS.slice(0, 5);
+            }
+            if (context.XAI_WEB_SEARCH_IMAGE_UNDERSTANDING) {
+                webSearchConfig.enableImageUnderstanding = true;
+            }
+            tools.web_search = webSearch(webSearchConfig);
+            activeTools.push('web_search');
+        }
+
+        if (context.XAI_ENABLE_X_SEARCH) {
+            const xSearchConfig: any = {};
+            if (context.XAI_X_SEARCH_ALLOWED_HANDLES.length > 0) {
+                xSearchConfig.allowedXHandles = context.XAI_X_SEARCH_ALLOWED_HANDLES.slice(0, 10);
+            }
+            if (context.XAI_X_SEARCH_EXCLUDED_HANDLES.length > 0) {
+                xSearchConfig.excludedXHandles = context.XAI_X_SEARCH_EXCLUDED_HANDLES.slice(0, 10);
+            }
+            if (context.XAI_X_SEARCH_IMAGE_UNDERSTANDING) {
+                xSearchConfig.enableImageUnderstanding = true;
+            }
+            if (context.XAI_X_SEARCH_VIDEO_UNDERSTANDING) {
+                xSearchConfig.enableVideoUnderstanding = true;
+            }
+            tools.x_search = xSearch(xSearchConfig);
+            activeTools.push('x_search');
+        }
+
+        if (context.XAI_ENABLE_CODE_EXECUTION) {
+            tools.code_execution = codeExecution();
+            activeTools.push('code_execution');
+        }
+
+        log.info(`[warpLLMParams] xAI server-side tools enabled: ${activeTools.filter(t => ['web_search', 'x_search', 'code_execution'].includes(t)).join(', ')}`);
+    }
+
     // // if vertex use search grounding, do not use other tools
     if (model.provider.startsWith('google') && (context.SEARCH_GROUNDING || context.USE_GOOGLE_BUILDIN.length > 0)) {
         activeTools = [];
