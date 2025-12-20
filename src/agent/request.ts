@@ -182,13 +182,33 @@ function appendStreamSources(content: string, sources: Array<{ url: string; titl
     }
 
     const maxSources = 10; // 限制显示数量，防止 Telegram 限流
-    // Google 风格：只显示 [[1]](url) [[2]](url)，不显示标题
+
+    // 创建 URL 到索引的映射
+    const urlToIndex = new Map<string, number>();
+    sources.slice(0, maxSources).forEach((source, i) => {
+        urlToIndex.set(source.url, i + 1);
+    });
+
+    // Google 风格：文本中只保留 [1] 标记，移除内联链接
+    // 将文本中的 [[N]](url) 替换为 [N]
+    let cleanedContent = content;
+    for (const [url, index] of urlToIndex) {
+        // 转义 URL 中的特殊字符用于正则表达式
+        const escapedUrl = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // 替换 [[任意数字]](url) 为 [index]
+        cleanedContent = cleanedContent.replace(
+            new RegExp(`\\[\\[\\d+\\]\\]\\(${escapedUrl}\\)`, 'g'),
+            `[${index}]`
+        );
+    }
+
+    // 底部显示 [[1]](url) [[2]](url) 格式的完整链接
     const formattedSources = sources
         .slice(0, maxSources)
         .map((source, i) => `[[${i + 1}\\]](${source.url})`)
-        .join('\x20'); // 用空格分隔，和 Google 一样
+        .join('\x20');
 
-    return `${content.trimEnd()}\n\n>sources:\n>${formattedSources}`;
+    return `${cleanedContent.trimEnd()}\n\n>sources:\n>${formattedSources}`;
 }
 
 export async function requestChatCompletionsV2({ model, messages, tools, activeTools, toolChoice, context, cache }: { model: LanguageModelV3; toolModel?: LanguageModelV3; prompt?: string; messages: ModelMessage[]; tools?: any; activeTools: string[]; toolChoice?: ToolChoice[] | undefined; context: AgentUserConfig; cache?: string[] }, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> {
