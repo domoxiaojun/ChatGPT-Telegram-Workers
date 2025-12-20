@@ -1,6 +1,9 @@
+import type { ImageModelV3 } from '@ai-sdk/provider';
 import type { UserModelMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ASRAgent, ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage, TTSAgent } from './types';
+import { createOpenAI } from '@ai-sdk/openai';
+import { generateImage } from 'ai';
 import { log, Logger } from '../log';
 import { base64StringToBlob } from '../utils';
 import { requestText2Image } from './image';
@@ -55,16 +58,58 @@ export class Dalle extends OpenAIBase implements ImageAgent {
 
     @Logger
     request = async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
+        const {
+            n = 1,
+            size = '1024x1024',
+            style = 'vivid',
+            quality = 'hd',
+            referenceImages,
+            mask,
+        } = extraParams || {};
+
+        const modelId = extraParams?.model || context.DALL_E_MODEL;
+
+        // 智能选择模型：
+        // - 编辑模式：只有 dall-e-2 和 gpt-image-* 支持编辑
+        // - 生成模式：使用配置的模型
+        const isEditMode = (referenceImages && referenceImages.length > 0) || mask;
+        const actualModel = isEditMode
+            ? (modelId === 'dall-e-3' ? 'dall-e-2' : modelId)  // dall-e-3 不支持编辑，降级到 dall-e-2
+            : modelId;
+
+        // 如果是编辑模式，使用新的 AI SDK
+        if (isEditMode) {
+            // Build prompt
+            const generatePrompt = referenceImages && referenceImages.length > 0
+                ? { text: prompt, images: referenceImages, ...(mask && { mask }) }
+                : prompt;
+
+            const { images } = await generateImage({
+                model: createOpenAI({
+                    apiKey: this.apikey(context),
+                    baseURL: context.OPENAI_API_BASE,
+                }).image(actualModel) as unknown as ImageModelV3,
+                prompt: generatePrompt,
+                n,
+                size: size as any,
+            });
+
+            return {
+                raw: images.map(img => new Blob([Buffer.from(img.uint8Array)], { type: 'image/png' })),
+                text: prompt,
+            };
+        }
+
+        // 纯生成模式：保持原有实现
         const url = `${context.OPENAI_API_BASE}/images/generations`;
         const header = {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${this.apikey(context)}`,
         };
-        const { n = 1, size = '1024x1024', style = 'vivid', quality = 'hd' } = extraParams || {};
         const body: any = {
             prompt,
             n,
-            model: extraParams?.model || context.DALL_E_MODEL,
+            model: actualModel,
         };
         if (body.model === 'dall-e-3') {
             body.size = size || context.DALL_E_IMAGE_SIZE;

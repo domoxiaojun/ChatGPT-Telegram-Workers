@@ -13,7 +13,7 @@ import { Dalle, OpenAI, OpenAIASR, OpenAIFM, OpenAITTS } from './openai';
 import { OpenAILike, OpenAILikeASR, OpenAILikeImage, OpenAILikeTTS } from './openailike';
 import { Vertex, VertexImage } from './vertex';
 import { WorkersChat, WorkersImage } from './workersai';
-import { XAI } from './xai';
+import { XAI, XAIImage } from './xai';
 
 export const CHAT_AGENTS: ChatAgent[] = [
     new Anthropic(),
@@ -49,6 +49,7 @@ export const IMAGE_AGENTS: ImageAgent[] = [
     new VertexImage(),
     new KlingAI(),
     new GoogleImage(),
+    new XAIImage(),
 ];
 
 export function loadImageGen(context: AgentUserConfig): ImageAgent {

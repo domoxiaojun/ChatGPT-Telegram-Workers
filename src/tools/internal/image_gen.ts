@@ -15,7 +15,7 @@ export default {
                 agent: {
                     type: 'string',
                     description: 'The image agent to use. Default is "default".',
-                    enum: ['default', 'dalle', 'openai', 'workers', 'azure', 'vertex', 'oailike', 'kling', 'google'],
+                    enum: ['default', 'dalle', 'openai', 'workers', 'azure', 'vertex', 'oailike', 'kling', 'google', 'xai'],
                     default: 'default',
                 },
                 prompts: {
