@@ -214,9 +214,17 @@ XAI_IMAGE_MODEL=grok-2-image
 ### 特点
 - ✅ 文本生成图片
 - ✅ 最多10张图片/次
+- ⚠️ **固定尺寸 1024x768**（不支持自定义 size/aspectRatio）
 - ❌ **不支持图片编辑**（API 限制，仅 Web 界面支持）
 - ❌ 无遮罩支持
 - ❌ 无显式编辑模式
+
+### 重要限制
+根据 AI SDK 官方文档和源码：
+1. **不支持 `size` 参数** - 传递会导致 `IMAGE_PROCESS_FAILED` 错误
+2. **不支持 `aspectRatio` 参数** - 传递会导致 `IMAGE_PROCESS_FAILED` 错误
+3. **默认尺寸：1024x768** - 无法更改
+4. **仅支持文本到图片生成** - 不支持图片编辑
 
 ### 使用示例
 ```
@@ -406,8 +414,12 @@ XAI_IMAGE_MODEL=grok-2-image
 
 ### xAI 编辑报错
 **问题：** "Bad Request: IMAGE_PROCESS_FAILED"
-**原因：** xAI API 不支持图片编辑（仅 Web 界面支持）
-**解决：** xAI 仅用于图片生成，编辑请使用 Google/Vertex/OpenAI
+**原因 1：** xAI API 不支持图片编辑（仅 Web 界面支持）
+**原因 2：** 传递了不支持的参数（`size`、`aspectRatio`）
+**解决：**
+- xAI 仅用于图片生成，编辑请使用 Google/Vertex/OpenAI
+- 不要传递 `size` 或 `aspectRatio` 参数
+- xAI 默认生成 1024x768 图片
 
 ---
 
@@ -446,6 +458,25 @@ if (['google', 'vertex', 'openai'].includes(agent.name)) {
 // xAI 不支持编辑，会在 agent 中抛出错误
 ```
 
+### xAI 使用 AI SDK
+```typescript
+// src/agent/xai.ts
+import { xai } from '@ai-sdk/xai';
+import { generateImage } from 'ai';
+
+// 重要：不传递 size、aspectRatio 参数
+const { images } = await generateImage({
+    model: xai({
+        apiKey: context.XAI_API_KEY,
+        baseURL: context.XAI_API_BASE,
+    }).image('grok-2-image'),
+    prompt,
+    n,
+    // 不传递 size、aspectRatio - xAI 不支持
+});
+// 默认输出：1024x768
+```
+
 ---
 
 ## 更新日志
@@ -460,6 +491,8 @@ if (['google', 'vertex', 'openai'].includes(agent.name)) {
 - ✅ 更新依赖到最新 beta 版本
 - ✅ 保留 Google 原有编辑功能
 - ✅ 修复 Vertex "Mask image is missing" 错误
+- ✅ 修复 xAI "IMAGE_PROCESS_FAILED" 错误（移除不支持的参数）
+- ✅ xAI 改用 AI SDK（正确处理参数限制）
 
 ---
 
