@@ -1,4 +1,3 @@
-import type { ImageModelV3 } from '@ai-sdk/provider';
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
 import { xai } from '@ai-sdk/xai';
@@ -59,10 +58,7 @@ export class XAIImage implements ImageAgent {
         // 默认生成 1024x768 的图片
         // 传递 size 或 aspectRatio 会导致 IMAGE_PROCESS_FAILED 错误
         const { images } = await generateImage({
-            model: xai({
-                apiKey: context.XAI_API_KEY,
-                baseURL: context.XAI_API_BASE,
-            }).image(this.model(context)) as unknown as ImageModelV3,
+            model: xai.image(this.model(context)),
             prompt,
             n,
             // 不传递 size、aspectRatio 等参数，xAI 不支持
@@ -71,12 +67,13 @@ export class XAIImage implements ImageAgent {
         return this.render(images, prompt);
     };
 
-    readonly render = async (result: GeneratedImage[], prompt: string): Promise<ImageResult> => {
-        if (result.length === 0) {
+    readonly render = async (result: Response | GeneratedImage[] | string[], prompt: string): Promise<ImageResult> => {
+        const images = result as GeneratedImage[];
+        if (images.length === 0) {
             throw new Error(`No images generated`);
         }
         return {
-            raw: result.map(({ uint8Array }) => new Blob([Buffer.from(uint8Array)], { type: 'image/png' })),
+            raw: images.map(({ uint8Array }) => new Blob([Buffer.from(uint8Array)], { type: 'image/png' })),
             text: prompt,
         };
     };
