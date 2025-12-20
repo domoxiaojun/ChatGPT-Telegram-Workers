@@ -47,6 +47,12 @@ export class XAIImage implements ImageAgent {
             referenceImages,
         } = extraParams || {};
 
+        // xAI API 目前只支持文本到图片生成
+        // 图片编辑功能仅在网页版可用，API 尚未提供
+        if (referenceImages && referenceImages.length > 0) {
+            throw new Error('xAI API does not support image editing yet. Image editing is only available on Grok web interface. Use Google, Vertex, or OpenAI for image editing.');
+        }
+
         const url = `${context.XAI_API_BASE}/images/generations`;
         const header = {
             'Content-Type': 'application/json',
@@ -58,13 +64,6 @@ export class XAIImage implements ImageAgent {
             prompt,
             n,
         };
-
-        // 如果有引用图片，xAI 支持图片编辑（image-to-image）
-        // 根据官方文档，Aurora 支持 multimodal 输入
-        if (referenceImages && referenceImages.length > 0) {
-            // xAI API 支持 image 参数进行 image-to-image 生成/编辑
-            body.image = referenceImages[0];  // 目前使用第一张图片
-        }
 
         const response = await fetch(url, {
             method: 'POST',

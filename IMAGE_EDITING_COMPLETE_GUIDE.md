@@ -13,7 +13,7 @@
 | **Google** | ✅ | ✅ | ❌ | 隐式 | 快速编辑、对话迭代 |
 | **Vertex** | ✅ | ✅ | ✅ | 6种显式 | 专业编辑、精确控制 |
 | **OpenAI** | ✅ | ✅ | ✅ | 隐式 | 平衡性能、DALL-E 3生成 |
-| **xAI** | ✅ | ✅ | ❌ | 隐式 | 风格转换、最多10张 |
+| **xAI** | ✅ | ❌ | ❌ | - | 仅生成（最多10张） |
 
 ### Telegram 使用
 
@@ -73,8 +73,23 @@ VERTEX_CREDENTIALS={"client_email":"...","private_key":"..."}
 
 ### 6种编辑模式
 
-#### 1. EDIT_MODE_INPAINT_INSERTION（默认）
-插入新对象或内容
+#### 智能默认模式选择
+- **有 mask 图片时**：默认使用 `EDIT_MODE_INPAINT_INSERTION`（精确 inpainting）
+- **无 mask 图片时**：默认使用 `EDIT_MODE_CONTROLLED_EDITING`（通用受控编辑）
+
+#### 1. EDIT_MODE_CONTROLLED_EDITING（Telegram 默认）
+通用受控编辑，不需要 mask
+```json
+{
+  "agent": "vertex",
+  "prompts": ["将背景改成蓝色"],
+  "referenceImages": ["base64..."],
+  "editMode": "EDIT_MODE_CONTROLLED_EDITING"
+}
+```
+
+#### 2. EDIT_MODE_INPAINT_INSERTION（有 mask 时默认）
+插入新对象或内容（需要 mask）
 ```json
 {
   "agent": "vertex",
@@ -85,7 +100,7 @@ VERTEX_CREDENTIALS={"client_email":"...","private_key":"..."}
 }
 ```
 
-#### 2. EDIT_MODE_INPAINT_REMOVAL
+#### 3. EDIT_MODE_INPAINT_REMOVAL
 移除对象
 ```json
 {
@@ -94,22 +109,12 @@ VERTEX_CREDENTIALS={"client_email":"...","private_key":"..."}
 }
 ```
 
-#### 3. EDIT_MODE_OUTPAINT
+#### 4. EDIT_MODE_OUTPAINT
 扩展图片边界
 ```json
 {
   "editMode": "EDIT_MODE_OUTPAINT",
   "prompts": ["向右扩展，添加更多森林"]
-}
-```
-
-#### 4. EDIT_MODE_CONTROLLED_EDITING
-精确控制的编辑
-```json
-{
-  "editMode": "EDIT_MODE_CONTROLLED_EDITING",
-  "prompts": ["只改变花瓶的颜色为蓝色"],
-  "baseSteps": 60
 }
 ```
 
@@ -207,17 +212,28 @@ XAI_IMAGE_MODEL=grok-2-image
 ```
 
 ### 特点
-- ✅ Multimodal 输入（文本+图片）
-- ✅ 风格转换强大
+- ✅ 文本生成图片
 - ✅ 最多10张图片/次
+- ❌ **不支持图片编辑**（API 限制，仅 Web 界面支持）
 - ❌ 无遮罩支持
 - ❌ 无显式编辑模式
 
 ### 使用示例
 ```
-[回复图片] /img make this in Van Gogh style
-[回复图片] /img change color scheme to pastel
+# 生成图片（支持）
+/img a cute dog in the garden
+
+# 图片编辑（不支持）
+[回复图片] /img make this in Van Gogh style  # ❌ 会报错
 ```
+
+### 重要说明
+xAI API 目前**仅支持文本到图片生成**，不支持图片编辑。图片编辑功能仅在 Grok Web 界面可用。
+
+如需图片编辑，请使用：
+- **Google** - 快速编辑
+- **Vertex** - 专业编辑
+- **OpenAI** - 平衡选择
 
 ---
 
@@ -227,7 +243,7 @@ XAI_IMAGE_MODEL=grok-2-image
 | 功能 | Google | Vertex | OpenAI | xAI |
 |------|--------|--------|--------|-----|
 | 文本生成 | ✅ | ✅ | ✅ | ✅ |
-| 图片编辑 | ✅ | ✅ | ✅ | ✅ |
+| 图片编辑 | ✅ | ✅ | ✅ | ❌ |
 | 遮罩支持 | ❌ | ✅ | ✅ | ❌ |
 | 多图输入 | ✅(14) | ✅ | ❌(1) | ❌(1) |
 
@@ -283,12 +299,12 @@ XAI_IMAGE_MODEL=grok-2-image
 }
 ```
 
-### 风格转换（xAI）
+### 风格转换（xAI - 仅生成）
 ```json
 {
   "agent": "xai",
-  "prompts": ["Transform to Van Gogh painting style"],
-  "referenceImages": ["base64_image"]
+  "prompts": ["A beautiful sunset over the ocean with vibrant colors"]
+  // ❌ 不支持 referenceImages（图片编辑）
 }
 ```
 
@@ -316,11 +332,11 @@ XAI_IMAGE_MODEL=grok-2-image
 - ✅ 快速响应
 - ⚠️ 编辑功能中等
 
-**xAI - 风格转换**
-- ✅ 艺术风格转换
-- ✅ 自然语言理解好
-- ✅ 多张图片生成
-- ⚠️ 编辑精度较低
+**xAI - 仅用于生成**
+- ✅ 高质量图片生成
+- ✅ 多张图片生成（最多10张）
+- ❌ 不支持图片编辑
+- ⚠️ API 限制（编辑仅限 Web 界面）
 
 ### 提示词最佳实践
 
@@ -368,6 +384,11 @@ XAI_IMAGE_MODEL=grok-2-image
 
 ## 故障排除
 
+### Vertex "Mask image is missing" 错误
+**问题：** "Image editing failed with the following error: Mask image is missing."
+**原因：** 某些编辑模式（如 EDIT_MODE_INPAINT_INSERTION）需要 mask，但 Telegram 命令没有提供
+**解决：** 代码已自动处理，无 mask 时使用 EDIT_MODE_CONTROLLED_EDITING
+
 ### Vertex 编辑失败
 **问题：** "Model does not support editing"
 **原因：** 使用了 imagen-4.0（不支持编辑）
@@ -383,22 +404,27 @@ XAI_IMAGE_MODEL=grok-2-image
 **原因：** Google Generative AI 不支持遮罩
 **解决：** 使用 Vertex AI 或通过详细提示词描述区域
 
-### xAI 编辑效果不理想
-**问题：** 编辑不精确
-**原因：** xAI 无显式编辑模式，依赖模型理解
-**解决：** 使用更详细的提示词，或切换到 Vertex
+### xAI 编辑报错
+**问题：** "Bad Request: IMAGE_PROCESS_FAILED"
+**原因：** xAI API 不支持图片编辑（仅 Web 界面支持）
+**解决：** xAI 仅用于图片生成，编辑请使用 Google/Vertex/OpenAI
 
 ---
 
 ## 技术实现细节
 
-### Vertex 智能模型选择
+### Vertex 智能模式选择
 ```typescript
 // src/agent/vertex.ts
 const isEditMode = (referenceImages && referenceImages.length > 0) || mask;
 const modelId = isEditMode
     ? 'imagen-3.0-capability-001'  // 编辑：强制
     : this.model(context);          // 生成：配置
+
+// 智能选择编辑模式
+const defaultEditMode = mask
+    ? 'EDIT_MODE_INPAINT_INSERTION'      // 有 mask：精确 inpainting
+    : 'EDIT_MODE_CONTROLLED_EDITING';    // 无 mask：通用编辑
 ```
 
 ### OpenAI 自动降级
@@ -413,9 +439,11 @@ const actualModel = isEditMode
 ### Telegram 命令支持
 ```typescript
 // src/telegram/command/system.ts
-if (['google', 'vertex', 'openai', 'xai'].includes(agent.name)) {
+// 仅 Google、Vertex、OpenAI 支持图片编辑
+if (['google', 'vertex', 'openai'].includes(agent.name)) {
     extraParams.referenceImages = await getTelegramFile(...);
 }
+// xAI 不支持编辑，会在 agent 中抛出错误
 ```
 
 ---
@@ -424,12 +452,14 @@ if (['google', 'vertex', 'openai', 'xai'].includes(agent.name)) {
 
 ### 2025-12-20
 - ✅ 升级到新的 AI SDK `generateImage` API
-- ✅ Vertex 添加智能模型选择
+- ✅ Vertex 添加智能模型选择（编辑/生成自动切换）
+- ✅ Vertex 添加智能编辑模式选择（有/无 mask）
 - ✅ Vertex 支持 6 种编辑模式和高级参数
 - ✅ OpenAI 添加图片编辑支持（自动降级）
-- ✅ xAI 添加图片生成和编辑支持
+- ✅ xAI 添加图片生成支持（**不支持编辑**）
 - ✅ 更新依赖到最新 beta 版本
 - ✅ 保留 Google 原有编辑功能
+- ✅ 修复 Vertex "Mask image is missing" 错误
 
 ---
 

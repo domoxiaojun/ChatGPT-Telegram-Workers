@@ -88,11 +88,15 @@ export class VertexImage extends VertexBase implements ImageAgent {
 
         // 如果是编辑模式（有 referenceImages），添加编辑选项
         if (referenceImages && referenceImages.length > 0) {
+            // 智能选择默认编辑模式：
+            // - 有 mask：使用 INPAINT_INSERTION（需要 mask 的精确编辑）
+            // - 无 mask：使用 EDIT_MODE_CONTROLLED_EDITING（不需要 mask 的通用编辑）
+            const defaultEditMode = mask ? 'EDIT_MODE_INPAINT_INSERTION' : 'EDIT_MODE_CONTROLLED_EDITING';
+
             providerOptions.vertex.edit = {
-                // 默认使用 INPAINT_INSERTION 模式
-                mode: editMode || 'EDIT_MODE_INPAINT_INSERTION',
-                // 如果提供了 mask，使用 USER_PROVIDED，否则使用 DEFAULT
-                maskMode: maskMode || (mask ? 'MASK_MODE_USER_PROVIDED' : undefined),
+                mode: editMode || defaultEditMode,
+                // 只有在提供了 mask 时才设置 maskMode
+                ...(mask && { maskMode: maskMode || 'MASK_MODE_USER_PROVIDED' }),
                 // 可选的 mask dilation（推荐 0.01）
                 ...(maskDilation !== undefined && { maskDilation }),
                 // 可选的 baseSteps（35-75，越高质量越好）
