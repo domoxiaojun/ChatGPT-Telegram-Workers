@@ -182,14 +182,11 @@ function appendStreamSources(content: string, sources: Array<{ url: string; titl
     }
 
     const maxSources = 10; // 限制显示数量，防止 Telegram 限流
+    // Google 风格：只显示 [[1]](url) [[2]](url)，不显示标题
     const formattedSources = sources
         .slice(0, maxSources)
-        .map((source, i) => {
-            // 标题过长截断
-            const title = source.title.length > 60 ? `${source.title.slice(0, 60)}...` : source.title;
-            return `[[${i + 1}\\]](${source.url}) ${title}`;
-        })
-        .join('\n>');
+        .map((source, i) => `[[${i + 1}\\]](${source.url})`)
+        .join('\x20'); // 用空格分隔，和 Google 一样
 
     return `${content.trimEnd()}\n\n>sources:\n>${formattedSources}`;
 }
