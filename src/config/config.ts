@@ -397,6 +397,15 @@ export class GeminiConfig {
     // Google Maps Grounding - location context for location-aware responses (latitude, longitude)
     GOOGLE_RETRIEVAL_CONFIG: { latLng?: { latitude: number; longitude: number } } = {};
     GOOGLE_TTS_MODEL = 'gemini-2.5-flash-preview-tts';
+
+    // Gemini 3 Pro Image Configuration (gemini-3-pro-image-preview)
+    // Image aspect ratio: "1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"
+    GOOGLE_IMAGE_ASPECT_RATIO: string | null = null;
+    // Image resolution: "1K", "2K", "4K"
+    GOOGLE_IMAGE_SIZE: string | null = null;
+    // Enable Google Search grounding for real-time data (weather, stocks, current events)
+    GOOGLE_IMAGE_ENABLE_GOOGLE_SEARCH = false;
+
     // available voices: https://ai.google.dev/gemini-api/docs/speech-generation#voices
     GOOGLE_TTS_VOICE = 'Zephyr';
     GOOGLE_TTS_PROMPT = '';

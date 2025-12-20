@@ -55,15 +55,30 @@ export class GoogleImage extends GoogleBase implements ImageAgent {
 
         const { referenceImages } = extraParams || {};
         const url = `${context.GOOGLE_API_BASE}/models/${this.model(context)}:generateContent?key=${context.GOOGLE_API_KEY}`;
+
+        // Build generation config with Gemini 3 Pro Image support
+        const generationConfig: any = {
+            response_modalities: ['text', 'image'],
+        };
+
+        // Add imageConfig for Gemini 3 Pro Image (aspect ratio and resolution)
+        if (context.GOOGLE_IMAGE_ASPECT_RATIO || context.GOOGLE_IMAGE_SIZE) {
+            generationConfig.image_config = {};
+            if (context.GOOGLE_IMAGE_ASPECT_RATIO) {
+                generationConfig.image_config.aspect_ratio = context.GOOGLE_IMAGE_ASPECT_RATIO;
+            }
+            if (context.GOOGLE_IMAGE_SIZE) {
+                generationConfig.image_config.image_size = context.GOOGLE_IMAGE_SIZE;
+            }
+        }
+
         const body = {
             contents: [{
                 parts: [{
                     text: prompt,
                 }],
             }],
-            generation_config: {
-                response_modalities: ['text', 'image'],
-            },
+            generation_config: generationConfig,
             safety_settings: [
                 { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
                 { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
@@ -72,6 +87,11 @@ export class GoogleImage extends GoogleBase implements ImageAgent {
                 { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' },
             ],
         } as any;
+
+        // Add Google Search grounding tool for Gemini 3 Pro Image
+        if (context.GOOGLE_IMAGE_ENABLE_GOOGLE_SEARCH) {
+            body.tools = [{ google_search: {} }];
+        }
 
         if (referenceImages && referenceImages.length > 0) {
             const isUri = typeof referenceImages[0] === 'string' && referenceImages[0].startsWith('http');

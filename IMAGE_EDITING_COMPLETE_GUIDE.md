@@ -8,12 +8,12 @@
 
 ### 支持的 Agents
 
-| Agent | 生成 | 编辑 | 遮罩 | 编辑模式 | 推荐场景 |
-|-------|------|------|------|----------|---------|
-| **Google** | ✅ | ✅ | ❌ | 隐式 | 快速编辑、对话迭代 |
-| **Vertex** | ✅ | ✅ | ✅ | 6种显式 | 专业编辑、精确控制 |
-| **OpenAI** | ✅ | ✅ | ✅ | 隐式 | 平衡性能、DALL-E 3生成 |
-| **xAI** | ✅ | ❌ | ❌ | - | 仅生成（最多10张） |
+| Agent | 生成 | 编辑 | 遮罩 | 编辑模式 | 新功能 | 推荐场景 |
+|-------|------|------|------|----------|--------|---------|
+| **Google** | ✅ | ✅ | ❌ | 隐式 | 4K分辨率、Google Search | 快速编辑、实时数据可视化 |
+| **Vertex** | ✅ | ✅ | ✅ | 6种显式 | - | 专业编辑、精确控制 |
+| **OpenAI** | ✅ | ✅ | ✅ | 隐式 | - | 平衡性能、DALL-E 3生成 |
+| **xAI** | ✅ | ❌ | ❌ | - | - | 仅生成（最多10张） |
 
 ### Telegram 使用
 
@@ -33,6 +33,18 @@
 ```env
 GOOGLE_API_KEY=your-api-key
 GOOGLE_IMAGE_MODEL=gemini-2.5-flash-image
+
+# Gemini 3 Pro Image 新功能（gemini-3-pro-image-preview）
+GOOGLE_IMAGE_MODEL=gemini-3-pro-image-preview
+
+# 可选：宽高比设置（"1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"）
+GOOGLE_IMAGE_ASPECT_RATIO=16:9
+
+# 可选：分辨率设置（"1K", "2K", "4K"）
+GOOGLE_IMAGE_SIZE=4K
+
+# 可选：启用 Google Search grounding（实时数据：天气、股票、新闻）
+GOOGLE_IMAGE_ENABLE_GOOGLE_SEARCH=true
 ```
 
 ### 特点
@@ -41,11 +53,79 @@ GOOGLE_IMAGE_MODEL=gemini-2.5-flash-image
 - ✅ 多图合成（最多14张）
 - ❌ 不支持遮罩
 
+### Gemini 3 Pro Image 新功能 ⭐
+**模型：** `gemini-3-pro-image-preview`
+
+#### 高分辨率输出
+- 支持 **1K、2K、4K** 三种分辨率
+- 专业资产生产优化
+- Token 消耗：1K ≈ 1120 tokens，4K ≈ 2000 tokens
+
+#### 灵活宽高比
+支持 10 种宽高比：
+- 方形：`1:1`
+- 竖屏：`2:3`, `3:4`, `4:5`, `9:16`
+- 横屏：`3:2`, `4:3`, `5:4`, `16:9`, `21:9`
+
+#### Google Search Grounding（实时数据）
+启用后可生成基于实时信息的图片：
+- 📰 当前新闻事件
+- 🌤️ 实时天气地图
+- 📈 最新股票图表
+- 🗺️ 地理数据可视化
+
+```env
+GOOGLE_IMAGE_ENABLE_GOOGLE_SEARCH=true
+```
+
+示例提示词：
+```
+/img 生成今天台北的天气预报信息图
+/img 创建一个展示过去一周特斯拉股价的图表
+/img 制作一张关于2025年AI发展的信息图
+```
+
+#### 高级文本渲染
+- 生成清晰、风格化的文本
+- 适用于：信息图、菜单、图表、营销素材
+
+#### Thinking Mode（推理模式）
+- 模型会进行"思考"过程
+- 生成中间"思考图像"（后端可见，不计费）
+- 优化最终高质量输出
+
+#### 更多参考图像
+- 支持最多 **14 张参考图像**
+- 可混合：最多 6 个物体 + 5 个人物图像
+
 ### 使用示例
 ```
+# 基础编辑
 [回复图片] /img 让颜色更鲜艳
 [回复图片] /img 将背景换成海滩
+
+# Gemini 3 Pro Image - 高分辨率 + 宽高比
+# 配置：GOOGLE_IMAGE_SIZE=4K, GOOGLE_IMAGE_ASPECT_RATIO=16:9
+/img 一个未来科技城市的全景图
+
+# Google Search - 实时数据
+# 配置：GOOGLE_IMAGE_ENABLE_GOOGLE_SEARCH=true
+/img 制作一张展示今天全球主要股市表现的信息图
+/img 生成一个包含最新AI技术趋势的可视化图表
 ```
+
+### 模型对比
+
+| 功能 | gemini-2.5-flash-image | gemini-3-pro-image-preview |
+|------|----------------------|---------------------------|
+| 生成/编辑 | ✅ | ✅ |
+| 分辨率 | 默认 | 1K/2K/4K 可选 |
+| 宽高比 | 有限 | 10 种选择 |
+| Google Search | ❌ | ✅ |
+| 高级文本 | 基础 | 专业级 |
+| Thinking Mode | ❌ | ✅ |
+| 参考图像 | 14张 | 14张（6物体+5人物）|
+| 推荐场景 | 快速迭代 | 专业资产制作 |
 
 ---
 
