@@ -176,6 +176,24 @@ export async function streamHandler(stream: AsyncIterable<any>, contentExtractor
     return messageInfo.content;
 }
 
+function appendStreamSources(content: string, sources: Array<{ url: string; title: string }>): string {
+    if (!sources || sources.length === 0) {
+        return content;
+    }
+
+    const maxSources = 10; // 限制显示数量，防止 Telegram 限流
+    const formattedSources = sources
+        .slice(0, maxSources)
+        .map((source, i) => {
+            // 标题过长截断
+            const title = source.title.length > 60 ? `${source.title.slice(0, 60)}...` : source.title;
+            return `[[${i + 1}\\]](${source.url}) ${title}`;
+        })
+        .join('\n>');
+
+    return `${content.trimEnd()}\n\n>sources:\n>${formattedSources}`;
+}
+
 export async function requestChatCompletionsV2({ model, messages, tools, activeTools, toolChoice, context, cache }: { model: LanguageModelV3; toolModel?: LanguageModelV3; prompt?: string; messages: ModelMessage[]; tools?: any; activeTools: string[]; toolChoice?: ToolChoice[] | undefined; context: AgentUserConfig; cache?: string[] }, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> {
     // 引入多轮对话 拼接提示
     const messageInfo: MessageInfo = {
@@ -204,6 +222,11 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
         contentFull = await streamHandler(stream.fullStream, dataExtractor, onStream, messageInfo);
         responseMessages = messageInfo.occured_error ? [{ role: 'assistant', content: contentFull }] : (await stream.response).messages;
         contentFull = messageInfo.occured_error ? contentFull : metaDataExtractor(await stream.providerMetadata, model.provider, contentFull);
+
+        // 附加 xAI sources (从 stream 收集的)
+        if ((messageInfo as any).sources && (messageInfo as any).sources.length > 0) {
+            contentFull = appendStreamSources(contentFull, (messageInfo as any).sources);
+        }
     } else {
         const result = await generateText(handeredParams);
         contentFull = `${result.reasoning ? `>\`Thought for several seconds\`\n>${(result.reasoningText ?? '').trim().replace(/\n/g, '\n>')}\n>✹\n` : ''}${result.text}`;
@@ -220,6 +243,11 @@ function thinkingExtractor(messageInfo: MessageInfo) {
     let reasoningBuffer = '';
     let lastOutputTime = 0;
     const thinkingTag = '>`Thinking\\.\\.\\.`';
+    const sources: Array<{ url: string; title: string }> = [];
+
+    // 存储 sources 到 messageInfo 以便后续处理
+    (messageInfo as any).sources = sources;
+
     return (data: TextStreamPart<any>) => {
         switch (data.type) {
             case 'reasoning-start':
@@ -241,9 +269,9 @@ function thinkingExtractor(messageInfo: MessageInfo) {
                 // 积累思考文本
                 reasoningBuffer += data.text;
                 const now = Date.now();
-                
+
                 // 当积累到足够长度、遇到句末标点、或距上次输出时间超过500ms时输出
-                if (reasoningBuffer.length >= 50 || 
+                if (reasoningBuffer.length >= 50 ||
                     /[。！？.!?]\s*$/.test(reasoningBuffer.trim()) ||
                     (now - lastOutputTime > 500 && reasoningBuffer.length >= 20)) {
                     const output = `\n>${reasoningBuffer.replace(/\n/g, '\n>')}`;
@@ -278,6 +306,15 @@ function thinkingExtractor(messageInfo: MessageInfo) {
             case 'text-delta':
                 return data.text;
             case 'text-end':
+                return '';
+            case 'source':
+                // xAI web_search/x_search sources
+                if (ENV.ENABLE_SEARCH_SOURCE && data.sourceType === 'url') {
+                    sources.push({
+                        url: data.url,
+                        title: data.title || data.url,
+                    });
+                }
                 return '';
             case 'error':
                 throw data.error;
