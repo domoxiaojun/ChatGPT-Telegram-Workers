@@ -1,6 +1,6 @@
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
-import { xai } from '@ai-sdk/xai';
+import { createXai } from '@ai-sdk/xai';
 import { generateImage } from 'ai';
 import { Logger } from '../log';
 import { createLlmModel } from './llm';
@@ -58,7 +58,10 @@ export class XAIImage implements ImageAgent {
         // 默认生成 1024x768 的图片
         // 传递 size 或 aspectRatio 会导致 IMAGE_PROCESS_FAILED 错误
         const { images } = await generateImage({
-            model: xai.image(this.model(context)),
+            model: createXai({
+                apiKey: context.XAI_API_KEY || undefined,
+                baseURL: context.XAI_API_BASE,
+            }).image(this.model(context)),
             prompt,
             n,
             // 不传递 size、aspectRatio 等参数，xAI 不支持
