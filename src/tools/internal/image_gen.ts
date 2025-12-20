@@ -55,6 +55,45 @@ export default {
                     type: 'string',
                     description: 'Mask image for inpainting (optional). Can be URL or base64-encoded image. Only supported by vertex agent.',
                 },
+                editMode: {
+                    type: 'string',
+                    enum: [
+                        'EDIT_MODE_INPAINT_INSERTION',
+                        'EDIT_MODE_INPAINT_REMOVAL',
+                        'EDIT_MODE_OUTPAINT',
+                        'EDIT_MODE_CONTROLLED_EDITING',
+                        'EDIT_MODE_PRODUCT_IMAGE',
+                        'EDIT_MODE_BGSWAP',
+                    ],
+                    description: 'Edit mode for Vertex AI image editing. INPAINT_INSERTION: Insert objects/content into the image. INPAINT_REMOVAL: Remove objects from the image. OUTPAINT: Extend image boundaries. CONTROLLED_EDITING: Precise editing with fine control. PRODUCT_IMAGE: Product-focused editing. BGSWAP: Replace the background. Only supported by vertex agent.',
+                },
+                maskMode: {
+                    type: 'string',
+                    enum: [
+                        'MASK_MODE_DEFAULT',
+                        'MASK_MODE_USER_PROVIDED',
+                        'MASK_MODE_DETECTION_BOX',
+                        'MASK_MODE_CLOTHING_AREA',
+                        'MASK_MODE_PARSED_PERSON',
+                    ],
+                    description: 'Mask mode for Vertex AI. USER_PROVIDED: Use the provided mask image. DETECTION_BOX: Auto-detect bounding boxes. CLOTHING_AREA: Segment clothing areas. PARSED_PERSON: Parse person body/clothing. Only supported by vertex agent when mask is provided or editMode requires it.',
+                },
+                maskDilation: {
+                    type: 'number',
+                    minimum: 0,
+                    maximum: 1,
+                    description: 'Mask dilation value (0-1). Controls how much to expand the mask area. Recommended: 0.01. Only supported by vertex agent.',
+                },
+                negativePrompt: {
+                    type: 'string',
+                    description: 'Negative prompt to exclude certain elements from the generated/edited image. Helps avoid unwanted features. Only supported by vertex agent.',
+                },
+                baseSteps: {
+                    type: 'integer',
+                    minimum: 35,
+                    maximum: 75,
+                    description: 'Number of base steps for image generation (35-75). Higher values produce better quality but take longer. Only supported by vertex agent.',
+                },
             },
             required: ['prompts'],
         },
@@ -69,7 +108,26 @@ export default {
         style = 'vivid',
         referenceImages,
         mask,
-    }: { agent: string; prompts: string[]; quantity: number; size: string; radio: string; style: string; referenceImages?: string[]; mask?: string }, _env: Record<string, any>, config: AgentUserConfig): Promise<ToolResult> => {
+        editMode,
+        maskMode,
+        maskDilation,
+        negativePrompt,
+        baseSteps,
+    }: {
+        agent: string;
+        prompts: string[];
+        quantity: number;
+        size: string;
+        radio: string;
+        style: string;
+        referenceImages?: string[];
+        mask?: string;
+        editMode?: string;
+        maskMode?: string;
+        maskDilation?: number;
+        negativePrompt?: string;
+        baseSteps?: number;
+    }, _env: Record<string, any>, config: AgentUserConfig): Promise<ToolResult> => {
         if (!config) {
             return { content: [{ type: 'text', text: 'Missing config' }] };
         }
@@ -80,14 +138,26 @@ export default {
             agent_name = config.AI_IMAGE_PROVIDER;
         }
         log.info(`tool image_gen request start: agent: ${agent_name}`);
-        log.info(`params: ${JSON.stringify({ agent: agent_name, prompts, quantity, size, radio, style, referenceImages, mask })}`);
+        log.info(`params: ${JSON.stringify({ agent: agent_name, prompts, quantity, size, radio, style, referenceImages, mask, editMode, maskMode, maskDilation, negativePrompt, baseSteps })}`);
         const agent = IMAGE_AGENTS.find(a => a.name === agent_name);
         if (!agent?.enable(config)) {
             return { content: [{ type: 'text', text: `Image agent ${agent_name} is not available`, is_error: true }] };
         }
         const result: ImageResult[] = await Promise.all(prompts.map(async (prompt) => {
             try {
-                return await agent.request(prompt, config, { quantity, size, radio, style, referenceImages, mask });
+                return await agent.request(prompt, config, {
+                    quantity,
+                    size,
+                    radio,
+                    style,
+                    referenceImages,
+                    mask,
+                    editMode,
+                    maskMode,
+                    maskDilation,
+                    negativePrompt,
+                    baseSteps,
+                });
             } catch (e) {
                 return { message: (e as Error).message };
             }
