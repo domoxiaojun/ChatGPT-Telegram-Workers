@@ -241,7 +241,7 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
         contentFull = messageInfo.occured_error ? contentFull : metaDataExtractor(await stream.providerMetadata, model.provider, contentFull);
 
         // 附加 xAI sources (从 stream 收集的)
-        if ((messageInfo as any).sources && (messageInfo as any).sources.length > 0) {
+        if ((model.provider === 'xai.chat' || model.provider === 'xai.responses') && (messageInfo as any).sources && (messageInfo as any).sources.length > 0) {
             contentFull = appendStreamSources(contentFull, (messageInfo as any).sources);
         }
     } else {
