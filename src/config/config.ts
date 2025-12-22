@@ -552,6 +552,8 @@ export class OpenAILikeConfig {
 
     // use oailike relay tools, support 'googleSearch, codeExecution, urlContext'
     USE_OAILIKE_RELAY_TOOLS: string[] = [];
+    // OAILIKE Provider Options
+    OAILIKE_PROVIDER_OPTIONS = {};
 }
 
 export class VertexConfig {

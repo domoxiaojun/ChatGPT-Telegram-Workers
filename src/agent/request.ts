@@ -347,6 +347,7 @@ async function combineParams({ context, middleware, model, messages, activeTools
         anthropic: context.ANTHROPIC_PROVIDER_OPTIONS,
         google: context.GOOGLE_PROVIDER_OPTIONS,
         xai: context.XAI_PROVIDER_OPTIONS,
+        'oailike.chat': context.OAILIKE_PROVIDER_OPTIONS,
     };
     return {
         model: wrapLanguageModel({
