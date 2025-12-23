@@ -71,19 +71,6 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
             if (activeTools.length > 0) {
                 let targetModel = config.TOOL_MODEL;
 
-                // Google Maps only works with gemini-2.5-flash
-                // Auto-switch to GOOGLE_MAPS_MODEL only if googleMaps was actually called in previous steps
-                if (activeTools.includes('google_maps') && config.GOOGLE_MAPS_MODEL) {
-                    const hasCalledGoogleMaps = steps.some(step =>
-                        step.toolCalls?.some(call => call.toolName === 'google_maps')
-                    );
-
-                    if (hasCalledGoogleMaps) {
-                        targetModel = config.GOOGLE_MAPS_MODEL;
-                        log.info(`[prepareStep] Auto-switching to ${targetModel} for Google Maps tool (was called in previous steps)`);
-                    }
-                }
-
                 currentModel = wrapLanguageModel({
                     model: await createLlmModel(targetModel, config),
                     middleware,
@@ -328,8 +315,14 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
                     activeTools.push('url_context');
                     break;
                 case 'googleMaps':
-                    tools.google_maps = google.tools.googleMaps({});
-                    activeTools.push('google_maps');
+                    // Google Maps only supported on Gemini 2.x models
+                    // Skip if current model doesn't support it to avoid API errors
+                    if (model.modelId.startsWith('gemini-2')) {
+                        tools.google_maps = google.tools.googleMaps({});
+                        activeTools.push('google_maps');
+                    } else {
+                        log.info(`[warpLLMParams] Google Maps not supported on ${model.modelId}, skipping. Switch to gemini-2.x to enable Maps.`);
+                    }
                     break;
                 case 'fileSearch':
                     if (context.GOOGLE_FILE_SEARCH_STORES.length > 0) {
