@@ -27,4 +27,8 @@ export interface I18n {
             set: string;
         };
     };
+    whitelist: {
+        not_in_user_whitelist: string;
+        not_in_group_whitelist: string;
+    };
 }

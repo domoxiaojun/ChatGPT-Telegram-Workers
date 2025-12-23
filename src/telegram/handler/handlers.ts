@@ -70,15 +70,13 @@ export class WhiteListFilter implements MessageHandler<WorkerContextBase> {
         }
         const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
 
-        const text = `You are not in the white list, please contact the administrator to add you to the white list. Your chat_id: ${message.chat.id}`;
-
         // 判断私聊消息
         if (message.chat.type === 'private') {
             // 白名单判断
             if (!ENV.CHAT_WHITE_LIST.includes(`${message.chat.id}`)) {
                 log.error(`[WHITE LIST] ${message.chat.id} ${message.from?.username ?? message.from?.first_name ?? ''} not in white list`);
-                // return sender.sendPlainText(text);
-                return new Response('success', { status: 200 });
+                const text = ENV.I18N.whitelist.not_in_user_whitelist.replace('{ID}', `${message.chat.id}`);
+                return sender.sendPlainText(text);
             }
             return null;
         }
@@ -92,8 +90,8 @@ export class WhiteListFilter implements MessageHandler<WorkerContextBase> {
             // 白名单判断
             if (!ENV.CHAT_GROUP_WHITE_LIST.includes(`${message.chat.id}`)) {
                 log.error(`[WHITELIST] ${message.chat.id} ${message.chat.username ?? ''} not in whitelist`);
-                // return sender.sendPlainText(text);
-                return new Response('success', { status: 200 });
+                const text = ENV.I18N.whitelist.not_in_group_whitelist.replace('{ID}', `${message.chat.id}`);
+                return sender.sendPlainText(text);
             }
             return null;
         }
