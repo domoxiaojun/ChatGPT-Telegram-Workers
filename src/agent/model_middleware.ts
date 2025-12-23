@@ -193,15 +193,13 @@ function warpMessages(params: LanguageModelV3CallOptions, allTools: Record<strin
 
     const getSystemContent = () => {
         let systemContent = rawSystemPrompt ?? '';
-        // 插入工具prompt - 只添加额外的 prompt 提示，不添加工具列表描述
+        // 插入工具prompt
         if (activeTools.length > 0) {
-            const toolPrompts = activeTools
-                .map(name => allTools[name]?.prompt && `## For tool \`${name}\`, you should follow these rules:\n - ${allTools[name]?.prompt}`)
-                .filter(Boolean)
-                .join('\n');
-            if (toolPrompts) {
-                systemContent += `\n\n${toolPrompts}`;
-            }
+            systemContent += `\nYou can consider using the following tools:\n${activeTools.map(name =>
+                `### ${name}\n- desc: ${allTools[name]?.schema?.description || ''} \n${allTools[name]?.prompt || ''}`,
+            ).join('\n\n')}`
+            + `\n\n${activeTools.map(name => allTools[name]?.prompt && `## For tool \`${name}\`, you should follow these rules:\n - ${allTools[name]?.prompt}`)
+                .join('\n')}`;
         }
         return systemContent ?? 'You are a helpful assistant';
     };
