@@ -392,10 +392,20 @@ export class GeminiConfig {
     GOOGLE_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
     GOOGLE_MODELS = [];
     GOOGLE_MODELS_API = '/models';
-    GOOGLE_BUILDIN = ['googleSearch', 'codeExecution', 'urlContext', 'googleMaps'];
+    GOOGLE_BUILDIN = ['googleSearch', 'codeExecution', 'urlContext', 'googleMaps', 'fileSearch', 'enterpriseWebSearch'];
     USE_GOOGLE_BUILDIN: string[] = [];
+
+    // File Search configuration (for RAG)
+    // Example: ['fileSearchStores/my-store-123']
+    GOOGLE_FILE_SEARCH_STORES: string[] = [];
+    GOOGLE_FILE_SEARCH_TOP_K = 10;
+    GOOGLE_FILE_SEARCH_METADATA_FILTER = '';
+
     // Google Maps Grounding - location context for location-aware responses (latitude, longitude)
     GOOGLE_RETRIEVAL_CONFIG: { latLng?: { latitude: number; longitude: number } } = {};
+    // Model to use when googleMaps tool is active (only gemini-2.5-flash supports Maps)
+    // Set to empty string to disable auto-switching
+    GOOGLE_MAPS_MODEL = 'gemini-2.5-flash';
     GOOGLE_TTS_MODEL = 'gemini-2.5-flash-preview-tts';
 
     // Gemini 3 Pro Image Configuration (gemini-3-pro-image-preview)

@@ -269,19 +269,7 @@ function mockParams({ modelId, config, provider, options }: MockParams) {
             { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
             { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' },
         ];
-        const usedBuildIn = new Set(GOOGLE_BUILDIN.filter(t => USE_GOOGLE_BUILDIN.includes(t)));
-        if (SEARCH_GROUNDING) {
-            usedBuildIn.add('googleSearch');
-        }
-        if (usedBuildIn.size > 0) {
-            // options.tools = {};
-            // Object.assign(options.tools, ...usedBuildIn.map(t => ({
-            //     [t]: {},
-            // })));
-            options.tools = [...usedBuildIn].map(t => ({
-                [t]: {},
-            }));
-        }
+        // Google tools are now handled in model_middleware.ts
         // Add retrievalConfig for Google Maps grounding support
         if (GOOGLE_RETRIEVAL_CONFIG?.latLng) {
             options.retrievalConfig = GOOGLE_RETRIEVAL_CONFIG;

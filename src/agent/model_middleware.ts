@@ -69,9 +69,17 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
         prepareStepPre: (middleware: any) => async ({ model, stepNumber, steps }: { model: LanguageModelV3; stepNumber: number; steps: StepResult<any>[] }) => {
             currentModel = model;
             if (activeTools.length > 0) {
-                // (model as Writeable<LanguageModelV2>).modelId = config.TOOL_MODEL;
+                let targetModel = config.TOOL_MODEL;
+
+                // Google Maps only works with gemini-2.5-flash
+                // Auto-switch to GOOGLE_MAPS_MODEL if googleMaps is active
+                if (activeTools.includes('google_maps') && config.GOOGLE_MAPS_MODEL) {
+                    targetModel = config.GOOGLE_MAPS_MODEL;
+                    log.info(`[prepareStep] Auto-switching to ${targetModel} for Google Maps tool`);
+                }
+
                 currentModel = wrapLanguageModel({
-                    model: await createLlmModel(config.TOOL_MODEL, config),
+                    model: await createLlmModel(targetModel, config),
                     middleware,
                 });
             }
@@ -293,6 +301,56 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
 
     let activeTools = activeToolAlias.map((t: string) => allTools[t]?.schema?.name || t) || [];
 
+    // Google Server-Side Tools Support
+    // Google tools are executed on Google servers and need to be added separately
+    if (model.provider.startsWith('google') || model.provider.startsWith('vertex')) {
+        const googleTools = await import('@ai-sdk/google');
+
+        // Add configured Google built-in tools
+        for (const toolName of context.USE_GOOGLE_BUILDIN) {
+            switch (toolName) {
+                case 'googleSearch':
+                    tools.google_search = googleTools.googleSearch();
+                    activeTools.push('google_search');
+                    break;
+                case 'codeExecution':
+                    tools.code_execution = googleTools.codeExecution();
+                    activeTools.push('code_execution');
+                    break;
+                case 'urlContext':
+                    tools.url_context = googleTools.urlContext();
+                    activeTools.push('url_context');
+                    break;
+                case 'googleMaps':
+                    tools.google_maps = googleTools.googleMaps();
+                    activeTools.push('google_maps');
+                    break;
+                case 'fileSearch':
+                    if (context.GOOGLE_FILE_SEARCH_STORES.length > 0) {
+                        tools.file_search = googleTools.fileSearch({
+                            fileSearchStoreNames: context.GOOGLE_FILE_SEARCH_STORES,
+                            topK: context.GOOGLE_FILE_SEARCH_TOP_K,
+                            ...(context.GOOGLE_FILE_SEARCH_METADATA_FILTER && {
+                                metadataFilter: context.GOOGLE_FILE_SEARCH_METADATA_FILTER,
+                            }),
+                        });
+                        activeTools.push('file_search');
+                    } else {
+                        log.warn('[warpLLMParams] fileSearch enabled but GOOGLE_FILE_SEARCH_STORES is empty');
+                    }
+                    break;
+                case 'enterpriseWebSearch':
+                    tools.enterprise_web_search = googleTools.enterpriseWebSearch();
+                    activeTools.push('enterprise_web_search');
+                    break;
+            }
+        }
+
+        if (activeTools.length > 0) {
+            log.info(`[warpLLMParams] Google server-side tools enabled: ${activeTools.join(', ')}`);
+        }
+    }
+
     // xAI Server-Side Tools Support
     // xAI tools are executed on xAI servers and need to be added separately
     if (model.provider === 'xai.chat' || model.provider === 'xai.responses') {
@@ -339,10 +397,20 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
         log.info(`[warpLLMParams] xAI server-side tools enabled: ${activeTools.filter(t => ['web_search', 'x_search', 'code_execution'].includes(t)).join(', ')}`);
     }
 
-    // // if vertex use search grounding, do not use other tools
+    // If using Google built-in tools, clear custom tools (keep Google tools)
     if (model.provider.startsWith('google') && (context.SEARCH_GROUNDING || context.USE_GOOGLE_BUILDIN.length > 0)) {
-        activeTools = [];
-        tools = {};
+        // Clear only custom tools from validTools, keep Google server-side tools
+        const googleToolKeys = Object.keys(tools).filter(k =>
+            k.startsWith('google_') || k.startsWith('enterprise_') ||
+            k === 'code_execution' || k === 'url_context' || k === 'file_search'
+        );
+        const googleTools = googleToolKeys.reduce((acc: Record<string, any>, key) => {
+            acc[key] = tools[key];
+            return acc;
+        }, {});
+
+        activeTools = googleToolKeys;
+        tools = googleTools;
         // only use first system message and last user message
         // params.messages = [params.messages.find(p => p.role === 'system')!, params.messages.findLast(p => p.role === 'user')!];
     }
