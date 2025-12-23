@@ -532,11 +532,13 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
                     .join('\x20');
 
                 // const sortedGroundingSupports = (groundingSupports as any[]).sort((a, b) => b.segment.endIndex - a.segment.endIndex);
-                for (const { segment, groundingChunkIndices } of groundingSupports) {
-                    const tag = groundingChunkIndices?.map((i: number) => i + 1).join(', ');
-                    // const tag = groundingChunkIndices?.map((i: number) => `[[${i + 1}\\]](${groundingChunks[i].web.uri})`).join('');
-                    // content = insertTextByByteIndex(content, segment.endIndex, tag);
-                    content = content.replace(segment.text, `$&[${tag}]`);
+                if (groundingSupports && Array.isArray(groundingSupports)) {
+                    for (const { segment, groundingChunkIndices } of groundingSupports) {
+                        const tag = groundingChunkIndices?.map((i: number) => i + 1).join(', ');
+                        // const tag = groundingChunkIndices?.map((i: number) => `[[${i + 1}\\]](${groundingChunks[i].web.uri})`).join('');
+                        // content = insertTextByByteIndex(content, segment.endIndex, tag);
+                        content = content.replace(segment.text, `$&[${tag}]`);
+                    }
                 }
                 return `${content.trimEnd()}\n\n>sources:\n>${sources}`;
                 // return `${content}\n## Sources:\n${sources}\n## Search Query:\n${webSearchQueries || ''}`;
