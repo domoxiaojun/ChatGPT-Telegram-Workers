@@ -310,19 +310,19 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
         for (const toolName of context.USE_GOOGLE_BUILDIN) {
             switch (toolName) {
                 case 'googleSearch':
-                    tools.google_search = google.tools.googleSearch();
+                    tools.google_search = google.tools.googleSearch({});
                     activeTools.push('google_search');
                     break;
                 case 'codeExecution':
-                    tools.code_execution = google.tools.codeExecution();
+                    tools.code_execution = google.tools.codeExecution({});
                     activeTools.push('code_execution');
                     break;
                 case 'urlContext':
-                    tools.url_context = google.tools.urlContext();
+                    tools.url_context = google.tools.urlContext({});
                     activeTools.push('url_context');
                     break;
                 case 'googleMaps':
-                    tools.google_maps = google.tools.googleMaps();
+                    tools.google_maps = google.tools.googleMaps({});
                     activeTools.push('google_maps');
                     break;
                 case 'fileSearch':
@@ -340,7 +340,7 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
                     }
                     break;
                 case 'enterpriseWebSearch':
-                    tools.enterprise_web_search = google.tools.enterpriseWebSearch();
+                    tools.enterprise_web_search = google.tools.enterpriseWebSearch({});
                     activeTools.push('enterprise_web_search');
                     break;
             }
