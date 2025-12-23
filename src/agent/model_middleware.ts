@@ -72,10 +72,16 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
                 let targetModel = config.TOOL_MODEL;
 
                 // Google Maps only works with gemini-2.5-flash
-                // Auto-switch to GOOGLE_MAPS_MODEL if googleMaps is active
+                // Auto-switch to GOOGLE_MAPS_MODEL only if googleMaps was actually called in previous steps
                 if (activeTools.includes('google_maps') && config.GOOGLE_MAPS_MODEL) {
-                    targetModel = config.GOOGLE_MAPS_MODEL;
-                    log.info(`[prepareStep] Auto-switching to ${targetModel} for Google Maps tool`);
+                    const hasCalledGoogleMaps = steps.some(step =>
+                        step.toolCalls?.some(call => call.toolName === 'google_maps')
+                    );
+
+                    if (hasCalledGoogleMaps) {
+                        targetModel = config.GOOGLE_MAPS_MODEL;
+                        log.info(`[prepareStep] Auto-switching to ${targetModel} for Google Maps tool (was called in previous steps)`);
+                    }
                 }
 
                 currentModel = wrapLanguageModel({
