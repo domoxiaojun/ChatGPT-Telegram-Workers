@@ -304,30 +304,30 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
     // Google Server-Side Tools Support
     // Google tools are executed on Google servers and need to be added separately
     if (model.provider.startsWith('google') || model.provider.startsWith('vertex')) {
-        const googleTools = await import('@ai-sdk/google');
+        const { google } = await import('@ai-sdk/google');
 
         // Add configured Google built-in tools
         for (const toolName of context.USE_GOOGLE_BUILDIN) {
             switch (toolName) {
                 case 'googleSearch':
-                    tools.google_search = googleTools.googleSearch();
+                    tools.google_search = google.tools.googleSearch();
                     activeTools.push('google_search');
                     break;
                 case 'codeExecution':
-                    tools.code_execution = googleTools.codeExecution();
+                    tools.code_execution = google.tools.codeExecution();
                     activeTools.push('code_execution');
                     break;
                 case 'urlContext':
-                    tools.url_context = googleTools.urlContext();
+                    tools.url_context = google.tools.urlContext();
                     activeTools.push('url_context');
                     break;
                 case 'googleMaps':
-                    tools.google_maps = googleTools.googleMaps();
+                    tools.google_maps = google.tools.googleMaps();
                     activeTools.push('google_maps');
                     break;
                 case 'fileSearch':
                     if (context.GOOGLE_FILE_SEARCH_STORES.length > 0) {
-                        tools.file_search = googleTools.fileSearch({
+                        tools.file_search = google.tools.fileSearch({
                             fileSearchStoreNames: context.GOOGLE_FILE_SEARCH_STORES,
                             topK: context.GOOGLE_FILE_SEARCH_TOP_K,
                             ...(context.GOOGLE_FILE_SEARCH_METADATA_FILTER && {
@@ -340,7 +340,7 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
                     }
                     break;
                 case 'enterpriseWebSearch':
-                    tools.enterprise_web_search = googleTools.enterpriseWebSearch();
+                    tools.enterprise_web_search = google.tools.enterpriseWebSearch();
                     activeTools.push('enterprise_web_search');
                     break;
             }
