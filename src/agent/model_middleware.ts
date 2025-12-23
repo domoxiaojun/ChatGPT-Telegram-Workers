@@ -346,6 +346,13 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
             }
         }
 
+        // Google Maps and Code Execution cannot be used together
+        if (activeTools.includes('google_maps') && activeTools.includes('code_execution')) {
+            log.warn('[warpLLMParams] Google Maps and Code Execution cannot be used together. Removing Code Execution.');
+            delete tools.code_execution;
+            activeTools = activeTools.filter(t => t !== 'code_execution');
+        }
+
         if (activeTools.length > 0) {
             log.info(`[warpLLMParams] Google server-side tools enabled: ${activeTools.join(', ')}`);
         }
