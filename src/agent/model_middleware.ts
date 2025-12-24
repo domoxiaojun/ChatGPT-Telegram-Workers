@@ -166,10 +166,22 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
                     const inputValues = Object.values(input as any);
                     const hasInput = inputValues.length > 0;
 
+                    // Safe preview of result field
+                    let resultPreview;
+                    if (hasResult && output.result) {
+                        if (typeof output.result === 'string') {
+                            resultPreview = output.result.length > 50
+                                ? `${output.result.substring(0, 50)}...`
+                                : output.result;
+                        } else {
+                            resultPreview = output.result;
+                        }
+                    }
+
                     return {
                         name: toolName,
                         ...(hasInput && { args: inputValues }),
-                        ...(hasResult && { result_preview: typeof output.result === 'string' ? `${output.result.substring(0, 50)}...` : output.result }),
+                        ...(resultPreview && { result_preview: resultPreview }),
                         ...(hasError && { error: 'Tool execution error' }),
                         ...(output?.time && { time: output.time }),
                     };
@@ -825,29 +837,56 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
 }
 
 async function handleToolResult({ tools, toolResults, onStream, config }: { tools: Record<string, any>; toolResults: ToolResultPart[]; onStream: ChatStreamTextHandler | null; config: AgentUserConfig }) {
+    // Custom tools with send_type === 'message'
     const message_tool = Object.values(tools).filter(({ send_type }) => send_type === 'message').map(({ schema: { name } }) => name);
+
+    // Provider tools that should send messages (OpenAI image_generation, Google/Anthropic code execution, etc.)
+    const provider_message_tools = ['image_generation', 'code_execution', 'code_interpreter'];
+
     const need_send_result: ToolResult[] = [];
     for (const { output, toolName } of toolResults) {
-        if (message_tool.includes(toolName)) {
-            need_send_result.push({ content: (output as any).value?.content ?? [] });
+        const shouldSend = message_tool.includes(toolName) || provider_message_tools.includes(toolName);
+
+        if (shouldSend) {
+            // Handle different output formats
+            // Standard format (Anthropic/Google/xAI): output.value.content
+            if ('value' in output && (output as any).value?.content) {
+                need_send_result.push({ content: (output as any).value.content });
+            }
+            // OpenAI image_generation format: output.result (base64 string)
+            else if ('result' in output && typeof (output as any).result === 'string') {
+                // Convert base64 string to image content part
+                need_send_result.push({
+                    content: [{
+                        type: 'image',
+                        image: (output as any).result, // base64 string
+                    }],
+                });
+            }
         }
     }
     if (need_send_result.length > 0) {
         const sender = onStream?.sender;
-        const tool_names = toolResults.map(i => i.toolName).filter(i => message_tool.includes(i));
+        const tool_names = toolResults.map(i => i.toolName).filter(i => message_tool.includes(i.toolName) || provider_message_tools.includes(i.toolName));
         log.info(`start send tool result: ${tool_names.join(', ')}`);
         // TODO: 非流式模式下，无法直接发送工具结果
         sender && await sendToolResult(need_send_result, sender, config);
         // Unable to modify the response message anymore due to:
         // https://github.com/vercel/ai/blob/42fcd32dd81e5071a864943dbdcd4be69a8cae8c/packages/ai/core/generate-text/generate-text.ts#L488
         toolResults.forEach(({ toolName, output }) => {
+            const shouldModify = message_tool.includes(toolName) || provider_message_tools.includes(toolName);
+
             // Check if output has 'value' property and contains error
             const hasError = output.type !== 'execution-denied' && 'value' in output
                 && ((output.value as any)?.content ?? []).some((i: any) => i.type === 'error');
-            if (message_tool.includes(toolName) && !hasError) {
+            if (shouldModify && !hasError) {
                 // Only modify if output supports 'value' property
                 if (output.type !== 'execution-denied' && 'value' in output) {
                     (output as any).value = { content: [{ type: 'text', text: 'Data has been sent to user already.' }] };
+                }
+                // For OpenAI result format, replace with placeholder
+                else if ('result' in output) {
+                    (output as any).result = 'Image has been sent to user already.';
                 }
             }
         });
