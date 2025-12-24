@@ -859,7 +859,10 @@ async function handleToolResult({ tools, toolResults, onStream, config }: { tool
                 need_send_result.push({
                     content: [{
                         type: 'image',
-                        image: (output as any).result, // base64 string
+                        text: '',
+                        data_type: 'base64',
+                        data: (output as any).result, // base64 string
+                        mimeType: 'image/png',
                     }],
                 });
             }
@@ -867,7 +870,7 @@ async function handleToolResult({ tools, toolResults, onStream, config }: { tool
     }
     if (need_send_result.length > 0) {
         const sender = onStream?.sender;
-        const tool_names = toolResults.map(i => i.toolName).filter(i => message_tool.includes(i.toolName) || provider_message_tools.includes(i.toolName));
+        const tool_names = toolResults.map(i => i.toolName).filter(name => message_tool.includes(name) || provider_message_tools.includes(name));
         log.info(`start send tool result: ${tool_names.join(', ')}`);
         // TODO: 非流式模式下，无法直接发送工具结果
         sender && await sendToolResult(need_send_result, sender, config);
