@@ -820,7 +820,10 @@ export class InlineCommandHandler implements CommandHandler {
                 value: Object.values(context.OAILIKE_RELAY_TOOLS).flat(),
             });
         }
-        return (ENV.CALLBACK_MENU.length === 0 ? inlines.sort((a, b) => a.label.localeCompare(b.label)) : ENV.CALLBACK_MENU.map(key => inlines.find(inline => inline.config_key.endsWith(key))).filter(Boolean) as InlineItem[]);
+        console.log(`[DEBUG] Before return, inlines.length=${inlines.length}, labels=${inlines.map(i => i.label).join(', ')}`);
+        const result = (ENV.CALLBACK_MENU.length === 0 ? inlines.sort((a, b) => a.label.localeCompare(b.label)) : ENV.CALLBACK_MENU.map(key => inlines.find(inline => inline.config_key.endsWith(key))).filter(Boolean) as InlineItem[]);
+        console.log(`[DEBUG] After return, result.length=${result.length}, labels=${result.map(i => i.label).join(', ')}, CALLBACK_MENU.length=${ENV.CALLBACK_MENU.length}`);
+        return result;
     };
 
     settingsMessage = (context: AgentUserConfig, inlines: InlineItem[], { key, callBack }: { key?: string; callBack: string | InlineItem }) => {
