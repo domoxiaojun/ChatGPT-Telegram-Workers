@@ -147,7 +147,29 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
 
             // Send tool results to user (image_generation, code_execution, etc.)
             if (toolResults.length > 0) {
-                await handleToolResult({ tools, toolResults: toolResults as any, onStream, config });
+                // Deduplicate by toolCallId to avoid processing same tool multiple times
+                const uniqueResults = toolResults.filter((result, index, self) =>
+                    index === self.findIndex(r => r.toolCallId === result.toolCallId)
+                );
+
+                if (uniqueResults.length < toolResults.length) {
+                    log.warn(`Deduplicated ${toolResults.length - uniqueResults.length} duplicate tool calls`);
+                }
+
+                await handleToolResult({ tools, toolResults: uniqueResults as any, onStream, config });
+            }
+
+            // Send final text response if present (after tool execution)
+            if (text && text.trim()) {
+                log.info(`Final response text length: ${text.length}`);
+                // Append text to message content for display
+                // Add separator if there's existing content
+                if (messageInfo.content && messageInfo.content.trim()) {
+                    messageInfo.content += '\n\n';
+                }
+                messageInfo.content += text;
+                // Update the message to show the text
+                onStream?.send(messageInfo.content);
             }
 
             // record tool call detail4
