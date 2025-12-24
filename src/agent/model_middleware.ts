@@ -482,7 +482,7 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
     // OpenAI Server-Side Tools Support (Responses API only)
     // OpenAI provider tools (web_search, code_interpreter, file_search)
     if (model.provider === 'openai.responses') {
-        const { webSearch, codeInterpreter, fileSearch } = await import('@ai-sdk/openai/internal');
+        const { openaiTools } = await import('@ai-sdk/openai');
 
         // Web Search tool - 网页搜索
         // 支持数组配置或布尔开关（向后兼容）
@@ -517,7 +517,7 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
                 // 坐标格式暂不支持（OpenAI API 不支持经纬度）
             }
 
-            tools.web_search = webSearch(webSearchConfig);
+            tools.web_search = openaiTools.webSearch(webSearchConfig);
             activeTools.push('web_search');
         }
 
@@ -527,7 +527,7 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
             const config = context.OPENAI_CODE_INTERPRETER_CONTAINER
                 ? { container: context.OPENAI_CODE_INTERPRETER_CONTAINER }
                 : {};
-            tools.code_interpreter = codeInterpreter(config);
+            tools.code_interpreter = openaiTools.codeInterpreter(config);
             activeTools.push('code_interpreter');
         }
 
@@ -546,7 +546,7 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
                     };
                 }
 
-                tools.file_search = fileSearch(fileSearchConfig);
+                tools.file_search = openaiTools.fileSearch(fileSearchConfig);
                 activeTools.push('file_search');
             }
         }
