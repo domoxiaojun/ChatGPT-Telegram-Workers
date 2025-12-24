@@ -168,12 +168,12 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
 
                     // Safe preview of result field
                     let resultPreview;
-                    if (hasResult && output.result) {
-                        if (typeof output.result === 'string') {
+                    if (hasResult && output?.result != null) {
+                        if (typeof output.result === 'string' && output.result.length > 0) {
                             resultPreview = output.result.length > 50
                                 ? `${output.result.substring(0, 50)}...`
                                 : output.result;
-                        } else {
+                        } else if (typeof output.result !== 'string') {
                             resultPreview = output.result;
                         }
                     }
