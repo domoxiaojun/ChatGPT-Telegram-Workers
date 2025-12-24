@@ -315,6 +315,13 @@ function getNextpage({ pathDetail, pageIndexData, callbackData, inlineList, page
             ({ data, pageNum } = paging(data, pageIndex ?? 0, pageLength));
             // 存在child
             if (!configKey) {
+                // 安全检查：确保索引有效
+                if (!data[callbackData]) {
+                    throw new Error(`Invalid callback index: ${callbackData} not found in data array of length ${data.length}`);
+                }
+                if (!data[callbackData].label || !data[callbackData].config_key) {
+                    throw new Error(`Invalid data at callback index ${callbackData}: missing label or config_key`);
+                }
                 path.push(callbackData);
                 label = data[callbackData].label;
                 configKey = data[callbackData].config_key;
