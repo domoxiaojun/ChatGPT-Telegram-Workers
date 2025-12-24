@@ -147,19 +147,33 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
 
             // record tool call detail4
             if (toolResults.length > 0) {
-                const func_logs = toolResults.map(({ toolName, input, output }: { toolName: string; input: any; output: any }) => ({
-                    name: toolName,
-                    args: Object.values(input as any),
-                    ...(output.content.some((i: any) => i.is_error) && { error: output.map((i: any) => i.text).join('\n') }),
-                    ...(output.time && { time: output.time }),
-                }));
+                const func_logs = toolResults.map(({ toolName, input, output }: { toolName: string; input: any; output: any }) => {
+                    // Handle different output formats
+                    // Provider tools (Anthropic/Google/xAI) may have different output structures
+                    const hasContent = output && typeof output === 'object' && 'content' in output;
+                    const hasValue = output && typeof output === 'object' && 'value' in output;
+
+                    let hasError = false;
+                    if (hasContent && Array.isArray(output.content)) {
+                        hasError = output.content.some((i: any) => i.is_error);
+                    } else if (hasValue && Array.isArray(output.value?.content)) {
+                        hasError = output.value.content.some((i: any) => i.type === 'error');
+                    }
+
+                    return {
+                        name: toolName,
+                        args: Object.values(input as any),
+                        ...(hasError && { error: 'Tool execution error' }),
+                        ...(output?.time && { time: output.time }),
+                    };
+                });
 
                 // record function log
                 record.functions.push(...func_logs);
 
                 // delete time
                 // ai sdk无api能调整函数结果，但内部记录stepMessages， result未做深拷贝 由此可以直接对数据直接进行修改
-                toolResults.forEach(({ output }: any) => output.time && (delete output.time));
+                toolResults.forEach(({ output }: any) => output?.time && (delete output.time));
 
                 log.info(`tool details: ${JSON.stringify(func_logs, null, 2)}`);
                 log.debug(`tool results: ${JSON.stringify(toolResults, null, 2)}`);
