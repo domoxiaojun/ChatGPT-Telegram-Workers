@@ -482,7 +482,8 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
     // OpenAI Server-Side Tools Support (Responses API only)
     // OpenAI provider tools (web_search, code_interpreter, file_search)
     if (model.provider === 'openai.responses') {
-        const { openaiTools } = await import('@ai-sdk/openai');
+        const { openai } = await import('@ai-sdk/openai');
+        const openaiTools = openai.tools;
 
         // Web Search tool - 网页搜索
         // 支持数组配置或布尔开关（向后兼容）
