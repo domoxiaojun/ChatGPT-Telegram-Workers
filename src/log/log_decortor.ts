@@ -100,7 +100,10 @@ export function getLog(context: AgentUserConfig, { onlyModel = false, isParagrap
         // tool
         if (log.functions.length > 0 && show.tool) {
             logStr += '\n';
-            logStr += log.functions.map(({ name, args, error, time }) => `${name}: ${JSON.stringify(args).substring(0, 80)} ${time}s ${error ? `\n[ERROR: ${error}]` : ''}`).join('\n');
+            logStr += log.functions.map(({ name, args, error, time }) => {
+                const argsStr = args ? JSON.stringify(args) : '[]';
+                return `${name}: ${argsStr.substring(0, 80)} ${time}s ${error ? `\n[ERROR: ${error}]` : ''}`;
+            }).join('\n');
         }
 
         logList.push(logStr);
