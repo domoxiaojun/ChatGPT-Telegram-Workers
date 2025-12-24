@@ -516,6 +516,33 @@ export class AnthropicConfig {
 
     ANTHROPIC_MODELS = [];
     ANTHROPIC_MODELS_API = '/models';
+
+    // Anthropic Cache Control - 启用prompt caching以降低API成本
+    // 当启用时，system message和tools会自动标记为可缓存
+    ANTHROPIC_ENABLE_CACHE_CONTROL = true;
+
+    // Anthropic Server-Side Tools - Anthropic原生工具支持
+    // Web Fetch - 获取网页内容并支持citations
+    ANTHROPIC_ENABLE_WEB_FETCH = false;
+    ANTHROPIC_WEB_FETCH_MAX_USES = 5;
+    ANTHROPIC_WEB_FETCH_ALLOWED_DOMAINS: string[] = [];
+    ANTHROPIC_WEB_FETCH_BLOCKED_DOMAINS: string[] = [];
+    ANTHROPIC_WEB_FETCH_ENABLE_CITATIONS = true;
+    ANTHROPIC_WEB_FETCH_MAX_CONTENT_TOKENS = 4000;
+
+    // Web Search - 网页搜索工具
+    ANTHROPIC_ENABLE_WEB_SEARCH = false;
+    ANTHROPIC_WEB_SEARCH_MAX_USES = 5;
+    ANTHROPIC_WEB_SEARCH_ALLOWED_DOMAINS: string[] = [];
+    ANTHROPIC_WEB_SEARCH_BLOCKED_DOMAINS: string[] = [];
+    ANTHROPIC_WEB_SEARCH_USER_LOCATION = '';
+
+    // Code Execution - 代码执行工具（Python + Bash）
+    ANTHROPIC_ENABLE_CODE_EXECUTION = false;
+
+    // Tool Streaming - 细粒度工具流（实时显示工具执行进度）
+    ANTHROPIC_ENABLE_TOOL_STREAMING = true;
+
     ANTHROPIC_PROVIDER_OPTIONS = {
         // sendReasoning: true,
         // thinking: {

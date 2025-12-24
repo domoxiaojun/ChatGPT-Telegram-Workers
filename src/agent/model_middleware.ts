@@ -404,6 +404,61 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
         log.info(`[warpLLMParams] xAI server-side tools enabled: ${activeTools.filter(t => ['web_search', 'x_search', 'code_execution'].includes(t)).join(', ')}`);
     }
 
+    // Anthropic Server-Side Tools Support
+    // Anthropic provider tools (web_fetch, web_search, code_execution)
+    if (model.provider === 'anthropic.messages') {
+        const anthropicTools = await import('@ai-sdk/anthropic');
+
+        // Web Fetch tool - 获取网页内容
+        if (context.ANTHROPIC_ENABLE_WEB_FETCH) {
+            const webFetchConfig: any = {
+                maxUses: context.ANTHROPIC_WEB_FETCH_MAX_USES,
+            };
+            if (context.ANTHROPIC_WEB_FETCH_ALLOWED_DOMAINS.length > 0) {
+                webFetchConfig.allowedDomains = context.ANTHROPIC_WEB_FETCH_ALLOWED_DOMAINS;
+            }
+            if (context.ANTHROPIC_WEB_FETCH_BLOCKED_DOMAINS.length > 0) {
+                webFetchConfig.blockedDomains = context.ANTHROPIC_WEB_FETCH_BLOCKED_DOMAINS;
+            }
+            if (context.ANTHROPIC_WEB_FETCH_ENABLE_CITATIONS) {
+                webFetchConfig.citations = { enabled: true };
+            }
+            if (context.ANTHROPIC_WEB_FETCH_MAX_CONTENT_TOKENS) {
+                webFetchConfig.maxContentTokens = context.ANTHROPIC_WEB_FETCH_MAX_CONTENT_TOKENS;
+            }
+            tools.web_fetch = anthropicTools.anthropicTools.webFetch_20250910(webFetchConfig);
+            activeTools.push('web_fetch');
+        }
+
+        // Web Search tool - 网页搜索
+        if (context.ANTHROPIC_ENABLE_WEB_SEARCH) {
+            const webSearchConfig: any = {
+                maxUses: context.ANTHROPIC_WEB_SEARCH_MAX_USES,
+            };
+            if (context.ANTHROPIC_WEB_SEARCH_ALLOWED_DOMAINS.length > 0) {
+                webSearchConfig.allowedDomains = context.ANTHROPIC_WEB_SEARCH_ALLOWED_DOMAINS;
+            }
+            if (context.ANTHROPIC_WEB_SEARCH_BLOCKED_DOMAINS.length > 0) {
+                webSearchConfig.blockedDomains = context.ANTHROPIC_WEB_SEARCH_BLOCKED_DOMAINS;
+            }
+            if (context.ANTHROPIC_WEB_SEARCH_USER_LOCATION) {
+                webSearchConfig.userLocation = context.ANTHROPIC_WEB_SEARCH_USER_LOCATION;
+            }
+            tools.web_search = anthropicTools.anthropicTools.webSearch_20250305(webSearchConfig);
+            activeTools.push('web_search');
+        }
+
+        // Code Execution tool - 代码执行（Python + Bash）
+        if (context.ANTHROPIC_ENABLE_CODE_EXECUTION) {
+            tools.code_execution = anthropicTools.anthropicTools.codeExecution_20250825();
+            activeTools.push('code_execution');
+        }
+
+        if (context.ANTHROPIC_ENABLE_WEB_FETCH || context.ANTHROPIC_ENABLE_WEB_SEARCH || context.ANTHROPIC_ENABLE_CODE_EXECUTION) {
+            log.info(`[warpLLMParams] Anthropic server-side tools enabled: ${activeTools.filter(t => ['web_fetch', 'web_search', 'code_execution'].includes(t)).join(', ')}`);
+        }
+    }
+
     // If using xAI Responses API built-in tools, clear custom tools (keep xAI tools)
     // This prevents conflicts as xAI Responses API doesn't support mixing provider tools with custom tools
     if (model.provider === 'xai.responses' &&

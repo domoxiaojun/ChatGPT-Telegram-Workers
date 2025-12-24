@@ -342,13 +342,54 @@ function thinkingExtractor(messageInfo: MessageInfo) {
 }
 
 async function combineParams({ context, middleware, model, messages, activeTools, tools, prepareStepPre, onStepFinish, onChunk }: { context: AgentUserConfig; middleware: any; model: LanguageModelV3; messages: ModelMessage[]; activeTools: string[]; tools: any; prepareStepPre: (middleware: (...args: any[]) => any) => any; onStepFinish: (data: StepResult<any>) => void; onChunk: (data: { chunk: TextStreamPart<any> }) => void }) {
+    // Build Anthropic provider options with cache control and tool streaming
+    const anthropicOptions = {
+        ...context.ANTHROPIC_PROVIDER_OPTIONS,
+    };
+
+    // Add tool streaming support for Anthropic
+    if (context.ANTHROPIC_ENABLE_TOOL_STREAMING !== undefined) {
+        anthropicOptions.toolStreaming = context.ANTHROPIC_ENABLE_TOOL_STREAMING;
+    }
+
     const providerOptions = {
         openai: context.OPENAI_PROVIDER_OPTIONS,
-        anthropic: context.ANTHROPIC_PROVIDER_OPTIONS,
+        anthropic: anthropicOptions,
         google: context.GOOGLE_PROVIDER_OPTIONS,
         xai: context.XAI_PROVIDER_OPTIONS,
         'oailike.chat': context.OAILIKE_PROVIDER_OPTIONS,
     };
+
+    // Add cache control to system messages and tools for Anthropic
+    if (model.provider === 'anthropic.messages' && context.ANTHROPIC_ENABLE_CACHE_CONTROL) {
+        // Mark system message as cacheable
+        const systemMessage = messages.find(m => m.role === 'system');
+        if (systemMessage && !systemMessage.providerOptions) {
+            systemMessage.providerOptions = {
+                anthropic: {
+                    cacheControl: { type: 'ephemeral' },
+                },
+            };
+        }
+
+        // Mark tools as cacheable if tools exist
+        if (tools && Object.keys(tools).length > 0) {
+            // Get the last tool and mark it as cacheable
+            // This follows the AI SDK pattern of caching the last tool definition
+            const toolKeys = Object.keys(tools);
+            const lastToolKey = toolKeys[toolKeys.length - 1];
+            const lastTool = tools[lastToolKey];
+
+            if (lastTool && typeof lastTool === 'object' && !lastTool.providerOptions) {
+                lastTool.providerOptions = {
+                    anthropic: {
+                        cacheControl: { type: 'ephemeral' },
+                    },
+                };
+            }
+        }
+    }
+
     return {
         model: wrapLanguageModel({
             model,
