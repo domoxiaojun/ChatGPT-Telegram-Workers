@@ -352,6 +352,11 @@ async function combineParams({ context, middleware, model, messages, activeTools
         anthropicOptions.toolStreaming = context.ANTHROPIC_ENABLE_TOOL_STREAMING;
     }
 
+    // Add structured output mode for Anthropic
+    if (context.ANTHROPIC_STRUCTURED_OUTPUT_MODE && context.ANTHROPIC_STRUCTURED_OUTPUT_MODE !== 'auto') {
+        anthropicOptions.structuredOutputMode = context.ANTHROPIC_STRUCTURED_OUTPUT_MODE;
+    }
+
     const providerOptions = {
         openai: context.OPENAI_PROVIDER_OPTIONS,
         anthropic: anthropicOptions,
@@ -371,21 +376,40 @@ async function combineParams({ context, middleware, model, messages, activeTools
             // Clear old tool uses
             const clearToolUsesConfig: any = {
                 type: 'clear_tool_uses_20250919',
-                trigger: context.ANTHROPIC_CONTEXT_CLEAR_TRIGGER,
             };
 
+            // Trigger configuration
+            if (context.ANTHROPIC_CONTEXT_CLEAR_TRIGGER === 'auto') {
+                // Auto mode: trigger based on tool uses count
+                clearToolUsesConfig.trigger = {
+                    type: 'tool_uses',
+                    value: context.ANTHROPIC_CONTEXT_KEEP_RECENT + 2, // Trigger after N+2 tool uses
+                };
+            }
+            // Manual mode: no trigger (user controls when to clear)
+
+            // Keep recent tool uses
             if (context.ANTHROPIC_CONTEXT_KEEP_RECENT > 0) {
-                clearToolUsesConfig.keep = context.ANTHROPIC_CONTEXT_KEEP_RECENT;
+                clearToolUsesConfig.keep = {
+                    type: 'tool_uses',
+                    value: context.ANTHROPIC_CONTEXT_KEEP_RECENT,
+                };
             }
 
+            // Clear at least N tokens
             if (context.ANTHROPIC_CONTEXT_CLEAR_AT_LEAST > 0) {
-                clearToolUsesConfig.clearAtLeast = context.ANTHROPIC_CONTEXT_CLEAR_AT_LEAST;
+                clearToolUsesConfig.clearAtLeast = {
+                    type: 'input_tokens',
+                    value: context.ANTHROPIC_CONTEXT_CLEAR_AT_LEAST * 1000, // Convert to tokens (assume 1k tokens per unit)
+                };
             }
 
+            // Clear tool inputs
             if (context.ANTHROPIC_CONTEXT_CLEAR_TOOL_INPUTS) {
                 clearToolUsesConfig.clearToolInputs = true;
             }
 
+            // Exclude tools
             if (context.ANTHROPIC_CONTEXT_EXCLUDE_TOOLS.length > 0) {
                 clearToolUsesConfig.excludeTools = context.ANTHROPIC_CONTEXT_EXCLUDE_TOOLS;
             }
@@ -396,8 +420,14 @@ async function combineParams({ context, middleware, model, messages, activeTools
             if (context.ANTHROPIC_ENABLE_THINKING_CLEANUP && context.ANTHROPIC_THINKING_KEEP_RECENT > 0) {
                 contextManagementConfig.edits.push({
                     type: 'clear_thinking_20250919',
-                    trigger: 'auto',
-                    keep: context.ANTHROPIC_THINKING_KEEP_RECENT,
+                    trigger: {
+                        type: 'tool_uses',
+                        value: context.ANTHROPIC_THINKING_KEEP_RECENT + 1,
+                    },
+                    keep: {
+                        type: 'tool_uses',
+                        value: context.ANTHROPIC_THINKING_KEEP_RECENT,
+                    },
                 });
             }
 

@@ -549,7 +549,7 @@ export class AnthropicConfig {
     ANTHROPIC_CONTEXT_CLEAR_TRIGGER: 'auto' | 'manual' = 'auto';
     // 保留最近N次工具调用（其余会被清理）
     ANTHROPIC_CONTEXT_KEEP_RECENT = 5;
-    // 至少清理N次工具调用（防止频繁清理）
+    // 至少清理N千个tokens（例如：2 = 2000 tokens）
     ANTHROPIC_CONTEXT_CLEAR_AT_LEAST = 2;
     // 是否清理工具输入参数（保留工具调用但清理输入）
     ANTHROPIC_CONTEXT_CLEAR_TOOL_INPUTS = false;
@@ -560,6 +560,12 @@ export class AnthropicConfig {
     ANTHROPIC_ENABLE_THINKING_CLEANUP = false;
     // 保留最近N轮的 thinking 内容
     ANTHROPIC_THINKING_KEEP_RECENT = 3;
+
+    // Structured Output Mode - 强制输出符合 JSON Schema 的结构化数据
+    // 模式: 'outputFormat' 使用 output format | 'tool' 使用工具模式 | 'auto' 自动选择
+    // 'outputFormat' 更灵活，推荐用于大多数场景
+    // 'tool' 强制使用工具，适合需要严格验证的场景
+    ANTHROPIC_STRUCTURED_OUTPUT_MODE: 'outputFormat' | 'tool' | 'auto' = 'auto';
 
     ANTHROPIC_PROVIDER_OPTIONS = {
         // sendReasoning: true,
