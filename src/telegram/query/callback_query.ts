@@ -41,11 +41,15 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
 
         const [row = 5, col = 3] = ENV.CALLBACK_QUERY_RC.split('x').map(Number);
         const pageLength = row * col;
+        console.log(`[DEBUG] CALLBACK_QUERY_RC=${ENV.CALLBACK_QUERY_RC}, row=${row}, col=${col}, pageLength=${pageLength}`);
         const queryHandler = new InlineCommandHandler();
         const defaltData = await queryHandler.defaultInlines(context.USER_CONFIG);
+        console.log(`[DEBUG] defaltData.length=${defaltData.length}, callbackData=${query.data}`);
         const pageIndexData = keyboard.flat().find(i => i.callback_data?.startsWith('PAGE_INDEX:'))?.callback_data?.replace('PAGE_INDEX:', '');
+        console.log(`[DEBUG] pageIndexData=${pageIndexData}`);
         const pathDetail = keyboard[0]?.[0]?.callback_data || '';
         let { path, data, pageIndex, pageNum, newCallBackData, configKey, label, callback } = getNextpage({ pathDetail, pageIndexData, callbackData: query.data, inlineList: defaltData, pageLength });
+        console.log(`[DEBUG] After getNextpage: data.length=${data.length}, pageIndex=${pageIndex}, pageNum=${pageNum}, newCallBackData=${newCallBackData}`);
 
         try {
             if (query.data === 'fresh' || (configKey.endsWith('_MODEL') && data.length === 0)) {
@@ -312,10 +316,10 @@ function getNextpage({ pathDetail, pageIndexData, callbackData, inlineList, page
             break;
         default:
             callbackData = Number(callbackData);
-            ({ data, pageNum } = paging(data, pageIndex ?? 0, pageLength));
-            // 存在child
+            console.log(`[DEBUG] In default case: callbackData=${callbackData}, data.length BEFORE paging=${data.length}, configKey='${configKey}', pageIndex=${pageIndex}, pageLength=${pageLength}`);
+            // 存在child - 如果没有configKey说明还在导航到子菜单，需要先访问完整数组再分页
             if (!configKey) {
-                // 安全检查：确保索引有效
+                // 安全检查：确保索引有效（使用完整数组）
                 if (!data[callbackData]) {
                     throw new Error(`Invalid callback index: ${callbackData} not found in data array of length ${data.length}`);
                 }
@@ -330,6 +334,9 @@ function getNextpage({ pathDetail, pageIndexData, callbackData, inlineList, page
                 pageIndex = 0;
                 ({ data, pageNum } = paging(data, pageIndex, pageLength));
                 callbackData = '';
+            } else {
+                // 已经在最终菜单，对当前数据分页
+                ({ data, pageNum } = paging(data, pageIndex ?? 0, pageLength));
             }
     }
     return { path, data, pageIndex, pageNum, newCallBackData: callbackData, configKey, label, callback };
