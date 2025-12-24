@@ -145,6 +145,11 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
             // record end time
             record.end_time = Date.now();
 
+            // Send tool results to user (image_generation, code_execution, etc.)
+            if (toolResults.length > 0) {
+                await handleToolResult({ tools, toolResults, onStream, config });
+            }
+
             // record tool call detail4
             if (toolResults.length > 0) {
                 const func_logs = toolResults.map(({ toolName, input, output }: { toolName: string; input: any; output: any }) => {
