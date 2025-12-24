@@ -320,6 +320,29 @@ export class OpenAIConfig {
         // serviceTier: 'auto',
         // include: ['reasoning.encrypted_content'],
     };
+
+    // OpenAI Server-Side Tools (Responses API only)
+    // 可用工具列表：webSearch, codeInterpreter, fileSearch
+    OPENAI_BUILDIN = ['webSearch', 'codeInterpreter', 'fileSearch'];
+    // 启用的工具列表（为保持向后兼容，也支持使用 OPENAI_ENABLE_* 开关）
+    USE_OPENAI_BUILDIN: string[] = [];
+
+    // Web Search - 网页搜索工具
+    OPENAI_ENABLE_WEB_SEARCH = false;
+    OPENAI_WEB_SEARCH_EXTERNAL_ACCESS = true;  // true=实时抓取，false=使用缓存
+    OPENAI_WEB_SEARCH_ALLOWED_DOMAINS: string[] = [];  // 允许的域名列表
+    OPENAI_WEB_SEARCH_CONTEXT_SIZE: 'low' | 'medium' | 'high' = 'medium';  // 搜索上下文大小
+    OPENAI_WEB_SEARCH_USER_LOCATION = '';  // 用户位置，格式: "City, Country" 或 "latitude,longitude"
+
+    // Code Interpreter - Python 代码执行工具
+    OPENAI_ENABLE_CODE_INTERPRETER = false;
+    OPENAI_CODE_INTERPRETER_CONTAINER = '';  // 容器ID（可选）
+
+    // File Search - 文件向量搜索工具
+    OPENAI_ENABLE_FILE_SEARCH = false;
+    OPENAI_FILE_SEARCH_VECTOR_STORES: string[] = [];  // 向量存储ID列表（必需）
+    OPENAI_FILE_SEARCH_MAX_RESULTS = 10;  // 最大返回结果数
+    OPENAI_FILE_SEARCH_SCORE_THRESHOLD = 0.0;  // 相关性阈值（0-1），越高越严格
 }
 
 // -- DALLE 配置 --

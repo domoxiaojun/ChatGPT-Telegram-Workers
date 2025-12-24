@@ -479,6 +479,83 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
         }
     }
 
+    // OpenAI Server-Side Tools Support (Responses API only)
+    // OpenAI provider tools (web_search, code_interpreter, file_search)
+    if (model.provider === 'openai.responses') {
+        const { openaiTools } = await import('@ai-sdk/openai/internal');
+
+        // Web Search tool - 网页搜索
+        // 支持数组配置或布尔开关（向后兼容）
+        if (context.USE_OPENAI_BUILDIN.includes('webSearch') || context.OPENAI_ENABLE_WEB_SEARCH) {
+            const webSearchConfig: any = {
+                externalWebAccess: context.OPENAI_WEB_SEARCH_EXTERNAL_ACCESS,
+                searchContextSize: context.OPENAI_WEB_SEARCH_CONTEXT_SIZE,
+            };
+
+            if (context.OPENAI_WEB_SEARCH_ALLOWED_DOMAINS.length > 0) {
+                webSearchConfig.filters = {
+                    allowedDomains: context.OPENAI_WEB_SEARCH_ALLOWED_DOMAINS,
+                };
+            }
+
+            if (context.OPENAI_WEB_SEARCH_USER_LOCATION) {
+                // 解析位置格式：支持 "City, Country" 或 "latitude,longitude"
+                const location = context.OPENAI_WEB_SEARCH_USER_LOCATION.trim();
+                const parts = location.split(',').map(s => s.trim());
+
+                // 检查是否为坐标格式（两个数字）
+                const isCoordinates = parts.length === 2 && !Number.isNaN(Number(parts[0])) && !Number.isNaN(Number(parts[1]));
+
+                if (!isCoordinates && parts.length >= 1) {
+                    // 文本格式："City, Country" 或 "Country"
+                    webSearchConfig.userLocation = {
+                        type: 'approximate' as const,
+                        ...(parts.length >= 2 && { city: parts[0], country: parts[1] }),
+                        ...(parts.length === 1 && { country: parts[0] }),
+                    };
+                }
+                // 坐标格式暂不支持（OpenAI API 不支持经纬度）
+            }
+
+            tools.web_search = openaiTools.webSearch(webSearchConfig);
+            activeTools.push('web_search');
+        }
+
+        // Code Interpreter tool - Python 代码执行
+        // 支持数组配置或布尔开关（向后兼容）
+        if (context.USE_OPENAI_BUILDIN.includes('codeInterpreter') || context.OPENAI_ENABLE_CODE_INTERPRETER) {
+            const config = context.OPENAI_CODE_INTERPRETER_CONTAINER
+                ? { container: context.OPENAI_CODE_INTERPRETER_CONTAINER }
+                : {};
+            tools.code_interpreter = openaiTools.codeInterpreter(config);
+            activeTools.push('code_interpreter');
+        }
+
+        // File Search tool - 文件向量搜索
+        // 支持数组配置或布尔开关（向后兼容）
+        if (context.USE_OPENAI_BUILDIN.includes('fileSearch') || context.OPENAI_ENABLE_FILE_SEARCH) {
+            if (context.OPENAI_FILE_SEARCH_VECTOR_STORES.length > 0) {
+                const fileSearchConfig: any = {
+                    vectorStoreIds: context.OPENAI_FILE_SEARCH_VECTOR_STORES,
+                    maxNumResults: context.OPENAI_FILE_SEARCH_MAX_RESULTS,
+                };
+
+                if (context.OPENAI_FILE_SEARCH_SCORE_THRESHOLD > 0) {
+                    fileSearchConfig.ranking = {
+                        scoreThreshold: context.OPENAI_FILE_SEARCH_SCORE_THRESHOLD,
+                    };
+                }
+
+                tools.file_search = openaiTools.fileSearch(fileSearchConfig);
+                activeTools.push('file_search');
+            }
+        }
+
+        if (context.OPENAI_ENABLE_WEB_SEARCH || context.OPENAI_ENABLE_CODE_INTERPRETER || context.OPENAI_ENABLE_FILE_SEARCH || context.USE_OPENAI_BUILDIN.length > 0) {
+            log.info(`[warpLLMParams] OpenAI server-side tools enabled: ${activeTools.filter(t => ['web_search', 'code_interpreter', 'file_search'].includes(t)).join(', ')}`);
+        }
+    }
+
     // If using xAI Responses API built-in tools, clear custom tools (keep xAI tools)
     // This prevents conflicts as xAI Responses API doesn't support mixing provider tools with custom tools
     const hasXaiTools = context.USE_XAI_BUILDIN.length > 0 || context.XAI_ENABLE_WEB_SEARCH || context.XAI_ENABLE_X_SEARCH || context.XAI_ENABLE_CODE_EXECUTION;

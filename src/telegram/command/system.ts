@@ -804,6 +804,14 @@ export class InlineCommandHandler implements CommandHandler {
                 value: context.XAI_BUILDIN,
             });
         }
+        if (chatAgent === 'openai') {
+            inlines.push({
+                label: 'OpenAI Tools',
+                config_key: 'USE_OPENAI_BUILDIN',
+                type: 'checkbox',
+                value: context.OPENAI_BUILDIN,
+            });
+        }
         if (chatAgent === 'oailike') {
             inlines.push({
                 label: 'Oailike Tools',
