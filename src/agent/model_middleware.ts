@@ -159,19 +159,6 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
                 await handleToolResult({ tools, toolResults: uniqueResults as any, onStream, config });
             }
 
-            // Send final text response if present (after tool execution)
-            if (text && text.trim()) {
-                log.info(`Final response text length: ${text.length}`);
-                // Append text to message content for display
-                // Add separator if there's existing content
-                if (messageInfo.content && messageInfo.content.trim()) {
-                    messageInfo.content += '\n\n';
-                }
-                messageInfo.content += text;
-                // Update the message to show the text
-                onStream?.send(messageInfo.content);
-            }
-
             // record tool call detail4
             if (toolResults.length > 0) {
                 const func_logs = toolResults.map(({ toolName, input, output }: { toolName: string; input: any; output: any }) => {
@@ -226,9 +213,19 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
 
                 const toolNames = [...new Set(toolResults.map(i => i.toolName))];
                 log.info(`finish tools: ${toolNames}`);
-                // Append finish tools message to messageInfo.content instead of sending directly
-                // This prevents it from being overwritten by subsequent text responses
+                // Append finish tools message to messageInfo.content
                 messageInfo.content = `${messageInfo.content.trimEnd()}\n\n` + `finish tools: \`${toolNames}\``;
+            }
+
+            // Append final text response if present (after tool execution)
+            if (text && text.trim()) {
+                log.info(`Final response text length: ${text.length}`);
+                messageInfo.content += '\n\n' + text;
+            }
+
+            // Send final update once - after both tool results and text are processed
+            // This prevents multiple message updates
+            if (toolResults.length > 0 || (text && text.trim())) {
                 onStream?.send(messageInfo.content);
             }
 
