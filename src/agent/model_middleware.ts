@@ -377,7 +377,8 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
     if (model.provider === 'xai.responses') {
         const { webSearch, xSearch, codeExecution } = await import('@ai-sdk/xai');
 
-        if (context.XAI_ENABLE_WEB_SEARCH) {
+        // 支持数组配置或布尔开关（向后兼容）
+        if (context.USE_XAI_BUILDIN.includes('webSearch') || context.XAI_ENABLE_WEB_SEARCH) {
             const webSearchConfig: any = {};
             if (context.XAI_WEB_SEARCH_ALLOWED_DOMAINS.length > 0) {
                 webSearchConfig.allowedDomains = context.XAI_WEB_SEARCH_ALLOWED_DOMAINS.slice(0, 5);
@@ -392,7 +393,8 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
             activeTools.push('web_search');
         }
 
-        if (context.XAI_ENABLE_X_SEARCH) {
+        // 支持数组配置或布尔开关（向后兼容）
+        if (context.USE_XAI_BUILDIN.includes('xSearch') || context.XAI_ENABLE_X_SEARCH) {
             const xSearchConfig: any = {};
             if (context.XAI_X_SEARCH_ALLOWED_HANDLES.length > 0) {
                 xSearchConfig.allowedXHandles = context.XAI_X_SEARCH_ALLOWED_HANDLES.slice(0, 10);
@@ -410,7 +412,8 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
             activeTools.push('x_search');
         }
 
-        if (context.XAI_ENABLE_CODE_EXECUTION) {
+        // 支持数组配置或布尔开关（向后兼容）
+        if (context.USE_XAI_BUILDIN.includes('codeExecution') || context.XAI_ENABLE_CODE_EXECUTION) {
             tools.code_execution = codeExecution();
             activeTools.push('code_execution');
         }
@@ -424,7 +427,8 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
         const { anthropicTools } = await import('@ai-sdk/anthropic/internal');
 
         // Web Fetch tool - 获取网页内容
-        if (context.ANTHROPIC_ENABLE_WEB_FETCH) {
+        // 支持数组配置或布尔开关（向后兼容）
+        if (context.USE_ANTHROPIC_BUILDIN.includes('webFetch') || context.ANTHROPIC_ENABLE_WEB_FETCH) {
             const webFetchConfig: any = {
                 maxUses: context.ANTHROPIC_WEB_FETCH_MAX_USES,
             };
@@ -445,7 +449,8 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
         }
 
         // Web Search tool - 网页搜索
-        if (context.ANTHROPIC_ENABLE_WEB_SEARCH) {
+        // 支持数组配置或布尔开关（向后兼容）
+        if (context.USE_ANTHROPIC_BUILDIN.includes('webSearch') || context.ANTHROPIC_ENABLE_WEB_SEARCH) {
             const webSearchConfig: any = {
                 maxUses: context.ANTHROPIC_WEB_SEARCH_MAX_USES,
             };
@@ -463,7 +468,8 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
         }
 
         // Code Execution tool - 代码执行（Python + Bash）
-        if (context.ANTHROPIC_ENABLE_CODE_EXECUTION) {
+        // 支持数组配置或布尔开关（向后兼容）
+        if (context.USE_ANTHROPIC_BUILDIN.includes('codeExecution') || context.ANTHROPIC_ENABLE_CODE_EXECUTION) {
             tools.code_execution = anthropicTools.codeExecution_20250825();
             activeTools.push('code_execution');
         }
@@ -475,8 +481,8 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
 
     // If using xAI Responses API built-in tools, clear custom tools (keep xAI tools)
     // This prevents conflicts as xAI Responses API doesn't support mixing provider tools with custom tools
-    if (model.provider === 'xai.responses' &&
-        (context.XAI_ENABLE_WEB_SEARCH || context.XAI_ENABLE_X_SEARCH || context.XAI_ENABLE_CODE_EXECUTION)) {
+    const hasXaiTools = context.USE_XAI_BUILDIN.length > 0 || context.XAI_ENABLE_WEB_SEARCH || context.XAI_ENABLE_X_SEARCH || context.XAI_ENABLE_CODE_EXECUTION;
+    if (model.provider === 'xai.responses' && hasXaiTools) {
         // Clear only custom tools from validTools, keep xAI server-side tools
         const xaiToolKeys = Object.keys(tools).filter(k =>
             k === 'web_search' || k === 'x_search' || k === 'code_execution'

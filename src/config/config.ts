@@ -522,6 +522,11 @@ export class AnthropicConfig {
     ANTHROPIC_ENABLE_CACHE_CONTROL = true;
 
     // Anthropic Server-Side Tools - Anthropic原生工具支持
+    // 可用工具列表：webFetch, webSearch, codeExecution
+    ANTHROPIC_BUILDIN = ['webFetch', 'webSearch', 'codeExecution'];
+    // 启用的工具列表（为保持向后兼容，也支持使用ANTHROPIC_ENABLE_*开关）
+    USE_ANTHROPIC_BUILDIN: string[] = [];
+
     // Web Fetch - 获取网页内容并支持citations
     ANTHROPIC_ENABLE_WEB_FETCH = false;
     ANTHROPIC_WEB_FETCH_MAX_USES = 5;
@@ -662,6 +667,11 @@ export class XAIConfig {
         // reasoningEffort: 'high',
     };
     // XAI Server-Side Tools (executed on xAI servers)
+    // 可用工具列表：webSearch, xSearch, codeExecution
+    XAI_BUILDIN = ['webSearch', 'xSearch', 'codeExecution'];
+    // 启用的工具列表（为保持向后兼容，也支持使用XAI_ENABLE_*开关）
+    USE_XAI_BUILDIN: string[] = [];
+
     // Enable web search tool (allows Grok to search the web and browse pages)
     XAI_ENABLE_WEB_SEARCH = false;
     // Enable X/Twitter search tool (allows Grok to search X posts)

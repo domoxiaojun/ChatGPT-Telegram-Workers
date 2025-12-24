@@ -785,6 +785,22 @@ export class InlineCommandHandler implements CommandHandler {
                 value: context.GOOGLE_BUILDIN,
             });
         }
+        if (chatAgent === 'anthropic') {
+            inlines.push({
+                label: 'Anthropic Tools',
+                config_key: 'USE_ANTHROPIC_BUILDIN',
+                type: 'checkbox',
+                value: context.ANTHROPIC_BUILDIN,
+            });
+        }
+        if (chatAgent === 'xai') {
+            inlines.push({
+                label: 'xAI Tools',
+                config_key: 'USE_XAI_BUILDIN',
+                type: 'checkbox',
+                value: context.XAI_BUILDIN,
+            });
+        }
         if (chatAgent === 'oailike') {
             inlines.push({
                 label: 'Oailike Tools',
