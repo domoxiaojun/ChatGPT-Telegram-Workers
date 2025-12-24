@@ -656,6 +656,7 @@ export class InlineCommandHandler implements CommandHandler {
         const allASRAgents = ASR_AGENTS.map(agent => agent.name);
         const allRerankAgents = ['jina', 'openai', 'oailikeV1', 'oailikeV2', 'google'];
         const chatAgent = context.AI_CHAT_PROVIDER;
+        console.log(`[DEBUG] chatAgent=${chatAgent}, GOOGLE_BUILDIN=${context.GOOGLE_BUILDIN?.length}, ANTHROPIC_BUILDIN=${context.ANTHROPIC_BUILDIN?.length}, XAI_BUILDIN=${context.XAI_BUILDIN?.length}`);
         const configKeyHandler = (type: string) => {
             if (type === 'Tool') {
                 return 'TOOL_MODEL';
