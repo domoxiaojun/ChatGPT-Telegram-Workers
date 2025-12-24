@@ -226,7 +226,10 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
 
                 const toolNames = [...new Set(toolResults.map(i => i.toolName))];
                 log.info(`finish tools: ${toolNames}`);
-                onStream?.send(`${messageInfo.content.trimEnd()}\n\n` + `finish tools: \`${toolNames}\``);
+                // Append finish tools message to messageInfo.content instead of sending directly
+                // This prevents it from being overwritten by subsequent text responses
+                messageInfo.content = `${messageInfo.content.trimEnd()}\n\n` + `finish tools: \`${toolNames}\``;
+                onStream?.send(messageInfo.content);
             }
 
             // record token

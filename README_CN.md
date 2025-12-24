@@ -140,6 +140,8 @@ src/
 - [部署指南](./doc/cn/DEPLOY.md)
 - [本地开发](./doc/cn/LOCAL.md)
 - [平台部署](./doc/cn/PLATFORM.md)
+- [服务端工具指南](./SERVER_TOOLS_CN.md) - Anthropic、Google、xAI 和 OpenAI 服务端工具完整指南
+- [图片编辑完整指南](./IMAGE_EDITING_COMPLETE_GUIDE_CN.md) - AI 图片生成和编辑功能完整指南
 - [更新日志](./doc/cn/CHANGELOG.md)
 
 ### ⚠️ 重要说明

@@ -140,6 +140,8 @@ Key configuration options:
 - [Deployment Guide](./doc/en/DEPLOY.md)
 - [Local Development](./doc/en/LOCAL.md)
 - [Platform Deployment](./doc/en/PLATFORM.md)
+- [Server-Side Tools Guide](./SERVER_TOOLS.md) - Comprehensive guide for Anthropic, Google, xAI, and OpenAI server-side tools
+- [Image Editing Complete Guide](./IMAGE_EDITING_COMPLETE_GUIDE.md) - Full guide for AI image generation and editing features
 - [Changelog](./doc/en/CHANGELOG.md)
 
 ### ⚠️ Important Notes
