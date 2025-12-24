@@ -357,9 +357,10 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
         }
     }
 
-    // xAI Server-Side Tools Support
-    // xAI tools are executed on xAI servers and need to be added separately
-    if (model.provider === 'xai.chat' || model.provider === 'xai.responses') {
+    // xAI Server-Side Tools Support (Responses API only)
+    // xAI provider tools are only supported by the Responses API, not Chat API
+    // Chat API should use searchParameters instead
+    if (model.provider === 'xai.responses') {
         const { webSearch, xSearch, codeExecution } = await import('@ai-sdk/xai');
 
         if (context.XAI_ENABLE_WEB_SEARCH) {
@@ -401,6 +402,24 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
         }
 
         log.info(`[warpLLMParams] xAI server-side tools enabled: ${activeTools.filter(t => ['web_search', 'x_search', 'code_execution'].includes(t)).join(', ')}`);
+    }
+
+    // If using xAI Responses API built-in tools, clear custom tools (keep xAI tools)
+    // This prevents conflicts as xAI Responses API doesn't support mixing provider tools with custom tools
+    if (model.provider === 'xai.responses' &&
+        (context.XAI_ENABLE_WEB_SEARCH || context.XAI_ENABLE_X_SEARCH || context.XAI_ENABLE_CODE_EXECUTION)) {
+        // Clear only custom tools from validTools, keep xAI server-side tools
+        const xaiToolKeys = Object.keys(tools).filter(k =>
+            k === 'web_search' || k === 'x_search' || k === 'code_execution'
+        );
+        const xaiTools = xaiToolKeys.reduce((acc: Record<string, any>, key) => {
+            acc[key] = tools[key];
+            return acc;
+        }, {});
+
+        activeTools = xaiToolKeys;
+        tools = xaiTools;
+        log.info(`[warpLLMParams] xAI tools enabled, clearing custom tools. Active tools: ${xaiToolKeys.join(', ')}`);
     }
 
     // If using Google built-in tools, clear custom tools (keep Google tools)
