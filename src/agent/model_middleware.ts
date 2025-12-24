@@ -552,8 +552,85 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
             }
         }
 
-        if (context.OPENAI_ENABLE_WEB_SEARCH || context.OPENAI_ENABLE_CODE_INTERPRETER || context.OPENAI_ENABLE_FILE_SEARCH || context.USE_OPENAI_BUILDIN.length > 0) {
-            log.info(`[warpLLMParams] OpenAI server-side tools enabled: ${activeTools.filter(t => ['web_search', 'code_interpreter', 'file_search'].includes(t)).join(', ')}`);
+        // Image Generation tool - 图片生成 (GPT-5.1+)
+        // 支持数组配置或布尔开关（向后兼容）
+        if (context.USE_OPENAI_BUILDIN.includes('imageGeneration') || context.OPENAI_ENABLE_IMAGE_GENERATION) {
+            const imageGenConfig: any = {
+                background: context.OPENAI_IMAGE_BACKGROUND,
+                inputFidelity: context.OPENAI_IMAGE_INPUT_FIDELITY,
+                model: context.OPENAI_IMAGE_MODEL,
+                outputCompression: context.OPENAI_IMAGE_OUTPUT_COMPRESSION,
+                outputFormat: context.OPENAI_IMAGE_OUTPUT_FORMAT,
+                partialImages: context.OPENAI_IMAGE_PARTIAL_IMAGES,
+                quality: context.OPENAI_IMAGE_QUALITY,
+                size: context.OPENAI_IMAGE_SIZE,
+            };
+
+            tools.image_generation = openaiTools.imageGeneration(imageGenConfig);
+            activeTools.push('image_generation');
+        }
+
+        // MCP tool - Model Context Protocol
+        // 支持数组配置或布尔开关（向后兼容）
+        if (context.USE_OPENAI_BUILDIN.includes('mcp') || context.OPENAI_ENABLE_MCP) {
+            // MCP 需要 serverLabel 和 (serverUrl 或 connectorId)
+            if (context.OPENAI_MCP_SERVER_LABEL && (context.OPENAI_MCP_SERVER_URL || context.OPENAI_MCP_CONNECTOR_ID)) {
+                const mcpConfig: any = {
+                    serverLabel: context.OPENAI_MCP_SERVER_LABEL,
+                };
+
+                // 服务器URL或连接器ID
+                if (context.OPENAI_MCP_SERVER_URL) {
+                    mcpConfig.serverUrl = context.OPENAI_MCP_SERVER_URL;
+                }
+                if (context.OPENAI_MCP_CONNECTOR_ID) {
+                    mcpConfig.connectorId = context.OPENAI_MCP_CONNECTOR_ID;
+                }
+
+                // 可选配置
+                if (context.OPENAI_MCP_SERVER_DESCRIPTION) {
+                    mcpConfig.serverDescription = context.OPENAI_MCP_SERVER_DESCRIPTION;
+                }
+
+                if (context.OPENAI_MCP_ALLOWED_TOOLS.length > 0) {
+                    if (context.OPENAI_MCP_ALLOWED_TOOLS_READ_ONLY) {
+                        mcpConfig.allowedTools = {
+                            readOnly: true,
+                            toolNames: context.OPENAI_MCP_ALLOWED_TOOLS,
+                        };
+                    } else {
+                        mcpConfig.allowedTools = context.OPENAI_MCP_ALLOWED_TOOLS;
+                    }
+                }
+
+                if (context.OPENAI_MCP_AUTHORIZATION) {
+                    mcpConfig.authorization = context.OPENAI_MCP_AUTHORIZATION;
+                }
+
+                if (Object.keys(context.OPENAI_MCP_HEADERS).length > 0) {
+                    mcpConfig.headers = context.OPENAI_MCP_HEADERS;
+                }
+
+                // requireApproval 配置
+                if (context.OPENAI_MCP_REQUIRE_APPROVAL === 'always') {
+                    mcpConfig.requireApproval = 'always';
+                } else if (context.OPENAI_MCP_APPROVAL_TOOL_NAMES.length > 0) {
+                    mcpConfig.requireApproval = {
+                        never: {
+                            toolNames: context.OPENAI_MCP_APPROVAL_TOOL_NAMES,
+                        },
+                    };
+                } else {
+                    mcpConfig.requireApproval = 'never';
+                }
+
+                tools.mcp = openaiTools.mcp(mcpConfig);
+                activeTools.push('mcp');
+            }
+        }
+
+        if (context.OPENAI_ENABLE_WEB_SEARCH || context.OPENAI_ENABLE_CODE_INTERPRETER || context.OPENAI_ENABLE_FILE_SEARCH || context.OPENAI_ENABLE_IMAGE_GENERATION || context.OPENAI_ENABLE_MCP || context.USE_OPENAI_BUILDIN.length > 0) {
+            log.info(`[warpLLMParams] OpenAI server-side tools enabled: ${activeTools.filter(t => ['web_search', 'code_interpreter', 'file_search', 'image_generation', 'mcp'].includes(t)).join(', ')}`);
         }
     }
 

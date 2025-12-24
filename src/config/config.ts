@@ -322,8 +322,8 @@ export class OpenAIConfig {
     };
 
     // OpenAI Server-Side Tools (Responses API only)
-    // 可用工具列表：webSearch, codeInterpreter, fileSearch
-    OPENAI_BUILDIN = ['webSearch', 'codeInterpreter', 'fileSearch'];
+    // 可用工具列表：webSearch, codeInterpreter, fileSearch, imageGeneration, mcp
+    OPENAI_BUILDIN = ['webSearch', 'codeInterpreter', 'fileSearch', 'imageGeneration', 'mcp'];
     // 启用的工具列表（为保持向后兼容，也支持使用 OPENAI_ENABLE_* 开关）
     USE_OPENAI_BUILDIN: string[] = [];
 
@@ -343,6 +343,30 @@ export class OpenAIConfig {
     OPENAI_FILE_SEARCH_VECTOR_STORES: string[] = [];  // 向量存储ID列表（必需）
     OPENAI_FILE_SEARCH_MAX_RESULTS = 10;  // 最大返回结果数
     OPENAI_FILE_SEARCH_SCORE_THRESHOLD = 0.0;  // 相关性阈值（0-1），越高越严格
+
+    // Image Generation - 图片生成工具 (GPT-5.1+)
+    OPENAI_ENABLE_IMAGE_GENERATION = false;
+    OPENAI_IMAGE_BACKGROUND: 'auto' | 'opaque' | 'transparent' = 'auto';  // 背景类型
+    OPENAI_IMAGE_INPUT_FIDELITY: 'low' | 'high' = 'low';  // 输入保真度
+    OPENAI_IMAGE_MODEL = 'gpt-image-1';  // 图片生成模型
+    OPENAI_IMAGE_OUTPUT_COMPRESSION = 100;  // 输出压缩等级 (0-100)
+    OPENAI_IMAGE_OUTPUT_FORMAT: 'png' | 'jpeg' | 'webp' = 'png';  // 输出格式
+    OPENAI_IMAGE_PARTIAL_IMAGES = 0;  // 流式模式下生成的部分图片数量 (0-3)
+    OPENAI_IMAGE_QUALITY: 'auto' | 'low' | 'medium' | 'high' = 'auto';  // 图片质量
+    OPENAI_IMAGE_SIZE: 'auto' | '1024x1024' | '1024x1536' | '1536x1024' = 'auto';  // 图片尺寸
+
+    // MCP - Model Context Protocol
+    OPENAI_ENABLE_MCP = false;
+    OPENAI_MCP_SERVER_LABEL = '';  // MCP服务器标签（必需）
+    OPENAI_MCP_SERVER_URL = '';  // MCP服务器URL（与connectorId二选一）
+    OPENAI_MCP_CONNECTOR_ID = '';  // 服务连接器ID（与serverUrl二选一）
+    OPENAI_MCP_SERVER_DESCRIPTION = '';  // 服务器描述（可选）
+    OPENAI_MCP_ALLOWED_TOOLS: string[] = [];  // 允许的工具名称列表
+    OPENAI_MCP_ALLOWED_TOOLS_READ_ONLY = false;  // 仅允许只读工具
+    OPENAI_MCP_AUTHORIZATION = '';  // OAuth访问令牌
+    OPENAI_MCP_HEADERS: Record<string, string> = {};  // 自定义HTTP头
+    OPENAI_MCP_REQUIRE_APPROVAL: 'always' | 'never' = 'never';  // 工具执行审批策略
+    OPENAI_MCP_APPROVAL_TOOL_NAMES: string[] = [];  // 需要审批的工具名称（当requireApproval非always时）
 }
 
 // -- DALLE 配置 --
