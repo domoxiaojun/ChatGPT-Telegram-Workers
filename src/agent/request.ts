@@ -343,7 +343,7 @@ function thinkingExtractor(messageInfo: MessageInfo) {
 
 async function combineParams({ context, middleware, model, messages, activeTools, tools, prepareStepPre, onStepFinish, onChunk }: { context: AgentUserConfig; middleware: any; model: LanguageModelV3; messages: ModelMessage[]; activeTools: string[]; tools: any; prepareStepPre: (middleware: (...args: any[]) => any) => any; onStepFinish: (data: StepResult<any>) => void; onChunk: (data: { chunk: TextStreamPart<any> }) => void }) {
     // Build Anthropic provider options with cache control and tool streaming
-    const anthropicOptions = {
+    const anthropicOptions: Record<string, any> = {
         ...context.ANTHROPIC_PROVIDER_OPTIONS,
     };
 
@@ -360,32 +360,77 @@ async function combineParams({ context, middleware, model, messages, activeTools
         'oailike.chat': context.OAILIKE_PROVIDER_OPTIONS,
     };
 
-    // Add cache control to system messages and tools for Anthropic
-    if (model.provider === 'anthropic.messages' && context.ANTHROPIC_ENABLE_CACHE_CONTROL) {
-        // Mark system message as cacheable
-        const systemMessage = messages.find(m => m.role === 'system');
-        if (systemMessage && !systemMessage.providerOptions) {
-            systemMessage.providerOptions = {
-                anthropic: {
-                    cacheControl: { type: 'ephemeral' },
-                },
+    // Add cache control and context management for Anthropic
+    if (model.provider === 'anthropic.messages') {
+        // Context Management - Clean up old tool calls to reduce context length
+        if (context.ANTHROPIC_ENABLE_CONTEXT_MANAGEMENT) {
+            const contextManagementConfig: any = {
+                edits: [],
             };
+
+            // Clear old tool uses
+            const clearToolUsesConfig: any = {
+                type: 'clear_tool_uses_20250919',
+                trigger: context.ANTHROPIC_CONTEXT_CLEAR_TRIGGER,
+            };
+
+            if (context.ANTHROPIC_CONTEXT_KEEP_RECENT > 0) {
+                clearToolUsesConfig.keep = context.ANTHROPIC_CONTEXT_KEEP_RECENT;
+            }
+
+            if (context.ANTHROPIC_CONTEXT_CLEAR_AT_LEAST > 0) {
+                clearToolUsesConfig.clearAtLeast = context.ANTHROPIC_CONTEXT_CLEAR_AT_LEAST;
+            }
+
+            if (context.ANTHROPIC_CONTEXT_CLEAR_TOOL_INPUTS) {
+                clearToolUsesConfig.clearToolInputs = true;
+            }
+
+            if (context.ANTHROPIC_CONTEXT_EXCLUDE_TOOLS.length > 0) {
+                clearToolUsesConfig.excludeTools = context.ANTHROPIC_CONTEXT_EXCLUDE_TOOLS;
+            }
+
+            contextManagementConfig.edits.push(clearToolUsesConfig);
+
+            // Clear old thinking content (for reasoning models)
+            if (context.ANTHROPIC_ENABLE_THINKING_CLEANUP && context.ANTHROPIC_THINKING_KEEP_RECENT > 0) {
+                contextManagementConfig.edits.push({
+                    type: 'clear_thinking_20250919',
+                    trigger: 'auto',
+                    keep: context.ANTHROPIC_THINKING_KEEP_RECENT,
+                });
+            }
+
+            anthropicOptions.contextManagement = contextManagementConfig;
         }
 
-        // Mark tools as cacheable if tools exist
-        if (tools && Object.keys(tools).length > 0) {
-            // Get the last tool and mark it as cacheable
-            // This follows the AI SDK pattern of caching the last tool definition
-            const toolKeys = Object.keys(tools);
-            const lastToolKey = toolKeys[toolKeys.length - 1];
-            const lastTool = tools[lastToolKey];
-
-            if (lastTool && typeof lastTool === 'object' && !lastTool.providerOptions) {
-                lastTool.providerOptions = {
+        // Cache Control - Mark messages and tools as cacheable
+        if (context.ANTHROPIC_ENABLE_CACHE_CONTROL) {
+            // Mark system message as cacheable
+            const systemMessage = messages.find(m => m.role === 'system');
+            if (systemMessage && !systemMessage.providerOptions) {
+                systemMessage.providerOptions = {
                     anthropic: {
                         cacheControl: { type: 'ephemeral' },
                     },
                 };
+            }
+
+            // Mark tools as cacheable if tools exist
+            if (tools && Object.keys(tools).length > 0) {
+                // Get the last tool and mark it as cacheable
+                // This follows the AI SDK pattern of caching the last tool definition
+                const toolKeys = Object.keys(tools);
+                const lastToolKey = toolKeys[toolKeys.length - 1];
+                const lastTool = tools[lastToolKey];
+
+                if (lastTool && typeof lastTool === 'object' && !lastTool.providerOptions) {
+                    lastTool.providerOptions = {
+                        anthropic: {
+                            cacheControl: { type: 'ephemeral' },
+                        },
+                    };
+                }
             }
         }
     }

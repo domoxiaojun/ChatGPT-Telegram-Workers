@@ -543,6 +543,24 @@ export class AnthropicConfig {
     // Tool Streaming - 细粒度工具流（实时显示工具执行进度）
     ANTHROPIC_ENABLE_TOOL_STREAMING = true;
 
+    // Context Management - 自动清理历史工具调用，避免上下文过长
+    ANTHROPIC_ENABLE_CONTEXT_MANAGEMENT = true;
+    // 触发模式: 'auto' 自动触发清理 | 'manual' 手动控制
+    ANTHROPIC_CONTEXT_CLEAR_TRIGGER: 'auto' | 'manual' = 'auto';
+    // 保留最近N次工具调用（其余会被清理）
+    ANTHROPIC_CONTEXT_KEEP_RECENT = 5;
+    // 至少清理N次工具调用（防止频繁清理）
+    ANTHROPIC_CONTEXT_CLEAR_AT_LEAST = 2;
+    // 是否清理工具输入参数（保留工具调用但清理输入）
+    ANTHROPIC_CONTEXT_CLEAR_TOOL_INPUTS = false;
+    // 排除的工具（这些工具的调用不会被清理）
+    ANTHROPIC_CONTEXT_EXCLUDE_TOOLS: string[] = [];
+
+    // Thinking 清理配置（针对推理模型如 Claude 3.7 Sonnet）
+    ANTHROPIC_ENABLE_THINKING_CLEANUP = false;
+    // 保留最近N轮的 thinking 内容
+    ANTHROPIC_THINKING_KEEP_RECENT = 3;
+
     ANTHROPIC_PROVIDER_OPTIONS = {
         // sendReasoning: true,
         // thinking: {

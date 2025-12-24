@@ -407,7 +407,7 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
     // Anthropic Server-Side Tools Support
     // Anthropic provider tools (web_fetch, web_search, code_execution)
     if (model.provider === 'anthropic.messages') {
-        const anthropicTools = await import('@ai-sdk/anthropic');
+        const { anthropicTools } = await import('@ai-sdk/anthropic');
 
         // Web Fetch tool - 获取网页内容
         if (context.ANTHROPIC_ENABLE_WEB_FETCH) {
@@ -426,7 +426,7 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
             if (context.ANTHROPIC_WEB_FETCH_MAX_CONTENT_TOKENS) {
                 webFetchConfig.maxContentTokens = context.ANTHROPIC_WEB_FETCH_MAX_CONTENT_TOKENS;
             }
-            tools.web_fetch = anthropicTools.anthropicTools.webFetch_20250910(webFetchConfig);
+            tools.web_fetch = anthropicTools.webFetch_20250910(webFetchConfig);
             activeTools.push('web_fetch');
         }
 
@@ -444,13 +444,13 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
             if (context.ANTHROPIC_WEB_SEARCH_USER_LOCATION) {
                 webSearchConfig.userLocation = context.ANTHROPIC_WEB_SEARCH_USER_LOCATION;
             }
-            tools.web_search = anthropicTools.anthropicTools.webSearch_20250305(webSearchConfig);
+            tools.web_search = anthropicTools.webSearch_20250305(webSearchConfig);
             activeTools.push('web_search');
         }
 
         // Code Execution tool - 代码执行（Python + Bash）
         if (context.ANTHROPIC_ENABLE_CODE_EXECUTION) {
-            tools.code_execution = anthropicTools.anthropicTools.codeExecution_20250825();
+            tools.code_execution = anthropicTools.codeExecution_20250825();
             activeTools.push('code_execution');
         }
 
