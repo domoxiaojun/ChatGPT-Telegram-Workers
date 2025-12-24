@@ -199,14 +199,20 @@ export async function sendToolResult(toolResult: ToolResult[], sender: MessageSe
     for (const { type, data } of collect) {
         switch (type) {
             case 'image':
-                const imageData = await base64OrUrlToBlob(data as MediaToolResultContent[]);
-                // 文件数据获取缓慢
-                // stepFinish发送tool tip未进行等待，文件数据获取时间大于tool tip响应时间，则消息会刷新message_id
-                clearMessageId();
-                sendResp = await sendImages({
-                    raw: imageData,
-                    caption: (data as MediaToolResultContent[]).map(d => d.text),
-                }, ENV.SEND_IMAGE_AS_FILE, sender, config);
+                try {
+                    const imageData = await base64OrUrlToBlob(data as MediaToolResultContent[]);
+                    log.info(`[sendToolResult] Sending ${imageData.length} images, total size: ${imageData.reduce((sum, blob) => sum + blob.size, 0)} bytes`);
+                    // 文件数据获取缓慢
+                    // stepFinish发送tool tip未进行等待，文件数据获取时间大于tool tip响应时间，则消息会刷新message_id
+                    clearMessageId();
+                    sendResp = await sendImages({
+                        raw: imageData,
+                        caption: (data as MediaToolResultContent[]).map(d => d.text),
+                    }, ENV.SEND_IMAGE_AS_FILE, sender, config);
+                } catch (error) {
+                    log.error(`[sendToolResult] Failed to send image:`, error);
+                    throw error;
+                }
 
                 break;
             case 'video':
@@ -251,7 +257,14 @@ async function base64OrUrlToBlob(data: MediaToolResultContent[]): Promise<Blob[]
     if (mediaType === 'url') {
         return Promise.all(data.map(v => fetch(v.data as string).then(r => r.blob())));
     } else if (mediaType === 'base64') {
-        return Promise.all(data.map(v => new Blob([Buffer.from(v.data as string, 'base64')], { type: v.mimeType })));
+        return Promise.all(data.map(v => {
+            let base64Data = v.data as string;
+            // Remove data URL prefix if present (e.g., "data:image/png;base64,")
+            if (base64Data.includes(',')) {
+                base64Data = base64Data.split(',')[1];
+            }
+            return new Blob([Buffer.from(base64Data, 'base64')], { type: v.mimeType });
+        }));
     }
     return data.map(d => d.data as Blob);
 }
