@@ -1,6 +1,6 @@
 # 服务端工具使用指南
 
-本指南涵盖了 Anthropic、Google 和 xAI 三大平台的服务端工具配置和使用方法。
+本指南涵盖了 Anthropic、Google、xAI 和 OpenAI 四大平台的服务端工具配置和使用方法。
 
 ## 📋 目录
 
@@ -8,6 +8,7 @@
 - [Anthropic 工具](#anthropic-工具)
 - [Google 工具](#google-工具)
 - [xAI 工具](#xai-工具)
+- [OpenAI 工具](#openai-工具)
 - [工具对比](#工具对比)
 - [使用场景](#使用场景)
 - [故障排除](#故障排除)
@@ -25,18 +26,20 @@
 
 ### 已实现功能
 
-| 功能 | Anthropic | Google | xAI | 说明 |
-|------|-----------|--------|-----|------|
-| **成本优化** | ✅ Cache Control | ✅ | ❌ | 降低 50%+ API 成本 |
-| **网页搜索** | ✅ Web Search | ✅ Google Search | ✅ Web Search | 实时搜索互联网 |
-| **网页获取** | ✅ Web Fetch | ✅ URL Context | ❌ | 获取网页内容 |
-| **代码执行** | ✅ Python+Bash | ✅ Python | ✅ Python | 沙盒代码执行 |
-| **社交搜索** | ❌ | ❌ | ✅ X Search | 搜索 Twitter/X |
-| **地图服务** | ❌ | ✅ Maps | ❌ | 地理位置信息 |
-| **文件搜索** | ❌ | ✅ File Search | ❌ | 搜索上传文件 |
-| **引用溯源** | ✅ Citations | ❌ | ❌ | 标注信息来源 |
-| **上下文管理** | ✅ | ❌ | ❌ | 自动清理历史 |
-| **工具流式** | ✅ | ❌ | ❌ | 实时进度显示 |
+| 功能 | Anthropic | Google | xAI | OpenAI | 说明 |
+|------|-----------|--------|-----|--------|------|
+| **成本优化** | ✅ Cache Control | ✅ | ❌ | ❌ | 降低 50%+ API 成本 |
+| **网页搜索** | ✅ Web Search | ✅ Google Search | ✅ Web Search | ✅ Web Search | 实时搜索互联网 |
+| **网页获取** | ✅ Web Fetch | ✅ URL Context | ❌ | ❌ | 获取网页内容 |
+| **代码执行** | ✅ Python+Bash | ✅ Python | ✅ Python | ✅ Python | 沙盒代码执行 |
+| **社交搜索** | ❌ | ❌ | ✅ X Search | ❌ | 搜索 Twitter/X |
+| **地图服务** | ❌ | ✅ Maps | ❌ | ❌ | 地理位置信息 |
+| **文件搜索** | ❌ | ✅ File Search | ❌ | ✅ File Search | 搜索上传文件 |
+| **图片生成** | ❌ | ❌ | ❌ | ✅ Image Gen | AI 图片生成 |
+| **MCP 协议** | ❌ | ❌ | ❌ | ✅ MCP | 远程工具调用 |
+| **引用溯源** | ✅ Citations | ❌ | ❌ | ❌ | 标注信息来源 |
+| **上下文管理** | ✅ | ❌ | ❌ | ❌ | 自动清理历史 |
+| **工具流式** | ✅ | ❌ | ❌ | ❌ | 实时进度显示 |
 
 ---
 
@@ -433,28 +436,252 @@ XAI_ENABLE_CODE_EXECUTION=true
 
 ---
 
+## 🤖 OpenAI 工具
+
+**重要提示**：OpenAI 服务端工具仅支持 **Responses API**，不支持 Chat Completions API。
+
+### API 选择说明
+
+OpenAI 提供两种 API：
+- **Chat Completions API** (`openai`): 标准对话 API，不支持服务端工具
+- **Responses API** (`openai.responses`): 新一代 API，支持所有服务端工具
+
+**配置示例**：
+```bash
+# 使用 Responses API（支持服务端工具）
+OPENAI_API_KEY="sk-xxx"
+OPENAI_CHAT_MODEL="gpt-5.1"  # 或其他支持的模型
+AI_CHAT_PROVIDER="openai"
+```
+
+---
+
+### 1. Web Search - 网页搜索
+
+**功能**：实时搜索互联网，获取最新信息并提供引用。
+
+**配置**：
+```bash
+OPENAI_ENABLE_WEB_SEARCH=true
+OPENAI_WEB_SEARCH_EXTERNAL_ACCESS=true                 # true=实时抓取，false=使用缓存
+OPENAI_WEB_SEARCH_ALLOWED_DOMAINS=["wikipedia.org"]    # 允许的域名列表（可选）
+OPENAI_WEB_SEARCH_CONTEXT_SIZE="medium"                # 搜索上下文大小：low | medium | high
+OPENAI_WEB_SEARCH_USER_LOCATION="Beijing, China"       # 用户位置（本地化结果）
+```
+
+**支持的位置格式**：
+- 城市+国家: `"San Francisco, USA"`
+- 仅国家: `"Japan"`
+
+**注意**：不支持经纬度格式（OpenAI API 限制）
+
+**使用示例**：
+```
+用户: 2024 年最新的 AI 技术趋势是什么？
+
+GPT 会:
+1. 自动调用 web_search 工具
+2. 搜索最新信息
+3. 返回结果并附带来源链接
+```
+
+---
+
+### 2. Code Interpreter - Python 代码执行
+
+**功能**：在沙盒环境中执行 Python 代码。
+
+**配置**：
+```bash
+OPENAI_ENABLE_CODE_INTERPRETER=true
+OPENAI_CODE_INTERPRETER_CONTAINER=""  # 容器ID（可选）
+```
+
+**支持的语言**：
+- Python 3.x（仅支持 Python）
+
+**使用示例**：
+```
+用户: 帮我计算斐波那契数列的前 20 项
+
+GPT 会:
+1. 编写 Python 代码
+2. 在沙盒中执行
+3. 返回计算结果
+```
+
+**安全特性**：
+- 完全隔离的沙盒环境
+- 无外部网络访问
+- 执行超时限制
+- 文件系统隔离
+
+---
+
+### 3. File Search - 文件向量搜索
+
+**功能**：在上传的文件中进行语义搜索。
+
+**配置**：
+```bash
+OPENAI_ENABLE_FILE_SEARCH=true
+OPENAI_FILE_SEARCH_VECTOR_STORES=["vs-xxx","vs-yyy"]   # 向量存储ID列表（必需）
+OPENAI_FILE_SEARCH_MAX_RESULTS=10                       # 最大返回结果数
+OPENAI_FILE_SEARCH_SCORE_THRESHOLD=0.0                  # 相关性阈值（0-1），越高越严格
+```
+
+**使用流程**：
+1. 上传文件到 OpenAI 并创建 Vector Store
+2. 获取 Vector Store ID（格式：`vs-xxx`）
+3. 配置到环境变量
+4. 对话中自动搜索文件内容
+
+**使用示例**：
+```
+用户: 在我的文档中搜索关于 API 认证的内容
+
+GPT 会:
+1. 在配置的 Vector Stores 中搜索
+2. 返回最相关的文档片段
+3. 按相关性排序
+```
+
+**参数说明**：
+- `maxNumResults`: 控制返回结果数量（1-50）
+- `scoreThreshold`: 过滤低相关性结果（0.0-1.0）
+  - 0.0: 返回所有结果
+  - 0.5: 中等相关性
+  - 0.8: 高度相关
+
+---
+
+### 4. Image Generation - 图片生成 (GPT-5.1+)
+
+**功能**：使用文本提示生成图片，支持高级控制选项。
+
+**配置**：
+```bash
+OPENAI_ENABLE_IMAGE_GENERATION=true
+OPENAI_IMAGE_MODEL="gpt-image-1"                        # 图片生成模型
+OPENAI_IMAGE_SIZE="auto"                                # 图片尺寸：auto | 1024x1024 | 1024x1536 | 1536x1024
+OPENAI_IMAGE_QUALITY="auto"                             # 质量：auto | low | medium | high
+OPENAI_IMAGE_BACKGROUND="auto"                          # 背景：auto | opaque | transparent
+OPENAI_IMAGE_OUTPUT_FORMAT="png"                        # 输出格式：png | jpeg | webp
+OPENAI_IMAGE_OUTPUT_COMPRESSION=100                     # 压缩等级（0-100）
+OPENAI_IMAGE_INPUT_FIDELITY="low"                       # 输入保真度：low | high
+OPENAI_IMAGE_PARTIAL_IMAGES=0                           # 流式模式下的部分图片数量（0-3）
+```
+
+**使用示例**：
+```
+用户: 生成一张赛博朋克风格的城市夜景
+
+GPT 会:
+1. 优化文本提示
+2. 调用 image_generation 工具
+3. 返回生成的图片
+```
+
+**参数详解**：
+- `size`: 图片尺寸
+  - `auto`: AI 自动选择最佳尺寸
+  - `1024x1024`: 正方形
+  - `1024x1536`: 竖屏
+  - `1536x1024`: 横屏
+
+- `quality`: 质量级别
+  - `auto`: 自动平衡质量和速度
+  - `low`: 快速生成
+  - `medium`: 标准质量
+  - `high`: 最佳质量（较慢）
+
+- `background`: 背景类型
+  - `auto`: 自动决定
+  - `opaque`: 不透明背景
+  - `transparent`: 透明背景（PNG）
+
+- `partialImages`: 流式模式
+  - `0`: 不使用流式（等待完整图片）
+  - `1-3`: 生成过程中返回部分图片
+
+---
+
+### 5. MCP - Model Context Protocol
+
+**功能**：连接到远程 MCP 服务器或服务连接器，调用外部工具。
+
+**配置**：
+```bash
+OPENAI_ENABLE_MCP=true
+OPENAI_MCP_SERVER_LABEL="my-server"                    # 服务器标签（必需）
+OPENAI_MCP_SERVER_URL="https://mcp.example.com"        # 服务器URL（与connectorId二选一）
+OPENAI_MCP_CONNECTOR_ID=""                              # 连接器ID（与serverUrl二选一）
+OPENAI_MCP_SERVER_DESCRIPTION="My MCP Server"          # 服务器描述（可选）
+OPENAI_MCP_ALLOWED_TOOLS=["tool1","tool2"]             # 允许的工具列表
+OPENAI_MCP_ALLOWED_TOOLS_READ_ONLY=false                # 仅允许只读工具
+OPENAI_MCP_AUTHORIZATION="Bearer xxx"                   # OAuth访问令牌
+OPENAI_MCP_HEADERS='{"X-Custom":"value"}'               # 自定义HTTP头（JSON格式）
+OPENAI_MCP_REQUIRE_APPROVAL="never"                     # 审批策略：always | never
+OPENAI_MCP_APPROVAL_TOOL_NAMES=[]                       # 需要审批的工具（requireApproval非always时）
+```
+
+**参数说明**：
+
+**必需参数**：
+- `serverLabel`: 标识 MCP 服务器的标签
+- `serverUrl` 或 `connectorId`: 二选一必填
+
+**可选参数**：
+- `serverDescription`: 服务器功能描述，帮助 AI 理解何时使用
+- `allowedTools`: 限制可用工具
+  - 数组格式: `["tool1", "tool2"]` - 允许特定工具
+  - 对象格式: `{"readOnly": true, "toolNames": ["tool1"]}` - 仅只读工具
+
+- `authorization`: OAuth 令牌，用于服务器认证
+- `headers`: 自定义 HTTP 头，用于额外的认证或配置
+- `requireApproval`: 工具执行审批
+  - `always`: 所有工具都需要审批
+  - `never`: 不需要审批（默认）
+  - 对象格式: 指定哪些工具不需要审批
+
+**使用场景**：
+- 连接内部 API 服务
+- 使用第三方 MCP 服务
+- 扩展 AI 能力到自定义工具
+
+---
+
 ## 📊 工具对比
 
 ### 网页搜索对比
 
-| 特性 | Anthropic | Google | xAI |
-|------|-----------|--------|-----|
-| 搜索引擎 | 通用 | Google | 通用 |
-| 域名过滤 | ✅ 无限制 | ❌ | ✅ 最多 5 个 |
-| 位置定制 | ✅ | ✅ | ❌ |
-| 图片理解 | ❌ | ❌ | ✅ |
-| 社交搜索 | ❌ | ❌ | ✅ X/Twitter |
-| 引用溯源 | ✅ | ❌ | ❌ |
+| 特性 | Anthropic | Google | xAI | OpenAI |
+|------|-----------|--------|-----|--------|
+| 搜索引擎 | 通用 | Google | 通用 | 通用 |
+| 域名过滤 | ✅ 无限制 | ❌ | ✅ 最多 5 个 | ✅ 无限制 |
+| 位置定制 | ✅ 城市+坐标 | ✅ | ❌ | ✅ 仅城市 |
+| 图片理解 | ❌ | ❌ | ✅ | ❌ |
+| 社交搜索 | ❌ | ❌ | ✅ X/Twitter | ❌ |
+| 引用溯源 | ✅ | ❌ | ❌ | ✅ |
 
 ### 代码执行对比
 
-| 特性 | Anthropic | Google | xAI |
-|------|-----------|--------|-----|
-| Python | ✅ | ✅ | ✅ |
-| Bash | ✅ | ❌ | ❌ |
-| 文件操作 | ✅ | ✅ | ✅ |
-| 网络访问 | ❌ | ❌ | ❌ |
-| 沙盒隔离 | ✅ | ✅ | ✅ |
+| 特性 | Anthropic | Google | xAI | OpenAI |
+|------|-----------|--------|-----|--------|
+| Python | ✅ | ✅ | ✅ | ✅ |
+| Bash | ✅ | ❌ | ❌ | ❌ |
+| 文件操作 | ✅ | ✅ | ✅ | ✅ |
+| 网络访问 | ❌ | ❌ | ❌ | ❌ |
+| 沙盒隔离 | ✅ | ✅ | ✅ | ✅ |
+
+### 文件搜索对比
+
+| 特性 | Google | OpenAI |
+|------|--------|--------|
+| 向量存储 | ✅ | ✅ |
+| 元数据过滤 | ✅ | ❌ |
+| 相关性阈值 | ❌ | ✅ |
+| 多存储支持 | ✅ | ✅ |
 
 ---
 
@@ -505,6 +732,32 @@ GOOGLE_RETRIEVAL_CONFIG='{"latLng":{"latitude":37.7749,"longitude":-122.4194}}'
 ```
 
 **功能**：基于位置的推荐 + Google 搜索
+
+---
+
+### 场景 5: AI 图片生成助手
+```bash
+# OpenAI 配置
+OPENAI_ENABLE_IMAGE_GENERATION=true
+OPENAI_IMAGE_QUALITY="high"
+OPENAI_IMAGE_SIZE="1024x1024"
+OPENAI_IMAGE_BACKGROUND="transparent"
+```
+
+**功能**：高质量图片生成 + 透明背景支持
+
+---
+
+### 场景 6: 企业文档搜索
+```bash
+# OpenAI 配置
+OPENAI_ENABLE_FILE_SEARCH=true
+OPENAI_FILE_SEARCH_VECTOR_STORES=["vs-xxx","vs-yyy"]
+OPENAI_FILE_SEARCH_SCORE_THRESHOLD=0.7
+OPENAI_ENABLE_WEB_SEARCH=true
+```
+
+**功能**：内部文档搜索 + 外部信息补充
 
 ---
 
@@ -562,10 +815,34 @@ GOOGLE_RETRIEVAL_CONFIG='{"latLng":{"latitude":37.7749,"longitude":-122.4194}}'
 **已知冲突**：
 - Google: Maps + Code Execution 不能同时使用
 - xAI: 仅 Responses API 支持原生工具
+- OpenAI: 服务端工具仅支持 Responses API（不支持 Chat Completions API）
 
 **解决**：
 - 选择其中一个工具
 - 或使用不同的 API
+
+---
+
+### 6. OpenAI Vector Store 未找到
+
+**症状**：`Vector Store not found: vs-xxx`
+
+**解决**：
+- 确认 Vector Store ID 正确
+- 检查是否已上传文件
+- 确认 API Key 有权限访问该 Vector Store
+
+---
+
+### 7. MCP 连接失败
+
+**症状**：`MCP server connection failed`
+
+**检查**：
+- 确认 `OPENAI_MCP_SERVER_URL` 或 `OPENAI_MCP_CONNECTOR_ID` 正确
+- 检查 `OPENAI_MCP_SERVER_LABEL` 是否已设置
+- 验证网络连接和防火墙设置
+- 确认 authorization token 有效（如果需要）
 
 ---
 
@@ -626,11 +903,50 @@ XAI_X_SEARCH_ALLOWED_HANDLES=["elonmusk"]
 
 ---
 
+### OpenAI 完整配置
+```bash
+# 基础
+OPENAI_API_KEY="sk-xxx"
+OPENAI_CHAT_MODEL="gpt-5.1"  # 使用支持 Responses API 的模型
+
+# Web 搜索
+OPENAI_ENABLE_WEB_SEARCH=true
+OPENAI_WEB_SEARCH_EXTERNAL_ACCESS=true
+OPENAI_WEB_SEARCH_CONTEXT_SIZE="medium"
+OPENAI_WEB_SEARCH_USER_LOCATION="Beijing, China"
+
+# 代码执行
+OPENAI_ENABLE_CODE_INTERPRETER=true
+
+# 文件搜索
+OPENAI_ENABLE_FILE_SEARCH=true
+OPENAI_FILE_SEARCH_VECTOR_STORES=["vs-xxx"]
+OPENAI_FILE_SEARCH_MAX_RESULTS=10
+OPENAI_FILE_SEARCH_SCORE_THRESHOLD=0.7
+
+# 图片生成
+OPENAI_ENABLE_IMAGE_GENERATION=true
+OPENAI_IMAGE_QUALITY="high"
+OPENAI_IMAGE_SIZE="auto"
+OPENAI_IMAGE_BACKGROUND="auto"
+
+# MCP（可选）
+OPENAI_ENABLE_MCP=false
+OPENAI_MCP_SERVER_LABEL="my-mcp-server"
+OPENAI_MCP_SERVER_URL="https://mcp.example.com"
+```
+
+---
+
 ## 🆘 获取帮助
 
 遇到问题？
 
 1. 检查日志输出
 2. 确认模型版本
-3. 查看 [GitHub Issues](https://github.com/TBXark/ChatGPT-Telegram-Workers/issues)
-4. 阅读 [Anthropic 文档](https://docs.anthropic.com)
+3. 查看 [GitHub Issues](https://github.com/SzeMeng76/ChatGPT-Telegram-Workers/issues)
+4. 阅读官方文档：
+   - [Anthropic 文档](https://docs.anthropic.com)
+   - [OpenAI 文档](https://platform.openai.com/docs)
+   - [Google AI 文档](https://ai.google.dev/docs)
+   - [xAI 文档](https://docs.x.ai)
