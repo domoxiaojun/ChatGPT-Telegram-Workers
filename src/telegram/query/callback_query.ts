@@ -283,7 +283,11 @@ function getNextpage({ pathDetail, pageIndexData, callbackData, inlineList, page
     let callback;
     for (const i of path.slice(1)) {
         if (!data[i]) {
-            throw new Error('Invalid path');
+            throw new Error(`Invalid path: index ${i} not found in data array of length ${data.length}`);
+        }
+        // 安全检查：确保 data[i] 存在且有必要的属性
+        if (!data[i].label || !data[i].config_key) {
+            throw new Error(`Invalid data at index ${i}: missing label or config_key`);
         }
         ({ label, config_key: configKey } = data[i]);
         callback = data[i].callback;

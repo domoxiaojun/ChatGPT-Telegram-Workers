@@ -777,6 +777,8 @@ export class InlineCommandHandler implements CommandHandler {
             //     }),
             // },
         ];
+        // 添加 provider-specific tools
+        // 只在对应的 provider 激活时才添加到菜单
         if (chatAgent === 'gemini' || chatAgent === 'google' || chatAgent === 'vertex') {
             inlines.push({
                 label: 'Google Tools',
