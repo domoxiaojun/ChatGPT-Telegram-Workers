@@ -147,7 +147,7 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
 
             // Send tool results to user (image_generation, code_execution, etc.)
             if (toolResults.length > 0) {
-                await handleToolResult({ tools, toolResults, onStream, config });
+                await handleToolResult({ tools, toolResults: toolResults as any, onStream, config });
             }
 
             // record tool call detail4
