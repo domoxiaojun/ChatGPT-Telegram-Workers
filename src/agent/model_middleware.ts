@@ -407,7 +407,7 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
     // Anthropic Server-Side Tools Support
     // Anthropic provider tools (web_fetch, web_search, code_execution)
     if (model.provider === 'anthropic.messages') {
-        const { anthropicTools } = await import('@ai-sdk/anthropic');
+        const { anthropicTools } = await import('@ai-sdk/anthropic/internal');
 
         // Web Fetch tool - 获取网页内容
         if (context.ANTHROPIC_ENABLE_WEB_FETCH) {
