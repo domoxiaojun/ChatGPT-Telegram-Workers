@@ -217,10 +217,14 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
                 messageInfo.content = `${messageInfo.content.trimEnd()}\n\n` + `finish tools: \`${toolNames}\``;
             }
 
-            // Append final text response if present (after tool execution)
+            // Note: Don't append text here - it's already accumulated during streaming in request.ts:155
+            // Appending it again causes duplicate content when using Google server-side tools
+            // if (text && text.trim()) {
+            //     log.info(`Final response text length: ${text.length}`);
+            //     messageInfo.content += '\n\n' + text;
+            // }
             if (text && text.trim()) {
                 log.info(`Final response text length: ${text.length}`);
-                messageInfo.content += '\n\n' + text;
             }
 
             // Note: Don't send final update here - streamSender.end() will handle it
