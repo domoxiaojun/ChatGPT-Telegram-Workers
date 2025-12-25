@@ -28,29 +28,55 @@ This is a significantly refactored ChatGPT Telegram bot project that supports mu
 - And more OpenAI-compatible services
 
 **🛠️ Powerful Capabilities**
+- **Server-Side Tools**: Native integration with AI provider tools
+  - **Anthropic**: webFetch, webSearch, codeExecution with tool streaming
+  - **xAI Grok**: webSearch with domain filtering, X/Twitter search, codeExecution
+  - **Google Gemini**: googleSearch, urlContext, codeExecution, googleMaps, fileSearch
+  - **OpenAI**: webSearch, codeInterpreter, fileSearch, imageGeneration, MCP
 - **Function Calling**: Built-in tool functions with support for custom functions via environment variables
-- **Image Generation**: Support for DALL-E, Google Image Generation, Kling AI, etc.
-- **Voice Processing**: TTS (Text-to-Speech) and ASR (Speech Recognition) support
+- **Image & Video Generation**:
+  - Images: DALL-E, Google Imagen, Kling AI, Vertex AI, Workers AI
+  - Videos: Google Veo 3.1 Fast (8-second videos with audio)
+- **Voice Processing**:
+  - TTS: OpenAI, Google, Fish Audio with multi-speaker support
+  - ASR: Automatic Speech Recognition from voice messages
 - **Real-time Streaming**: Optimized message sending with near-zero latency
 - **Intelligent Model Switching**: Automatically adjust AI models based on conversation context
 - **Inline Queries**: Support for Telegram inline message functionality
 - **Plugin System**: Customizable plugins with template interpolation
 - **MCP Support**: Model Context Protocol integration
+- **Web Crawler**: Pattern-based HTML extraction with dynamic content support
+- **Workflow System**: Multi-step AI processing with @key triggers
 
 **💬 Chat Enhancements**
 - **Multi-language Support**: Chinese, English, Portuguese, etc.
 - **Custom Trigger Words**: Configurable bot response keywords
 - **Message Replacement**: Custom replacement rules to simplify environment variable management
-- **Long Text Processing**: Smart splitting of ultra-long text with Telegraph and file output support
-- **Quote Message Merging**: Automatic handling of reply messages
-- **Group Management**: Smart group responses with @mention detection
+- **Long Text Processing**: Smart splitting with Telegraph article conversion and file output
+- **Quote Message Merging**: Automatic handling of reply messages with expandable content
+- **Group Management**: Smart group responses with @mention detection and per-user context
+- **Telegraph Integration**: Auto-convert long messages to articles with configurable thresholds
+- **Social Media Search**: Built-in Xiaohongshu (Little Red Book) integration
+- **App Store IAP**: Cross-country in-app purchase price lookup
 
 **🔧 Management Features**
-- **Multiple Commands**: `/set`, `/settings`, `/history`, `/model`, etc.
+- **Multiple Commands**:
+  - `/set` - Advanced settings with mapping and workflow support
+  - `/settings` - Quick settings menu
+  - `/history` - Export full chat history as JSON
+  - `/model` - Switch AI models
+  - `/map` - Manage model alias mappings
+  - `/tts` - Text-to-Speech with voice customization
+  - `/kling` - KlingAI image/video generation
+  - `/inline` - Inline query functionality
+  - `/perplexity` - Perplexity AI integration
+  - `/block` / `/blocklist` - User blocking management
+  - `/redo` - Retry last message
 - **User Configuration**: Personalized settings with multi-user support
-- **Whitelist/Blacklist**: Fine-grained access control
-- **Scheduled Message Deletion**: Automatic cleanup of different message types
-- **Usage Statistics**: Display model names, usage time, and other information
+- **Whitelist/Blacklist**: Fine-grained access control with user-level blocking
+- **Scheduled Message Deletion**: Automatic cleanup by message type with configurable TTL
+- **Usage Statistics**: Display model names, token usage, latency, and timing information
+- **Multi-Bot Support**: Manage multiple Telegram bots with per-bot configuration
 
 ### 🚀 Deployment Options
 
@@ -124,7 +150,35 @@ Key configuration options:
 - `OPENAI_API_KEY`: OpenAI API key
 - `ANTHROPIC_API_KEY`: Anthropic API key
 - `GOOGLE_API_KEY`: Google API key
-- For more configurations, see [Configuration Documentation](./doc/en/CONFIG.md)
+- `XAI_API_KEY`: xAI Grok API key
+
+**Advanced Configuration:**
+- **Server-Side Tools**:
+  - `USE_GOOGLE_BUILDIN`: Enable Google tools (googleSearch, urlContext, codeExecution, googleMaps)
+  - `USE_XAI_BUILDIN`: Enable xAI tools (webSearch, xSearch, codeExecution)
+  - `ANTHROPIC_WEB_FETCH_URLS`: Configure domains for Anthropic webFetch
+  - `OPENAI_MCP_SERVERS`: OpenAI MCP server configuration
+- **Workflow & Automation**:
+  - `WORKFLOW`: Multi-step AI workflow definitions with @key triggers
+  - `ENABLE_WORKFLOW`: Enable/disable workflow processing
+  - `ENABLE_ALIAS`: Enable model alias mapping
+- **Message Processing**:
+  - `TELEGRAPH_NUM_LIMIT`: Convert messages longer than N characters to Telegraph
+  - `TELEGRAPH_SCOPE`: Chat types for Telegraph (group/supergroup/private)
+  - `QUOTE_EXPANDABLE`: Make quoted messages expandable
+  - `ADD_QUOTE_LIMIT`: Quote folding threshold
+- **Audio & Voice**:
+  - `FISH_TTS_VOICE`: Fish Audio TTS voice reference ID
+  - `GOOGLE_TTS_EXTRA_PARAMS`: Multi-speaker voice configuration
+  - `AUDIO_TEXT_FORMAT`: Audio transcription format (spoiler/bold/italic/code)
+- **Model Parameters**:
+  - `CHAT_TEMPERATURE`: Model temperature (0-2)
+  - `FUNCTION_CALL_TEMPERATURE`: Separate temperature for tool calls
+  - `MAX_STEPS`: Maximum tool execution steps (default: 5)
+  - `OPENAI_REASONING_EFFORT`: Effort level for o1 models (low/medium/high)
+  - `PARAMS_MODIFIER`: Per-model parameter overrides
+
+For more configurations, see [Configuration Documentation](./doc/en/CONFIG.md)
 
 ### 🔍 Tech Stack
 
@@ -133,6 +187,31 @@ Key configuration options:
 - **Deployment**: Cloudflare Workers / Vercel / Docker
 - **API**: Telegram Bot API
 - **Tools**: ESLint, Vitest
+
+### 🧰 Built-in Tools
+
+The bot comes with a rich set of built-in tools that can be called by AI models:
+
+**🔧 Utility Tools**
+- **web** - Web crawler with pattern-based HTML extraction
+- **duckduckgo** - DuckDuckGo web search integration
+- **think** - Reasoning/brainstorming for complex tasks
+- **command** - Execute Telegram commands from AI
+
+**🎨 Creative Tools**
+- **image_gen** - Multi-provider image generation (DALL-E, Google, Vertex, xAI, Kling, Workers)
+- **google_veo** - Google Veo 3.1 video generation (8-second videos with audio)
+- **kling** - KlingAI image/video generation with editing support
+
+**🔍 Search & Social**
+- **xiaohongshu** - Little Red Book (Chinese social platform) search
+- **app_iap** - App Store in-app purchase price lookup by country
+
+**⚙️ System Tools**
+- **scheduletask** - Automatic message deletion scheduling
+- **google_buildin** - Toggle Google Gemini built-in tools dynamically
+
+All tools are defined in `src/tools/internal/` and can be extended via environment variables.
 
 ### 📖 Documentation
 

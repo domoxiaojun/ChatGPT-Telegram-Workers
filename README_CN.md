@@ -28,29 +28,55 @@
 - 以及更多兼容OpenAI API的服务
 
 **🛠️ 强大功能**
+- **服务端工具集成**: 原生支持AI提供商工具
+  - **Anthropic**: webFetch、webSearch、codeExecution，支持工具流式输出
+  - **xAI Grok**: webSearch（域名过滤）、X/Twitter搜索、codeExecution
+  - **Google Gemini**: googleSearch、urlContext、codeExecution、googleMaps、fileSearch
+  - **OpenAI**: webSearch、codeInterpreter、fileSearch、imageGeneration、MCP
 - **函数调用**: 内置多种工具函数，支持通过环境变量添加自定义函数
-- **图像生成**: 支持DALL-E、Google图像生成、Kling AI等
-- **语音处理**: 支持TTS(文字转语音)和ASR(语音识别)
+- **图像与视频生成**:
+  - 图像：DALL-E、Google Imagen、Kling AI、Vertex AI、Workers AI
+  - 视频：Google Veo 3.1 Fast（8秒视频+音频）
+- **语音处理**:
+  - TTS：OpenAI、Google、Fish Audio，支持多说话人
+  - ASR：自动语音识别，支持语音消息转文字
 - **实时流式输出**: 优化的消息发送机制，几乎零延迟
 - **智能模型切换**: 根据对话内容自动调整使用的AI模型
 - **内联查询**: 支持Telegram内联消息功能
 - **插件系统**: 可自定义插件，支持模板插值
 - **MCP支持**: 集成Model Context Protocol
+- **网页爬虫**: 基于模式的HTML提取，支持动态内容
+- **工作流系统**: 通过@key触发器实现多步骤AI处理
 
 **💬 对话增强**
 - **多语言支持**: 中文、英文、葡萄牙语等
 - **自定义触发词**: 可配置机器人响应关键词
 - **消息替换**: 支持自定义替换规则，简化环境变量修改
-- **长文本处理**: 智能分割超长文本，支持Telegraph和文件输出
-- **引用消息合并**: 自动处理回复消息
-- **群组管理**: 智能群组响应，支持@提及检测
+- **长文本处理**: 智能分割，自动转换为Telegraph文章或文件输出
+- **引用消息合并**: 自动处理回复消息，支持可展开内容
+- **群组管理**: 智能群组响应，支持@提及检测和按用户上下文
+- **Telegraph集成**: 自动将长消息转换为文章，可配置阈值
+- **社交媒体搜索**: 内置小红书搜索集成
+- **App Store内购**: 跨国家应用内购价格查询
 
 **🔧 管理功能**
-- **多命令支持**: `/set`, `/settings`, `/history`, `/model`等
+- **多命令支持**:
+  - `/set` - 高级设置，支持映射和工作流
+  - `/settings` - 快捷设置菜单
+  - `/history` - 导出完整聊天历史为JSON
+  - `/model` - 切换AI模型
+  - `/map` - 管理模型别名映射
+  - `/tts` - 文字转语音，支持语音自定义
+  - `/kling` - KlingAI图像/视频生成
+  - `/inline` - 内联查询功能
+  - `/perplexity` - Perplexity AI集成
+  - `/block` / `/blocklist` - 用户屏蔽管理
+  - `/redo` - 重试上一条消息
 - **用户配置**: 个性化设置，支持多用户配置
-- **白名单/黑名单**: 精细的访问控制
-- **消息定时删除**: 自动清理不同类型的消息
-- **使用统计**: 显示模型名称、使用时间等信息
+- **白名单/黑名单**: 精细的访问控制，支持用户级屏蔽
+- **消息定时删除**: 按消息类型自动清理，可配置TTL
+- **使用统计**: 显示模型名称、Token使用量、延迟和时间信息
+- **多机器人支持**: 管理多个Telegram机器人，支持每个机器人独立配置
 
 ### 🚀 部署方式
 
@@ -124,7 +150,35 @@ src/
 - `OPENAI_API_KEY`: OpenAI API密钥
 - `ANTHROPIC_API_KEY`: Anthropic API密钥
 - `GOOGLE_API_KEY`: Google API密钥
-- 更多配置请参考 [配置文档](./doc/cn/CONFIG.md)
+- `XAI_API_KEY`: xAI Grok API密钥
+
+**高级配置：**
+- **服务端工具**:
+  - `USE_GOOGLE_BUILDIN`: 启用Google工具（googleSearch、urlContext、codeExecution、googleMaps）
+  - `USE_XAI_BUILDIN`: 启用xAI工具（webSearch、xSearch、codeExecution）
+  - `ANTHROPIC_WEB_FETCH_URLS`: 配置Anthropic webFetch的域名
+  - `OPENAI_MCP_SERVERS`: OpenAI MCP服务器配置
+- **工作流与自动化**:
+  - `WORKFLOW`: 多步骤AI工作流定义，支持@key触发器
+  - `ENABLE_WORKFLOW`: 启用/禁用工作流处理
+  - `ENABLE_ALIAS`: 启用模型别名映射
+- **消息处理**:
+  - `TELEGRAPH_NUM_LIMIT`: 超过N字符的消息转换为Telegraph
+  - `TELEGRAPH_SCOPE`: Telegraph适用的聊天类型（group/supergroup/private）
+  - `QUOTE_EXPANDABLE`: 使引用消息可展开
+  - `ADD_QUOTE_LIMIT`: 引用消息折叠阈值
+- **音频与语音**:
+  - `FISH_TTS_VOICE`: Fish Audio TTS语音参考ID
+  - `GOOGLE_TTS_EXTRA_PARAMS`: 多说话人语音配置
+  - `AUDIO_TEXT_FORMAT`: 音频转录格式（spoiler/bold/italic/code）
+- **模型参数**:
+  - `CHAT_TEMPERATURE`: 模型温度（0-2）
+  - `FUNCTION_CALL_TEMPERATURE`: 工具调用独立温度
+  - `MAX_STEPS`: 最大工具执行步数（默认：5）
+  - `OPENAI_REASONING_EFFORT`: o1模型推理强度（low/medium/high）
+  - `PARAMS_MODIFIER`: 按模型参数覆盖
+
+更多配置请参考 [配置文档](./doc/cn/CONFIG.md)
 
 ### 🔍 技术栈
 
@@ -133,6 +187,31 @@ src/
 - **部署**: Cloudflare Workers / Vercel / Docker
 - **API**: Telegram Bot API
 - **工具**: ESLint, Vitest
+
+### 🧰 内置工具
+
+机器人内置了丰富的工具函数，可被AI模型调用：
+
+**🔧 实用工具**
+- **web** - 网页爬虫，支持基于模式的HTML提取
+- **duckduckgo** - DuckDuckGo网页搜索集成
+- **think** - 复杂任务的推理/头脑风暴
+- **command** - 从AI执行Telegram命令
+
+**🎨 创意工具**
+- **image_gen** - 多提供商图像生成（DALL-E、Google、Vertex、xAI、Kling、Workers）
+- **google_veo** - Google Veo 3.1视频生成（8秒视频+音频）
+- **kling** - KlingAI图像/视频生成，支持编辑
+
+**🔍 搜索与社交**
+- **xiaohongshu** - 小红书搜索
+- **app_iap** - 按国家查询App Store应用内购价格
+
+**⚙️ 系统工具**
+- **scheduletask** - 消息自动删除调度
+- **google_buildin** - 动态切换Google Gemini内置工具
+
+所有工具定义在 `src/tools/internal/`，可通过环境变量扩展。
 
 ### 📖 文档
 
