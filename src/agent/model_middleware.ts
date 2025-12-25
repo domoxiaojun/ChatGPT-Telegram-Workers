@@ -223,11 +223,11 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
                 messageInfo.content += '\n\n' + text;
             }
 
-            // Send final update once - after both tool results and text are processed
-            // This prevents multiple message updates
-            if (toolResults.length > 0 || (text && text.trim())) {
-                onStream?.send(messageInfo.content);
-            }
+            // Note: Don't send final update here - streamSender.end() will handle it
+            // This prevents duplicate messages when using tools like google_search
+            // if (toolResults.length > 0 || (text && text.trim())) {
+            //     onStream?.send(messageInfo.content);
+            // }
 
             // record token
             if (usage && usage.inputTokens && usage.outputTokens) {
