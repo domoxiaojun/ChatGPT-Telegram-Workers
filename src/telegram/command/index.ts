@@ -207,7 +207,7 @@ export function commandsBindScope(): Record<string, Telegram.SetMyCommandsParams
     const result: Record<string, Telegram.SetMyCommandsParams> = {};
     for (const scope in scopeCommandMap) {
         result[scope] = {
-            commands: scopeCommandMap[scope],
+            commands: scopeCommandMap[scope].filter(cmd => cmd.description !== ''),
             scope: {
                 type: scope,
             },
