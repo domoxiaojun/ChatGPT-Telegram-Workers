@@ -175,6 +175,7 @@ class BaseNewCommandHandler {
 
 export class NewCommandHandler extends BaseNewCommandHandler implements CommandHandler {
     command = '/new';
+    scopes: ScopeType[] = ['all_private_chats', 'all_group_chats'];
     needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext): Promise<Response> => {
         return BaseNewCommandHandler.handle(false, message, subcommand, context);
