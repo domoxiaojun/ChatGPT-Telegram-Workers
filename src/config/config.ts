@@ -61,6 +61,8 @@ export class EnvironmentConfig {
     GROUP_CHAT_BOT_ENABLE = true;
     // 群组机器人共享模式，开启后，一个群组只有一个会话和配置。关闭的话群组的每个人都有自己的会话上下文
     GROUP_CHAT_BOT_SHARE_MODE = true;
+    // 在群聊消息中包含用户名，帮助AI识别不同发言者
+    GROUP_INCLUDE_USERNAME = false;
 
     // -- 历史记录相关 --
     //

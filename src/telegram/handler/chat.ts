@@ -17,7 +17,27 @@ import { convertAudio } from '../../utils/others/audio';
 import { createTelegramBotAPI } from '../api';
 import { escape, SEGMENTATION_MARK } from '../utils/md2tgmd';
 import { MessageSender, sendAction, TelegraphSender } from '../utils/send';
-import { getTelegramFile, waitUntil } from '../utils/tg_utils';
+import { getTelegramFile, isTelegramChatTypeGroup, waitUntil } from '../utils/tg_utils';
+
+/**
+ * Get user identifier with fallback logic
+ * Priority: username > full_name > first_name
+ */
+function getUserIdentifier(user?: Telegram.User): string | null {
+    if (!user) {
+        return null;
+    }
+    // Priority 1: username with @ prefix
+    if (user.username) {
+        return `@${user.username}`;
+    }
+    // Priority 2: full name (first_name + last_name)
+    if (user.last_name) {
+        return `${user.first_name} ${user.last_name}`;
+    }
+    // Priority 3: first_name only
+    return user.first_name;
+}
 
 async function messageInitialize(sender: MessageSender, context?: WorkerContext, message?: Telegram.Message): Promise<ChatStreamTextHandler> {
     setTimeout(() => sendAction(sender.api.token, sender.context.chat_id, 'typing'), 0);
@@ -113,9 +133,19 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
         context: WorkerContext,
     ): Promise<LLMChatRequestParams> {
         const { type, id } = context.MIDDLE_CONTEXT.messageInfo;
+        let messageText = message.text || message.caption || '';
+
+        // Add username prefix in group chats if enabled
+        if (ENV.GROUP_INCLUDE_USERNAME && isTelegramChatTypeGroup(message.chat.type)) {
+            const userIdentifier = getUserIdentifier(message.from);
+            if (userIdentifier) {
+                messageText = `${userIdentifier}: ${messageText}`;
+            }
+        }
+
         const params: LLMChatRequestParams = {
             role: 'user',
-            content: message.text || message.caption || '',
+            content: messageText,
         };
 
         if (!id)
@@ -129,7 +159,7 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
         if (message.text || message.caption) {
             params.content.push({
                 type: 'text',
-                text: message.text || message.caption as string,
+                text: messageText,
             });
         } else {
             params.content.push({
@@ -146,7 +176,7 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
             urls,
             type,
             params,
-            text: message.text || message.caption || '',
+            text: messageText,
             AUDIO_HANDLE_TYPE: context.USER_CONFIG.AUDIO_HANDLE_TYPE,
         });
     }
