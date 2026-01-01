@@ -184,7 +184,17 @@ function extractResultText(result: { messages: ResponseMessage[]; content: strin
 export function injectSystemMessage(messages: ModelMessage[], systemMessage: string | null) {
     if (systemMessage) {
         // 注入{{CURRENT_TIME}}
-        systemMessage = systemMessage.replace('{{CURRENT_TIME}}', new Date().toISOString());
+        const now = new Date();
+        const localTime = now.toLocaleString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+        });
+        systemMessage = systemMessage.replace('{{CURRENT_TIME}}', localTime);
         messages.unshift({
             role: 'system',
             content: systemMessage,
