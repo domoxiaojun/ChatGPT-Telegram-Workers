@@ -82,8 +82,16 @@
 | `CHAT_GROUP_WHITE_LIST` | 允许的群组ID | `''` | 逗号分隔的ID |
 | `GROUP_CHAT_BOT_ENABLE` | 启用群聊 | `true` | `true`/`false` |
 | `GROUP_CHAT_BOT_SHARE_MODE` | 群组共享上下文 | `true` | `true`/`false` |
+| `GROUP_INCLUDE_USERNAME` | 在群组消息中添加用户名前缀 | `false` | `true`/`false` |
 
 > ⚠️ **重要**：将群组ID添加到`CHAT_GROUP_WHITE_LIST`以防止未授权使用。在大型群组(>2000成员)中设置机器人为管理员，并在BotFather中禁用隐私模式(`/setprivacy` → `Disable`)。
+
+**群组用户名功能** (`GROUP_INCLUDE_USERNAME`):
+启用后，群聊中的消息将带有发送者的标识前缀，帮助AI区分不同的发言者：
+- 有用户名的用户：`@username: 消息内容`
+- 无用户名的用户：`姓名: 消息内容` 或 `名字: 消息内容`
+
+这在多人对话时特别有用，可以让AI清楚地知道是谁说了什么。
 
 ### 消息和历史设置
 

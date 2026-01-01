@@ -54,7 +54,7 @@ This is a significantly refactored ChatGPT Telegram bot project that supports mu
 - **Message Replacement**: Custom replacement rules to simplify environment variable management
 - **Long Text Processing**: Smart splitting with Telegraph article conversion and file output
 - **Quote Message Merging**: Automatic handling of reply messages with expandable content
-- **Group Management**: Smart group responses with @mention detection and per-user context
+- **Group Management**: Smart group responses with @mention detection, per-user context, and speaker identification
 - **Telegraph Integration**: Auto-convert long messages to articles with configurable thresholds
 - **Social Media Search**: Built-in Xiaohongshu (Little Red Book) integration
 - **App Store IAP**: Cross-country in-app purchase price lookup

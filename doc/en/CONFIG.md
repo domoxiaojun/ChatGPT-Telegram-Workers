@@ -82,8 +82,16 @@ For local deployment, configure in `config.json`:
 | `CHAT_GROUP_WHITE_LIST` | Allowed group IDs | `''` | Comma-separated IDs |
 | `GROUP_CHAT_BOT_ENABLE` | Enable group chat | `true` | `true`/`false` |
 | `GROUP_CHAT_BOT_SHARE_MODE` | Share context in groups | `true` | `true`/`false` |
+| `GROUP_INCLUDE_USERNAME` | Add username prefix to group messages | `false` | `true`/`false` |
 
 > ⚠️ **Important**: Add group IDs to `CHAT_GROUP_WHITE_LIST` to prevent unauthorized usage. Set bot as admin in large groups (>2000 members) and disable privacy mode in BotFather (`/setprivacy` → `Disable`).
+
+**Group Username Feature** (`GROUP_INCLUDE_USERNAME`):
+When enabled, messages in group chats will be prefixed with the sender's identifier to help AI distinguish between different speakers:
+- Users with username: `@username: message`
+- Users without username: `First Last: message` or `First: message`
+
+This is particularly useful when multiple people are having a conversation and the AI needs to track who said what.
 
 ### Message & History Settings
 
