@@ -364,6 +364,8 @@ MCP_local='{
 | `SHOW_PARTS` | Info sections to show | `['model', 'model_time', 'token']` |
 | `CALL_INFO` | Show API call info | `true` |
 | `DISABLE_WEB_PREVIEW` | Disable link previews | `false` |
+| `SHOW_THINKING_TEXT` | Display AI reasoning process | `true` |
+| `EXPANDABLE_THINKING` | Use collapsible blockquote for thinking | `true` |
 | `SEND_IMAGE_AS_FILE` | Send images as files | `false` |
 
 ### Scheduling & Cleanup

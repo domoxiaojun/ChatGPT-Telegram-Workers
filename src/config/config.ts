@@ -247,6 +247,8 @@ export class EnvironmentConfig {
     ENABLE_SEARCH_SOURCE = true;
     // Whether to show thinking text
     SHOW_THINKING_TEXT = true;
+    // Whether to use expandable blockquote for thinking text (collapsible by default)
+    EXPANDABLE_THINKING = true;
 
     // TODO: override command auth, key is command, value is auth role, support: 'creator', 'administrator', null
     // COMMAND_AUTH_OVERRIDE: Record<string, string[]> = {

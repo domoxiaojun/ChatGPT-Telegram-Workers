@@ -167,6 +167,8 @@ Key configuration options:
   - `TELEGRAPH_SCOPE`: Chat types for Telegraph (group/supergroup/private)
   - `QUOTE_EXPANDABLE`: Make quoted messages expandable
   - `ADD_QUOTE_LIMIT`: Quote folding threshold
+  - `SHOW_THINKING_TEXT`: Display AI reasoning/thinking process (default: true)
+  - `EXPANDABLE_THINKING`: Use collapsible blockquote for thinking text (default: true)
 - **Audio & Voice**:
   - `FISH_TTS_VOICE`: Fish Audio TTS voice reference ID
   - `GOOGLE_TTS_EXTRA_PARAMS`: Multi-speaker voice configuration

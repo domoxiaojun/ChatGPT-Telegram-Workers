@@ -167,6 +167,8 @@ src/
   - `TELEGRAPH_SCOPE`: Telegraph适用的聊天类型（group/supergroup/private）
   - `QUOTE_EXPANDABLE`: 使引用消息可展开
   - `ADD_QUOTE_LIMIT`: 引用消息折叠阈值
+  - `SHOW_THINKING_TEXT`: 显示 AI 推理/思考过程（默认: true）
+  - `EXPANDABLE_THINKING`: 使用可折叠引用块显示思考文本（默认: true）
 - **音频与语音**:
   - `FISH_TTS_VOICE`: Fish Audio TTS语音参考ID
   - `GOOGLE_TTS_EXTRA_PARAMS`: 多说话人语音配置

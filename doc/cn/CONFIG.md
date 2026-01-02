@@ -364,6 +364,8 @@ MCP_local='{
 | `SHOW_PARTS` | 显示的信息部分 | `['model', 'model_time', 'token']` |
 | `CALL_INFO` | 显示API调用信息 | `true` |
 | `DISABLE_WEB_PREVIEW` | 禁用链接预览 | `false` |
+| `SHOW_THINKING_TEXT` | 显示 AI 推理思考过程 | `true` |
+| `EXPANDABLE_THINKING` | 使用可折叠引用块显示思考文本 | `true` |
 | `SEND_IMAGE_AS_FILE` | 以文件形式发送图像 | `false` |
 
 ### 调度和清理

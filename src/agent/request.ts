@@ -259,7 +259,7 @@ function thinkingExtractor(messageInfo: MessageInfo) {
     let thinkingStartTime: undefined | number;
     let reasoningBuffer = '';
     let lastOutputTime = 0;
-    const thinkingTag = '>`Thinking\\.\\.\\.`';
+    const thinkingTag = ENV.EXPANDABLE_THINKING ? '**>`Thinking\.\.\.`' : '>`Thinking\.\.\.`';
     const sources: Array<{ url: string; title: string }> = [];
 
     // 存储 sources 到 messageInfo 以便后续处理
