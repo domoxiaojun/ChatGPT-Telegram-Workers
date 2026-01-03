@@ -65,8 +65,8 @@ const escapeRegexpMatch = [
     // },
     // quote
     {
-        regex: /^\x20*\\>\x20?([^\n]*)$/gm,
-        value: '>$1',
+        regex: /^(\x20*(?:\\\*\\\*)?)\\>\x20?([^\n]*)$/gm,
+        value: '$1>$2',
     },
     // item
     {
@@ -268,10 +268,31 @@ function markData(text: string, markd: Record<string, string>, type: 'INCODE' | 
 }
 
 export function addExpandable(text: string, quoteExpandable: boolean): string {
-    return quoteExpandable
-        ? text.replace(/(?:^>[^\n]*(\n|$))+/gm, (match, p1) => `**${match.trimEnd()}||${p1}`)
-        // .replace(/((?:^>[^\n]+(?:\n|$))+)/gm, (match, p1) => `**${p1.trimEnd()}||\n`)
-        : text;
+    // Match all quote blocks (multi-line blocks starting with > or **>)
+    return text.replace(/^((?:\*\*)?>[^\n]*(?:\n>[^\n]*)*)(\n|$)/gm, (match, content, lineEnd) => {
+        // Check if this block already starts with **>
+        const isExpandable = content.trimStart().startsWith('**>');
+
+        // If block is already expandable (has **>), or if quoteExpandable is true, ensure it has ||
+        if (isExpandable || quoteExpandable) {
+            // Check if already has || at the end
+            if (content.trimEnd().endsWith('||')) {
+                return match; // Already properly formatted
+            }
+
+            // Add || marker
+            if (isExpandable) {
+                // Already has **, just add ||
+                return `${content.trimEnd()}||${lineEnd}`;
+            } else {
+                // Add both ** and ||
+                return `**${content.trimEnd()}||${lineEnd}`;
+            }
+        }
+
+        // Not expandable, return as-is
+        return match;
+    });
 }
 
 export interface ExpandParams {
