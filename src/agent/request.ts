@@ -252,11 +252,80 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
         if ((model.provider === 'xai.chat' || model.provider === 'xai.responses') && (messageInfo as any).sources && (messageInfo as any).sources.length > 0) {
             contentFull = appendStreamSources(contentFull, (messageInfo as any).sources);
         }
+
+        // Handle empty response from server-side tools (Google, Anthropic, etc.)
+        // When server-side tools execute, they may return tool-result in the same response
+        // without generating any text. We need to make another request to get the actual response.
+        const streamResponse = await stream.response;
+        const hasToolResults = streamResponse.messages.some(msg =>
+            msg.role === 'tool' ||
+            (msg.role === 'assistant' && Array.isArray(msg.content) &&
+             msg.content.some((part: any) => part.type === 'tool-call'))
+        );
+
+        if (!contentFull.trim() && hasToolResults) {
+            log.warn('Empty response detected after tool execution, making follow-up request for AI response');
+
+            // Make a follow-up request with all messages including tool results
+            const followUpMessages = [...messages, ...responseMessages];
+            const followUpParams = await combineParams({
+                context,
+                middleware,
+                model,
+                messages: followUpMessages,
+                activeTools: [], // No tools for follow-up to avoid loops
+                tools: undefined,
+                prepareStepPre,
+                onStepFinish,
+                onChunk
+            });
+
+            const followUpStream = streamText(followUpParams);
+            const followUpExtractor = thinkingExtractor(messageInfo);
+
+            contentFull = await streamHandler(followUpStream.fullStream, followUpExtractor, onStream, messageInfo);
+            const followUpResponse = await followUpStream.response;
+            responseMessages = [...responseMessages, ...followUpResponse.messages];
+            contentFull = metaDataExtractor(await followUpStream.providerMetadata, model.provider, contentFull);
+
+            log.info(`Follow-up request completed, got response: ${contentFull.substring(0, 100)}...`);
+        }
     } else {
         const result = await generateText(handeredParams);
         contentFull = `${result.reasoning ? `>\`Thought for several seconds\`\n>${(result.reasoningText ?? '').trim().replace(/\n/g, '\n>')}\n>✹\n` : ''}${result.text}`;
         responseMessages = result.response.messages;
         contentFull = metaDataExtractor(result.providerMetadata, model.provider, contentFull);
+
+        // Handle empty response from server-side tools for non-streaming mode
+        const hasToolResults = result.response.messages.some(msg =>
+            msg.role === 'tool' ||
+            (msg.role === 'assistant' && Array.isArray(msg.content) &&
+             msg.content.some((part: any) => part.type === 'tool-call'))
+        );
+
+        if (!contentFull.trim() && hasToolResults) {
+            log.warn('Empty response detected after tool execution (non-stream), making follow-up request');
+
+            const followUpMessages = [...messages, ...responseMessages];
+            const followUpParams = await combineParams({
+                context,
+                middleware,
+                model,
+                messages: followUpMessages,
+                activeTools: [],
+                tools: undefined,
+                prepareStepPre,
+                onStepFinish,
+                onChunk
+            });
+
+            const followUpResult = await generateText(followUpParams);
+            contentFull = `${followUpResult.reasoning ? `>\`Thought for several seconds\`\n>${(followUpResult.reasoningText ?? '').trim().replace(/\n/g, '\n>')}\n>✹\n` : ''}${followUpResult.text}`;
+            responseMessages = [...responseMessages, ...followUpResult.response.messages];
+            contentFull = metaDataExtractor(followUpResult.providerMetadata, model.provider, contentFull);
+
+            log.info(`Follow-up request completed (non-stream), got response: ${contentFull.substring(0, 100)}...`);
+        }
     }
 
     return { messages: responseMessages, content: contentFull };
