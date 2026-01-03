@@ -136,25 +136,39 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
             }
         },
 
-        onStepFinish: async ({ text, toolResults, usage, request, response, finishReason }: StepResult<any>) => {
+        onStepFinish: async ({ text, toolResults, usage, request, response, finishReason, content }: StepResult<any>) => {
             log.info('llm request end');
             log.debug('step text:', text);
             log.debug('step raw request:', request);
             // log.debug('step raw response:', response);
 
-            // 🔍 Debug: Log response content to see what Google returns
+            // 🔍 Debug: Log step content to see what's in the current step
+            log.debug(`[Step Finish] Step content types: ${JSON.stringify(
+                Array.isArray(content) ? content.map((c: any) => c.type) : typeof content
+            )}`);
+
+            // 🔍 Debug: Check if step content contains tool-result
+            if (Array.isArray(content)) {
+                const contentToolResults = content.filter((c: any) => c.type === 'tool-result');
+                if (contentToolResults.length > 0) {
+                    log.debug(`[Step Finish] Found ${contentToolResults.length} tool-result(s) in step content`);
+                }
+            }
+
+            // 🔍 Debug: Log response messages to see accumulated messages
             if (response?.messages && response.messages.length > 0) {
+                log.debug(`[Step Finish] Response messages count: ${response.messages.length}`);
                 log.debug(`[Step Finish] Response messages: ${JSON.stringify(response.messages.map((m: any) => ({
                     role: m.role,
                     contentTypes: Array.isArray(m.content) ? m.content.map((c: any) => c.type) : typeof m.content
                 })))}`);
 
-                // Log tool-result details if present
-                const assistantMsg = response.messages.find((m: any) => m.role === 'assistant');
-                if (assistantMsg && Array.isArray(assistantMsg.content)) {
-                    const toolResults = assistantMsg.content.filter((c: any) => c.type === 'tool-result');
+                // Log tool-result details if present in last assistant message
+                const lastAssistantMsg = [...response.messages].reverse().find((m: any) => m.role === 'assistant');
+                if (lastAssistantMsg && Array.isArray(lastAssistantMsg.content)) {
+                    const toolResults = lastAssistantMsg.content.filter((c: any) => c.type === 'tool-result');
                     if (toolResults.length > 0) {
-                        log.debug(`[Step Finish] Found ${toolResults.length} tool-result(s) in assistant message`);
+                        log.debug(`[Step Finish] Found ${toolResults.length} tool-result(s) in last assistant message`);
                     }
                 }
             }
