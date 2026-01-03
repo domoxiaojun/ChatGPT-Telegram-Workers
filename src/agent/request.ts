@@ -491,6 +491,9 @@ async function combineParams({ context, middleware, model, messages, activeTools
         toolName === 'mcp'
     );
 
+    const finalContinueSteps = needsContinueSteps || context.CONTINUE_STEP;
+    log.info(`[combineParams] activeTools: ${activeTools.join(',')}, needsContinueSteps: ${needsContinueSteps}, CONTINUE_STEP: ${context.CONTINUE_STEP}, final: ${finalContinueSteps}`);
+
     return {
         model: wrapLanguageModel({
             model,
@@ -498,7 +501,7 @@ async function combineParams({ context, middleware, model, messages, activeTools
         }),
         providerOptions,
         messages,
-        experimental_continueSteps: needsContinueSteps || context.CONTINUE_STEP,
+        experimental_continueSteps: finalContinueSteps,
         maxRetries: context.MAX_RETRIES,
         temperature: (activeTools?.length || 0) > 0 ? context.FUNCTION_CALL_TEMPERATURE : context.CHAT_TEMPERATURE,
         tools,
