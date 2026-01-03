@@ -142,6 +142,23 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
             log.debug('step raw request:', request);
             // log.debug('step raw response:', response);
 
+            // 🔍 Debug: Log response content to see what Google returns
+            if (response?.messages && response.messages.length > 0) {
+                log.debug(`[Step Finish] Response messages: ${JSON.stringify(response.messages.map((m: any) => ({
+                    role: m.role,
+                    contentTypes: Array.isArray(m.content) ? m.content.map((c: any) => c.type) : typeof m.content
+                })))}`);
+
+                // Log tool-result details if present
+                const assistantMsg = response.messages.find((m: any) => m.role === 'assistant');
+                if (assistantMsg && Array.isArray(assistantMsg.content)) {
+                    const toolResults = assistantMsg.content.filter((c: any) => c.type === 'tool-result');
+                    if (toolResults.length > 0) {
+                        log.debug(`[Step Finish] Found ${toolResults.length} tool-result(s) in assistant message`);
+                    }
+                }
+            }
+
             // record end time
             record.end_time = Date.now();
 
