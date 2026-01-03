@@ -212,6 +212,14 @@ function appendStreamSources(content: string, sources: Array<{ url: string; titl
 }
 
 export async function requestChatCompletionsV2({ model, messages, tools, activeTools, toolChoice, context, cache }: { model: LanguageModelV3; toolModel?: LanguageModelV3; prompt?: string; messages: ModelMessage[]; tools?: any; activeTools: string[]; toolChoice?: ToolChoice[] | undefined; context: AgentUserConfig; cache?: string[] }, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> {
+    // DEBUG: Log messages before sending to SDK
+    log.info(`[requestChatCompletionsV2] messages before SDK: ${JSON.stringify(messages.map(m => {
+        if (m.role === 'user' && Array.isArray(m.content)) {
+            return { role: m.role, content: m.content.map(c => c.type === 'file' ? { type: c.type, mediaType: (c as any).mediaType } : { type: c.type }) };
+        }
+        return { role: m.role };
+    }))}`);
+
     // 引入多轮对话 拼接提示
     const messageInfo: MessageInfo = {
         content: cache?.join() ?? '',
