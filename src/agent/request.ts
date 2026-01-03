@@ -263,6 +263,11 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
              msg.content.some((part: any) => part.type === 'tool-call'))
         );
 
+        log.info(`[Empty response check] contentFull: "${contentFull.substring(0, 50)}", hasToolResults: ${hasToolResults}, messages count: ${streamResponse.messages.length}`);
+        if (streamResponse.messages.length > 0) {
+            log.debug(`[Messages detail] ${JSON.stringify(streamResponse.messages.map(m => ({ role: m.role, contentType: Array.isArray(m.content) ? m.content.map((c: any) => c.type) : typeof m.content })))}`);
+        }
+
         if (!contentFull.trim() && hasToolResults) {
             log.warn('Empty response detected after tool execution, making follow-up request for AI response');
 
