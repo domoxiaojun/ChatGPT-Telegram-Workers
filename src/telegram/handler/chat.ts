@@ -618,12 +618,40 @@ function mergeLogMessages(text: string, config: AgentUserConfig | undefined): st
     return `${text.trim()}\n${SEGMENTATION_MARK}\n${config ? getLog(config) : ''}`;
 }
 
+// MIME type mapping for common file extensions
+const MIME_TYPE_MAP: Record<string, string> = {
+    // Video
+    mp4: 'video/mp4',
+    webm: 'video/webm',
+    avi: 'video/x-msvideo',
+    mov: 'video/quicktime',
+    mkv: 'video/x-matroska',
+    // Audio
+    mp3: 'audio/mpeg',
+    wav: 'audio/wav',
+    ogg: 'audio/ogg',
+    oga: 'audio/ogg',
+    aac: 'audio/aac',
+    flac: 'audio/flac',
+    // Image
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    gif: 'image/gif',
+    webp: 'image/webp',
+};
+
+function getMediaType(url: string, defaultType: string): string {
+    const extension = url.split('?')[0].split('.').pop()?.toLowerCase() || '';
+    return MIME_TYPE_MAP[extension] || `${defaultType}/${extension}`;
+}
+
 // v5: Breaking change in file type extraction logic.
 // Manual download and explicit MIME type specification are now required.
 async function fileUrlToBase64Message({ urls, type, params, AUDIO_HANDLE_TYPE = 'chat', text }: { urls: string[]; type: string; params: UserModelMessage; AUDIO_HANDLE_TYPE: string; text: string }): Promise<any> {
     async function urlToBase64Message(type = 'image') {
         const responses = await Promise.all(urls.map(url => fetch(url))).then(r => r.filter(r => r.ok));
-        const mediaTypes = urls.map(url => `${type}/${url.split('.').pop()}`);
+        const mediaTypes = urls.map(url => getMediaType(url, type));
         let files: string[] = [];
         if (!responses.length) {
             throw new Error('Failed to fetch file data');
@@ -653,11 +681,11 @@ async function fileUrlToBase64Message({ urls, type, params, AUDIO_HANDLE_TYPE = 
         case 'sticker':
         {
             const isUrl = ENV.TELEGRAM_IMAGE_TRANSFER_MODE === 'url';
-            const format = urls[0].split('.').pop();
+            const format = urls[0].split('?')[0].split('.').pop()?.toLowerCase();
             const type = format === 'webm' ? 'file' : 'image';
             const mediaTypePrefix = format === 'webm' ? 'video' : 'image';
             if (isUrl) {
-                (params.content as any[]).push(...urls.map(url => ({ type, [format === 'webm' ? 'data' : 'image']: url, mediaType: `${mediaTypePrefix}/${url.split('.').pop()}` }) as unknown as FilePart | ImagePart));
+                (params.content as any[]).push(...urls.map(url => ({ type, [format === 'webm' ? 'data' : 'image']: url, mediaType: getMediaType(url, mediaTypePrefix) }) as unknown as FilePart | ImagePart));
             } else {
                 const images = await urlToBase64Message(mediaTypePrefix) as ImagePart[];
                 (params.content as any[]).push(...images);
@@ -674,7 +702,7 @@ async function fileUrlToBase64Message({ urls, type, params, AUDIO_HANDLE_TYPE = 
                 const files = await urlToBase64Message(t);
                 (params.content as any[]).push(...files);
             } else {
-                const mediaTypes = urls.map(url => `${t}/${url.split('.').pop()}`);
+                const mediaTypes = urls.map(url => getMediaType(url, t));
                 (params.content as any[]).push(...urls.map((audio, i) => ({
                     type: 'file' as const,
                     data: audio,
