@@ -215,25 +215,14 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
                 log.info(`finish tools: ${toolNames}`);
             }
 
-            // Handle empty response when using tools (especially Google server-side tools)
-            // The text parameter contains the final step.text extracted from content,
-            // but messageInfo.content may be empty if no text-delta events were streamed
+            // Note: Don't append text here - it's already accumulated during streaming in request.ts:155
+            // Appending it again causes duplicate content when using Google server-side tools
+            // if (text && text.trim()) {
+            //     log.info(`Final response text length: ${text.length}`);
+            //     messageInfo.content += '\n\n' + text;
+            // }
             if (text && text.trim()) {
                 log.info(`Final response text length: ${text.length}`);
-
-                const currentContent = messageInfo.content.trim();
-                const finalText = text.trim();
-
-                // If messageInfo.content is empty or incomplete, use step.text as fallback
-                if (currentContent === '') {
-                    // Completely empty: use step.text directly
-                    messageInfo.content = finalText;
-                    log.info(`Empty messageInfo.content detected after tool execution, using step.text (${finalText.length} chars)`);
-                } else if (!currentContent.includes(finalText) && finalText.length > currentContent.length) {
-                    // Content incomplete: streaming may have missed some text
-                    messageInfo.content = finalText;
-                    log.warn(`Incomplete messageInfo.content detected (current: ${currentContent.length}, final: ${finalText.length}), replaced with step.text`);
-                }
             }
 
             // Note: Don't send final update here - streamSender.end() will handle it
