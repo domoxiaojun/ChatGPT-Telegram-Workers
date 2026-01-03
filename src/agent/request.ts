@@ -473,24 +473,6 @@ async function combineParams({ context, middleware, model, messages, activeTools
         }
     }
 
-    // For server-side tools (Google, Anthropic, xAI, OpenAI), we need to continue steps
-    // to allow the AI to generate a response after tool execution.
-    // Otherwise, the first step only contains tool calls without any text response.
-    const needsContinueSteps = activeTools.some(toolName =>
-        toolName === 'google_search' ||
-        toolName === 'code_execution' ||
-        toolName === 'url_context' ||
-        toolName === 'google_maps' ||
-        toolName === 'file_search' ||
-        toolName === 'enterprise_web_search' ||
-        toolName === 'web_search' ||
-        toolName === 'x_search' ||
-        toolName === 'web_fetch' ||
-        toolName === 'code_interpreter' ||
-        toolName === 'image_generation' ||
-        toolName === 'mcp'
-    );
-
     return {
         model: wrapLanguageModel({
             model,
@@ -498,7 +480,7 @@ async function combineParams({ context, middleware, model, messages, activeTools
         }),
         providerOptions,
         messages,
-        experimental_continueSteps: needsContinueSteps || context.CONTINUE_STEP,
+        experimental_continueSteps: context.CONTINUE_STEP,
         maxRetries: context.MAX_RETRIES,
         temperature: (activeTools?.length || 0) > 0 ? context.FUNCTION_CALL_TEMPERATURE : context.CHAT_TEMPERATURE,
         tools,
