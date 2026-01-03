@@ -282,8 +282,7 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
                 tools: undefined,
                 prepareStepPre,
                 onStepFinish,
-                onChunk,
-                forceContinueSteps: true, // 🔑 强制启用 continueSteps，即使没有 activeTools
+                onChunk
             });
 
             const followUpStream = streamText(followUpParams);
@@ -424,7 +423,7 @@ function thinkingExtractor(messageInfo: MessageInfo) {
     };
 }
 
-async function combineParams({ context, middleware, model, messages, activeTools, tools, prepareStepPre, onStepFinish, onChunk, forceContinueSteps }: { context: AgentUserConfig; middleware: any; model: LanguageModelV3; messages: ModelMessage[]; activeTools: string[]; tools: any; prepareStepPre: (middleware: (...args: any[]) => any) => any; onStepFinish: (data: StepResult<any>) => void; onChunk: (data: { chunk: TextStreamPart<any> }) => void; forceContinueSteps?: boolean }) {
+async function combineParams({ context, middleware, model, messages, activeTools, tools, prepareStepPre, onStepFinish, onChunk }: { context: AgentUserConfig; middleware: any; model: LanguageModelV3; messages: ModelMessage[]; activeTools: string[]; tools: any; prepareStepPre: (middleware: (...args: any[]) => any) => any; onStepFinish: (data: StepResult<any>) => void; onChunk: (data: { chunk: TextStreamPart<any> }) => void }) {
     // Build Anthropic provider options with cache control and tool streaming
     const anthropicOptions: Record<string, any> = {
         ...context.ANTHROPIC_PROVIDER_OPTIONS,
@@ -566,8 +565,8 @@ async function combineParams({ context, middleware, model, messages, activeTools
         toolName === 'mcp'
     );
 
-    const finalContinueSteps = forceContinueSteps || needsContinueSteps || context.CONTINUE_STEP;
-    log.info(`[combineParams] activeTools: ${activeTools.join(',')}, needsContinueSteps: ${needsContinueSteps}, CONTINUE_STEP: ${context.CONTINUE_STEP}, forceContinueSteps: ${forceContinueSteps}, final: ${finalContinueSteps}`);
+    const finalContinueSteps = needsContinueSteps || context.CONTINUE_STEP;
+    log.info(`[combineParams] activeTools: ${activeTools.join(',')}, needsContinueSteps: ${needsContinueSteps}, CONTINUE_STEP: ${context.CONTINUE_STEP}, final: ${finalContinueSteps}`);
 
     return {
         model: wrapLanguageModel({
