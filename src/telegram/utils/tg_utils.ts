@@ -129,6 +129,7 @@ export async function getTelegramFile(fileIds: string[], botToken: string, type:
     }
 
     const paths = files.map(f => f.result?.file_path).filter(Boolean) as string[];
+    log.info(`[getTelegramFile] raw file_path from Telegram API: ${JSON.stringify(paths)}`);
     const urls = paths.map(p => `https://api.telegram.org/file/bot${botToken}/${p}`);
     log.info(`files urls:\n${urls.join('\n')}`);
 

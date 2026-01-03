@@ -642,16 +642,21 @@ const MIME_TYPE_MAP: Record<string, string> = {
 };
 
 function getMediaType(url: string, defaultType: string): string {
-    const extension = url.split('?')[0].split('.').pop()?.toLowerCase() || '';
-    return MIME_TYPE_MAP[extension] || `${defaultType}/${extension}`;
+    const urlWithoutQuery = url.split('?')[0];
+    const extension = urlWithoutQuery.split('.').pop()?.toLowerCase() || '';
+    const mimeType = MIME_TYPE_MAP[extension] || `${defaultType}/${extension}`;
+    log.info(`[getMediaType] url: ${url}, extension: ${extension}, mimeType: ${mimeType}`);
+    return mimeType;
 }
 
 // v5: Breaking change in file type extraction logic.
 // Manual download and explicit MIME type specification are now required.
 async function fileUrlToBase64Message({ urls, type, params, AUDIO_HANDLE_TYPE = 'chat', text }: { urls: string[]; type: string; params: UserModelMessage; AUDIO_HANDLE_TYPE: string; text: string }): Promise<any> {
     async function urlToBase64Message(type = 'image') {
+        log.info(`[urlToBase64Message] type: ${type}, urls: ${JSON.stringify(urls)}`);
         const responses = await Promise.all(urls.map(url => fetch(url))).then(r => r.filter(r => r.ok));
         const mediaTypes = urls.map(url => getMediaType(url, type));
+        log.info(`[urlToBase64Message] mediaTypes: ${JSON.stringify(mediaTypes)}`);
         let files: string[] = [];
         if (!responses.length) {
             throw new Error('Failed to fetch file data');
