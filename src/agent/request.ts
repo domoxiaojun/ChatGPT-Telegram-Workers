@@ -269,6 +269,8 @@ function thinkingExtractor(messageInfo: MessageInfo) {
     let lastOutputTime = 0;
     const thinkingTag = ENV.EXPANDABLE_THINKING ? '**>`Thinking\.\.\.`' : '>`Thinking\.\.\.`';
     const sources: Array<{ url: string; title: string }> = [];
+    // 累积的文本块ID，用于检测xAI重复发送
+    const seenTextBlocks = new Map<string, number>();
 
     // 存储 sources 到 messageInfo 以便后续处理
     (messageInfo as any).sources = sources;
@@ -327,10 +329,45 @@ function thinkingExtractor(messageInfo: MessageInfo) {
                     .replace(/(\n>)*$/, '')
                     // three or more newlines are trimmed to 2 newlines
                     .replace(/(\n>){3,}$/g, '\n>\n>');
+
+                // 记录这个文本块，初始长度为0
+                if (data.id) {
+                    seenTextBlocks.set(data.id, 0);
+                }
+
                 return `\n>✹\n${SEGMENTATION_MARK}\n`;
             case 'text-delta':
+                // xAI bug workaround: 检测并过滤重复的完整文本
+                // xAI 会先发送增量 text-delta，最后再发送一次包含完整文本的 text-delta
+                if (data.id && seenTextBlocks.has(data.id)) {
+                    const previousLength = seenTextBlocks.get(data.id)!;
+                    const newText = data.text;
+
+                    // 如果新文本长度远大于之前的增量（例如 > 10倍），且包含已有内容
+                    // 很可能是 xAI 发送的完整文本重复
+                    if (newText.length > previousLength * 10 && previousLength > 0) {
+                        // 检查 messageInfo.content 是否已经包含这段文本的开头部分
+                        const contentWithoutFormatting = messageInfo.content.replace(/\n>.*$/s, '').trim();
+                        const newTextStart = newText.substring(0, Math.min(100, newText.length));
+
+                        if (contentWithoutFormatting.includes(newTextStart)) {
+                            // 检测到重复，跳过这个完整文本
+                            // eslint-disable-next-line no-console
+                            console.log(`[xAI dedup] Skipped duplicate text block (${newText.length} chars)`);
+                            return '';
+                        }
+                    }
+
+                    // 更新已处理的文本长度
+                    seenTextBlocks.set(data.id, previousLength + newText.length);
+                }
+
                 return data.text;
             case 'text-end':
+                // 清理文本块记录
+                if (data.id) {
+                    seenTextBlocks.delete(data.id);
+                }
                 return '';
             case 'source':
                 // xAI web_search/x_search sources
