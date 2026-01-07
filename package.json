@@ -40,11 +40,11 @@
         "clean": "rm -rf dist"
     },
     "dependencies": {
-        "@ai-sdk/anthropic": "^3.0.7",
+        "@ai-sdk/anthropic": "^3.0.8",
         "@ai-sdk/azure": "^3.0.7",
         "@ai-sdk/cohere": "^3.0.4",
-        "@ai-sdk/google": "^3.0.5",
-        "@ai-sdk/google-vertex": "^4.0.8",
+        "@ai-sdk/google": "^3.0.6",
+        "@ai-sdk/google-vertex": "^4.0.10",
         "@ai-sdk/mcp": "^1.0.5",
         "@ai-sdk/mistral": "^3.0.5",
         "@ai-sdk/openai": "^3.0.7",
@@ -53,14 +53,14 @@
         "@ai-sdk/xai": "^3.0.10",
         "@ffmpeg.wasm/core-st": "^0.13.2",
         "@ffmpeg.wasm/main": "^0.13.1",
-        "ai": "^6.0.14",
+        "ai": "^6.0.17",
         "cf-worker-adapter": "^1.4.0",
         "node-cron": "^4.2.1",
         "zod": "^4.3.5"
     },
     "devDependencies": {
         "@antfu/eslint-config": "^6.7.3",
-        "@cloudflare/workers-types": "^4.20260103.0",
+        "@cloudflare/workers-types": "^4.20260107.1",
         "@rollup/plugin-node-resolve": "^16.0.3",
         "@types/node": "^25.0.3",
         "@types/node-cron": "^3.0.11",
@@ -76,10 +76,10 @@
         "toml": "^3.0.0",
         "tsx": "^4.21.0",
         "typescript": "^5.9.3",
-        "vite": "^7.3.0",
+        "vite": "^7.3.1",
         "vite-plugin-checker": "^0.12.0",
         "vite-plugin-dts": "^4.5.4",
         "vitest": "^4.0.16",
-        "wrangler": "^4.56.0"
+        "wrangler": "^4.57.0"
     }
 }
