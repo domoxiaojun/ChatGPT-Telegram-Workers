@@ -335,6 +335,7 @@ function thinkingExtractor(messageInfo: MessageInfo) {
                 }
                 return output;
             case 'text-start':
+                log.info('[thinkingExtractor] text-start event');
                 if (!thinkingStart)
                     return '';
                 thinkingStart = false;
@@ -347,6 +348,7 @@ function thinkingExtractor(messageInfo: MessageInfo) {
                     .replace(/(\n>){3,}$/g, '\n>\n>');
                 return `\n>✹\n${SEGMENTATION_MARK}\n`;
             case 'text-delta':
+                log.debug(`[thinkingExtractor] text-delta: "${data.text}"`);
                 return data.text;
             case 'text-end':
                 return '';

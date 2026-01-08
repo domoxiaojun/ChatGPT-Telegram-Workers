@@ -138,7 +138,7 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
 
         onStepFinish: async ({ text, toolResults, usage, request, response, finishReason }: StepResult<any>) => {
             log.info('llm request end');
-            log.debug('step text:', text);
+            log.info(`[onStepFinish] text: "${text}", text length: ${text?.length || 0}, toolResults count: ${toolResults.length}`);
             log.debug('step raw request:', request);
             // log.debug('step raw response:', response);
 
