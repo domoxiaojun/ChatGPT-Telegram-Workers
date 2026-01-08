@@ -215,21 +215,31 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
                 log.info(`finish tools: ${toolNames}`);
             }
 
-            // Note: Don't append text here - it's already accumulated during streaming in request.ts:155
-            // Appending it again causes duplicate content when using Google server-side tools
-            // if (text && text.trim()) {
-            //     log.info(`Final response text length: ${text.length}`);
-            //     messageInfo.content += '\n\n' + text;
-            // }
+            // Handle final text response after tool execution
+            // For Google/Anthropic/xAI server-side tools, the text is already accumulated during streaming
+            // But we need to ensure it's sent when tool execution completes
             if (text && text.trim()) {
                 log.info(`Final response text length: ${text.length}`);
+
+                // Check if this text was already added to messageInfo.content during streaming
+                // If the current content doesn't end with this text, it means we need to append it
+                const currentContentLength = messageInfo.content.length;
+                const shouldAppendText = !messageInfo.content.endsWith(text.trimEnd());
+
+                if (shouldAppendText) {
+                    // This happens when tool results are returned but no streaming occurred for final text
+                    log.info(`Appending final text to messageInfo.content (tool follow-up response)`);
+                    messageInfo.content += (messageInfo.content.trim() ? '\n\n' : '') + text;
+                }
             }
 
-            // Note: Don't send final update here - streamSender.end() will handle it
-            // This prevents duplicate messages when using tools like google_search
-            // if (toolResults.length > 0 || (text && text.trim())) {
-            //     onStream?.send(messageInfo.content);
-            // }
+            // Send final update after tool execution if we have content to send
+            // This is crucial for Google server-side tools where the AI response after tool execution
+            // needs to be sent to the user
+            if (toolResults.length > 0 && text && text.trim()) {
+                log.info(`Sending final update after tool execution: ${messageInfo.content.length} chars`);
+                onStream?.send(messageInfo.content);
+            }
 
             // record token
             if (usage && usage.inputTokens && usage.outputTokens) {
