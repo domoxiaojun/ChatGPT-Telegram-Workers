@@ -336,6 +336,13 @@ MCP_example='{
   "headers": {"Authorization": "Bearer your_token"}
 }'
 
+# HTTP MCP server (supports custom headers)
+MCP_http='{
+  "type": "http",
+  "url": "https://api.example.com/mcp",
+  "headers": {"Authorization": "Bearer your_token", "X-Custom-Header": "value"}
+}'
+
 # Local process MCP
 MCP_local='{
   "type": "stdio",
@@ -344,6 +351,11 @@ MCP_local='{
   "cwd": "/path/to/mcp/server"
 }'
 ```
+
+**MCP Transport Types:**
+- **SSE (Server-Sent Events)**: Uses one-way event stream, suitable for server push scenarios
+- **HTTP (Streamable HTTP)**: Uses POST for sending messages and GET+SSE for receiving, supports custom headers
+- **stdio**: Local process communication, suitable for locally deployed MCP servers
 
 ### Message Processing
 

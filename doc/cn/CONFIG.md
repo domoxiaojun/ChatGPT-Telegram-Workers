@@ -336,6 +336,13 @@ MCP_example='{
   "headers": {"Authorization": "Bearer your_token"}
 }'
 
+# HTTP MCP服务器（支持自定义请求头）
+MCP_http='{
+  "type": "http",
+  "url": "https://api.example.com/mcp",
+  "headers": {"Authorization": "Bearer your_token", "X-Custom-Header": "value"}
+}'
+
 # 本地进程MCP
 MCP_local='{
   "type": "stdio",
@@ -344,6 +351,11 @@ MCP_local='{
   "cwd": "/path/to/mcp/server"
 }'
 ```
+
+**MCP Transport 类型：**
+- **SSE (Server-Sent Events)**: 使用单向事件流，适合服务器推送场景
+- **HTTP (Streamable HTTP)**: 使用 POST 发送消息、GET+SSE 接收消息，支持自定义请求头
+- **stdio**: 本地进程通信，适合本地部署的 MCP 服务器
 
 ### 消息处理
 

@@ -38,6 +38,7 @@ export async function initializeMcp() {
                     mcpTransport = {
                         type: 'http',
                         url: transport.url,
+                        ...(transport.headers && { headers: transport.headers }),
                     };
                     break;
                 default:
