@@ -173,24 +173,6 @@ export async function streamHandler(stream: AsyncIterable<any>, contentExtractor
         messageInfo.occured_error = true;
     }
 
-    // xAI bug workaround: 检测并移除重复的完整文本
-    // xAI responses API 可能会在流结束时重复发送整段文本
-    const content = messageInfo.content;
-    const halfLength = Math.floor(content.length / 2);
-
-    // 如果内容长度大于200字符，检查是否后半部分与前半部分完全相同
-    if (content.length > 200 && halfLength > 0) {
-        const firstHalf = content.substring(0, halfLength);
-        const secondHalf = content.substring(halfLength);
-
-        // 如果两半完全相同，说明发生了重复
-        if (firstHalf === secondHalf) {
-            // eslint-disable-next-line no-console
-            console.log(`[xAI dedup] Detected and removed duplicate content (${content.length} -> ${halfLength} chars)`);
-            messageInfo.content = firstHalf;
-        }
-    }
-
     return messageInfo.content;
 }
 
