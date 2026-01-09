@@ -270,6 +270,10 @@ function thinkingExtractor(messageInfo: MessageInfo) {
     const thinkingTag = ENV.EXPANDABLE_THINKING ? '**>`Thinking\.\.\.`' : '>`Thinking\.\.\.`';
     const sources: Array<{ url: string; title: string }> = [];
 
+    // Track if we detected inline thought text (for AI models that output "thought" prefix in text-delta)
+    let detectedInlineThought = false;
+    let inlineThoughtBuffer = '';
+
     // 存储 sources 到 messageInfo 以便后续处理
     (messageInfo as any).sources = sources;
 
@@ -331,6 +335,76 @@ function thinkingExtractor(messageInfo: MessageInfo) {
                 return `\n>✹\n${SEGMENTATION_MARK}\n`;
             case 'text-delta':
                 log.debug(`[thinkingExtractor] text-delta: "${data.text}"`);
+
+                if (!ENV.SHOW_THINKING_TEXT) {
+                    return data.text;
+                }
+
+                // WORKAROUND: Some AI models (particularly older Google Gemini versions)
+                // may output thought content directly in text-delta with "thought " prefix
+                // instead of using proper reasoning-start/delta/end events.
+                // This happens when the AI SDK version doesn't correctly parse the 'thought' field.
+
+                const isStartOfMessage = messageInfo.content.trim().length === 0 ||
+                                        messageInfo.content.endsWith(SEGMENTATION_MARK + '\n');
+
+                // Detect start of inline thought: patterns like "thought ", "thinking:", "reasoning:"
+                // at the beginning of response (case-insensitive)
+                const thoughtPatterns = /^(thought|thinking|reasoning)[\s:]+/i;
+
+                if (isStartOfMessage && thoughtPatterns.test(data.text)) {
+                    detectedInlineThought = true;
+                    inlineThoughtBuffer = data.text;
+                    log.info('[thinkingExtractor] Detected inline thought text from AI model');
+                    return `${thinkingTag}\n>${data.text.replace(/\n/g, '\n>')}`;
+                }
+
+                // Continue accumulating inline thought
+                if (detectedInlineThought) {
+                    inlineThoughtBuffer += data.text;
+
+                    // Try to detect end of thought block with improved heuristics:
+                    // 1. Double newline indicates end of thought paragraph
+                    // 2. Sentence end followed by capitalized word (likely start of real response)
+                    // 3. Length threshold: if thought is very long (>500 chars), look for natural breaks
+                    const hasDoubleNewline = /\n\s*\n/.test(inlineThoughtBuffer);
+                    const endsWithSentenceThenCapital = /[.!?]\s+[A-Z]/.test(inlineThoughtBuffer.slice(-100));
+                    const isVeryLong = inlineThoughtBuffer.length > 500;
+
+                    // More sophisticated end detection
+                    const shouldEndThought = hasDoubleNewline ||
+                                            (inlineThoughtBuffer.length > 200 && endsWithSentenceThenCapital) ||
+                                            (isVeryLong && /[.!?]\s*$/.test(inlineThoughtBuffer.trim()));
+
+                    if (shouldEndThought) {
+                        // End inline thought
+                        detectedInlineThought = false;
+                        const estimatedTime = (inlineThoughtBuffer.length / 100).toFixed(1);
+                        messageInfo.content = messageInfo.content
+                            .replace(thinkingTag, `>\`Thought for ${estimatedTime} seconds\``);
+                        inlineThoughtBuffer = '';
+                        log.info('[thinkingExtractor] Inline thought block ended');
+
+                        // Handle the ending text properly:
+                        // If it ends with double newline, the current delta might be part of response
+                        if (hasDoubleNewline) {
+                            // Split at double newline - first part is thought, rest is response
+                            const lastNewlineMatch = data.text.match(/\n\s*\n/);
+                            if (lastNewlineMatch) {
+                                const splitIndex = lastNewlineMatch.index! + lastNewlineMatch[0].length;
+                                const thoughtPart = data.text.slice(0, splitIndex);
+                                const responsePart = data.text.slice(splitIndex);
+                                return `${thoughtPart.replace(/\n/g, '\n>')}\n>✹\n${SEGMENTATION_MARK}\n${responsePart}`;
+                            }
+                        }
+
+                        return `${data.text.replace(/\n/g, '\n>')}\n>✹\n${SEGMENTATION_MARK}\n`;
+                    }
+
+                    // Continue thought block
+                    return `\n>${data.text.replace(/\n/g, '\n>')}`;
+                }
+
                 return data.text;
             case 'text-end':
                 return '';
