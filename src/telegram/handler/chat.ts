@@ -22,21 +22,29 @@ import { getTelegramFile, isTelegramChatTypeGroup, waitUntil } from '../utils/tg
 /**
  * Get user identifier with fallback logic
  * Priority: username > full_name > first_name
+ * Also includes user ID for better identification
  */
 function getUserIdentifier(user?: Telegram.User): string | null {
     if (!user) {
         return null;
     }
+    let identifier = '';
+
     // Priority 1: username with @ prefix
     if (user.username) {
-        return `@${user.username}`;
+        identifier = `@${user.username}`;
     }
     // Priority 2: full name (first_name + last_name)
-    if (user.last_name) {
-        return `${user.first_name} ${user.last_name}`;
+    else if (user.last_name) {
+        identifier = `${user.first_name} ${user.last_name}`;
     }
     // Priority 3: first_name only
-    return user.first_name;
+    else {
+        identifier = user.first_name;
+    }
+
+    // Always append user ID in parentheses for unique identification
+    return `${identifier} (ID:${user.id})`;
 }
 
 async function messageInitialize(sender: MessageSender, context?: WorkerContext, message?: Telegram.Message): Promise<ChatStreamTextHandler> {
