@@ -349,22 +349,7 @@ export class MergeQuote implements MessageHandler<WorkerContext> {
         // 开启引用消息且
         // 不是回复bot且包含回复消息 或 是引用消息 则将回复/引用消息和当前消息合并
         if (ENV.EXTRA_MESSAGE_CONTEXT && ((!isReplyMe && replyText) || quoteText)) {
-            // Get the user identifier of the person being replied to
-            let replyUserInfo = '';
-            if (!isReplyMe && message.reply_to_message?.from) {
-                const replyUser = message.reply_to_message.from;
-                if (replyUser.username) {
-                    replyUserInfo = `@${replyUser.username} (ID:${replyUser.id})`;
-                } else if (replyUser.last_name) {
-                    replyUserInfo = `${replyUser.first_name} ${replyUser.last_name} (ID:${replyUser.id})`;
-                } else {
-                    replyUserInfo = `${replyUser.first_name} (ID:${replyUser.id})`;
-                }
-                replyUserInfo = `[Replying to ${replyUserInfo}] `;
-            }
-            // Format: current message, then quoted/replied message with clear attribution
-            const quotedMessage = `${replyUserInfo}${quoteText || replyText}`;
-            message.text = `${message.text || message.caption || ''}\n> ${quotedMessage}`;
+            message.text = `${message.text || message.caption || ''}\n> ${quoteText || replyText}`;
         }
         return null;
     };
