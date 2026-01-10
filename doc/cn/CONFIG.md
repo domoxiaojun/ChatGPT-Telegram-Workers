@@ -8,6 +8,17 @@
 - [存储配置](#存储配置)
 - [系统配置](#系统配置)
 - [AI提供商配置](#ai提供商配置)
+  - [OpenAI](#openai)
+  - [Anthropic Claude](#anthropic-claude)
+  - [Google Gemini](#google-gemini)
+  - [xAI Grok](#xai-grok)
+  - [其他提供商](#其他提供商)
+- [AI原生工具配置](#ai原生工具配置)
+  - [OpenAI Server-Side Tools](#openai-server-side-tools)
+  - [Anthropic Server-Side Tools](#anthropic-server-side-tools)
+  - [Google Built-in Tools](#google-built-in-tools)
+  - [xAI Server-Side Tools](#xai-server-side-tools)
+- [语音服务配置](#语音服务配置)
 - [用户配置](#用户配置)
 - [命令](#命令)
 - [高级功能](#高级功能)
@@ -192,9 +203,426 @@
 
 | 变量 | 描述 | 默认值 |
 |------|------|--------|
-| `OPENAILIKE_API_KEY` | API密钥 | `null` |
-| `OPENAILIKE_API_BASE` | 基础URL | `null` |
-| `OPENAILIKE_CHAT_MODEL` | 模型名称 | `null` |
+| `OAILIKE_API_KEY` | API密钥 | `null` |
+| `OAILIKE_API_BASE` | 基础URL | `https://api.openai.com/v1` |
+| `OAILIKE_CHAT_MODEL` | 聊天模型 | `gpt-4o-mini` |
+| `OAILIKE_IMAGE_MODEL` | 图像模型 | `dall-e-3` |
+| `OAILIKE_VISION_MODEL` | 视觉模型 | `gpt-4o-mini` |
+| `OAILIKE_IMAGE_SIZE` | 图像尺寸 | `1024x1024` |
+| `OAILIKE_EMBEDDING_MODEL` | 嵌入模型 | `text-embedding-3-small` |
+| `OAILIKE_RERANK_MODEL` | 重排序模型 | `''` |
+| `OAILIKE_STT_MODEL` | 语音识别模型 | `FunAudioLLM/SenseVoiceSmall` |
+| `OAILIKE_TTS_MODEL` | 文字转语音模型 | `tts-1` |
+| `OAILIKE_TTS_VOICE` | TTS语音 | `alloy` |
+| `OAILIKE_API_EXTRA_PARAMS` | 额外参数 | `{}` |
+| `OAILIKE_MODELS` | 可用模型列表 | `[]` |
+| `OAILIKE_MODELS_API` | 模型列表API | `/models` |
+| `OAILIKE_PROVIDER_OPTIONS` | 提供商选项 | `{}` |
+
+**OpenAI-like 中继工具**：
+```bash
+# 通过 OpenAI-like 接口使用其他提供商的工具
+OAILIKE_RELAY_TOOLS='{"gemini": ["googleSearch", "codeExecution", "urlContext"]}'
+USE_OAILIKE_RELAY_TOOLS='["googleSearch"]'
+```
+
+## 🛠️ AI原生工具配置
+
+### OpenAI Server-Side Tools
+
+OpenAI Responses API 提供服务器端工具（仅在使用 Responses API 时可用）。
+
+#### 基础配置
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `OPENAI_BUILDIN` | 可用工具列表 | `['webSearch', 'codeInterpreter', 'fileSearch', 'imageGeneration', 'mcp']` |
+| `USE_OPENAI_BUILDIN` | 启用的工具 | `[]` |
+| `OPENAI_RESPONSE_MODELS` | 使用 Response API 的模型 | `['*']` |
+| `OPENAI_PROVIDER_OPTIONS` | 提供商选项 | 见下方 |
+
+**Provider Options**:
+```javascript
+OPENAI_PROVIDER_OPTIONS = {
+  parallelToolCalls: true,        // 并行工具调用
+  reasoningSummary: 'auto',       // 推理摘要: 'auto', 'concise', 'detailed'
+  // metadata: {},                // 元数据
+  // previousResponseId: '',      // 上一个响应ID
+  // store: false,                // 是否存储
+  // user: 'user1',               // 用户标识
+  // reasoningEffort: 'medium',   // 推理努力程度
+  // strictJsonSchema: true,      // 严格JSON模式
+  // instructions: '',            // 指令
+  // serviceTier: 'auto',         // 服务等级
+  // include: ['reasoning.encrypted_content'],
+}
+```
+
+#### Web Search - 网页搜索工具
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `OPENAI_ENABLE_WEB_SEARCH` | 启用网页搜索 | `false` |
+| `OPENAI_WEB_SEARCH_EXTERNAL_ACCESS` | 实时抓取网页 | `true` |
+| `OPENAI_WEB_SEARCH_ALLOWED_DOMAINS` | 允许的域名列表 | `[]` |
+| `OPENAI_WEB_SEARCH_CONTEXT_SIZE` | 搜索上下文大小 | `medium` |
+| `OPENAI_WEB_SEARCH_USER_LOCATION` | 用户位置 | `''` |
+
+**上下文大小选项**: `low`, `medium`, `high`
+**位置格式**: `"City, Country"` 或 `"latitude,longitude"`
+
+示例：
+```bash
+OPENAI_ENABLE_WEB_SEARCH=true
+OPENAI_WEB_SEARCH_CONTEXT_SIZE='high'
+OPENAI_WEB_SEARCH_USER_LOCATION='Beijing, China'
+OPENAI_WEB_SEARCH_ALLOWED_DOMAINS='["wikipedia.org", "github.com"]'
+```
+
+#### Code Interpreter - Python代码执行工具
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `OPENAI_ENABLE_CODE_INTERPRETER` | 启用代码解释器 | `false` |
+| `OPENAI_CODE_INTERPRETER_CONTAINER` | 容器ID（可选） | `''` |
+
+#### File Search - 文件向量搜索工具
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `OPENAI_ENABLE_FILE_SEARCH` | 启用文件搜索 | `false` |
+| `OPENAI_FILE_SEARCH_VECTOR_STORES` | 向量存储ID列表 | `[]` |
+| `OPENAI_FILE_SEARCH_MAX_RESULTS` | 最大返回结果数 | `10` |
+| `OPENAI_FILE_SEARCH_SCORE_THRESHOLD` | 相关性阈值(0-1) | `0.0` |
+
+示例：
+```bash
+OPENAI_ENABLE_FILE_SEARCH=true
+OPENAI_FILE_SEARCH_VECTOR_STORES='["vs_abc123", "vs_def456"]'
+OPENAI_FILE_SEARCH_MAX_RESULTS=20
+OPENAI_FILE_SEARCH_SCORE_THRESHOLD=0.5
+```
+
+#### Image Generation - 图片生成工具 (GPT-5.1+)
+
+| 变量 | 描述 | 默认值 | 选项 |
+|------|------|--------|------|
+| `OPENAI_ENABLE_IMAGE_GENERATION` | 启用图片生成 | `false` | - |
+| `OPENAI_IMAGE_BACKGROUND` | 背景类型 | `auto` | `auto`, `opaque`, `transparent` |
+| `OPENAI_IMAGE_INPUT_FIDELITY` | 输入保真度 | `low` | `low`, `high` |
+| `OPENAI_IMAGE_MODEL` | 图片生成模型 | `gpt-image-1` | - |
+| `OPENAI_IMAGE_OUTPUT_COMPRESSION` | 输出压缩等级(0-100) | `100` | - |
+| `OPENAI_IMAGE_OUTPUT_FORMAT` | 输出格式 | `png` | `png`, `jpeg`, `webp` |
+| `OPENAI_IMAGE_PARTIAL_IMAGES` | 部分图片数量(0-3) | `0` | - |
+| `OPENAI_IMAGE_QUALITY` | 图片质量 | `auto` | `auto`, `low`, `medium`, `high` |
+| `OPENAI_IMAGE_SIZE` | 图片尺寸 | `auto` | `auto`, `1024x1024`, `1024x1536`, `1536x1024` |
+
+#### MCP - Model Context Protocol
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `OPENAI_ENABLE_MCP` | 启用MCP | `false` |
+| `OPENAI_MCP_SERVER_LABEL` | MCP服务器标签（必需） | `''` |
+| `OPENAI_MCP_SERVER_URL` | MCP服务器URL | `''` |
+| `OPENAI_MCP_CONNECTOR_ID` | 服务连接器ID | `''` |
+| `OPENAI_MCP_SERVER_DESCRIPTION` | 服务器描述 | `''` |
+| `OPENAI_MCP_ALLOWED_TOOLS` | 允许的工具列表 | `[]` |
+| `OPENAI_MCP_ALLOWED_TOOLS_READ_ONLY` | 仅允许只读工具 | `false` |
+| `OPENAI_MCP_AUTHORIZATION` | OAuth访问令牌 | `''` |
+| `OPENAI_MCP_HEADERS` | 自定义HTTP头 | `{}` |
+| `OPENAI_MCP_REQUIRE_APPROVAL` | 工具执行审批策略 | `never` |
+| `OPENAI_MCP_APPROVAL_TOOL_NAMES` | 需要审批的工具 | `[]` |
+
+> **注意**: `serverUrl` 和 `connectorId` 二选一配置
+
+### Anthropic Server-Side Tools
+
+Anthropic 提供强大的服务器端工具，包括网页抓取、搜索和代码执行。
+
+#### 基础配置
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `ANTHROPIC_BUILDIN` | 可用工具列表 | `['webFetch', 'webSearch', 'codeExecution']` |
+| `USE_ANTHROPIC_BUILDIN` | 启用的工具 | `[]` |
+| `ANTHROPIC_ENABLE_CACHE_CONTROL` | 启用prompt缓存 | `true` |
+| `ANTHROPIC_PROVIDER_OPTIONS` | 提供商选项 | 见下方 |
+
+**Provider Options**:
+```javascript
+ANTHROPIC_PROVIDER_OPTIONS = {
+  // sendReasoning: true,
+  // thinking: {
+  //   type: 'enabled',        // 'enabled' | 'disabled'
+  //   budgetTokens: '1024',
+  // },
+}
+```
+
+#### Web Fetch - 网页抓取工具
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `ANTHROPIC_ENABLE_WEB_FETCH` | 启用网页抓取 | `false` |
+| `ANTHROPIC_WEB_FETCH_MAX_USES` | 最大使用次数 | `5` |
+| `ANTHROPIC_WEB_FETCH_ALLOWED_DOMAINS` | 允许的域名 | `[]` |
+| `ANTHROPIC_WEB_FETCH_BLOCKED_DOMAINS` | 禁止的域名 | `[]` |
+| `ANTHROPIC_WEB_FETCH_ENABLE_CITATIONS` | 启用引用 | `true` |
+| `ANTHROPIC_WEB_FETCH_MAX_CONTENT_TOKENS` | 最大内容tokens | `4000` |
+
+#### Web Search - 网页搜索工具
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `ANTHROPIC_ENABLE_WEB_SEARCH` | 启用网页搜索 | `false` |
+| `ANTHROPIC_WEB_SEARCH_MAX_USES` | 最大使用次数 | `5` |
+| `ANTHROPIC_WEB_SEARCH_ALLOWED_DOMAINS` | 允许的域名 | `[]` |
+| `ANTHROPIC_WEB_SEARCH_BLOCKED_DOMAINS` | 禁止的域名 | `[]` |
+| `ANTHROPIC_WEB_SEARCH_USER_LOCATION` | 用户位置 | `''` |
+
+#### Code Execution - 代码执行工具
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `ANTHROPIC_ENABLE_CODE_EXECUTION` | 启用代码执行（Python + Bash） | `false` |
+
+#### Tool Streaming - 细粒度工具流
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `ANTHROPIC_ENABLE_TOOL_STREAMING` | 启用工具流（实时显示执行进度） | `true` |
+
+#### Context Management - 上下文管理
+
+自动清理历史工具调用，避免上下文过长：
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `ANTHROPIC_ENABLE_CONTEXT_MANAGEMENT` | 启用上下文管理 | `true` |
+| `ANTHROPIC_CONTEXT_CLEAR_TRIGGER` | 触发模式 | `auto` |
+| `ANTHROPIC_CONTEXT_KEEP_RECENT` | 保留最近N次工具调用 | `5` |
+| `ANTHROPIC_CONTEXT_CLEAR_AT_LEAST` | 至少清理N千个tokens | `2` |
+| `ANTHROPIC_CONTEXT_CLEAR_TOOL_INPUTS` | 清理工具输入参数 | `false` |
+| `ANTHROPIC_CONTEXT_EXCLUDE_TOOLS` | 排除的工具 | `[]` |
+
+**触发模式**: `auto` (自动) | `manual` (手动)
+
+#### Thinking 清理配置
+
+针对推理模型如 Claude 3.7 Sonnet：
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `ANTHROPIC_ENABLE_THINKING_CLEANUP` | 启用thinking清理 | `false` |
+| `ANTHROPIC_THINKING_KEEP_RECENT` | 保留最近N轮thinking | `3` |
+
+#### Structured Output Mode
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `ANTHROPIC_STRUCTURED_OUTPUT_MODE` | 结构化输出模式 | `auto` |
+
+**模式选项**:
+- `outputFormat`: 使用 output format（更灵活，推荐）
+- `tool`: 使用工具模式（严格验证）
+- `auto`: 自动选择
+
+### Google Built-in Tools
+
+Google Gemini 提供多种内置工具。
+
+#### 基础配置
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `GOOGLE_BUILDIN` | 可用工具列表 | `['googleSearch', 'codeExecution', 'urlContext', 'googleMaps', 'fileSearch', 'enterpriseWebSearch']` |
+| `USE_GOOGLE_BUILDIN` | 启用的工具 | `[]` |
+| `GOOGLE_PROVIDER_OPTIONS` | 提供商选项 | 见下方 |
+
+**Provider Options**:
+```javascript
+GOOGLE_PROVIDER_OPTIONS = {
+  // responseModalities: ['TEXT'],
+  // thinkingConfig: {
+  //   thinkingBudget: '1024',
+  //   includeThoughts: false,
+  // },
+  // cachedContent: '',
+  // structuredOutputs: false,
+  safetySettings: [
+    { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+    { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+    { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+    { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' },
+  ],
+  threshold: 'OFF',
+  // useSearchGrounding: true,
+  // dynamicRetrievalConfig: {
+  //   mode: 'MODE_DYNAMIC',
+  //   dynamicThreshold: 5,
+  // },
+}
+```
+
+#### File Search (RAG)
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `GOOGLE_FILE_SEARCH_STORES` | 文件搜索存储 | `[]` |
+| `GOOGLE_FILE_SEARCH_TOP_K` | Top-K结果数 | `10` |
+| `GOOGLE_FILE_SEARCH_METADATA_FILTER` | 元数据过滤器 | `''` |
+
+示例：
+```bash
+GOOGLE_FILE_SEARCH_STORES='["fileSearchStores/my-store-123"]'
+```
+
+#### Google Maps Grounding
+
+为位置感知响应提供位置上下文：
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `GOOGLE_RETRIEVAL_CONFIG` | 检索配置（经纬度） | `{}` |
+| `GOOGLE_MAPS_MODEL` | Maps工具使用的模型 | `gemini-2.5-flash` |
+
+示例：
+```bash
+GOOGLE_RETRIEVAL_CONFIG='{"latLng": {"latitude": 39.9042, "longitude": 116.4074}}'
+```
+
+> **注意**: 只有 gemini-2.5-flash 支持 Google Maps
+
+#### Gemini 3 Pro Image 配置
+
+| 变量 | 描述 | 默认值 | 选项 |
+|------|------|--------|------|
+| `GOOGLE_IMAGE_ASPECT_RATIO` | 图像宽高比 | `null` | `1:1`, `2:3`, `3:2`, `3:4`, `4:3`, `4:5`, `5:4`, `9:16`, `16:9`, `21:9` |
+| `GOOGLE_IMAGE_SIZE` | 图像分辨率 | `null` | `1K`, `2K`, `4K` |
+| `GOOGLE_IMAGE_ENABLE_GOOGLE_SEARCH` | 启用Google搜索增强 | `false` | - |
+
+### xAI Server-Side Tools
+
+xAI Grok 提供网页搜索、X搜索和代码执行工具。
+
+#### 基础配置
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `XAI_BUILDIN` | 可用工具列表 | `['webSearch', 'xSearch', 'codeExecution']` |
+| `USE_XAI_BUILDIN` | 启用的工具 | `[]` |
+| `XAI_PROVIDER_OPTIONS` | 提供商选项 | `{}` |
+
+**Provider Options**:
+```javascript
+XAI_PROVIDER_OPTIONS = {
+  // reasoningEffort: 'high',  // 推理努力程度
+}
+```
+
+#### Web Search - 网页搜索
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `XAI_ENABLE_WEB_SEARCH` | 启用网页搜索 | `false` |
+| `XAI_WEB_SEARCH_ALLOWED_DOMAINS` | 允许的域名（最多5个） | `[]` |
+| `XAI_WEB_SEARCH_EXCLUDED_DOMAINS` | 排除的域名（最多5个） | `[]` |
+| `XAI_WEB_SEARCH_IMAGE_UNDERSTANDING` | 启用图像理解 | `false` |
+
+#### X Search - X/Twitter搜索
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `XAI_ENABLE_X_SEARCH` | 启用X搜索 | `false` |
+| `XAI_X_SEARCH_ALLOWED_HANDLES` | 允许的用户（最多10个） | `[]` |
+| `XAI_X_SEARCH_EXCLUDED_HANDLES` | 排除的用户（最多10个） | `[]` |
+| `XAI_X_SEARCH_IMAGE_UNDERSTANDING` | 启用图像理解 | `false` |
+| `XAI_X_SEARCH_VIDEO_UNDERSTANDING` | 启用视频理解 | `false` |
+
+#### Code Execution - 代码执行
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `XAI_ENABLE_CODE_EXECUTION` | 启用代码执行（Python沙箱） | `false` |
+
+## 🎙️ 语音服务配置
+
+### Fish Audio TTS
+
+Fish Audio 提供高质量的中文语音合成服务。
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `FISH_API_KEY` | Fish Audio API密钥 | `null` |
+| `FISH_API_BASE` | API基础URL | `https://api.fish.audio/v1` |
+| `FISH_TTS_VOICE` | 语音参考ID | `''` |
+| `FISH_TTS_MODEL` | TTS模型 | `speech-1.6` |
+| `FISH_TTS_EXTRA_PARAMS` | 额外参数 | `{}` |
+
+#### 预设中文语音参考
+
+内置语音参考ID（通过 `FISH_TTS_VOICE` 设置）：
+
+| 名称 | Reference ID |
+|------|-------------|
+| 丁真 | `54a5170264694bfc8e9ad98df7bd89c3` |
+| 雷军 | `4462fa28f3824bff808a94a6075570e5` |
+| 小明剑魔 | `4f77d5137e15401b96617895a2275923` |
+| 央视配音 | `59cb5986671546eaa6ca8ae6f29f6d22` |
+| 麦当劳 | `4066d617322e41abb30ed70eaeaf273f` |
+| 赛马娘 | `0eb38bc974e1459facca38b359e13511` |
+| 郑翔洲 | `63393102cf1248849477da56ee5dc3ae` |
+| 蔡徐坤 | `e4642e5edccd4d9ab61a69e82d4f8a14` |
+| 女大学生 | `5c353fdb312f4888836a9a5680099ef0` |
+| 董宇辉 | `8f454f665d214e4284ba05f703b63960` |
+| 黑手 | `f7561ff309bd4040a59f1e600f4f4338` |
+| 奶龙(效果最好) | `3d1cb00d75184099992ddbaf0fdd7387` |
+| 陶矜 | `acb16651a5e14be89b7826a2e24687cd` |
+| 邓紫琪 | `3b55b3d84d2f453a98d8ca9bb24182d6` |
+| 郭德纲 | `4914b8e04e2148118c91f322d409ccc6` |
+| 刘德华 | `cb03a4a3ff6a4784b319cde85a07e31c` |
+
+示例：
+```bash
+AI_TTS_PROVIDER='fish'
+FISH_API_KEY='your_fish_api_key'
+FISH_TTS_VOICE='奶龙(效果最好)'
+```
+
+### Google TTS
+
+#### 多说话人配置
+
+Google TTS 支持多说话人配置：
+
+```bash
+GOOGLE_TTS_EXTRA_PARAMS='{
+  "multi_speaker_voice_config": {
+    "speaker_voice_configs": [
+      {
+        "speaker": "Speaker1",
+        "voice_config": {
+          "prebuilt_voice_config": {
+            "voice_name": "Kore"
+          }
+        }
+      },
+      {
+        "speaker": "Speaker2",
+        "voice_config": {
+          "prebuilt_voice_config": {
+            "voice_name": "Puck"
+          }
+        }
+      }
+    ]
+  },
+  "language_code": "en-US"
+}'
+```
+
+> **注意**: 多说话人配置与 `GOOGLE_TTS_VOICE` 互斥
 
 ## 👤 用户配置
 
@@ -289,6 +717,137 @@ COMMAND_SCOPE_azure='all_private_chats,all_group_chats'
 ```
 
 ## 🔧 高级功能
+
+### QSTASH 异步处理
+
+使用 Upstash QStash 进行异步消息处理（适合长时间运行的任务）：
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `QSTASH_URL` | QStash API URL | `https://qstash.upstash.io` |
+| `QSTASH_TOKEN` | QStash Token | `''` |
+| `QSTASH_PUBLISH_URL` | 回调URL（你的webhook域名） | `''` |
+| `QSTASH_TRIGGER_PREFIX` | 触发前缀 | `''` |
+| `QSTASH_TIMEOUT` | 超时时间 | `15m` |
+
+> **注意**: 免费账户最大超时时间为 15 分钟
+
+示例：
+```bash
+QSTASH_TOKEN='your_qstash_token'
+QSTASH_PUBLISH_URL='https://your-bot.workers.dev'
+QSTASH_TIMEOUT='15m'
+```
+
+### Telegram 媒体处理
+
+#### 图片和文件处理
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `TELEGRAM_PHOTO_SIZE_OFFSET` | 图片尺寸偏移 | `-2` |
+| `TELEGRAM_IMAGE_TRANSFER_MODE` | 图片传递方式 | `url` |
+| `SEND_IMAGE_AS_FILE` | 以文件形式发送图片 | `false` |
+| `ENABLE_FILE` | 启用文件读取（已弃用） | `true` |
+| `SUPPORT_FORMAT` | 支持的文件格式 | `['text', 'photo', 'voice', 'audio', 'image']` |
+| `FILE_SIZE_LIMIT` | 文件大小限制（启用折叠时生效） | `-1` |
+
+**图片尺寸偏移说明**:
+- `0`: 第一位（最小）
+- `-1`: 最后一位（最大）
+- `-2`: 次高质量（默认，推荐）
+
+**图片传递方式**:
+- `url`: 通过URL传递（推荐）
+- `base64`: 通过base64编码传递
+
+**支持的格式**:
+- `text`: 文本文件
+- `photo`: 照片
+- `voice`: 语音消息
+- `audio`: 音频文件
+- `video`: 视频文件（取决于模型支持）
+- `document`: 文档（图片、音频、文本作为文件发送）
+- `sticker`: 贴纸（gif, jpg, png, webp, webm作为视频）
+- `image`: 图像文件
+
+#### 媒体消息存储
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `STORE_MEDIA_MESSAGE` | 存储媒体组文件ID | `false` |
+| `STORE_TEXT_CHUNK_MESSAGE` | 存储分块文本消息 | `false` |
+| `STORE_HISTORY_LENGTH` | 存储历史消息长度 | `64` |
+
+#### 音频处理
+
+| 变量 | 描述 | 默认值 | 选项 |
+|------|------|--------|------|
+| `AUDIO_TEXT_FORMAT` | 音频文本格式 | `undefined` | `spoiler`, `bold`, `italic`, `underline`, `strikethrough`, `code`, `pre` |
+| `AUDIO_PROMPT` | 音频提示词 | 见下方 | - |
+
+默认音频提示词：
+```
+Please listen to the audio file. Identify and understand the question being asked in the audio. Then, provide a detailed explanation and answer to this question. Ensure your answer is helpful and explains the solution or information clearly.
+```
+
+### 消息显示和控制
+
+#### 消息折叠和引用
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `ADD_QUOTE_LIMIT` | 自动引用阈值（字符数） | `-1` |
+| `ADD_QUOTE_SCOPE` | 折叠消息范围 | `['group', 'supergroup']` |
+| `QUOTE_EXPANDABLE` | 引用消息可展开 | `false` |
+| `LOG_POSITION_ON_TOP` | 日志位置在顶部 | `true` |
+
+**范围选项**: `group`, `supergroup`, `private`
+
+#### 消息兼容性和显示
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `MESSAGE_COMPATIBLE` | 转换tool_call/tool_result为用户消息 | `true` |
+| `ENABLE_SEARCH_SOURCE` | 显示搜索来源 | `true` |
+| `SHOW_THINKING_TEXT` | 显示AI推理思考过程 | `true` |
+| `EXPANDABLE_THINKING` | 使用可折叠引用块显示思考 | `true` |
+
+#### 内联查询
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `INLINE_QUERY_SEND_INTERVAL` | 内联查询发送间隔（毫秒） | `2000` |
+| `INLINE_QUERY_SHOW_INFO` | 内联查询显示信息 | `false` |
+
+#### 回调查询配置
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `CALLBACK_QUERY_RC` | 内联键盘行列数 | `7x2` |
+| `ENVS_VARIABLES` | 回调查询中显示的环境变量 | `[]` |
+| `CALLBACK_MENU` | 回调菜单选项 | `[]` |
+
+**可用菜单选项**:
+- `AI_CHAT_PROVIDER`
+- `AI_IMAGE_PROVIDER`
+- `AI_TTS_PROVIDER`
+- `AI_ASR_PROVIDER`
+- `USE_TOOLS`
+- `USE_MCP`
+- `USE_OAILIKE_RELAY_TOOLS`
+- `CHAT_MODEL`
+- `IMAGE_MODEL`
+- `VISION_MODEL`
+- `TOOL_MODEL`
+- `ENVS`
+- `RERANK_AGENT`
+
+示例：
+```bash
+CALLBACK_MENU='["AI_CHAT_PROVIDER", "CHAT_MODEL", "USE_TOOLS"]'
+ENVS_VARIABLES='["OPENAI_API_KEY", "ANTHROPIC_API_KEY"]'
+```
 
 ### 函数调用和工具
 

@@ -8,6 +8,17 @@ This guide covers all configuration options for the ChatGPT Telegram Workers bot
 - [Storage Configuration](#storage-configuration)
 - [System Configuration](#system-configuration)
 - [AI Provider Configuration](#ai-provider-configuration)
+  - [OpenAI](#openai)
+  - [Anthropic Claude](#anthropic-claude)
+  - [Google Gemini](#google-gemini)
+  - [xAI Grok](#xai-grok)
+  - [Other Providers](#other-providers)
+- [AI Native Tools Configuration](#ai-native-tools-configuration)
+  - [OpenAI Server-Side Tools](#openai-server-side-tools)
+  - [Anthropic Server-Side Tools](#anthropic-server-side-tools)
+  - [Google Built-in Tools](#google-built-in-tools)
+  - [xAI Server-Side Tools](#xai-server-side-tools)
+- [Voice Services Configuration](#voice-services-configuration)
 - [User Configuration](#user-configuration)
 - [Commands](#commands)
 - [Advanced Features](#advanced-features)
@@ -192,9 +203,426 @@ This is particularly useful when multiple people are having a conversation and t
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `OPENAILIKE_API_KEY` | API key | `null` |
-| `OPENAILIKE_API_BASE` | Base URL | `null` |
-| `OPENAILIKE_CHAT_MODEL` | Model name | `null` |
+| `OAILIKE_API_KEY` | API key | `null` |
+| `OAILIKE_API_BASE` | Base URL | `https://api.openai.com/v1` |
+| `OAILIKE_CHAT_MODEL` | Chat model | `gpt-4o-mini` |
+| `OAILIKE_IMAGE_MODEL` | Image model | `dall-e-3` |
+| `OAILIKE_VISION_MODEL` | Vision model | `gpt-4o-mini` |
+| `OAILIKE_IMAGE_SIZE` | Image size | `1024x1024` |
+| `OAILIKE_EMBEDDING_MODEL` | Embedding model | `text-embedding-3-small` |
+| `OAILIKE_RERANK_MODEL` | Rerank model | `''` |
+| `OAILIKE_STT_MODEL` | Speech-to-text model | `FunAudioLLM/SenseVoiceSmall` |
+| `OAILIKE_TTS_MODEL` | Text-to-speech model | `tts-1` |
+| `OAILIKE_TTS_VOICE` | TTS voice | `alloy` |
+| `OAILIKE_API_EXTRA_PARAMS` | Extra parameters | `{}` |
+| `OAILIKE_MODELS` | Available models list | `[]` |
+| `OAILIKE_MODELS_API` | Models list API | `/models` |
+| `OAILIKE_PROVIDER_OPTIONS` | Provider options | `{}` |
+
+**OpenAI-like Relay Tools**:
+```bash
+# Use other provider's tools through OpenAI-like interface
+OAILIKE_RELAY_TOOLS='{"gemini": ["googleSearch", "codeExecution", "urlContext"]}'
+USE_OAILIKE_RELAY_TOOLS='["googleSearch"]'
+```
+
+## 🛠️ AI Native Tools Configuration
+
+### OpenAI Server-Side Tools
+
+OpenAI Responses API provides server-side tools (available only when using Responses API).
+
+#### Basic Configuration
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OPENAI_BUILDIN` | Available tools list | `['webSearch', 'codeInterpreter', 'fileSearch', 'imageGeneration', 'mcp']` |
+| `USE_OPENAI_BUILDIN` | Enabled tools | `[]` |
+| `OPENAI_RESPONSE_MODELS` | Models using Response API | `['*']` |
+| `OPENAI_PROVIDER_OPTIONS` | Provider options | See below |
+
+**Provider Options**:
+```javascript
+OPENAI_PROVIDER_OPTIONS = {
+  parallelToolCalls: true,        // Parallel tool calls
+  reasoningSummary: 'auto',       // Reasoning summary: 'auto', 'concise', 'detailed'
+  // metadata: {},                // Metadata
+  // previousResponseId: '',      // Previous response ID
+  // store: false,                // Whether to store
+  // user: 'user1',               // User identifier
+  // reasoningEffort: 'medium',   // Reasoning effort level
+  // strictJsonSchema: true,      // Strict JSON schema
+  // instructions: '',            // Instructions
+  // serviceTier: 'auto',         // Service tier
+  // include: ['reasoning.encrypted_content'],
+}
+```
+
+#### Web Search - Web Search Tool
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OPENAI_ENABLE_WEB_SEARCH` | Enable web search | `false` |
+| `OPENAI_WEB_SEARCH_EXTERNAL_ACCESS` | Real-time web access | `true` |
+| `OPENAI_WEB_SEARCH_ALLOWED_DOMAINS` | Allowed domains list | `[]` |
+| `OPENAI_WEB_SEARCH_CONTEXT_SIZE` | Search context size | `medium` |
+| `OPENAI_WEB_SEARCH_USER_LOCATION` | User location | `''` |
+
+**Context Size Options**: `low`, `medium`, `high`
+**Location Format**: `"City, Country"` or `"latitude,longitude"`
+
+Example:
+```bash
+OPENAI_ENABLE_WEB_SEARCH=true
+OPENAI_WEB_SEARCH_CONTEXT_SIZE='high'
+OPENAI_WEB_SEARCH_USER_LOCATION='Beijing, China'
+OPENAI_WEB_SEARCH_ALLOWED_DOMAINS='["wikipedia.org", "github.com"]'
+```
+
+#### Code Interpreter - Python Code Execution Tool
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OPENAI_ENABLE_CODE_INTERPRETER` | Enable code interpreter | `false` |
+| `OPENAI_CODE_INTERPRETER_CONTAINER` | Container ID (optional) | `''` |
+
+#### File Search - Vector Search Tool
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OPENAI_ENABLE_FILE_SEARCH` | Enable file search | `false` |
+| `OPENAI_FILE_SEARCH_VECTOR_STORES` | Vector store IDs | `[]` |
+| `OPENAI_FILE_SEARCH_MAX_RESULTS` | Max results | `10` |
+| `OPENAI_FILE_SEARCH_SCORE_THRESHOLD` | Relevance threshold (0-1) | `0.0` |
+
+Example:
+```bash
+OPENAI_ENABLE_FILE_SEARCH=true
+OPENAI_FILE_SEARCH_VECTOR_STORES='["vs_abc123", "vs_def456"]'
+OPENAI_FILE_SEARCH_MAX_RESULTS=20
+OPENAI_FILE_SEARCH_SCORE_THRESHOLD=0.5
+```
+
+#### Image Generation - Image Generation Tool (GPT-5.1+)
+
+| Variable | Description | Default | Options |
+|----------|-------------|---------|---------|
+| `OPENAI_ENABLE_IMAGE_GENERATION` | Enable image generation | `false` | - |
+| `OPENAI_IMAGE_BACKGROUND` | Background type | `auto` | `auto`, `opaque`, `transparent` |
+| `OPENAI_IMAGE_INPUT_FIDELITY` | Input fidelity | `low` | `low`, `high` |
+| `OPENAI_IMAGE_MODEL` | Image generation model | `gpt-image-1` | - |
+| `OPENAI_IMAGE_OUTPUT_COMPRESSION` | Output compression (0-100) | `100` | - |
+| `OPENAI_IMAGE_OUTPUT_FORMAT` | Output format | `png` | `png`, `jpeg`, `webp` |
+| `OPENAI_IMAGE_PARTIAL_IMAGES` | Partial images count (0-3) | `0` | - |
+| `OPENAI_IMAGE_QUALITY` | Image quality | `auto` | `auto`, `low`, `medium`, `high` |
+| `OPENAI_IMAGE_SIZE` | Image size | `auto` | `auto`, `1024x1024`, `1024x1536`, `1536x1024` |
+
+#### MCP - Model Context Protocol
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OPENAI_ENABLE_MCP` | Enable MCP | `false` |
+| `OPENAI_MCP_SERVER_LABEL` | MCP server label (required) | `''` |
+| `OPENAI_MCP_SERVER_URL` | MCP server URL | `''` |
+| `OPENAI_MCP_CONNECTOR_ID` | Service connector ID | `''` |
+| `OPENAI_MCP_SERVER_DESCRIPTION` | Server description | `''` |
+| `OPENAI_MCP_ALLOWED_TOOLS` | Allowed tools list | `[]` |
+| `OPENAI_MCP_ALLOWED_TOOLS_READ_ONLY` | Read-only tools only | `false` |
+| `OPENAI_MCP_AUTHORIZATION` | OAuth access token | `''` |
+| `OPENAI_MCP_HEADERS` | Custom HTTP headers | `{}` |
+| `OPENAI_MCP_REQUIRE_APPROVAL` | Tool execution approval | `never` |
+| `OPENAI_MCP_APPROVAL_TOOL_NAMES` | Tools requiring approval | `[]` |
+
+> **Note**: Choose either `serverUrl` or `connectorId`
+
+### Anthropic Server-Side Tools
+
+Anthropic provides powerful server-side tools including web fetch, search, and code execution.
+
+#### Basic Configuration
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ANTHROPIC_BUILDIN` | Available tools list | `['webFetch', 'webSearch', 'codeExecution']` |
+| `USE_ANTHROPIC_BUILDIN` | Enabled tools | `[]` |
+| `ANTHROPIC_ENABLE_CACHE_CONTROL` | Enable prompt caching | `true` |
+| `ANTHROPIC_PROVIDER_OPTIONS` | Provider options | See below |
+
+**Provider Options**:
+```javascript
+ANTHROPIC_PROVIDER_OPTIONS = {
+  // sendReasoning: true,
+  // thinking: {
+  //   type: 'enabled',        // 'enabled' | 'disabled'
+  //   budgetTokens: '1024',
+  // },
+}
+```
+
+#### Web Fetch - Web Fetching Tool
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ANTHROPIC_ENABLE_WEB_FETCH` | Enable web fetch | `false` |
+| `ANTHROPIC_WEB_FETCH_MAX_USES` | Max uses | `5` |
+| `ANTHROPIC_WEB_FETCH_ALLOWED_DOMAINS` | Allowed domains | `[]` |
+| `ANTHROPIC_WEB_FETCH_BLOCKED_DOMAINS` | Blocked domains | `[]` |
+| `ANTHROPIC_WEB_FETCH_ENABLE_CITATIONS` | Enable citations | `true` |
+| `ANTHROPIC_WEB_FETCH_MAX_CONTENT_TOKENS` | Max content tokens | `4000` |
+
+#### Web Search - Web Search Tool
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ANTHROPIC_ENABLE_WEB_SEARCH` | Enable web search | `false` |
+| `ANTHROPIC_WEB_SEARCH_MAX_USES` | Max uses | `5` |
+| `ANTHROPIC_WEB_SEARCH_ALLOWED_DOMAINS` | Allowed domains | `[]` |
+| `ANTHROPIC_WEB_SEARCH_BLOCKED_DOMAINS` | Blocked domains | `[]` |
+| `ANTHROPIC_WEB_SEARCH_USER_LOCATION` | User location | `''` |
+
+#### Code Execution - Code Execution Tool
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ANTHROPIC_ENABLE_CODE_EXECUTION` | Enable code execution (Python + Bash) | `false` |
+
+#### Tool Streaming - Fine-grained Tool Streaming
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ANTHROPIC_ENABLE_TOOL_STREAMING` | Enable tool streaming (real-time progress) | `true` |
+
+#### Context Management - Auto Context Cleanup
+
+Automatically cleans up historical tool calls to avoid excessive context length:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ANTHROPIC_ENABLE_CONTEXT_MANAGEMENT` | Enable context management | `true` |
+| `ANTHROPIC_CONTEXT_CLEAR_TRIGGER` | Trigger mode | `auto` |
+| `ANTHROPIC_CONTEXT_KEEP_RECENT` | Keep recent N tool calls | `5` |
+| `ANTHROPIC_CONTEXT_CLEAR_AT_LEAST` | Clear at least N thousand tokens | `2` |
+| `ANTHROPIC_CONTEXT_CLEAR_TOOL_INPUTS` | Clear tool input params | `false` |
+| `ANTHROPIC_CONTEXT_EXCLUDE_TOOLS` | Excluded tools | `[]` |
+
+**Trigger Modes**: `auto` (automatic) | `manual` (manual)
+
+#### Thinking Cleanup Configuration
+
+For reasoning models like Claude 3.7 Sonnet:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ANTHROPIC_ENABLE_THINKING_CLEANUP` | Enable thinking cleanup | `false` |
+| `ANTHROPIC_THINKING_KEEP_RECENT` | Keep recent N thinking rounds | `3` |
+
+#### Structured Output Mode
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ANTHROPIC_STRUCTURED_OUTPUT_MODE` | Structured output mode | `auto` |
+
+**Mode Options**:
+- `outputFormat`: Use output format (more flexible, recommended)
+- `tool`: Use tool mode (strict validation)
+- `auto`: Automatic selection
+
+### Google Built-in Tools
+
+Google Gemini provides various built-in tools.
+
+#### Basic Configuration
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `GOOGLE_BUILDIN` | Available tools list | `['googleSearch', 'codeExecution', 'urlContext', 'googleMaps', 'fileSearch', 'enterpriseWebSearch']` |
+| `USE_GOOGLE_BUILDIN` | Enabled tools | `[]` |
+| `GOOGLE_PROVIDER_OPTIONS` | Provider options | See below |
+
+**Provider Options**:
+```javascript
+GOOGLE_PROVIDER_OPTIONS = {
+  // responseModalities: ['TEXT'],
+  // thinkingConfig: {
+  //   thinkingBudget: '1024',
+  //   includeThoughts: false,
+  // },
+  // cachedContent: '',
+  // structuredOutputs: false,
+  safetySettings: [
+    { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+    { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+    { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+    { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' },
+  ],
+  threshold: 'OFF',
+  // useSearchGrounding: true,
+  // dynamicRetrievalConfig: {
+  //   mode: 'MODE_DYNAMIC',
+  //   dynamicThreshold: 5,
+  // },
+}
+```
+
+#### File Search (RAG)
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `GOOGLE_FILE_SEARCH_STORES` | File search stores | `[]` |
+| `GOOGLE_FILE_SEARCH_TOP_K` | Top-K results | `10` |
+| `GOOGLE_FILE_SEARCH_METADATA_FILTER` | Metadata filter | `''` |
+
+Example:
+```bash
+GOOGLE_FILE_SEARCH_STORES='["fileSearchStores/my-store-123"]'
+```
+
+#### Google Maps Grounding
+
+Provides location context for location-aware responses:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `GOOGLE_RETRIEVAL_CONFIG` | Retrieval config (lat/lng) | `{}` |
+| `GOOGLE_MAPS_MODEL` | Model for Maps tool | `gemini-2.5-flash` |
+
+Example:
+```bash
+GOOGLE_RETRIEVAL_CONFIG='{"latLng": {"latitude": 39.9042, "longitude": 116.4074}}'
+```
+
+> **Note**: Only gemini-2.5-flash supports Google Maps
+
+#### Gemini 3 Pro Image Configuration
+
+| Variable | Description | Default | Options |
+|----------|-------------|---------|---------|
+| `GOOGLE_IMAGE_ASPECT_RATIO` | Image aspect ratio | `null` | `1:1`, `2:3`, `3:2`, `3:4`, `4:3`, `4:5`, `5:4`, `9:16`, `16:9`, `21:9` |
+| `GOOGLE_IMAGE_SIZE` | Image resolution | `null` | `1K`, `2K`, `4K` |
+| `GOOGLE_IMAGE_ENABLE_GOOGLE_SEARCH` | Enable Google Search grounding | `false` | - |
+
+### xAI Server-Side Tools
+
+xAI Grok provides web search, X search, and code execution tools.
+
+#### Basic Configuration
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `XAI_BUILDIN` | Available tools list | `['webSearch', 'xSearch', 'codeExecution']` |
+| `USE_XAI_BUILDIN` | Enabled tools | `[]` |
+| `XAI_PROVIDER_OPTIONS` | Provider options | `{}` |
+
+**Provider Options**:
+```javascript
+XAI_PROVIDER_OPTIONS = {
+  // reasoningEffort: 'high',  // Reasoning effort level
+}
+```
+
+#### Web Search - Web Search
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `XAI_ENABLE_WEB_SEARCH` | Enable web search | `false` |
+| `XAI_WEB_SEARCH_ALLOWED_DOMAINS` | Allowed domains (max 5) | `[]` |
+| `XAI_WEB_SEARCH_EXCLUDED_DOMAINS` | Excluded domains (max 5) | `[]` |
+| `XAI_WEB_SEARCH_IMAGE_UNDERSTANDING` | Enable image understanding | `false` |
+
+#### X Search - X/Twitter Search
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `XAI_ENABLE_X_SEARCH` | Enable X search | `false` |
+| `XAI_X_SEARCH_ALLOWED_HANDLES` | Allowed handles (max 10) | `[]` |
+| `XAI_X_SEARCH_EXCLUDED_HANDLES` | Excluded handles (max 10) | `[]` |
+| `XAI_X_SEARCH_IMAGE_UNDERSTANDING` | Enable image understanding | `false` |
+| `XAI_X_SEARCH_VIDEO_UNDERSTANDING` | Enable video understanding | `false` |
+
+#### Code Execution - Code Execution
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `XAI_ENABLE_CODE_EXECUTION` | Enable code execution (Python sandbox) | `false` |
+
+## 🎙️ Voice Services Configuration
+
+### Fish Audio TTS
+
+Fish Audio provides high-quality Chinese voice synthesis.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `FISH_API_KEY` | Fish Audio API key | `null` |
+| `FISH_API_BASE` | API base URL | `https://api.fish.audio/v1` |
+| `FISH_TTS_VOICE` | Voice reference ID | `''` |
+| `FISH_TTS_MODEL` | TTS model | `speech-1.6` |
+| `FISH_TTS_EXTRA_PARAMS` | Extra parameters | `{}` |
+
+#### Preset Chinese Voice References
+
+Built-in voice reference IDs (set via `FISH_TTS_VOICE`):
+
+| Name | Reference ID |
+|------|-------------|
+| Ding Zhen | `54a5170264694bfc8e9ad98df7bd89c3` |
+| Lei Jun | `4462fa28f3824bff808a94a6075570e5` |
+| Xiao Ming | `4f77d5137e15401b96617895a2275923` |
+| CCTV Voice | `59cb5986671546eaa6ca8ae6f29f6d22` |
+| McDonald's | `4066d617322e41abb30ed70eaeaf273f` |
+| Uma Musume | `0eb38bc974e1459facca38b359e13511` |
+| Zheng Xiangzhou | `63393102cf1248849477da56ee5dc3ae` |
+| Cai Xukun | `e4642e5edccd4d9ab61a69e82d4f8a14` |
+| Female Student | `5c353fdb312f4888836a9a5680099ef0` |
+| Dong Yuhui | `8f454f665d214e4284ba05f703b63960` |
+| Black Hand | `f7561ff309bd4040a59f1e600f4f4338` |
+| Nai Long (Best) | `3d1cb00d75184099992ddbaf0fdd7387` |
+| Tao Jin | `acb16651a5e14be89b7826a2e24687cd` |
+| Deng Ziqi | `3b55b3d84d2f453a98d8ca9bb24182d6` |
+| Guo Degang | `4914b8e04e2148118c91f322d409ccc6` |
+| Andy Lau | `cb03a4a3ff6a4784b319cde85a07e31c` |
+
+Example:
+```bash
+AI_TTS_PROVIDER='fish'
+FISH_API_KEY='your_fish_api_key'
+FISH_TTS_VOICE='Nai Long (Best)'
+```
+
+### Google TTS
+
+#### Multi-Speaker Configuration
+
+Google TTS supports multi-speaker configuration:
+
+```bash
+GOOGLE_TTS_EXTRA_PARAMS='{
+  "multi_speaker_voice_config": {
+    "speaker_voice_configs": [
+      {
+        "speaker": "Speaker1",
+        "voice_config": {
+          "prebuilt_voice_config": {
+            "voice_name": "Kore"
+          }
+        }
+      },
+      {
+        "speaker": "Speaker2",
+        "voice_config": {
+          "prebuilt_voice_config": {
+            "voice_name": "Puck"
+          }
+        }
+      }
+    ]
+  },
+  "language_code": "en-US"
+}'
+```
+
+> **Note**: Multi-speaker config is mutually exclusive with `GOOGLE_TTS_VOICE`
 
 ## 👤 User Configuration
 
@@ -289,6 +717,137 @@ COMMAND_SCOPE_azure='all_private_chats,all_group_chats'
 ```
 
 ## 🔧 Advanced Features
+
+### QSTASH Async Processing
+
+Use Upstash QStash for asynchronous message processing (suitable for long-running tasks):
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `QSTASH_URL` | QStash API URL | `https://qstash.upstash.io` |
+| `QSTASH_TOKEN` | QStash Token | `''` |
+| `QSTASH_PUBLISH_URL` | Callback URL (your webhook domain) | `''` |
+| `QSTASH_TRIGGER_PREFIX` | Trigger prefix | `''` |
+| `QSTASH_TIMEOUT` | Timeout duration | `15m` |
+
+> **Note**: Free account max timeout is 15 minutes
+
+Example:
+```bash
+QSTASH_TOKEN='your_qstash_token'
+QSTASH_PUBLISH_URL='https://your-bot.workers.dev'
+QSTASH_TIMEOUT='15m'
+```
+
+### Telegram Media Processing
+
+#### Image and File Handling
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `TELEGRAM_PHOTO_SIZE_OFFSET` | Photo size offset | `-2` |
+| `TELEGRAM_IMAGE_TRANSFER_MODE` | Image transfer mode | `url` |
+| `SEND_IMAGE_AS_FILE` | Send images as files | `false` |
+| `ENABLE_FILE` | Enable file reading (deprecated) | `true` |
+| `SUPPORT_FORMAT` | Supported file formats | `['text', 'photo', 'voice', 'audio', 'image']` |
+| `FILE_SIZE_LIMIT` | File size limit (when folding enabled) | `-1` |
+
+**Photo Size Offset**:
+- `0`: First (smallest)
+- `-1`: Last (largest)
+- `-2`: Second highest quality (default, recommended)
+
+**Image Transfer Mode**:
+- `url`: Transfer via URL (recommended)
+- `base64`: Transfer via base64 encoding
+
+**Supported Formats**:
+- `text`: Text files
+- `photo`: Photos
+- `voice`: Voice messages
+- `audio`: Audio files
+- `video`: Video files (model-dependent)
+- `document`: Documents (images, audio, text as files)
+- `sticker`: Stickers (gif, jpg, png, webp, webm as video)
+- `image`: Image files
+
+#### Media Message Storage
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `STORE_MEDIA_MESSAGE` | Store media group file IDs | `false` |
+| `STORE_TEXT_CHUNK_MESSAGE` | Store chunked text messages | `false` |
+| `STORE_HISTORY_LENGTH` | Store history message length | `64` |
+
+#### Audio Processing
+
+| Variable | Description | Default | Options |
+|----------|-------------|---------|---------|
+| `AUDIO_TEXT_FORMAT` | Audio text format | `undefined` | `spoiler`, `bold`, `italic`, `underline`, `strikethrough`, `code`, `pre` |
+| `AUDIO_PROMPT` | Audio prompt | See below | - |
+
+Default audio prompt:
+```
+Please listen to the audio file. Identify and understand the question being asked in the audio. Then, provide a detailed explanation and answer to this question. Ensure your answer is helpful and explains the solution or information clearly.
+```
+
+### Message Display and Control
+
+#### Message Folding and Quoting
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ADD_QUOTE_LIMIT` | Auto-quote threshold (characters) | `-1` |
+| `ADD_QUOTE_SCOPE` | Fold message scope | `['group', 'supergroup']` |
+| `QUOTE_EXPANDABLE` | Quote messages expandable | `false` |
+| `LOG_POSITION_ON_TOP` | Log position on top | `true` |
+
+**Scope Options**: `group`, `supergroup`, `private`
+
+#### Message Compatibility and Display
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `MESSAGE_COMPATIBLE` | Convert tool_call/tool_result to user message | `true` |
+| `ENABLE_SEARCH_SOURCE` | Display search sources | `true` |
+| `SHOW_THINKING_TEXT` | Display AI reasoning process | `true` |
+| `EXPANDABLE_THINKING` | Use collapsible blockquote for thinking | `true` |
+
+#### Inline Queries
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `INLINE_QUERY_SEND_INTERVAL` | Inline query send interval (ms) | `2000` |
+| `INLINE_QUERY_SHOW_INFO` | Inline query show info | `false` |
+
+#### Callback Query Configuration
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `CALLBACK_QUERY_RC` | Inline keyboard row x column | `7x2` |
+| `ENVS_VARIABLES` | Environment variables shown in callback | `[]` |
+| `CALLBACK_MENU` | Callback menu options | `[]` |
+
+**Available Menu Options**:
+- `AI_CHAT_PROVIDER`
+- `AI_IMAGE_PROVIDER`
+- `AI_TTS_PROVIDER`
+- `AI_ASR_PROVIDER`
+- `USE_TOOLS`
+- `USE_MCP`
+- `USE_OAILIKE_RELAY_TOOLS`
+- `CHAT_MODEL`
+- `IMAGE_MODEL`
+- `VISION_MODEL`
+- `TOOL_MODEL`
+- `ENVS`
+- `RERANK_AGENT`
+
+Example:
+```bash
+CALLBACK_MENU='["AI_CHAT_PROVIDER", "CHAT_MODEL", "USE_TOOLS"]'
+ENVS_VARIABLES='["OPENAI_API_KEY", "ANTHROPIC_API_KEY"]'
+```
 
 ### Function Calling & Tools
 
