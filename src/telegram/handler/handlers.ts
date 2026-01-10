@@ -362,7 +362,9 @@ export class MergeQuote implements MessageHandler<WorkerContext> {
                 }
                 replyUserInfo = `[Replying to ${replyUserInfo}] `;
             }
-            message.text = `${message.text || message.caption || ''}\n> ${replyUserInfo}${quoteText || replyText}`;
+            // Format: current message, then quoted/replied message with clear attribution
+            const quotedMessage = `${replyUserInfo}${quoteText || replyText}`;
+            message.text = `${message.text || message.caption || ''}\n> ${quotedMessage}`;
         }
         return null;
     };
