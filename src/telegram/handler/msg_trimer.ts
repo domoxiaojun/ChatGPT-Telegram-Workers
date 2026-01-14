@@ -62,43 +62,41 @@ export class HandleMediaGroupMessage {
             return null;
         }
         const msgInfo = context.MIDDLE_CONTEXT.messageInfo;
-
-        log.info(`[MEDIA GROUP DEBUG] message_id: ${message.message_id}, has media_group_id: ${!!message.media_group_id}, media_group_id: ${message.media_group_id}, type: ${msgInfo.type}`);
-
         if (message.media_group_id && ['photo', 'image'].includes(msgInfo.type) && Array.isArray(msgInfo.id)) {
-            log.info(`[MEDIA GROUP] message_id ${message.message_id} entering handler, media_group_id: ${message.media_group_id}`);
-
-            // CRITICAL: Acquire lock BEFORE storing to prevent race conditions
-            const lockKey = `media_group_lock:${message.media_group_id}`;
-            log.info(`[MEDIA GROUP] message_id ${message.message_id} trying to acquire lock: ${lockKey}`);
-            const lockAcquired = await ENV.DATABASE.put(lockKey, message.message_id.toString(), { expirationTtl: 10, condition: 'NX' });
-            log.info(`[MEDIA GROUP] message_id ${message.message_id} lock result: ${lockAcquired}`);
-
-            // Store this image's file_id regardless of lock status
+            // Store media group file id first
             await this.storeMediaMessage(`${storeMediaMessageKey}:lock`, storeMediaMessageKey, msgInfo);
 
-            if (lockAcquired !== true && lockAcquired !== undefined) {
-                // Another message already acquired the lock
-                log.info(`[MEDIA GROUP] Skipping message_id ${message.message_id} - lock held by another message`);
-                return new Response('ok');
+            // If message has caption, it's the one with text, process it immediately
+            if (message.caption || message.text) {
+                const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
+                const fileIds = data[message.media_group_id];
+                if (fileIds && fileIds.length > 0) {
+                    context.MIDDLE_CONTEXT.messageInfo.id = fileIds;
+                    log.info(`[MEDIA GROUP] Processing ${fileIds.length} images with caption`);
+                    return null; // Continue to process
+                }
             }
 
-            // We acquired the lock! Wait for all images to arrive
-            const waitTime = (message.caption || message.text) ? 400 : 700;
-            log.info(`[MEDIA GROUP] Lock acquired by message_id ${message.message_id}, waiting ${waitTime}ms...`);
-            await new Promise(resolve => setTimeout(resolve, waitTime));
+            // No caption - wait a bit to see if more images arrive
+            await new Promise(resolve => setTimeout(resolve, 500));
 
-            // Load all collected images
+            // Check how many images we have now
             const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
             const fileIds = data[message.media_group_id];
 
-            if (fileIds && fileIds.length > 0) {
+            // Check if more images were added after this one
+            const currentImageIndex = fileIds?.indexOf(msgInfo.id![0]) ?? -1;
+            const isLastImage = currentImageIndex === (fileIds?.length ?? 0) - 1;
+
+            if (isLastImage && fileIds && fileIds.length > 0) {
+                // This is the last image, process all of them
                 context.MIDDLE_CONTEXT.messageInfo.id = fileIds;
-                log.info(`[MEDIA GROUP] message_id ${message.message_id} processing ${fileIds.length} images`);
+                log.info(`[MEDIA GROUP] Processing ${fileIds.length} images (last image in group)`);
                 return null; // Continue to process
             }
 
-            log.info(`[MEDIA GROUP] message_id ${message.message_id} no file IDs found, skipping`);
+            // Not the last image, skip processing
+            log.info(`[MEDIA GROUP] Skipping image ${currentImageIndex + 1}/${fileIds?.length}, waiting for more`);
             return new Response('ok');
         } else if (message.reply_to_message?.media_group_id) {
             const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
