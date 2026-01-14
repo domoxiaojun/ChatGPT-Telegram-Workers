@@ -68,24 +68,14 @@ export class HandleMediaGroupMessage {
 
             // If message has caption, it's typically the last message with user text, process immediately
             if (message.caption || message.text) {
-                // Try to acquire processing lock
-                const mediaGroupLockKey = `media_group_lock:${message.media_group_id}`;
-                const lockAcquired = await ENV.DATABASE.put(mediaGroupLockKey, '1', { expirationTtl: 10, condition: 'NX' });
-
-                if (lockAcquired === true || lockAcquired === undefined) {
-                    // Successfully acquired lock, wait longer to ensure all images are stored
-                    // Caption messages often arrive first, need to wait for other images
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
-                    const fileIds = data[message.media_group_id];
-                    if (fileIds && fileIds.length > 0) {
-                        context.MIDDLE_CONTEXT.messageInfo.id = fileIds;
-                        log.info(`[MEDIA GROUP] Processing ${fileIds.length} images with caption`);
-                        return null; // Continue to process
-                    }
-                } else {
-                    log.info(`[MEDIA GROUP] Skipping - another message with caption is processing`);
-                    return new Response('ok');
+                // Wait a bit to ensure all images are stored
+                await new Promise(resolve => setTimeout(resolve, 200));
+                const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
+                const fileIds = data[message.media_group_id];
+                if (fileIds && fileIds.length > 0) {
+                    context.MIDDLE_CONTEXT.messageInfo.id = fileIds;
+                    log.info(`[MEDIA GROUP] Processing ${fileIds.length} images with caption`);
+                    return null; // Continue to process
                 }
             }
 
@@ -93,19 +83,24 @@ export class HandleMediaGroupMessage {
             // Wait longer to ensure all images have arrived
             await new Promise(resolve => setTimeout(resolve, 800));
 
-            // Try to acquire processing lock atomically
-            const mediaGroupLockKey = `media_group_lock:${message.media_group_id}`;
-            const lockAcquired = await ENV.DATABASE.put(mediaGroupLockKey, '1', { expirationTtl: 10, condition: 'NX' });
+            // Re-check the stored images
+            const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
+            const fileIds = data[message.media_group_id];
 
-            if (lockAcquired !== true && lockAcquired !== undefined) {
-                // Lock already acquired by another image
-                log.info(`[MEDIA GROUP] Skipping - already being processed by another image`);
+            // Check if this is the last image by comparing message_id
+            // Telegram sends media group messages with sequential message_ids
+            // The last message should have the highest message_id in the group
+            const mediaGroupKey = `media_group_processed:${message.media_group_id}`;
+            const alreadyProcessed = await ENV.DATABASE.get(mediaGroupKey);
+
+            if (alreadyProcessed) {
+                // Another image in this group was already processed
+                log.info(`[MEDIA GROUP] Skipping - already processed by another image in group`);
                 return new Response('ok');
             }
 
-            // Successfully acquired lock, load all images
-            const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
-            const fileIds = data[message.media_group_id];
+            // Mark this media group as processed (expires in 10 seconds)
+            await ENV.DATABASE.put(mediaGroupKey, '1', { expirationTtl: 10 });
 
             if (fileIds && fileIds.length > 0) {
                 // Process all images in the group

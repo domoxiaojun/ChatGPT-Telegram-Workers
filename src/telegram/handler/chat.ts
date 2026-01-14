@@ -703,9 +703,14 @@ async function fileUrlToBase64Message({ urls, type, params, AUDIO_HANDLE_TYPE = 
                     return { type, [format === 'webm' ? 'data' : 'image']: url, mediaType: getMediaType(url, mediaTypePrefix) } as unknown as FilePart | ImagePart;
                 }));
             } else {
-                // base64 模式：urlToBase64Message 使用闭包中的 urls 数组处理所有图片
-                const images = await urlToBase64Message('image') as ImagePart[];
-                (params.content as any[]).push(...images);
+                // base64 模式：为每个 URL 检测格式并转换
+                const images = await Promise.all(urls.map(async (url) => {
+                    const format = url.split('?')[0].split('.').pop()?.toLowerCase();
+                    const mediaTypePrefix = format === 'webm' ? 'video' : 'image';
+                    const parts = await urlToBase64Message(mediaTypePrefix);
+                    return parts;
+                }));
+                (params.content as any[]).push(...images.flat());
             }
             break;
         }
