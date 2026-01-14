@@ -66,13 +66,25 @@ export class HandleMediaGroupMessage {
             // Store media group file id first
             await this.storeMediaMessage(`${storeMediaMessageKey}:lock`, storeMediaMessageKey, msgInfo);
 
-            // If message has caption, it's the one with text, process it immediately
+            // If message has caption, it's the one with text, wait a bit for more images
             if (message.caption || message.text) {
+                // Wait 3 seconds for potentially delayed images
+                await new Promise(resolve => setTimeout(resolve, 3000));
+
                 const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
                 const fileIds = data[message.media_group_id];
                 if (fileIds && fileIds.length > 0) {
                     context.MIDDLE_CONTEXT.messageInfo.id = fileIds;
-                    log.info(`[MEDIA GROUP] Processing ${fileIds.length} images with caption`);
+                    const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
+
+                    // Send notification about how many images were collected
+                    if (fileIds.length === 1) {
+                        sender.sendRichText(`<pre><code class="language-tip">Received 1 image, processing... (If you sent multiple images, the second response will include all images)</code></pre>`, 'HTML', 'tip');
+                    } else {
+                        sender.sendRichText(`<pre><code class="language-tip">Received ${fileIds.length} images, processing...</code></pre>`, 'HTML', 'tip');
+                    }
+
+                    log.info(`[MEDIA GROUP] Processing ${fileIds.length} images with caption after 3s wait`);
                     return null; // Continue to process
                 }
             }
@@ -91,6 +103,8 @@ export class HandleMediaGroupMessage {
             if (isLastImage && fileIds && fileIds.length > 0) {
                 // This is the last image, process all of them
                 context.MIDDLE_CONTEXT.messageInfo.id = fileIds;
+                const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
+                sender.sendRichText(`<pre><code class="language-tip">Received ${fileIds.length} images (complete media group), processing...</code></pre>`, 'HTML', 'tip');
                 log.info(`[MEDIA GROUP] Processing ${fileIds.length} images (last image in group)`);
                 return null; // Continue to process
             }
