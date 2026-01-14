@@ -71,7 +71,7 @@ export class HandleMediaGroupMessage {
             // CRITICAL: Acquire lock BEFORE storing to prevent race conditions
             const lockKey = `media_group_lock:${message.media_group_id}`;
             log.info(`[MEDIA GROUP] message_id ${message.message_id} trying to acquire lock: ${lockKey}`);
-            const lockAcquired = await ENV.DATABASE.put(lockKey, message.message_id.toString(), { expirationTtl: 30, condition: 'NX' });
+            const lockAcquired = await ENV.DATABASE.put(lockKey, message.message_id.toString(), { expirationTtl: 10, condition: 'NX' });
             log.info(`[MEDIA GROUP] message_id ${message.message_id} lock result: ${lockAcquired}`);
 
             // Store this image's file_id regardless of lock status
@@ -84,11 +84,8 @@ export class HandleMediaGroupMessage {
             }
 
             // We acquired the lock! Wait for all images to arrive
-            // Even with caption, need to wait long enough for all images
-            // Telegram can delay sending images in media group by several seconds
-            const hasCaption = !!(message.caption || message.text);
-            const waitTime = hasCaption ? 2000 : 2000;  // Always wait 2 seconds to ensure all images arrive
-            log.info(`[MEDIA GROUP] Lock acquired by message_id ${message.message_id}, has_caption: ${hasCaption}, caption: "${message.caption}", text: "${message.text}", waiting ${waitTime}ms...`);
+            const waitTime = (message.caption || message.text) ? 400 : 700;
+            log.info(`[MEDIA GROUP] Lock acquired by message_id ${message.message_id}, waiting ${waitTime}ms...`);
             await new Promise(resolve => setTimeout(resolve, waitTime));
 
             // Load all collected images
