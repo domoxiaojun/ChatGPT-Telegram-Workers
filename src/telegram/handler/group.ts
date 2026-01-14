@@ -2,6 +2,7 @@ import type * as Telegram from 'telegram-bot-api-types';
 import type { WorkerContext } from '../../config/context';
 import type { MessageHandler } from './types';
 import { ENV } from '../../config/env';
+import { log } from '../../log/logger';
 import { createTelegramBotAPI } from '../api';
 import { checkIsNeedTagIds } from '../utils/send';
 import { isTelegramChatTypeGroup } from '../utils/tg_utils';
@@ -113,6 +114,20 @@ export class GroupMention implements MessageHandler {
         if (isTriggered && !isMention) {
             isMention = true;
         }
+
+        // If this is part of a media group that was already triggered, allow it through
+        if (!isMention && message.media_group_id) {
+            const storeMediaMessageKey = context.SHARE_CONTEXT?.storeMediaMessageKey;
+            if (storeMediaMessageKey) {
+                const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
+                // If this media_group_id already has stored images, it means a triggered message already passed
+                if (data[message.media_group_id] && data[message.media_group_id].length > 0) {
+                    log.info(`[GROUP MENTION] Allowing media group ${message.media_group_id} image without trigger (part of triggered group)`);
+                    isMention = true;
+                }
+            }
+        }
+
         if (!isMention) {
             return new Response('Not mention');
         }
