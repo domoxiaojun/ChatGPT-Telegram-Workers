@@ -694,14 +694,23 @@ async function fileUrlToBase64Message({ urls, type, params, AUDIO_HANDLE_TYPE = 
         case 'sticker':
         {
             const isUrl = ENV.TELEGRAM_IMAGE_TRANSFER_MODE === 'url';
-            const format = urls[0].split('?')[0].split('.').pop()?.toLowerCase();
-            const type = format === 'webm' ? 'file' : 'image';
-            const mediaTypePrefix = format === 'webm' ? 'video' : 'image';
             if (isUrl) {
-                (params.content as any[]).push(...urls.map(url => ({ type, [format === 'webm' ? 'data' : 'image']: url, mediaType: getMediaType(url, mediaTypePrefix) }) as unknown as FilePart | ImagePart));
+                // 为每个 URL 检测其格式
+                (params.content as any[]).push(...urls.map((url) => {
+                    const format = url.split('?')[0].split('.').pop()?.toLowerCase();
+                    const type = format === 'webm' ? 'file' : 'image';
+                    const mediaTypePrefix = format === 'webm' ? 'video' : 'image';
+                    return { type, [format === 'webm' ? 'data' : 'image']: url, mediaType: getMediaType(url, mediaTypePrefix) } as unknown as FilePart | ImagePart;
+                }));
             } else {
-                const images = await urlToBase64Message(mediaTypePrefix) as ImagePart[];
-                (params.content as any[]).push(...images);
+                // base64 模式：为每个 URL 检测格式并转换
+                const images = await Promise.all(urls.map(async (url) => {
+                    const format = url.split('?')[0].split('.').pop()?.toLowerCase();
+                    const mediaTypePrefix = format === 'webm' ? 'video' : 'image';
+                    const parts = await urlToBase64Message(mediaTypePrefix);
+                    return parts;
+                }));
+                (params.content as any[]).push(...images.flat());
             }
             break;
         }
