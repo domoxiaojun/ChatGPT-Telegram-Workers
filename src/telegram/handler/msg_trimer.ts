@@ -87,9 +87,37 @@ export class HandleMediaGroupMessage {
             // Even with caption, need to wait long enough for all images
             // Telegram can delay sending images in media group by several seconds
             const hasCaption = !!(message.caption || message.text);
-            const waitTime = hasCaption ? 2000 : 2000;  // Always wait 2 seconds to ensure all images arrive
-            log.info(`[MEDIA GROUP] Lock acquired by message_id ${message.message_id}, has_caption: ${hasCaption}, caption: "${message.caption}", text: "${message.text}", waiting ${waitTime}ms...`);
-            await new Promise(resolve => setTimeout(resolve, waitTime));
+            log.info(`[MEDIA GROUP] Lock acquired by message_id ${message.message_id}, has_caption: ${hasCaption}, caption: "${message.caption}", text: "${message.text}"`);
+
+            // Wait and check multiple times if more images arrive
+            let previousCount = 0;
+            let stableCount = 0;
+            const maxWaitTime = 15000; // Maximum 15 seconds
+            const checkInterval = 500; // Check every 500ms
+            const stableRequired = 3; // Need 3 consecutive same counts to consider complete
+
+            const startTime = Date.now();
+            while (Date.now() - startTime < maxWaitTime) {
+                await new Promise(resolve => setTimeout(resolve, checkInterval));
+
+                const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
+                const currentCount = data[message.media_group_id]?.length || 0;
+
+                if (currentCount === previousCount) {
+                    stableCount++;
+                    if (stableCount >= stableRequired) {
+                        log.info(`[MEDIA GROUP] Image count stable at ${currentCount} for ${stableCount * checkInterval}ms, proceeding`);
+                        break;
+                    }
+                } else {
+                    log.info(`[MEDIA GROUP] Image count changed: ${previousCount} -> ${currentCount}`);
+                    previousCount = currentCount;
+                    stableCount = 0;
+                }
+            }
+
+            const totalWaitTime = Date.now() - startTime;
+            log.info(`[MEDIA GROUP] Waited ${totalWaitTime}ms total`);
 
             // Load all collected images
             const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
