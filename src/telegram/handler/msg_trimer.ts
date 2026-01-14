@@ -56,6 +56,9 @@ class Lock {
 }
 
 export class HandleMediaGroupMessage {
+    // Track last message timestamp for each media group (accumulator pattern)
+    private static lastMessageTime: Map<string, number> = new Map();
+
     static handle = async (message: Message, context: WorkerContext): Promise<Response | null> => {
         const storeMediaMessageKey = context.SHARE_CONTEXT?.storeMediaMessageKey;
         if (!storeMediaMessageKey) {
@@ -68,69 +71,58 @@ export class HandleMediaGroupMessage {
         if (message.media_group_id && ['photo', 'image'].includes(msgInfo.type) && Array.isArray(msgInfo.id)) {
             log.info(`[MEDIA GROUP] message_id ${message.message_id} entering handler, media_group_id: ${message.media_group_id}`);
 
-            // CRITICAL: Acquire lock BEFORE storing to prevent race conditions
-            const lockKey = `media_group_lock:${message.media_group_id}`;
-            log.info(`[MEDIA GROUP] message_id ${message.message_id} trying to acquire lock: ${lockKey}`);
-            const lockAcquired = await ENV.DATABASE.put(lockKey, message.message_id.toString(), { expirationTtl: 30, condition: 'NX' });
-            log.info(`[MEDIA GROUP] message_id ${message.message_id} lock result: ${lockAcquired}`);
+            const mediaGroupId = message.media_group_id;
+            const lockKey = `media_group_lock:${mediaGroupId}`;
 
-            // Store this image's file_id regardless of lock status
+            // Store this image's file_id first
             await this.storeMediaMessage(`${storeMediaMessageKey}:lock`, storeMediaMessageKey, msgInfo);
 
-            if (lockAcquired !== true && lockAcquired !== undefined) {
-                // Another message already acquired the lock
-                log.info(`[MEDIA GROUP] Skipping message_id ${message.message_id} - lock held by another message`);
+            // Update last message timestamp (accumulator pattern)
+            this.lastMessageTime.set(mediaGroupId, Date.now());
+
+            // If message has caption/text, it's likely the last one - wait for more images
+            if (message.caption || message.text) {
+                log.info(`[MEDIA GROUP] Message ${message.message_id} has caption, waiting for additional images...`);
+
+                const WAIT_TIME = 3000; // 3 seconds to wait for more images
+                const startTime = Date.now();
+
+                // Wait for the accumulator window
+                await new Promise(resolve => setTimeout(resolve, WAIT_TIME));
+
+                const timeSinceLastMessage = Date.now() - (this.lastMessageTime.get(mediaGroupId) || 0);
+                log.info(`[MEDIA GROUP] After ${WAIT_TIME}ms wait, time since last message: ${timeSinceLastMessage}ms`);
+
+                // Try to acquire lock to process
+                const lockAcquired = await ENV.DATABASE.put(lockKey, message.message_id.toString(), { expirationTtl: 30, condition: 'NX' });
+
+                if (lockAcquired !== true && lockAcquired !== undefined) {
+                    log.info(`[MEDIA GROUP] ${mediaGroupId} already processed by another message`);
+                    return new Response('ok');
+                }
+
+                // Load all collected images
+                const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
+                const fileIds = data[mediaGroupId];
+
+                if (fileIds && fileIds.length > 0) {
+                    log.info(`[MEDIA GROUP] Processing ${fileIds.length} images for ${mediaGroupId}`);
+                    context.MIDDLE_CONTEXT.messageInfo.id = fileIds;
+
+                    // Cleanup
+                    this.lastMessageTime.delete(mediaGroupId);
+
+                    // Continue to chat handler
+                    return null;
+                } else {
+                    log.error(`[MEDIA GROUP] No images found for ${mediaGroupId}`);
+                    return new Response('ok');
+                }
+            } else {
+                // No caption, just an intermediate image - return early
+                log.info(`[MEDIA GROUP] Message ${message.message_id} has no caption, waiting for final message`);
                 return new Response('ok');
             }
-
-            // We acquired the lock! Wait for all images to arrive
-            // Even with caption, need to wait long enough for all images
-            // Telegram can delay sending images in media group by several seconds
-            const hasCaption = !!(message.caption || message.text);
-            log.info(`[MEDIA GROUP] Lock acquired by message_id ${message.message_id}, has_caption: ${hasCaption}, caption: "${message.caption}", text: "${message.text}"`);
-
-            // Wait and check multiple times if more images arrive
-            let previousCount = 0;
-            let stableCount = 0;
-            const maxWaitTime = 15000; // Maximum 15 seconds
-            const checkInterval = 500; // Check every 500ms
-            const stableRequired = 3; // Need 3 consecutive same counts to consider complete
-
-            const startTime = Date.now();
-            while (Date.now() - startTime < maxWaitTime) {
-                await new Promise(resolve => setTimeout(resolve, checkInterval));
-
-                const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
-                const currentCount = data[message.media_group_id]?.length || 0;
-
-                if (currentCount === previousCount) {
-                    stableCount++;
-                    if (stableCount >= stableRequired) {
-                        log.info(`[MEDIA GROUP] Image count stable at ${currentCount} for ${stableCount * checkInterval}ms, proceeding`);
-                        break;
-                    }
-                } else {
-                    log.info(`[MEDIA GROUP] Image count changed: ${previousCount} -> ${currentCount}`);
-                    previousCount = currentCount;
-                    stableCount = 0;
-                }
-            }
-
-            const totalWaitTime = Date.now() - startTime;
-            log.info(`[MEDIA GROUP] Waited ${totalWaitTime}ms total`);
-
-            // Load all collected images
-            const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
-            const fileIds = data[message.media_group_id];
-
-            if (fileIds && fileIds.length > 0) {
-                context.MIDDLE_CONTEXT.messageInfo.id = fileIds;
-                log.info(`[MEDIA GROUP] message_id ${message.message_id} processing ${fileIds.length} images`);
-                return null; // Continue to process
-            }
-
-            log.info(`[MEDIA GROUP] message_id ${message.message_id} no file IDs found, skipping`);
-            return new Response('ok');
         } else if (message.reply_to_message?.media_group_id) {
             const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
             const fileIds = data[message.reply_to_message.media_group_id];
