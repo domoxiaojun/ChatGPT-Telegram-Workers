@@ -79,9 +79,9 @@ export class HandleMediaGroupMessage {
 
                     // Send notification about how many images were collected
                     if (fileIds.length === 1) {
-                        sender.sendRichText(`<pre><code class="language-tip">Received 1 image, processing... (If you sent multiple images, the second response will include all images)</code></pre>`, 'HTML', 'tip');
+                        sender.sendRichText(`<pre><code class="language-tip">Processing 1 image... (Additional images may arrive separately due to Telegram delays)</code></pre>`, 'HTML', 'tip');
                     } else {
-                        sender.sendRichText(`<pre><code class="language-tip">Received ${fileIds.length} images, processing...</code></pre>`, 'HTML', 'tip');
+                        sender.sendRichText(`<pre><code class="language-tip">Processing ${fileIds.length} images from media group...</code></pre>`, 'HTML', 'tip');
                     }
 
                     log.info(`[MEDIA GROUP] Processing ${fileIds.length} images with caption after 3s wait`);
@@ -104,7 +104,7 @@ export class HandleMediaGroupMessage {
                 // This is the last image, process all of them
                 context.MIDDLE_CONTEXT.messageInfo.id = fileIds;
                 const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
-                sender.sendRichText(`<pre><code class="language-tip">Received ${fileIds.length} images (complete media group), processing...</code></pre>`, 'HTML', 'tip');
+                sender.sendRichText(`<pre><code class="language-tip">Processing ${fileIds.length} image${fileIds.length > 1 ? 's' : ''} from media group...</code></pre>`, 'HTML', 'tip');
                 log.info(`[MEDIA GROUP] Processing ${fileIds.length} images (last image in group)`);
                 return null; // Continue to process
             }
