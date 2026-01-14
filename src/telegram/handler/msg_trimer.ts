@@ -63,7 +63,41 @@ export class HandleMediaGroupMessage {
         }
         const msgInfo = context.MIDDLE_CONTEXT.messageInfo;
         if (message.media_group_id && ['photo', 'image'].includes(msgInfo.type) && Array.isArray(msgInfo.id)) {
-            return this.storeMediaMessage(`${storeMediaMessageKey}:lock`, storeMediaMessageKey, msgInfo);
+            // Store media group file id first
+            await this.storeMediaMessage(`${storeMediaMessageKey}:lock`, storeMediaMessageKey, msgInfo);
+
+            // If message has caption, it's the one with text, process it immediately
+            if (message.caption || message.text) {
+                const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
+                const fileIds = data[message.media_group_id];
+                if (fileIds && fileIds.length > 0) {
+                    context.MIDDLE_CONTEXT.messageInfo.id = fileIds;
+                    log.info(`[MEDIA GROUP] Processing ${fileIds.length} images with caption`);
+                    return null; // Continue to process
+                }
+            }
+
+            // No caption - wait a bit to see if more images arrive
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Check how many images we have now
+            const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
+            const fileIds = data[message.media_group_id];
+
+            // Check if more images were added after this one
+            const currentImageIndex = fileIds?.indexOf(msgInfo.id![0]) ?? -1;
+            const isLastImage = currentImageIndex === (fileIds?.length ?? 0) - 1;
+
+            if (isLastImage && fileIds && fileIds.length > 0) {
+                // This is the last image, process all of them
+                context.MIDDLE_CONTEXT.messageInfo.id = fileIds;
+                log.info(`[MEDIA GROUP] Processing ${fileIds.length} images (last image in group)`);
+                return null; // Continue to process
+            }
+
+            // Not the last image, skip processing
+            log.info(`[MEDIA GROUP] Skipping image ${currentImageIndex + 1}/${fileIds?.length}, waiting for more`);
+            return new Response('ok');
         } else if (message.reply_to_message?.media_group_id) {
             const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
             const fileIds = data[message.reply_to_message.media_group_id];
