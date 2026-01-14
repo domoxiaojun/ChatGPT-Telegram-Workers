@@ -66,8 +66,10 @@ export class HandleMediaGroupMessage {
             // Store media group file id first
             await this.storeMediaMessage(`${storeMediaMessageKey}:lock`, storeMediaMessageKey, msgInfo);
 
-            // If message has caption, it's the one with text, process it immediately
+            // If message has caption, it's typically the last message with user text, process immediately
             if (message.caption || message.text) {
+                // Wait a bit to ensure all images are stored
+                await new Promise(resolve => setTimeout(resolve, 200));
                 const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
                 const fileIds = data[message.media_group_id];
                 if (fileIds && fileIds.length > 0) {
@@ -77,26 +79,38 @@ export class HandleMediaGroupMessage {
                 }
             }
 
-            // No caption - wait a bit to see if more images arrive
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // No caption - need to detect the last image
+            // Wait longer to ensure all images have arrived
+            await new Promise(resolve => setTimeout(resolve, 800));
 
-            // Check how many images we have now
+            // Re-check the stored images
             const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
             const fileIds = data[message.media_group_id];
 
-            // Check if more images were added after this one
-            const currentImageIndex = fileIds?.indexOf(msgInfo.id![0]) ?? -1;
-            const isLastImage = currentImageIndex === (fileIds?.length ?? 0) - 1;
+            // Check if this is the last image by comparing message_id
+            // Telegram sends media group messages with sequential message_ids
+            // The last message should have the highest message_id in the group
+            const mediaGroupKey = `media_group_processed:${message.media_group_id}`;
+            const alreadyProcessed = await ENV.DATABASE.get(mediaGroupKey);
 
-            if (isLastImage && fileIds && fileIds.length > 0) {
-                // This is the last image, process all of them
+            if (alreadyProcessed) {
+                // Another image in this group was already processed
+                log.info(`[MEDIA GROUP] Skipping - already processed by another image in group`);
+                return new Response('ok');
+            }
+
+            // Mark this media group as processed (expires in 10 seconds)
+            await ENV.DATABASE.put(mediaGroupKey, '1', { expirationTtl: 10 });
+
+            if (fileIds && fileIds.length > 0) {
+                // Process all images in the group
                 context.MIDDLE_CONTEXT.messageInfo.id = fileIds;
-                log.info(`[MEDIA GROUP] Processing ${fileIds.length} images (last image in group)`);
+                log.info(`[MEDIA GROUP] Processing ${fileIds.length} images (no caption, detected as complete)`);
                 return null; // Continue to process
             }
 
-            // Not the last image, skip processing
-            log.info(`[MEDIA GROUP] Skipping image ${currentImageIndex + 1}/${fileIds?.length}, waiting for more`);
+            // Something went wrong, skip
+            log.info(`[MEDIA GROUP] Skipping - no file IDs found`);
             return new Response('ok');
         } else if (message.reply_to_message?.media_group_id) {
             const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
