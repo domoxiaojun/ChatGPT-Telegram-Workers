@@ -66,44 +66,13 @@ export class HandleMediaGroupMessage {
             // Store media group file id first
             await this.storeMediaMessage(`${storeMediaMessageKey}:lock`, storeMediaMessageKey, msgInfo);
 
-            // If message has caption, wait for other potentially delayed images
+            // If message has caption, it's the one with text, process it immediately
             if (message.caption || message.text) {
-                log.info(`[MEDIA GROUP] Message with caption detected, waiting for additional images...`);
-
-                let previousCount = 0;
-                let stableChecks = 0;
-                const MAX_WAIT = 15000; // Maximum 15 seconds wait
-                const CHECK_INTERVAL = 2000; // Check every 2 seconds
-                const STABLE_THRESHOLD = 2; // Need 2 stable checks before processing
-                const startTime = Date.now();
-
-                while (Date.now() - startTime < MAX_WAIT) {
-                    await new Promise(resolve => setTimeout(resolve, CHECK_INTERVAL));
-
-                    const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
-                    const currentCount = data[message.media_group_id]?.length || 0;
-
-                    log.info(`[MEDIA GROUP] Check: ${currentCount} images (previous: ${previousCount}, stable: ${stableChecks}/${STABLE_THRESHOLD})`);
-
-                    if (currentCount === previousCount) {
-                        stableChecks++;
-                        if (stableChecks >= STABLE_THRESHOLD) {
-                            log.info(`[MEDIA GROUP] Image count stable at ${currentCount}, proceeding to process`);
-                            break;
-                        }
-                    } else {
-                        stableChecks = 0; // Reset if count changed
-                        log.info(`[MEDIA GROUP] Image count changed, resetting stability counter`);
-                    }
-                    previousCount = currentCount;
-                }
-
-                // Now process all collected images
                 const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
                 const fileIds = data[message.media_group_id];
                 if (fileIds && fileIds.length > 0) {
                     context.MIDDLE_CONTEXT.messageInfo.id = fileIds;
-                    log.info(`[MEDIA GROUP] Processing ${fileIds.length} images with caption after waiting`);
+                    log.info(`[MEDIA GROUP] Processing ${fileIds.length} images with caption`);
                     return null; // Continue to process
                 }
             }
