@@ -72,9 +72,9 @@ export class HandleMediaGroupMessage {
 
                 let previousCount = 0;
                 let stableChecks = 0;
-                const MAX_WAIT = 15000; // Maximum 15 seconds wait
-                const CHECK_INTERVAL = 2000; // Check every 2 seconds
-                const STABLE_THRESHOLD = 2; // Need 2 stable checks before processing
+                const MAX_WAIT = 20000; // Maximum 20 seconds wait
+                const CHECK_INTERVAL = 3000; // Check every 3 seconds
+                const STABLE_THRESHOLD = 5; // Need 5 stable checks before processing (15 seconds)
                 const startTime = Date.now();
 
                 while (Date.now() - startTime < MAX_WAIT) {
