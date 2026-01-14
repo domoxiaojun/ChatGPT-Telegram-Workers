@@ -102,22 +102,6 @@ export function findPhotoFileID(photos: Telegram.PhotoSize[], offset: number): s
 
 export class ChatHandler implements MessageHandler<WorkerContext> {
     handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | null> => {
-        // Media group deduplication: ensure only one webhook processes each media group
-        if (message.media_group_id) {
-            const processKey = `media_group_processing:${message.media_group_id}`;
-            const lockAcquired = await ENV.DATABASE.put(
-                processKey,
-                message.message_id.toString(),
-                { expirationTtl: 60, condition: 'NX' }
-            );
-
-            if (lockAcquired !== true && lockAcquired !== undefined) {
-                log.info(`[CHAT HANDLER] Media group ${message.media_group_id} already being processed, skipping`);
-                return new Response('ok');
-            }
-            log.info(`[CHAT HANDLER] Acquired processing lock for media group ${message.media_group_id}`);
-        }
-
         const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
         const streamSender = await messageInitialize(sender, context, message);
         try {
