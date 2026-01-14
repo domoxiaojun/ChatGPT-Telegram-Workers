@@ -65,7 +65,13 @@ export function CheckTrigger(message: Telegram.Message): boolean {
 
     const textBefore = message.text || message.caption || '';
     const text = textBefore.replace(new RegExp(`^${ENV.CHAT_TRIGGER_PREFIX}`), '');
-    message.text = text;
+    // Update both text and caption to preserve the message type
+    if (message.text) {
+        message.text = text;
+    }
+    if (message.caption) {
+        message.caption = text;
+    }
     return text !== textBefore;
 }
 
