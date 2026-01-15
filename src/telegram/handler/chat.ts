@@ -136,32 +136,18 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
         }
 
         // 如果启用了群组消息监听模式，且当前在群组中，加载群组消息缓存
+        // 注意：这里只加载缓存，不注入到 history，避免被 trimer 裁剪掉
+        // 实际注入会在 requestCompletionsFromLLM 的 trimer 之后进行
         if (ENV.GROUP_MESSAGE_LISTEN_MODE && isTelegramChatTypeGroup(message.chat.type)) {
             const chatId = message.chat.id;
             const cachedMessages = await loadGroupMessageCache(chatId);
 
             if (cachedMessages.length > 0) {
-                // 将缓存的群组消息格式化为上下文
+                // 将缓存的群组消息格式化并保存到 context 中
                 const groupContext = formatGroupCacheAsContext(cachedMessages);
-
-                // 将群组上下文添加到历史记录
-                // 注意：必须在所有 system 消息之后插入，避免 Google Gemini 等模型报错
-                // 查找第一个非 system 消息的位置
-                let insertIndex = 0;
-                for (let i = 0; i < context.MIDDLE_CONTEXT.history.length; i++) {
-                    if (context.MIDDLE_CONTEXT.history[i].role !== 'system') {
-                        insertIndex = i;
-                        break;
-                    }
-                }
-
-                // 在第一个非 system 消息之前插入群组缓存
-                context.MIDDLE_CONTEXT.history.splice(insertIndex, 0, {
-                    role: 'user',
-                    content: `[Group Chat Context]\n${groupContext}`,
-                });
-
-                log.info(`[GROUP CACHE] Injected ${cachedMessages.length} cached messages into context at position ${insertIndex}`);
+                // 使用 MIDDLE_CONTEXT 保存群组缓存，稍后在发送给 LLM 前注入
+                (context.MIDDLE_CONTEXT as any).groupChatCache = groupContext;
+                log.info(`[GROUP CACHE] Loaded ${cachedMessages.length} cached messages, will inject after history trimming`);
             }
         }
     }

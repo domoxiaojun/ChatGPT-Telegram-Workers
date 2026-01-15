@@ -74,7 +74,33 @@ export async function requestCompletionsFromLLM(params: LLMChatRequestParams | n
         }
         return list.slice(validStart);
     };
-    const messages = [...trimer(history, context.USER_CONFIG.MAX_HISTORY_LENGTH), params];
+
+    // 裁剪历史记录
+    let trimmedHistory = trimer(history, context.USER_CONFIG.MAX_HISTORY_LENGTH);
+
+    // 注入群组缓存（如果存在）
+    // 群组缓存应该在裁剪后注入，避免被 trimer 裁剪掉
+    const groupChatCache = (context.MIDDLE_CONTEXT as any).groupChatCache;
+    if (groupChatCache) {
+        // 查找第一个非 system 消息的位置
+        let insertIndex = 0;
+        for (let i = 0; i < trimmedHistory.length; i++) {
+            if (trimmedHistory[i].role !== 'system') {
+                insertIndex = i;
+                break;
+            }
+        }
+
+        // 在第一个非 system 消息之前插入群组缓存
+        trimmedHistory.splice(insertIndex, 0, {
+            role: 'user',
+            content: `[Group Chat Context]\n${groupChatCache}`,
+        });
+
+        log.info(`[GROUP CACHE] Injected group cache into trimmed history at position ${insertIndex}`);
+    }
+
+    const messages = [...trimmedHistory, params];
     const llmParams: LLMChatParams = {
         messages: injectSystemMessage(messages, context.USER_CONFIG.SYSTEM_INIT_MESSAGE),
         cache: [],
