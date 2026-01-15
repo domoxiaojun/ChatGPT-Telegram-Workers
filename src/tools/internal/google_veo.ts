@@ -3,7 +3,7 @@ import type { AgentUserConfig } from '../../config/types';
 export default {
     schema: {
         name: 'google_veo',
-        description: 'Google Veo 3.1 Fast video generation tool with native audio support. Generates 8-second videos with synchronized audio quickly.',
+        description: 'Google Veo 3.1 Fast video generation tool with native audio support. Generates videos (4-8 seconds) with synchronized audio in 720p, 1080p, or 4K resolution.',
         parameters: {
             type: 'object',
             required: ['prompt'],
@@ -17,6 +17,18 @@ export default {
                     description: 'The aspect ratio of the video',
                     enum: ['16:9', '9:16'],
                     default: '16:9',
+                },
+                resolution: {
+                    type: 'string',
+                    description: 'Video resolution. Note: 1080p and 4k require durationSeconds to be 8.',
+                    enum: ['720p', '1080p', '4k'],
+                    default: '720p',
+                },
+                durationSeconds: {
+                    type: 'number',
+                    description: 'Video duration in seconds. Must be 8 if using 1080p or 4k resolution.',
+                    enum: [4, 6, 8],
+                    default: 8,
                 },
                 personGeneration: {
                     type: 'string',
@@ -43,25 +55,41 @@ export default {
 async function generateVideo({
     prompt,
     aspectRatio = '16:9',
+    resolution = '720p',
+    durationSeconds = 8,
     personGeneration = 'allow_all',
     numberOfVideos = 1,
     negativePrompt,
 }: {
     prompt: string;
     aspectRatio: string;
+    resolution: string;
+    durationSeconds: number;
     personGeneration: string;
     numberOfVideos: number;
     negativePrompt?: string;
 }, _env: Record<string, any>, config: AgentUserConfig) {
+    // Validate resolution and duration constraints
+    if ((resolution === '1080p' || resolution === '4k') && durationSeconds !== 8) {
+        return {
+            content: [{
+                type: 'text',
+                text: `Error: ${resolution} resolution requires durationSeconds to be 8. Current value: ${durationSeconds}`
+            }],
+        };
+    }
+
     const model = 'veo-3.1-fast-generate-preview';
     const url = `${config.GOOGLE_API_BASE}/models/${model}:predictLongRunning?key=${config.GOOGLE_API_KEY}`;
-    
+
     const requestBody = {
         instances: [{
             prompt,
         }],
         parameters: {
             aspectRatio,
+            resolution,
+            durationSeconds,
             personGeneration,
             sampleCount: numberOfVideos,
             ...(negativePrompt && { negativePrompt }),
