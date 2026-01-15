@@ -60,6 +60,12 @@ export async function cacheGroupMessage(message: Telegram.Message, context: Work
         const existingCache = await ENV.DATABASE.get(cacheKey);
         let messages: GroupCachedMessage[] = existingCache ? JSON.parse(existingCache) : [];
 
+        // 手动实现 TTL：过滤掉过期的消息
+        // 这对于不支持原生 TTL 的数据库（如 sqlite）很重要
+        const now = Date.now();
+        const ttlMs = ENV.GROUP_MESSAGE_CACHE_TTL * 1000;
+        messages = messages.filter(msg => (now - msg.timestamp) < ttlMs);
+
         // 添加新消息到缓存
         messages.push(cachedMessage);
 
@@ -69,6 +75,8 @@ export async function cacheGroupMessage(message: Telegram.Message, context: Work
         }
 
         // 保存回数据库，设置过期时间
+        // 注意：expirationTtl 仅对 Cloudflare KV 和 Redis 有效
+        // 对于 sqlite/local，依赖上面的手动过滤逻辑
         await ENV.DATABASE.put(cacheKey, JSON.stringify(messages), {
             expirationTtl: ENV.GROUP_MESSAGE_CACHE_TTL,
         });
@@ -95,7 +103,13 @@ export async function loadGroupMessageCache(chatId: number | string): Promise<Gr
             return [];
         }
 
-        const messages: GroupCachedMessage[] = JSON.parse(cache);
+        let messages: GroupCachedMessage[] = JSON.parse(cache);
+
+        // 手动过滤过期消息（对于不支持原生 TTL 的数据库）
+        const now = Date.now();
+        const ttlMs = ENV.GROUP_MESSAGE_CACHE_TTL * 1000;
+        messages = messages.filter(msg => (now - msg.timestamp) < ttlMs);
+
         log.info(`[GROUP CACHE] Loaded ${messages.length} cached messages from group ${chatId}`);
         return messages;
     } catch (error) {

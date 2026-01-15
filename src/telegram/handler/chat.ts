@@ -144,14 +144,24 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
                 // 将缓存的群组消息格式化为上下文
                 const groupContext = formatGroupCacheAsContext(cachedMessages);
 
-                // 将群组上下文添加到历史记录的开始
-                // 使用 user 角色，避免被某些 AI SDK 过滤掉
-                context.MIDDLE_CONTEXT.history.unshift({
+                // 将群组上下文添加到历史记录
+                // 注意：必须在所有 system 消息之后插入，避免 Google Gemini 等模型报错
+                // 查找第一个非 system 消息的位置
+                let insertIndex = 0;
+                for (let i = 0; i < context.MIDDLE_CONTEXT.history.length; i++) {
+                    if (context.MIDDLE_CONTEXT.history[i].role !== 'system') {
+                        insertIndex = i;
+                        break;
+                    }
+                }
+
+                // 在第一个非 system 消息之前插入群组缓存
+                context.MIDDLE_CONTEXT.history.splice(insertIndex, 0, {
                     role: 'user',
                     content: `[Group Chat Context]\n${groupContext}`,
                 });
 
-                log.info(`[GROUP CACHE] Injected ${cachedMessages.length} cached messages into context`);
+                log.info(`[GROUP CACHE] Injected ${cachedMessages.length} cached messages into context at position ${insertIndex}`);
             }
         }
     }
