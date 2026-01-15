@@ -173,11 +173,15 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
         const { type, id } = context.MIDDLE_CONTEXT.messageInfo;
         let messageText = message.text || message.caption || '';
 
-        // Add username prefix in group chats if enabled
+        // Get user identifier for group chats
+        let userPrefix = '';
         if (ENV.GROUP_INCLUDE_USERNAME && isTelegramChatTypeGroup(message.chat.type)) {
             const userIdentifier = getUserIdentifier(message.from);
             if (userIdentifier) {
-                messageText = `${userIdentifier}: ${messageText}`;
+                userPrefix = `${userIdentifier}: `;
+                if (messageText) {
+                    messageText = userPrefix + messageText;
+                }
             }
         }
 
@@ -200,13 +204,24 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
                 text: messageText,
             });
         } else {
+            // For media without caption, include user identifier in default text
+            let defaultText = '';
+            if (type === 'sticker') {
+                defaultText = 'User sent a sticker to respond to you';
+            } else if (['audio', 'voice'].includes(type)) {
+                defaultText = context.USER_CONFIG.AUDIO_PROMPT;
+            } else {
+                defaultText = `Please explain the ${type}`;
+            }
+
+            // Add user identifier prefix if in group chat
+            if (userPrefix) {
+                defaultText = userPrefix + defaultText;
+            }
+
             params.content.push({
                 type: 'text',
-                text: type === 'sticker'
-                    ? 'User sent a sticker to respond to you'
-                    : ['audio', 'voice'].includes(type)
-                            ? context.USER_CONFIG.AUDIO_PROMPT
-                            : `Please explain the ${type}`,
+                text: defaultText,
             });
         }
 
