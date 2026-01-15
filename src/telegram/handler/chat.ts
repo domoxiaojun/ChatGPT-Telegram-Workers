@@ -145,10 +145,10 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
                 const groupContext = formatGroupCacheAsContext(cachedMessages);
 
                 // 将群组上下文添加到历史记录的开始
-                // 以 system 角色插入，让 AI 知道这是背景信息
+                // 使用 user 角色，避免被某些 AI SDK 过滤掉
                 context.MIDDLE_CONTEXT.history.unshift({
-                    role: 'system',
-                    content: groupContext,
+                    role: 'user',
+                    content: `[Group Chat Context]\n${groupContext}`,
                 });
 
                 log.info(`[GROUP CACHE] Injected ${cachedMessages.length} cached messages into context`);
