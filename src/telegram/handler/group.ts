@@ -37,10 +37,29 @@ export async function cacheGroupMessage(message: Telegram.Message, context: Work
     const chatId = message.chat.id;
     const cacheKey = getGroupMessageCacheKey(chatId);
 
-    // 提取消息文本
-    const messageText = message.text || message.caption || '';
+    // 提取消息文本或生成媒体描述
+    let messageText = message.text || message.caption || '';
+
+    // 如果是媒体消息但没有文本，生成描述性文本
     if (!messageText.trim()) {
-        return; // 忽略空消息
+        if (message.photo) {
+            messageText = '[sent a photo]';
+        } else if (message.sticker) {
+            messageText = '[sent a sticker]';
+        } else if (message.video) {
+            messageText = '[sent a video]';
+        } else if (message.voice) {
+            messageText = '[sent a voice message]';
+        } else if (message.audio) {
+            messageText = '[sent an audio]';
+        } else if (message.document) {
+            messageText = '[sent a document]';
+        } else if (message.animation) {
+            messageText = '[sent a GIF]';
+        } else {
+            // 完全没有内容，跳过
+            return;
+        }
     }
 
     // 构造缓存消息对象
