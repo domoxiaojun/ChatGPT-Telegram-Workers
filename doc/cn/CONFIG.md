@@ -58,11 +58,84 @@
 ```json
 {
   "database": {
-    "type": "local",     // 选项: memory, local, sqlite, redis
-    "path": "/app/data.json"
+    "type": "sqlite",     // 选项: memory, local, sqlite, redis
+    "path": "/app/data/data.db"
   }
 }
 ```
+
+**数据库类型说明**：
+
+| 类型 | 持久化 | 适用场景 | 说明 |
+|------|--------|---------|------|
+| `memory` | ❌ | 测试/开发 | 数据存储在内存，容器重启后丢失 |
+| `local` | ✅ | 个人使用 | JSON 文件存储，简单但性能较低 |
+| `sqlite` | ✅ | 个人/小团队 | **推荐**，文件数据库，性能好且易于备份 |
+| `redis` | ✅ | 中大型部署 | 需要单独运行 Redis 服务，性能最佳 |
+
+**数据持久化配置** (强烈推荐)：
+
+为了保留对话历史、用户配置和群组消息缓存，请配置数据持久化：
+
+1. **使用 sqlite（推荐）**:
+   ```json
+   {
+     "database": {
+       "type": "sqlite",
+       "path": "/app/data/data.db"
+     },
+     "mode": "webhook",
+     "server": {
+       "hostname": "0.0.0.0",
+       "port": 8787,
+       "baseURL": "https://your-domain.com"
+     }
+   }
+   ```
+
+2. **Docker Compose 挂载数据卷**:
+   ```yaml
+   version: '3'
+   services:
+     chatgpt-telegram-workers:
+       image: szemeng76/chatgpt-telegram-workers:latest
+       volumes:
+         - ./config.json:/app/config.json:ro
+         - ./wrangler.toml:/app/config.toml:ro
+         - ./data:/app/data  # 挂载数据目录，持久化数据库文件
+       ports:
+         - "8787:8787"
+   ```
+
+3. **使用 redis（高性能）**:
+   ```yaml
+   version: '3'
+   services:
+     redis:
+       image: redis:alpine
+       volumes:
+         - redis-data:/data
+       command: redis-server --appendonly yes
+
+     chatgpt-telegram-workers:
+       image: szemeng76/chatgpt-telegram-workers:latest
+       depends_on:
+         - redis
+       volumes:
+         - ./config.json:/app/config.json:ro
+       environment:
+         - DATABASE_TYPE=redis
+         - DATABASE_PATH=redis://redis:6379
+
+   volumes:
+     redis-data:
+   ```
+
+**需要持久化的数据**：
+- ✅ **对话历史记录**：用户和 AI 的完整对话
+- ✅ **用户配置**：个性化设置（模型、参数等）
+- ✅ **Telegraph Token**：用于生成 Telegraph 文章
+- ⚠️ **群组消息缓存**：最近的群组消息（有 TTL，可选持久化）
 
 ## ⚙️ 系统配置
 
@@ -94,6 +167,9 @@
 | `GROUP_CHAT_BOT_ENABLE` | 启用群聊 | `true` | `true`/`false` |
 | `GROUP_CHAT_BOT_SHARE_MODE` | 群组共享上下文 | `true` | `true`/`false` |
 | `GROUP_INCLUDE_USERNAME` | 在群组消息中添加用户名前缀 | `false` | `true`/`false` |
+| `GROUP_MESSAGE_LISTEN_MODE` | 启用群组消息监听模式 | `false` | `true`/`false` |
+| `GROUP_MESSAGE_CACHE_SIZE` | 缓存的群组消息数量 | `20` | 数字 |
+| `GROUP_MESSAGE_CACHE_TTL` | 缓存过期时间（秒） | `3600` | 数字 |
 
 > ⚠️ **重要**：将群组ID添加到`CHAT_GROUP_WHITE_LIST`以防止未授权使用。在大型群组(>2000成员)中设置机器人为管理员，并在BotFather中禁用隐私模式(`/setprivacy` → `Disable`)。
 
@@ -103,6 +179,51 @@
 - 无用户名的用户：`姓名: 消息内容` 或 `名字: 消息内容`
 
 这在多人对话时特别有用，可以让AI清楚地知道是谁说了什么。
+
+**群组消息监听模式** (`GROUP_MESSAGE_LISTEN_MODE`):
+这是一个强大的功能，让AI能够"看到"群组中的完整对话上下文。
+
+**工作原理**：
+1. **自动缓存**：机器人会自动缓存群组中的所有文本消息（即使没有@机器人）
+2. **触发响应**：只有在以下情况下AI才会回复：
+   - 使用 `CHAT_TRIGGER_PREFIX` 前缀（如：`/bot 你好`）
+   - @提及机器人（如：`@你的机器人 你好`）
+   - 回复机器人的消息
+3. **上下文注入**：当AI被触发时，会自动加载最近的群组消息作为上下文
+
+**配置示例**：
+```bash
+# 启用群组消息监听
+GROUP_MESSAGE_LISTEN_MODE=true
+
+# 缓存最近50条消息
+GROUP_MESSAGE_CACHE_SIZE=50
+
+# 缓存保留2小时
+GROUP_MESSAGE_CACHE_TTL=7200
+
+# 设置触发前缀（可选，留空则只能通过@mention或回复触发）
+CHAT_TRIGGER_PREFIX=/bot
+```
+
+**使用场景示例**：
+```
+用户A: 今天天气真好
+用户B: 是啊，适合出去玩
+用户C: 我们去哪玩？
+用户D: /bot 根据前面的对话，推荐一些适合今天天气的活动
+
+AI: 根据你们的对话，今天天气不错，我推荐以下活动：
+1. 户外野餐...
+2. 公园散步...
+```
+
+**注意事项**：
+- 缓存只包含文本消息，不包含图片/视频等媒体内容
+- 缓存存储在数据库中（Cloudflare Workers 使用 KV，Docker/本地部署根据配置使用 memory/local/sqlite/redis）
+- 建议根据群组活跃度调整 `GROUP_MESSAGE_CACHE_SIZE`
+- `GROUP_MESSAGE_CACHE_TTL` 到期后缓存会自动清理
+- Docker 部署时，建议使用 `sqlite` 或 `redis` 作为数据库类型以持久化缓存
 
 ### 消息和历史设置
 

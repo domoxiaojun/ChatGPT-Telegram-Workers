@@ -55,6 +55,7 @@
 - **长文本处理**: 智能分割，自动转换为Telegraph文章或文件输出
 - **引用消息合并**: 自动处理回复消息，支持可展开内容
 - **群组管理**: 智能群组响应，支持@提及检测、按用户上下文和发言者识别
+- **群组消息监听模式**: 缓存群组历史消息，AI被触发时可看到完整对话上下文（可配置缓存数量和过期时间）
 - **Telegraph集成**: 自动将长消息转换为文章，可配置阈值
 - **社交媒体搜索**: 内置小红书搜索集成
 - **App Store内购**: 跨国家应用内购价格查询
@@ -169,6 +170,11 @@ src/
   - `ADD_QUOTE_LIMIT`: 引用消息折叠阈值
   - `SHOW_THINKING_TEXT`: 显示 AI 推理/思考过程（默认: true）
   - `EXPANDABLE_THINKING`: 使用可折叠引用块显示思考文本（默认: true）
+- **群组消息监听**:
+  - `GROUP_MESSAGE_LISTEN_MODE`: 启用群组消息监听模式（默认: false）
+  - `GROUP_MESSAGE_CACHE_SIZE`: 缓存的群组消息数量（默认: 20条）
+  - `GROUP_MESSAGE_CACHE_TTL`: 缓存过期时间，单位秒（默认: 3600，即1小时）
+  - `CHAT_TRIGGER_PREFIX`: 群组消息触发前缀（如: `/bot`，留空则使用@mention或回复触发）
 - **音频与语音**:
   - `FISH_TTS_VOICE`: Fish Audio TTS语音参考ID
   - `GOOGLE_TTS_EXTRA_PARAMS`: 多说话人语音配置

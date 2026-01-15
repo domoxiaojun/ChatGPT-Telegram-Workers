@@ -55,6 +55,7 @@ This is a significantly refactored ChatGPT Telegram bot project that supports mu
 - **Long Text Processing**: Smart splitting with Telegraph article conversion and file output
 - **Quote Message Merging**: Automatic handling of reply messages with expandable content
 - **Group Management**: Smart group responses with @mention detection, per-user context, and speaker identification
+- **Group Message Listening Mode**: Cache group message history so AI can see full conversation context when triggered (configurable cache size and TTL)
 - **Telegraph Integration**: Auto-convert long messages to articles with configurable thresholds
 - **Social Media Search**: Built-in Xiaohongshu (Little Red Book) integration
 - **App Store IAP**: Cross-country in-app purchase price lookup
@@ -169,6 +170,11 @@ Key configuration options:
   - `ADD_QUOTE_LIMIT`: Quote folding threshold
   - `SHOW_THINKING_TEXT`: Display AI reasoning/thinking process (default: true)
   - `EXPANDABLE_THINKING`: Use collapsible blockquote for thinking text (default: true)
+- **Group Message Listening**:
+  - `GROUP_MESSAGE_LISTEN_MODE`: Enable group message listening mode (default: false)
+  - `GROUP_MESSAGE_CACHE_SIZE`: Number of cached group messages (default: 20)
+  - `GROUP_MESSAGE_CACHE_TTL`: Cache expiration time in seconds (default: 3600, 1 hour)
+  - `CHAT_TRIGGER_PREFIX`: Group message trigger prefix (e.g., `/bot`, leave empty to use @mention or reply only)
 - **Audio & Voice**:
   - `FISH_TTS_VOICE`: Fish Audio TTS voice reference ID
   - `GOOGLE_TTS_EXTRA_PARAMS`: Multi-speaker voice configuration

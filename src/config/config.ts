@@ -63,6 +63,12 @@ export class EnvironmentConfig {
     GROUP_CHAT_BOT_SHARE_MODE = true;
     // 在群聊消息中包含用户名，帮助AI识别不同发言者
     GROUP_INCLUDE_USERNAME = false;
+    // 群组消息监听模式：启用后会缓存所有群组消息，AI被触发时能看到完整上下文
+    GROUP_MESSAGE_LISTEN_MODE = false;
+    // 群组消息缓存数量：缓存最近N条群组消息（默认20条）
+    GROUP_MESSAGE_CACHE_SIZE = 20;
+    // 群组消息缓存过期时间：缓存消息的生存时间，单位：秒（默认1小时）
+    GROUP_MESSAGE_CACHE_TTL = 3600;
 
     // -- 历史记录相关 --
     //

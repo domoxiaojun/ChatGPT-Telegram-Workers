@@ -1,4 +1,3 @@
-/* eslint-disable unused-imports/no-unused-vars */
 import type { FilePart, ImagePart, TextPart, UserModelMessage } from 'ai';
 import type * as Telegram from 'telegram-bot-api-types';
 import type { ChatStreamTextHandler, HistoryModifier, ImageResult, LLMChatRequestParams } from '../../agent/types';
@@ -18,6 +17,7 @@ import { createTelegramBotAPI } from '../api';
 import { escape, SEGMENTATION_MARK } from '../utils/md2tgmd';
 import { MessageSender, sendAction, TelegraphSender } from '../utils/send';
 import { getTelegramFile, isTelegramChatTypeGroup, waitUntil } from '../utils/tg_utils';
+import { formatGroupCacheAsContext, loadGroupMessageCache } from './group';
 
 /**
  * Get user identifier with fallback logic
@@ -106,7 +106,7 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
         const streamSender = await messageInitialize(sender, context, message);
         try {
             log.info(`message type: ${context.MIDDLE_CONTEXT.messageInfo.type}`);
-            await this.initializeHistory(context);
+            await this.initializeHistory(context, message);
 
             // 处理原始消息
             const params = await this.processOriginalMessage(message, context);
@@ -125,7 +125,7 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
         }
     };
 
-    private async initializeHistory(context: WorkerContext): Promise<void> {
+    private async initializeHistory(context: WorkerContext, message: Telegram.Message): Promise<void> {
         // 初始化历史消息
         const historyKey = context.SHARE_CONTEXT.chatHistoryKey;
         if (!historyKey) {
@@ -133,6 +133,26 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
         }
         if (ENV.STORE_HISTORY_LENGTH > 0) {
             context.MIDDLE_CONTEXT.history = await loadHistory(historyKey, ENV.STORE_HISTORY_LENGTH);
+        }
+
+        // 如果启用了群组消息监听模式，且当前在群组中，加载群组消息缓存
+        if (ENV.GROUP_MESSAGE_LISTEN_MODE && isTelegramChatTypeGroup(message.chat.type)) {
+            const chatId = message.chat.id;
+            const cachedMessages = await loadGroupMessageCache(chatId);
+
+            if (cachedMessages.length > 0) {
+                // 将缓存的群组消息格式化为上下文
+                const groupContext = formatGroupCacheAsContext(cachedMessages);
+
+                // 将群组上下文添加到历史记录的开始
+                // 以 system 角色插入，让 AI 知道这是背景信息
+                context.MIDDLE_CONTEXT.history.unshift({
+                    role: 'system',
+                    content: groupContext,
+                });
+
+                log.info(`[GROUP CACHE] Injected ${cachedMessages.length} cached messages into context`);
+            }
         }
     }
 

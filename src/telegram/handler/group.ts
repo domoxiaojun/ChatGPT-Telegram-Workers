@@ -7,6 +7,132 @@ import { createTelegramBotAPI } from '../api';
 import { checkIsNeedTagIds } from '../utils/send';
 import { isTelegramChatTypeGroup } from '../utils/tg_utils';
 
+// 群组消息缓存接口
+export interface GroupCachedMessage {
+    messageId: number;
+    userId: number;
+    username?: string;
+    firstName?: string;
+    lastName?: string;
+    text: string;
+    timestamp: number;
+    messageType?: string;
+}
+
+/**
+ * 获取群组消息缓存的 Key
+ */
+export function getGroupMessageCacheKey(chatId: number | string): string {
+    return `group_message_cache:${chatId}`;
+}
+
+/**
+ * 保存群组消息到缓存
+ */
+export async function cacheGroupMessage(message: Telegram.Message, context: WorkerContext): Promise<void> {
+    if (!ENV.GROUP_MESSAGE_LISTEN_MODE || !isTelegramChatTypeGroup(message.chat.type)) {
+        return;
+    }
+
+    const chatId = message.chat.id;
+    const cacheKey = getGroupMessageCacheKey(chatId);
+
+    // 提取消息文本
+    const messageText = message.text || message.caption || '';
+    if (!messageText.trim()) {
+        return; // 忽略空消息
+    }
+
+    // 构造缓存消息对象
+    const cachedMessage: GroupCachedMessage = {
+        messageId: message.message_id,
+        userId: message.from?.id || 0,
+        username: message.from?.username,
+        firstName: message.from?.first_name,
+        lastName: message.from?.last_name,
+        text: messageText,
+        timestamp: message.date * 1000, // Telegram 使用秒，转换为毫秒
+        messageType: message.photo ? 'photo' : message.voice ? 'voice' : message.audio ? 'audio' : 'text',
+    };
+
+    try {
+        // 获取现有缓存
+        const existingCache = await ENV.DATABASE.get(cacheKey);
+        let messages: GroupCachedMessage[] = existingCache ? JSON.parse(existingCache) : [];
+
+        // 添加新消息到缓存
+        messages.push(cachedMessage);
+
+        // 保留最近的 N 条消息
+        if (messages.length > ENV.GROUP_MESSAGE_CACHE_SIZE) {
+            messages = messages.slice(-ENV.GROUP_MESSAGE_CACHE_SIZE);
+        }
+
+        // 保存回数据库，设置过期时间
+        await ENV.DATABASE.put(cacheKey, JSON.stringify(messages), {
+            expirationTtl: ENV.GROUP_MESSAGE_CACHE_TTL,
+        });
+
+        log.info(`[GROUP CACHE] Cached message in group ${chatId}, total: ${messages.length}/${ENV.GROUP_MESSAGE_CACHE_SIZE}`);
+    } catch (error) {
+        log.error(`[GROUP CACHE] Failed to cache message: ${(error as Error).message}`);
+    }
+}
+
+/**
+ * 加载群组消息缓存
+ */
+export async function loadGroupMessageCache(chatId: number | string): Promise<GroupCachedMessage[]> {
+    if (!ENV.GROUP_MESSAGE_LISTEN_MODE) {
+        return [];
+    }
+
+    const cacheKey = getGroupMessageCacheKey(chatId);
+
+    try {
+        const cache = await ENV.DATABASE.get(cacheKey);
+        if (!cache) {
+            return [];
+        }
+
+        const messages: GroupCachedMessage[] = JSON.parse(cache);
+        log.info(`[GROUP CACHE] Loaded ${messages.length} cached messages from group ${chatId}`);
+        return messages;
+    } catch (error) {
+        log.error(`[GROUP CACHE] Failed to load cache: ${(error as Error).message}`);
+        return [];
+    }
+}
+
+/**
+ * 将缓存的群组消息格式化为上下文字符串
+ */
+export function formatGroupCacheAsContext(messages: GroupCachedMessage[]): string {
+    if (messages.length === 0) {
+        return '';
+    }
+
+    const contextLines: string[] = ['=== Recent Group Messages ==='];
+
+    for (const msg of messages) {
+        let userIdentifier = '';
+        if (msg.username) {
+            userIdentifier = `@${msg.username}`;
+        } else if (msg.lastName) {
+            userIdentifier = `${msg.firstName} ${msg.lastName}`;
+        } else {
+            userIdentifier = msg.firstName || 'Unknown';
+        }
+        userIdentifier += ` (ID:${msg.userId})`;
+
+        const time = new Date(msg.timestamp).toISOString().substring(11, 19); // HH:MM:SS
+        contextLines.push(`[${time}] ${userIdentifier}: ${msg.text}`);
+    }
+
+    contextLines.push('=== End of Recent Messages ===\n');
+    return contextLines.join('\n');
+}
+
 function checkMention(content: string, entities: Telegram.MessageEntity[], botName: string, botId: number): {
     isMention: boolean;
     content: string;
@@ -73,10 +199,14 @@ export function CheckTrigger(message: Telegram.Message): boolean {
 export class GroupMention implements MessageHandler {
     handle = async (message: Telegram.Message, context: WorkerContext): Promise<Response | null> => {
         const isTriggered = CheckTrigger(message);
+
         // 非群组消息不作判断，交给下一个中间件处理
         if (!isTelegramChatTypeGroup(message.chat.type)) {
             return this.noneMessage(message, context);
         }
+
+        // 在检查触发之前，先缓存所有群组消息（如果启用了监听模式）
+        await cacheGroupMessage(message, context);
 
         // 处理回复消息, 如果回复的是当前机器人的消息交给下一个中间件处理
         const replyMe = `${message.reply_to_message?.from?.id}` === `${context.SHARE_CONTEXT.botId}`;
@@ -129,6 +259,7 @@ export class GroupMention implements MessageHandler {
         }
 
         if (!isMention) {
+            // 消息未触发，但已被缓存，直接返回
             return new Response('Not mention');
         }
 

@@ -58,11 +58,84 @@ For local deployment, configure in `config.json`:
 ```json
 {
   "database": {
-    "type": "local",     // Options: memory, local, sqlite, redis
-    "path": "/app/data.json"
+    "type": "sqlite",     // Options: memory, local, sqlite, redis
+    "path": "/app/data/data.db"
   }
 }
 ```
+
+**Database Type Comparison**:
+
+| Type | Persistent | Use Case | Notes |
+|------|-----------|----------|-------|
+| `memory` | ❌ | Testing/Dev | Data stored in memory, lost on container restart |
+| `local` | ✅ | Personal use | JSON file storage, simple but lower performance |
+| `sqlite` | ✅ | Personal/Small teams | **Recommended**, file-based DB with good performance and easy backup |
+| `redis` | ✅ | Medium/Large deployments | Requires separate Redis service, best performance |
+
+**Data Persistence Configuration** (Highly Recommended):
+
+To preserve conversation history, user configs, and group message cache, configure data persistence:
+
+1. **Using sqlite (Recommended)**:
+   ```json
+   {
+     "database": {
+       "type": "sqlite",
+       "path": "/app/data/data.db"
+     },
+     "mode": "webhook",
+     "server": {
+       "hostname": "0.0.0.0",
+       "port": 8787,
+       "baseURL": "https://your-domain.com"
+     }
+   }
+   ```
+
+2. **Docker Compose with Volume Mount**:
+   ```yaml
+   version: '3'
+   services:
+     chatgpt-telegram-workers:
+       image: szemeng76/chatgpt-telegram-workers:latest
+       volumes:
+         - ./config.json:/app/config.json:ro
+         - ./wrangler.toml:/app/config.toml:ro
+         - ./data:/app/data  # Mount data directory for database persistence
+       ports:
+         - "8787:8787"
+   ```
+
+3. **Using redis (High Performance)**:
+   ```yaml
+   version: '3'
+   services:
+     redis:
+       image: redis:alpine
+       volumes:
+         - redis-data:/data
+       command: redis-server --appendonly yes
+
+     chatgpt-telegram-workers:
+       image: szemeng76/chatgpt-telegram-workers:latest
+       depends_on:
+         - redis
+       volumes:
+         - ./config.json:/app/config.json:ro
+       environment:
+         - DATABASE_TYPE=redis
+         - DATABASE_PATH=redis://redis:6379
+
+   volumes:
+     redis-data:
+   ```
+
+**Data That Needs Persistence**:
+- ✅ **Conversation History**: Complete chat history between users and AI
+- ✅ **User Configurations**: Personalized settings (models, parameters, etc.)
+- ✅ **Telegraph Tokens**: Used for generating Telegraph articles
+- ⚠️ **Group Message Cache**: Recent group messages (has TTL, optional persistence)
 
 ## ⚙️ System Configuration
 
@@ -94,6 +167,9 @@ For local deployment, configure in `config.json`:
 | `GROUP_CHAT_BOT_ENABLE` | Enable group chat | `true` | `true`/`false` |
 | `GROUP_CHAT_BOT_SHARE_MODE` | Share context in groups | `true` | `true`/`false` |
 | `GROUP_INCLUDE_USERNAME` | Add username prefix to group messages | `false` | `true`/`false` |
+| `GROUP_MESSAGE_LISTEN_MODE` | Enable group message listening mode | `false` | `true`/`false` |
+| `GROUP_MESSAGE_CACHE_SIZE` | Number of cached group messages | `20` | Number |
+| `GROUP_MESSAGE_CACHE_TTL` | Cache expiration time (seconds) | `3600` | Number |
 
 > ⚠️ **Important**: Add group IDs to `CHAT_GROUP_WHITE_LIST` to prevent unauthorized usage. Set bot as admin in large groups (>2000 members) and disable privacy mode in BotFather (`/setprivacy` → `Disable`).
 
@@ -103,6 +179,51 @@ When enabled, messages in group chats will be prefixed with the sender's identif
 - Users without username: `First Last: message` or `First: message`
 
 This is particularly useful when multiple people are having a conversation and the AI needs to track who said what.
+
+**Group Message Listening Mode** (`GROUP_MESSAGE_LISTEN_MODE`):
+A powerful feature that allows AI to "see" the full conversation context in groups.
+
+**How it works**:
+1. **Automatic Caching**: The bot automatically caches all text messages in the group (even without @mentions)
+2. **Trigger Response**: AI only responds when:
+   - Using `CHAT_TRIGGER_PREFIX` (e.g., `/bot hello`)
+   - @mentioning the bot (e.g., `@your_bot hello`)
+   - Replying to bot's messages
+3. **Context Injection**: When triggered, recent group messages are loaded as context for the AI
+
+**Configuration Example**:
+```bash
+# Enable group message listening
+GROUP_MESSAGE_LISTEN_MODE=true
+
+# Cache last 50 messages
+GROUP_MESSAGE_CACHE_SIZE=50
+
+# Keep cache for 2 hours
+GROUP_MESSAGE_CACHE_TTL=7200
+
+# Set trigger prefix (optional, leave empty for @mention or reply only)
+CHAT_TRIGGER_PREFIX=/bot
+```
+
+**Usage Example**:
+```
+User A: The weather is great today
+User B: Yeah, perfect for going out
+User C: Where should we go?
+User D: /bot Based on the conversation, suggest some activities for today's weather
+
+AI: Based on your conversation about the nice weather, I recommend these activities:
+1. Outdoor picnic...
+2. Park walk...
+```
+
+**Important Notes**:
+- Cache only includes text messages, not images/videos
+- Cache is stored in the database (Cloudflare Workers uses KV, Docker/local deployments use memory/local/sqlite/redis based on config)
+- Adjust `GROUP_MESSAGE_CACHE_SIZE` based on group activity
+- Cache automatically expires after `GROUP_MESSAGE_CACHE_TTL`
+- For Docker deployments, recommend using `sqlite` or `redis` as database type for cache persistence
 
 ### Message & History Settings
 
