@@ -613,7 +613,12 @@ export class ChosenInlineSender {
 }
 
 function renderMessage(parse_mode: Telegram.ParseMode | null, message: string, expandParams?: ExpandParams): string[] {
-    const chunkMessage = chunkDocument(message);
+    // Remove Grok rendering tags (xAI web UI internal tags that may leak into API responses)
+    // These tags like <grok:render type="renderinlinecitation"> are used in Grok web interface
+    // but should not appear in bot responses
+    const cleanedMessage = message.replace(/<grok:[^>]*>/g, '').replace(/<\/grok:[^>]*>/g, '');
+
+    const chunkMessage = chunkDocument(cleanedMessage);
     if (parse_mode === 'MarkdownV2') {
         return chunkMessage.map(lines => escape(lines, expandParams));
     }
