@@ -864,8 +864,8 @@ async function handleToolResult({ tools, toolResults, onStream, config }: { tool
     // Custom tools with send_type === 'message'
     const message_tool = Object.values(tools).filter(({ send_type }) => send_type === 'message').map(({ schema: { name } }) => name);
 
-    // Provider tools that should send messages (OpenAI image_generation, Google/Anthropic code execution, etc.)
-    const provider_message_tools = ['image_generation', 'code_execution', 'code_interpreter'];
+    // Provider tools that should send messages (OpenAI image_generation, Google/Anthropic code execution, xAI MCP, etc.)
+    const provider_message_tools = ['image_generation', 'code_execution', 'code_interpreter', 'mcp'];
 
     const need_send_result: ToolResult[] = [];
     for (const { output, toolName } of toolResults) {
