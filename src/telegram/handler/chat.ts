@@ -159,9 +159,18 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
         const { type, id } = context.MIDDLE_CONTEXT.messageInfo;
         let messageText = message.text || message.caption || '';
 
-        // Note: We don't add user prefix to current message to avoid AI repeating it
-        // User identification is only shown in cached group messages history
-        // This makes AI responses cleaner while maintaining context awareness
+        // Get user identifier for group chats
+        // Skip if GROUP_MESSAGE_LISTEN_MODE is active (user info already in cache context)
+        let userPrefix = '';
+        if (ENV.GROUP_INCLUDE_USERNAME && !ENV.GROUP_MESSAGE_LISTEN_MODE && isTelegramChatTypeGroup(message.chat.type)) {
+            const userIdentifier = getUserIdentifier(message.from);
+            if (userIdentifier) {
+                userPrefix = `${userIdentifier}: `;
+                if (messageText) {
+                    messageText = userPrefix + messageText;
+                }
+            }
+        }
 
         const params: LLMChatRequestParams = {
             role: 'user',
@@ -190,6 +199,11 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
                 defaultText = context.USER_CONFIG.AUDIO_PROMPT;
             } else {
                 defaultText = `Please explain the ${type}`;
+            }
+
+            // Add user identifier prefix if in group chat
+            if (userPrefix) {
+                defaultText = userPrefix + defaultText;
             }
 
             params.content.push({
