@@ -78,7 +78,11 @@ export class UpstashRedis {
         if (info?.expiration) {
             data.push(...['exat', info.expiration]);
         } else if (info?.expirationTtl) {
-            data.push(...['ex', info.expirationTtl]);
+            // 确保 expirationTtl 是有效的正整数
+            const ttl = Number.parseInt(info.expirationTtl, 10);
+            if (!Number.isNaN(ttl) && ttl > 0) {
+                data.push(...['ex', ttl]);
+            }
         }
         if (info?.condition === 'NX') {
             data.push(...['nx']);

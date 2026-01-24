@@ -54,9 +54,11 @@ export class ConfigMerger {
                 continue;
             }
             switch (t) {
-                case 'number':
-                    target[key] = Number.parseInt(source[key], 10);
+                case 'number': {
+                    const parsed = Number.parseInt(source[key], 10);
+                    target[key] = Number.isNaN(parsed) ? target[key] : parsed;
                     break;
+                }
                 case 'boolean':
                     target[key] = (source[key] || 'false') === 'true';
                     break;
