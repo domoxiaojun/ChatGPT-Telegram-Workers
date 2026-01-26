@@ -286,7 +286,7 @@ export function addExpandable(text: string, quoteExpandable: boolean): string {
                 return match;
             }
             // Add ** prefix to first line to make blockquote expandable
-            return `**${content}${lineEnd}`;
+            return `**${content.trimEnd()}${lineEnd}`;
         }
 
         // Not expandable, return as-is
