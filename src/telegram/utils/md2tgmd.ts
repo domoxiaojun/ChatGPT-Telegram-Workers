@@ -273,20 +273,21 @@ export function addExpandable(text: string, quoteExpandable: boolean): string {
         // Check if this block already starts with **>
         const isExpandable = content.trimStart().startsWith('**>');
 
-        // If block is already expandable (has **>), just return it as-is
-        // MarkdownV2 expandable blockquote only needs **> prefix, no || suffix needed
-        if (isExpandable) {
-            return match;
-        }
-
-        // If quoteExpandable is true, add ** prefix to make it expandable
-        if (quoteExpandable) {
-            // Check if already has ** prefix (shouldn't happen given isExpandable check above)
-            if (content.trimStart().startsWith('**')) {
-                return match;
+        // If block is already expandable (has **>), or if quoteExpandable is true, ensure it has ||
+        if (isExpandable || quoteExpandable) {
+            // Check if already has || at the end
+            if (content.trimEnd().endsWith('||')) {
+                return match; // Already properly formatted
             }
-            // Add ** prefix to first line to make blockquote expandable
-            return `**${content.trimEnd()}${lineEnd}`;
+
+            // Add || marker
+            if (isExpandable) {
+                // Already has **, just add ||
+                return `${content.trimEnd()}||${lineEnd}`;
+            } else {
+                // Add both ** and ||
+                return `**${content.trimEnd()}||${lineEnd}`;
+            }
         }
 
         // Not expandable, return as-is
