@@ -418,7 +418,7 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
     // xAI provider tools are only supported by the Responses API, not Chat API
     // Chat API should use searchParameters instead
     if (model.provider === 'xai.responses') {
-        const { webSearch, xSearch, codeExecution, fileSearch } = await import('@ai-sdk/xai');
+        const { webSearch, xSearch, codeExecution, xaiTools } = await import('@ai-sdk/xai');
 
         // 支持数组配置或布尔开关（向后兼容）
         if (context.USE_XAI_BUILDIN.includes('webSearch') || context.XAI_ENABLE_WEB_SEARCH) {
@@ -465,14 +465,21 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
         // 支持数组配置或布尔开关（向后兼容）
         if (context.USE_XAI_BUILDIN.includes('fileSearch') || context.XAI_ENABLE_FILE_SEARCH) {
             if (context.XAI_FILE_SEARCH_VECTOR_STORES.length > 0) {
-                const fileSearchConfig: any = {
-                    vectorStoreIds: context.XAI_FILE_SEARCH_VECTOR_STORES,
-                };
-                if (context.XAI_FILE_SEARCH_MAX_RESULTS > 0) {
-                    fileSearchConfig.maxNumResults = context.XAI_FILE_SEARCH_MAX_RESULTS;
+                // 动态检测 fileSearch 是否可用（@ai-sdk/xai 3.0.40+）
+                // 使用 as any 绕过类型检查，因为旧版本的类型定义没有 fileSearch
+                const fileSearchFn = (xaiTools as any)?.fileSearch;
+                if (typeof fileSearchFn === 'function') {
+                    const fileSearchConfig: any = {
+                        vectorStoreIds: context.XAI_FILE_SEARCH_VECTOR_STORES,
+                    };
+                    if (context.XAI_FILE_SEARCH_MAX_RESULTS > 0) {
+                        fileSearchConfig.maxNumResults = context.XAI_FILE_SEARCH_MAX_RESULTS;
+                    }
+                    tools.file_search = fileSearchFn(fileSearchConfig);
+                    activeTools.push('file_search');
+                } else {
+                    log.warn('[warpLLMParams] xAI fileSearch not available - requires @ai-sdk/xai 3.0.40+, please run: bun update @ai-sdk/xai');
                 }
-                tools.file_search = fileSearch(fileSearchConfig);
-                activeTools.push('file_search');
             } else {
                 log.warn('[warpLLMParams] xAI fileSearch enabled but XAI_FILE_SEARCH_VECTOR_STORES is empty');
             }
