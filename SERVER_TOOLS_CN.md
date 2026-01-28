@@ -34,7 +34,7 @@
 | **代码执行** | ✅ Python+Bash | ✅ Python | ✅ Python | ✅ Python | 沙盒代码执行 |
 | **社交搜索** | ❌ | ❌ | ✅ X Search | ❌ | 搜索 Twitter/X |
 | **地图服务** | ❌ | ✅ Maps | ❌ | ❌ | 地理位置信息 |
-| **文件搜索** | ❌ | ✅ File Search | ❌ | ✅ File Search | 搜索上传文件 |
+| **文件搜索** | ❌ | ✅ File Search | ✅ File Search | ✅ File Search | 搜索上传文件 |
 | **图片生成** | ❌ | ❌ | ❌ | ✅ Image Gen | AI 图片生成 |
 | **MCP 协议** | ❌ | ❌ | ❌ | ✅ MCP | 远程工具调用 |
 | **引用溯源** | ✅ Citations | ❌ | ❌ | ❌ | 标注信息来源 |
@@ -436,6 +436,41 @@ XAI_ENABLE_CODE_EXECUTION=true
 
 ---
 
+### 4. File Search - 文件搜索
+
+**功能**：搜索上传到 xAI 向量存储（collections）的文件内容。
+
+**配置**：
+```bash
+XAI_ENABLE_FILE_SEARCH=true
+XAI_FILE_SEARCH_VECTOR_STORES=["collection_xxx"]  # 向量存储ID列表（必需）
+XAI_FILE_SEARCH_MAX_RESULTS=10                     # 最大返回结果数
+```
+
+**使用流程**：
+1. 在 [xAI 控制台](https://console.x.ai/) 创建 collection
+2. 上传文件到 collection
+3. 获取 collection ID（格式：`collection_xxx`）
+4. 配置到环境变量
+5. 对话中自动搜索文件内容
+
+**使用示例**：
+```
+用户: 在我的文档中搜索关于 API 认证的内容
+
+Grok 会:
+1. 在配置的向量存储中搜索
+2. 返回最相关的文档片段
+3. 包含文件名和相关性分数
+```
+
+**注意**：
+- 仅支持 Responses API（`xai.responses`）
+- 需要 grok-4 或更新的模型
+- 参见 [xAI Collections 指南](https://docs.x.ai/docs/guides/using-collections/api)
+
+---
+
 ## 🤖 OpenAI 工具
 
 **重要提示**：OpenAI 服务端工具仅支持 **Responses API**，不支持 Chat Completions API。
@@ -676,12 +711,13 @@ OPENAI_MCP_APPROVAL_TOOL_NAMES=[]                       # 需要审批的工具�
 
 ### 文件搜索对比
 
-| 特性 | Google | OpenAI |
-|------|--------|--------|
-| 向量存储 | ✅ | ✅ |
-| 元数据过滤 | ✅ | ❌ |
-| 相关性阈值 | ❌ | ✅ |
-| 多存储支持 | ✅ | ✅ |
+| 特性 | Google | xAI | OpenAI |
+|------|--------|-----|--------|
+| 向量存储 | ✅ | ✅ | ✅ |
+| 元数据过滤 | ✅ | ❌ | ❌ |
+| 相关性阈值 | ❌ | ❌ | ✅ |
+| 多存储支持 | ✅ | ✅ | ✅ |
+| 最大结果数配置 | ✅ | ✅ | ✅ |
 
 ---
 
@@ -899,6 +935,10 @@ XAI_API_KEY="xxx"
 XAI_ENABLE_WEB_SEARCH=true
 XAI_ENABLE_X_SEARCH=true
 XAI_X_SEARCH_ALLOWED_HANDLES=["elonmusk"]
+XAI_ENABLE_CODE_EXECUTION=true
+XAI_ENABLE_FILE_SEARCH=true
+XAI_FILE_SEARCH_VECTOR_STORES=["collection_xxx"]
+XAI_FILE_SEARCH_MAX_RESULTS=10
 ```
 
 ---

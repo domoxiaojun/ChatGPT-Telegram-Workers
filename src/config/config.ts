@@ -724,8 +724,8 @@ export class XAIConfig {
         // reasoningEffort: 'high',
     };
     // XAI Server-Side Tools (executed on xAI servers)
-    // 可用工具列表：webSearch, xSearch, codeExecution
-    XAI_BUILDIN = ['webSearch', 'xSearch', 'codeExecution'];
+    // 可用工具列表：webSearch, xSearch, codeExecution, fileSearch
+    XAI_BUILDIN = ['webSearch', 'xSearch', 'codeExecution', 'fileSearch'];
     // 启用的工具列表（为保持向后兼容，也支持使用XAI_ENABLE_*开关）
     USE_XAI_BUILDIN: string[] = [];
 
@@ -735,6 +735,13 @@ export class XAIConfig {
     XAI_ENABLE_X_SEARCH = false;
     // Enable code execution tool (allows Grok to run Python code in sandbox)
     XAI_ENABLE_CODE_EXECUTION = false;
+    // Enable file search tool (allows Grok to search in vector stores/collections)
+    XAI_ENABLE_FILE_SEARCH = false;
+    // Vector store IDs (collection IDs) to search through
+    // Create collections at https://console.x.ai/ and get the collection ID
+    XAI_FILE_SEARCH_VECTOR_STORES: string[] = [];
+    // Maximum number of search results to return
+    XAI_FILE_SEARCH_MAX_RESULTS = 10;
     // Allowed domains for web search (max 5 domains, empty = no restriction)
     XAI_WEB_SEARCH_ALLOWED_DOMAINS: string[] = [];
     // Excluded domains for web search (max 5 domains)

@@ -34,7 +34,7 @@ Server-side tools are functions executed by AI providers on their servers, elimi
 | **Code Execution** | ✅ Python+Bash | ✅ Python | ✅ Python | ✅ Python | Sandbox code execution |
 | **Social Search** | ❌ | ❌ | ✅ X Search | ❌ | Search Twitter/X |
 | **Map Services** | ❌ | ✅ Maps | ❌ | ❌ | Geographic information |
-| **File Search** | ❌ | ✅ File Search | ❌ | ✅ File Search | Search uploaded files |
+| **File Search** | ❌ | ✅ File Search | ✅ File Search | ✅ File Search | Search uploaded files |
 | **Image Generation** | ❌ | ❌ | ❌ | ✅ Image Gen | AI image generation |
 | **MCP Protocol** | ❌ | ❌ | ❌ | ✅ MCP | Remote tool invocation |
 | **Citations** | ✅ Citations | ❌ | ❌ | ❌ | Source attribution |
@@ -436,6 +436,41 @@ XAI_ENABLE_CODE_EXECUTION=true
 
 ---
 
+### 4. File Search - File Search
+
+**Function**: Search content in files uploaded to xAI vector stores (collections).
+
+**Configuration**:
+```bash
+XAI_ENABLE_FILE_SEARCH=true
+XAI_FILE_SEARCH_VECTOR_STORES=["collection_xxx"]  # Vector store IDs (required)
+XAI_FILE_SEARCH_MAX_RESULTS=10                     # Maximum results returned
+```
+
+**Usage Flow**:
+1. Create a collection at [xAI Console](https://console.x.ai/)
+2. Upload files to the collection
+3. Get collection ID (format: `collection_xxx`)
+4. Configure in environment variables
+5. Automatically search file content in conversations
+
+**Usage Example**:
+```
+User: Search for content about API authentication in my documents
+
+Grok will:
+1. Search in configured vector stores
+2. Return most relevant document snippets
+3. Include file names and relevance scores
+```
+
+**Note**:
+- Only supports Responses API (`xai.responses`)
+- Requires grok-4 or later models
+- See [xAI Collections Guide](https://docs.x.ai/docs/guides/using-collections/api)
+
+---
+
 ## 🤖 OpenAI Tools
 
 **Important Notice**: OpenAI server-side tools only support **Responses API**, not Chat Completions API.
@@ -676,12 +711,13 @@ OPENAI_MCP_APPROVAL_TOOL_NAMES=[]                       # Tools requiring approv
 
 ### File Search Comparison
 
-| Feature | Google | OpenAI |
-|---------|--------|--------|
-| Vector Storage | ✅ | ✅ |
-| Metadata Filter | ✅ | ❌ |
-| Relevance Threshold | ❌ | ✅ |
-| Multi-Store Support | ✅ | ✅ |
+| Feature | Google | xAI | OpenAI |
+|---------|--------|-----|--------|
+| Vector Storage | ✅ | ✅ | ✅ |
+| Metadata Filter | ✅ | ❌ | ❌ |
+| Relevance Threshold | ❌ | ❌ | ✅ |
+| Multi-Store Support | ✅ | ✅ | ✅ |
+| Max Results Config | ✅ | ✅ | ✅ |
 
 ---
 
@@ -899,6 +935,10 @@ XAI_API_KEY="xxx"
 XAI_ENABLE_WEB_SEARCH=true
 XAI_ENABLE_X_SEARCH=true
 XAI_X_SEARCH_ALLOWED_HANDLES=["elonmusk"]
+XAI_ENABLE_CODE_EXECUTION=true
+XAI_ENABLE_FILE_SEARCH=true
+XAI_FILE_SEARCH_VECTOR_STORES=["collection_xxx"]
+XAI_FILE_SEARCH_MAX_RESULTS=10
 ```
 
 ---

@@ -418,7 +418,7 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
     // xAI provider tools are only supported by the Responses API, not Chat API
     // Chat API should use searchParameters instead
     if (model.provider === 'xai.responses') {
-        const { webSearch, xSearch, codeExecution } = await import('@ai-sdk/xai');
+        const { webSearch, xSearch, codeExecution, fileSearch } = await import('@ai-sdk/xai');
 
         // 支持数组配置或布尔开关（向后兼容）
         if (context.USE_XAI_BUILDIN.includes('webSearch') || context.XAI_ENABLE_WEB_SEARCH) {
@@ -461,7 +461,24 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
             activeTools.push('code_execution');
         }
 
-        log.info(`[warpLLMParams] xAI server-side tools enabled: ${activeTools.filter(t => ['web_search', 'x_search', 'code_execution'].includes(t)).join(', ')}`);
+        // File Search - 文件向量搜索（需要预先在 xAI 创建 collections）
+        // 支持数组配置或布尔开关（向后兼容）
+        if (context.USE_XAI_BUILDIN.includes('fileSearch') || context.XAI_ENABLE_FILE_SEARCH) {
+            if (context.XAI_FILE_SEARCH_VECTOR_STORES.length > 0) {
+                const fileSearchConfig: any = {
+                    vectorStoreIds: context.XAI_FILE_SEARCH_VECTOR_STORES,
+                };
+                if (context.XAI_FILE_SEARCH_MAX_RESULTS > 0) {
+                    fileSearchConfig.maxNumResults = context.XAI_FILE_SEARCH_MAX_RESULTS;
+                }
+                tools.file_search = fileSearch(fileSearchConfig);
+                activeTools.push('file_search');
+            } else {
+                log.warn('[warpLLMParams] xAI fileSearch enabled but XAI_FILE_SEARCH_VECTOR_STORES is empty');
+            }
+        }
+
+        log.info(`[warpLLMParams] xAI server-side tools enabled: ${activeTools.filter(t => ['web_search', 'x_search', 'code_execution', 'file_search'].includes(t)).join(', ')}`);
     }
 
     // Anthropic Server-Side Tools Support
@@ -679,11 +696,11 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
 
     // If using xAI Responses API built-in tools, clear custom tools (keep xAI tools)
     // This prevents conflicts as xAI Responses API doesn't support mixing provider tools with custom tools
-    const hasXaiTools = context.USE_XAI_BUILDIN.length > 0 || context.XAI_ENABLE_WEB_SEARCH || context.XAI_ENABLE_X_SEARCH || context.XAI_ENABLE_CODE_EXECUTION;
+    const hasXaiTools = context.USE_XAI_BUILDIN.length > 0 || context.XAI_ENABLE_WEB_SEARCH || context.XAI_ENABLE_X_SEARCH || context.XAI_ENABLE_CODE_EXECUTION || context.XAI_ENABLE_FILE_SEARCH;
     if (model.provider === 'xai.responses' && hasXaiTools) {
         // Clear only custom tools from validTools, keep xAI server-side tools
         const xaiToolKeys = Object.keys(tools).filter(k =>
-            k === 'web_search' || k === 'x_search' || k === 'code_execution'
+            k === 'web_search' || k === 'x_search' || k === 'code_execution' || k === 'file_search'
         );
         const xaiTools = xaiToolKeys.reduce((acc: Record<string, any>, key) => {
             acc[key] = tools[key];
