@@ -266,8 +266,8 @@ link_2: [link 2](https://google.com/test/link_2_2.html)
 `;
 
 const md7_linktest = `\`test code\`
-link\\_1: [link 1](https://google\\.com/test/link\\_1\\_2\\.html)
-link\\_2: [link 2](https://google\\.com/test/link\\_2\\_2\\.html)
+link\\_1: [link 1](https://google.com/test/link_1_2.html)
+link\\_2: [link 2](https://google.com/test/link_2_2.html)
 \`incode **not bold**, not link [link](https://google.com/test/link_2_2.html)\`
 `;
 
