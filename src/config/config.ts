@@ -711,7 +711,7 @@ export class XAIConfig {
     // XAI api base
     XAI_API_BASE = 'https://api.x.ai/v1';
     // XAI api model
-    XAI_CHAT_MODEL = 'grok-3';
+    XAI_CHAT_MODEL = 'grok-4-1-fast';
     XAI_VISION_MODEL = 'grok-2-vision';
     // XAI image model
     XAI_IMAGE_MODEL = 'grok-2-image';
@@ -723,7 +723,16 @@ export class XAIConfig {
     XAI_PROVIDER_OPTIONS = {
         // reasoningEffort: 'high',
     };
-    // XAI Server-Side Tools (executed on xAI servers)
+
+    // Models that should use Responses API (Chat Completions API is deprecated by xAI)
+    // Use '*' to enable for all models, or specify model prefixes like ['grok-4']
+    // Models not matching will fall back to deprecated Chat Completions API
+    XAI_RESPONSE_MODELS: string[] = ['*'];
+    // Disable xAI server-side conversation history storage (for privacy)
+    // When false, xAI will not store the conversation on their servers
+    XAI_STORE_CONVERSATION = true;
+
+    // ===== Responses API Server-Side Tools =====
     // 可用工具列表：webSearch, xSearch, codeExecution, fileSearch
     XAI_BUILDIN = ['webSearch', 'xSearch', 'codeExecution', 'fileSearch'];
     // 启用的工具列表（为保持向后兼容，也支持使用XAI_ENABLE_*开关）

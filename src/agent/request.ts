@@ -441,11 +441,20 @@ async function combineParams({ context, middleware, model, messages, activeTools
         anthropicOptions.structuredOutputMode = context.ANTHROPIC_STRUCTURED_OUTPUT_MODE;
     }
 
+    // Build xAI provider options with store setting
+    const xaiOptions: Record<string, any> = {
+        ...context.XAI_PROVIDER_OPTIONS,
+    };
+    // Add store option for Responses API (controls server-side conversation history)
+    if (!context.XAI_STORE_CONVERSATION) {
+        xaiOptions.store = false;
+    }
+
     const providerOptions = {
         openai: context.OPENAI_PROVIDER_OPTIONS,
         anthropic: anthropicOptions,
         google: context.GOOGLE_PROVIDER_OPTIONS,
-        xai: context.XAI_PROVIDER_OPTIONS,
+        xai: xaiOptions,
         'oailike.chat': context.OAILIKE_PROVIDER_OPTIONS,
     };
 

@@ -12,6 +12,7 @@ import {
 } from 'ai';
 import { ENV } from '../config/env';
 import { getLogSingleton, log } from '../log';
+import { SEGMENTATION_MARK } from '../telegram/utils/md2tgmd';
 import { getTools, sendToolResult, validTools } from '../tools';
 import { createLlmModel } from './llm';
 
@@ -241,6 +242,29 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
     };
 }
 
+function stripInternalMarks(content: any): any {
+    const cleanText = (text: string): string => {
+        return text
+            // Remove SEGMENTATION_MARK
+            .replace(new RegExp(`${SEGMENTATION_MARK}\\n?`, 'g'), '')
+            // Remove sources section (>sources:\n>...) to prevent model from mimicking
+            .replace(/\n*>sources:\n(?:>.*(?:\n|$))*/gi, '');
+    };
+
+    if (typeof content === 'string') {
+        return cleanText(content);
+    }
+    if (Array.isArray(content)) {
+        return content.map((part: any) => {
+            if (part.type === 'text' && typeof part.text === 'string') {
+                return { ...part, text: cleanText(part.text) };
+            }
+            return part;
+        });
+    }
+    return content;
+}
+
 function warpMessages(params: LanguageModelV3CallOptions, allTools: Record<string, any>, activeTools: string[], isResponseApi: boolean, rawSystemPrompt: string | undefined) {
     const { prompt: messages, tools } = params;
 
@@ -274,7 +298,10 @@ function warpMessages(params: LanguageModelV3CallOptions, allTools: Record<strin
                     continue;
                 case 'assistant':
                     if (Array.isArray(message.content) && message.content.every(i => i.type !== 'tool-call')) {
-                        modifiedMessages.push(message);
+                        modifiedMessages.push({
+                            ...message,
+                            content: stripInternalMarks(message.content),
+                        });
                     }
                     continue;
                 case 'tool':
@@ -317,6 +344,12 @@ function warpMessages(params: LanguageModelV3CallOptions, allTools: Record<strin
         if (systemMessage) {
             systemMessage.content = getSystemContent();
             params.prompt.shift();
+        }
+        // Strip internal marks from all assistant messages
+        for (const message of params.prompt) {
+            if (message.role === 'assistant') {
+                message.content = stripInternalMarks(message.content);
+            }
         }
         // if the first message is tool call, inject a user message to use the tool to avoid gemini error
         const firstMessage = params.prompt[0];

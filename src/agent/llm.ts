@@ -74,8 +74,9 @@ export async function createLlmModel(model: string, context: AgentUserConfig): P
                 apiKey: context.XAI_API_KEY || undefined,
                 fetch: mockFetch(model_id, context, agent),
             });
-            // Use Responses API for models that need tools support
-            const useResponsesApi = model_id.includes('grok-4');
+            // Use Responses API for models matching XAI_RESPONSE_MODELS
+            const useResponsesApi = context.XAI_RESPONSE_MODELS.includes('*')
+                || context.XAI_RESPONSE_MODELS.some(prefix => model_id.startsWith(prefix));
             if (useResponsesApi) {
                 return xaiProvider.responses(model_id);
             }
