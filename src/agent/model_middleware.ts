@@ -248,7 +248,9 @@ function stripInternalMarks(content: any): any {
             // Remove SEGMENTATION_MARK
             .replace(new RegExp(`${SEGMENTATION_MARK}\\n?`, 'g'), '')
             // Remove sources section (>sources:\n>...) to prevent model from mimicking
-            .replace(/\n*>sources:\n(?:>.*(?:\n|$))*/gi, '');
+            .replace(/\n*>sources:\n(?:>.*(?:\n|$))*/gi, '')
+            // Remove xAI internal render tags (e.g. [grok:render ...><argument ...>)
+            .replace(/\[grok:render\b[^\]]*>[\s\S]*?(?:<\/argument>\s*)+/gi, '');
     };
 
     if (typeof content === 'string') {

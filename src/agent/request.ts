@@ -176,6 +176,11 @@ export async function streamHandler(stream: AsyncIterable<any>, contentExtractor
     return messageInfo.content;
 }
 
+// Clean xAI internal render tags from model output (e.g. [grok:render ...><argument ...>)
+function stripGrokRenderTags(content: string): string {
+    return content.replace(/\[grok:render\b[^\]]*>[\s\S]*?(?:<\/argument>\s*)+/gi, '');
+}
+
 function appendStreamSources(content: string, sources: Array<{ url: string; title: string }>): string {
     if (!sources || sources.length === 0) {
         return content;
@@ -257,6 +262,11 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
         contentFull = `${result.reasoning ? `>\`Thought for several seconds\`\n>${(result.reasoningText ?? '').trim().replace(/\n/g, '\n>')}\n>✹\n` : ''}${result.text}`;
         responseMessages = result.response.messages;
         contentFull = metaDataExtractor(result.providerMetadata, model.provider, contentFull);
+    }
+
+    // Clean xAI internal render tags from output
+    if (model.provider === 'xai.chat' || model.provider === 'xai.responses') {
+        contentFull = stripGrokRenderTags(contentFull);
     }
 
     return { messages: responseMessages, content: contentFull };
