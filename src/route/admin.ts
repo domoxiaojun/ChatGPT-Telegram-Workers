@@ -90,9 +90,9 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
             </div>
         </div>
         <div class="tabs">
-            <button class="tab active" onclick="switchTab('logs')">📋 Logs</button>
-            <button class="tab" onclick="switchTab('config')">⚙️ Config</button>
-            <button class="tab" onclick="switchTab('cron')">⏰ Cron Tasks</button>
+            <button class="tab active" onclick="switchTab('logs', event)">📋 Logs</button>
+            <button class="tab" onclick="switchTab('config', event)">⚙️ Config</button>
+            <button class="tab" onclick="switchTab('cron', event)">⏰ Cron Tasks</button>
         </div>
         <div id="logs-tab" class="tab-content active card">
             <h3>Real-time Logs</h3>
@@ -120,11 +120,18 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
     </div>
     <script>
         const startTime = Date.now();
-        function switchTab(tab) {
+        const urlToken = new URLSearchParams(window.location.search).get('token');
+
+        function switchTab(tabName, event) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            event.target.classList.add('active');
-            document.getElementById(tab + '-tab').classList.add('active');
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
+            const tabElement = document.getElementById(tabName + '-tab');
+            if (tabElement) {
+                tabElement.classList.add('active');
+            }
         }
         function updateUptime() {
             const elapsed = Date.now() - startTime;
@@ -141,9 +148,11 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
         }
         async function loadStats() {
             try {
-                const token = new URLSearchParams(window.location.search).get('token');
-                const url = '/api/stats' + (token ? '?token=' + token : '');
+                const url = '/api/stats' + (urlToken ? '?token=' + urlToken : '');
                 const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
                 const stats = await response.json();
                 document.getElementById('total-users').textContent = stats.totalUsers || 0;
                 document.getElementById('total-groups').textContent = stats.totalGroups || 0;
@@ -152,6 +161,10 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
                 document.getElementById('today-date').textContent = new Date().toLocaleDateString();
             } catch (e) {
                 console.error('Failed to load stats:', e);
+                document.getElementById('total-users').textContent = 'Error';
+                document.getElementById('total-groups').textContent = 'Error';
+                document.getElementById('total-messages').textContent = 'Error';
+                document.getElementById('today-messages').textContent = 'Error';
             }
         }
         setInterval(updateUptime, 1000);
@@ -167,9 +180,11 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
         // Load cron tasks
         async function loadCronTasks() {
             try {
-                const token = new URLSearchParams(window.location.search).get('token');
-                const url = '/api/cron' + (token ? '?token=' + token : '');
+                const url = '/api/cron' + (urlToken ? '?token=' + urlToken : '');
                 const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
                 const data = await response.json();
                 const tasks = data.tasks || [];
 
@@ -196,19 +211,21 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
                 document.getElementById('cron-list').innerHTML = html;
             } catch (e) {
                 console.error('Failed to load cron tasks:', e);
-                document.getElementById('cron-list').innerHTML = '<p style="color: #ef4444;">Failed to load tasks</p>';
+                document.getElementById('cron-list').innerHTML = '<p style="color: #ef4444;">Failed to load tasks: ' + e.message + '</p>';
             }
         }
 
         async function toggleCronTask(id, enabled) {
             try {
-                const token = new URLSearchParams(window.location.search).get('token');
-                const url = '/api/cron/' + id + (token ? '?token=' + token : '');
-                await fetch(url, {
+                const url = '/api/cron/' + id + (urlToken ? '?token=' + urlToken : '');
+                const response = await fetch(url, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ enabled })
                 });
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
                 loadCronTasks();
             } catch (e) {
                 alert('Failed to update task: ' + e.message);
@@ -218,9 +235,11 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
         async function deleteCronTask(id) {
             if (!confirm('Are you sure you want to delete this task?')) return;
             try {
-                const token = new URLSearchParams(window.location.search).get('token');
-                const url = '/api/cron/' + id + (token ? '?token=' + token : '');
-                await fetch(url, { method: 'DELETE' });
+                const url = '/api/cron/' + id + (urlToken ? '?token=' + urlToken : '');
+                const response = await fetch(url, { method: 'DELETE' });
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
                 loadCronTasks();
             } catch (e) {
                 alert('Failed to delete task: ' + e.message);
