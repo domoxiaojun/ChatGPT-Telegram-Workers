@@ -530,8 +530,12 @@ export async function apiEnvVars(request: RouterRequest): Promise<Response> {
                     envVars[key] = value.substring(0, 4) + '***' + value.substring(value.length - 4);
                 } else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
                     envVars[key] = value;
+                } else if (Array.isArray(value)) {
+                    envVars[key] = JSON.stringify(value);
+                } else if (typeof value === 'object' && value !== null) {
+                    envVars[key] = JSON.stringify(value);
                 } else {
-                    envVars[key] = typeof value;
+                    envVars[key] = String(value);
                 }
             }
         }
@@ -557,9 +561,26 @@ export async function apiUserConfigs(request: RouterRequest): Promise<Response> 
     }
 
     try {
-        // DATABASE.list() API is not standardized across environments
-        // Return empty for now - users can view configs via /set command in Telegram
-        return new Response(JSON.stringify({ configs: {} }), {
+        const configs: Record<string, any> = {};
+
+        // Try to list all user_config keys
+        if (ENV.DATABASE.list) {
+            const keys = await ENV.DATABASE.list('user_config:');
+
+            // Fetch each config
+            for (const key of keys) {
+                try {
+                    const configStr = await ENV.DATABASE.get(key);
+                    if (configStr && typeof configStr === 'string') {
+                        configs[key] = JSON.parse(configStr);
+                    }
+                } catch (e) {
+                    console.error(`Failed to parse config for key ${key}:`, e);
+                }
+            }
+        }
+
+        return new Response(JSON.stringify({ configs }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
         });
