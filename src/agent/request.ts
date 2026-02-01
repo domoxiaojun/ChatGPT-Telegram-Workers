@@ -213,7 +213,7 @@ function appendStreamSources(content: string, sources: Array<{ url: string; titl
     // 底部显示 [[1]](url) [[2]](url) 格式的完整链接
     const formattedSources = sources
         .slice(0, maxSources)
-        .map((source, i) => `[[${i + 1}\\]](${escapeUrlForTelegram(source.url)})`)
+        .map((source, i) => `[${i + 1}](${escapeUrlForTelegram(source.url)})`)
         .join('\x20');
 
     return `${cleanedContent.trimEnd()}\n\n>sources:\n>${formattedSources}`;

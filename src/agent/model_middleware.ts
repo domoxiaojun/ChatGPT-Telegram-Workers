@@ -880,7 +880,7 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
                         const maps = chunk?.maps as { title?: string; uri?: string; placeId?: string; text?: string } | undefined;
                         const uri = web?.uri ?? maps?.uri ?? '#';
                         const title = web?.title ?? maps?.title;
-                        return `[[${i + 1}\\]](${escapeUrlForTelegram(uri)})`;
+                        return `[${i + 1}](${escapeUrlForTelegram(uri)})`;
                     })
                     .join('\x20');
 
@@ -905,7 +905,7 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
             if ((metadata?.pplx?.citations ?? []).length > 0) {
                 const replacer = (content: string, urls: string[]) => {
                     for (const [i, url] of Object.entries(urls)) {
-                        content = content.replace(new RegExp(`\\[(${+i + 1})\\]`, 'g'), `[[$1\\]](${escapeUrlForTelegram(url)})`);
+                        content = content.replace(new RegExp(`\\[(${+i + 1})\\]`, 'g'), `[$1](${escapeUrlForTelegram(url)})`);
                     }
                     return content;
                 };
