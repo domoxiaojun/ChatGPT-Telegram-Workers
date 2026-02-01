@@ -615,7 +615,7 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
                         html += '<td style="padding: 8px; font-family: monospace; word-break: break-all;">' + String(configValue) + '</td>';
 
                         html += '<td style="padding: 8px; text-align: center;">';
-                        html += '<button onclick="deleteUserConfigKey(\'' + chatId + '\', \'' + configKey + '\')" style="padding: 4px 8px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Delete</button>';
+                        html += '<button onclick="deleteUserConfigKey(\\\'' + chatId + '\\\', \\\'' + configKey + '\\\')" style="padding: 4px 8px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Delete</button>';
                         html += '</td>';
                         html += '</tr>';
                     });
