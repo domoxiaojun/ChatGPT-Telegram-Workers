@@ -1,6 +1,7 @@
 import type { RouterRequest } from '../utils/router';
 import { ENV } from '../config/env';
 import { getStats } from '../utils/stats';
+import { logManager } from './log-manager';
 
 // Simple token authentication
 function checkAuth(request: RouterRequest): boolean {
@@ -103,12 +104,48 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
         <div id="config-tab" class="tab-content card">
             <h3>Configuration</h3>
             <div style="margin-bottom: 20px;">
-                <h4 style="margin-bottom: 10px;">Whitelist</h4>
-                <textarea id="whitelist" rows="5" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace;"></textarea>
-                <button onclick="saveWhitelist()" style="margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">Save Whitelist</button>
+                <h4 style="margin-bottom: 10px;">User Settings (per chat)</h4>
+                <p style="color: #666; font-size: 14px; margin-bottom: 10px;">Configure settings for specific chats. These override global environment variables.</p>
+
+                <div style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 15px; margin-bottom: 15px;">
+                    <h5 style="margin: 0 0 10px 0;">Add/Update Setting</h5>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                        <input type="text" id="config-chat-id" placeholder="Chat ID (e.g., 123456789)" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace;">
+                        <select id="config-key" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="">Select setting...</option>
+                            <optgroup label="General">
+                                <option value="AI_CHAT_PROVIDER">AI_CHAT_PROVIDER</option>
+                                <option value="AI_IMAGE_PROVIDER">AI_IMAGE_PROVIDER</option>
+                                <option value="AI_ASR_PROVIDER">AI_ASR_PROVIDER</option>
+                                <option value="AI_TTS_PROVIDER">AI_TTS_PROVIDER</option>
+                                <option value="SYSTEM_INIT_MESSAGE">SYSTEM_INIT_MESSAGE</option>
+                                <option value="TIMEZONE">TIMEZONE</option>
+                            </optgroup>
+                            <optgroup label="OpenAI">
+                                <option value="OPENAI_CHAT_MODEL">OPENAI_CHAT_MODEL</option>
+                                <option value="OPENAI_VISION_MODEL">OPENAI_VISION_MODEL</option>
+                                <option value="OPENAI_TTS_MODEL">OPENAI_TTS_MODEL</option>
+                                <option value="OPENAI_TTS_VOICE">OPENAI_TTS_VOICE</option>
+                                <option value="OPENAI_STT_MODEL">OPENAI_STT_MODEL</option>
+                            </optgroup>
+                            <optgroup label="Google/Gemini">
+                                <option value="GOOGLE_CHAT_MODEL">GOOGLE_CHAT_MODEL</option>
+                                <option value="GOOGLE_VISION_MODEL">GOOGLE_VISION_MODEL</option>
+                                <option value="GOOGLE_IMAGE_MODEL">GOOGLE_IMAGE_MODEL</option>
+                            </optgroup>
+                            <optgroup label="Anthropic">
+                                <option value="ANTHROPIC_CHAT_MODEL">ANTHROPIC_CHAT_MODEL</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <input type="text" id="config-value" placeholder="Value" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px;">
+                    <button onclick="saveUserConfig()" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">Save Setting</button>
+                </div>
+
+                <div id="user-config">Loading...</div>
             </div>
             <div>
-                <h4 style="margin-bottom: 10px;">Environment Variables</h4>
+                <h4 style="margin-bottom: 10px;">Environment Variables (read-only)</h4>
                 <div id="env-vars">Loading...</div>
             </div>
         </div>
@@ -171,10 +208,13 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
         updateUptime();
         loadStats();
         setInterval(loadStats, 5000);
+
+        // Initialize logs
         setTimeout(() => {
+            const now = new Date().toLocaleTimeString();
             document.getElementById('log-output').innerHTML =
-                '<div class="log-line"><span class="log-time">[' + new Date().toLocaleTimeString() + ']</span> <span class="log-level info">INFO</span> Dashboard loaded</div>' +
-                '<div class="log-line"><span class="log-time">[' + new Date().toLocaleTimeString() + ']</span> <span class="log-level info">INFO</span> WebSocket log streaming coming soon...</div>';
+                '<div class="log-line"><span class="log-time">[' + now + ']</span> <span class="log-level info">INFO</span> Dashboard initialized</div>' +
+                '<div class="log-line"><span class="log-time">[' + now + ']</span> <span class="log-level info">INFO</span> Monitoring active</div>';
         }, 500);
 
         // Load cron tasks
@@ -199,7 +239,7 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
 
                 const headerRow = document.createElement('tr');
                 headerRow.style.borderBottom = '2px solid #e5e5e5';
-                ['Status', 'Schedule', 'Prompt', 'Actions'].forEach(text => {
+                ['Status', 'Chat/User', 'Schedule', 'Prompt', 'Actions'].forEach(text => {
                     const th = document.createElement('th');
                     th.textContent = text;
                     th.style.cssText = 'text-align: left; padding: 10px;';
@@ -215,6 +255,13 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
                     statusCell.textContent = task.enabled ? '✅' : '⏸️';
                     statusCell.style.padding = '10px';
                     row.appendChild(statusCell);
+
+                    const chatInfoCell = document.createElement('td');
+                    const chatTypeIcon = task.chatType === 'private' ? '👤' : '👥';
+                    const chatInfo = chatTypeIcon + ' ' + task.chatId + (task.userId ? ' (User: ' + task.userId + ')' : '');
+                    chatInfoCell.textContent = chatInfo;
+                    chatInfoCell.style.cssText = 'padding: 10px; font-family: monospace; font-size: 12px;';
+                    row.appendChild(chatInfoCell);
 
                     const scheduleCell = document.createElement('td');
                     scheduleCell.textContent = task.cronExpr + ' (' + task.timezone + ')';
@@ -295,6 +342,162 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
         }
 
         loadCronTasks();
+
+        // Load environment variables
+        async function loadEnvVars() {
+            try {
+                const url = '/api/env' + (urlToken ? '?token=' + urlToken : '');
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+                const data = await response.json();
+                const envVars = data.envVars || {};
+
+                const container = document.getElementById('env-vars');
+                if (Object.keys(envVars).length === 0) {
+                    container.innerHTML = '<p style="color: #999;">No environment variables found</p>';
+                    return;
+                }
+
+                let html = '<table style="width: 100%; border-collapse: collapse;">';
+                html += '<tr style="border-bottom: 2px solid #e5e5e5;"><th style="text-align: left; padding: 10px; width: 30%;">Variable</th><th style="text-align: left; padding: 10px;">Value</th></tr>';
+
+                Object.keys(envVars).sort().forEach(key => {
+                    html += '<tr style="border-bottom: 1px solid #f0f0f0;">';
+                    html += '<td style="padding: 10px; font-family: monospace; font-weight: bold;">' + key + '</td>';
+                    html += '<td style="padding: 10px; font-family: monospace; word-break: break-all;">' + String(envVars[key]) + '</td>';
+                    html += '</tr>';
+                });
+
+                html += '</table>';
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('Failed to load env vars:', e);
+                document.getElementById('env-vars').innerHTML = '<p style="color: #ef4444;">Failed to load environment variables: ' + e.message + '</p>';
+            }
+        }
+
+        loadEnvVars();
+
+        // Load user configs
+        async function loadUserConfigs() {
+            try {
+                const url = '/api/user-configs' + (urlToken ? '?token=' + urlToken : '');
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+                const data = await response.json();
+                const configs = data.configs || {};
+
+                const container = document.getElementById('user-config');
+
+                if (Object.keys(configs).length === 0) {
+                    container.innerHTML = '<div style="background: #f0f7ff; border: 1px solid #b3d9ff; border-radius: 4px; padding: 15px;">' +
+                        '<p style="margin: 0 0 10px 0;"><strong>ℹ️ No User Settings Yet</strong></p>' +
+                        '<p style="margin: 0; font-size: 14px;">Use <code>/set</code> command in Telegram to configure settings.</p>' +
+                        '<p style="margin: 5px 0 0 0; font-size: 14px; color: #666;">Example: <code>/set -AI_CHAT_PROVIDER openai</code></p>' +
+                        '</div>';
+                    return;
+                }
+
+                let html = '<div style="max-height: 400px; overflow-y: auto;">';
+                Object.keys(configs).sort().forEach(key => {
+                    const chatId = key.replace('user_config:', '');
+                    const config = configs[key];
+                    html += '<details style="margin-bottom: 10px; border: 1px solid #e5e5e5; border-radius: 4px; padding: 10px;">';
+                    html += '<summary style="cursor: pointer; font-weight: bold; font-family: monospace;">Chat ID: ' + chatId + '</summary>';
+                    html += '<pre style="margin-top: 10px; background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px;">' + JSON.stringify(config, null, 2) + '</pre>';
+                    html += '</details>';
+                });
+                html += '</div>';
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('Failed to load user configs:', e);
+                document.getElementById('user-config').innerHTML = '<p style="color: #ef4444;">Failed to load: ' + e.message + '</p>';
+            }
+        }
+
+        loadUserConfigs();
+
+        // Save user config
+        async function saveUserConfig() {
+            try {
+                const chatId = document.getElementById('config-chat-id').value.trim();
+                const key = document.getElementById('config-key').value;
+                const value = document.getElementById('config-value').value.trim();
+
+                if (!chatId || !key || !value) {
+                    alert('Please fill in all fields');
+                    return;
+                }
+
+                const url = '/api/user-config' + (urlToken ? '?token=' + urlToken : '');
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chatId: chatId,
+                        config: { [key]: value }
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+
+                const data = await response.json();
+                alert('Setting saved successfully!');
+
+                // Clear form
+                document.getElementById('config-chat-id').value = '';
+                document.getElementById('config-key').value = '';
+                document.getElementById('config-value').value = '';
+
+                // Reload configs
+                loadUserConfigs();
+            } catch (e) {
+                alert('Failed to save setting: ' + e.message);
+            }
+        }
+
+        // Load logs
+        async function loadLogs() {
+            try {
+                const url = '/api/logs' + (urlToken ? '?token=' + urlToken : '');
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+                const data = await response.json();
+                const logs = data.logs || [];
+
+                const container = document.getElementById('log-output');
+                if (logs.length === 0) {
+                    container.innerHTML = '<div class="log-line">No logs yet</div>';
+                    return;
+                }
+
+                let html = '';
+                logs.slice(-50).forEach(log => {
+                    const time = new Date(log.timestamp).toLocaleTimeString();
+                    const levelClass = log.level;
+                    html += '<div class="log-line">';
+                    html += '<span class="log-time">[' + time + ']</span> ';
+                    html += '<span class="log-level ' + levelClass + '">' + log.level.toUpperCase() + '</span> ';
+                    html += log.message;
+                    html += '</div>';
+                });
+                container.innerHTML = html;
+                container.scrollTop = container.scrollHeight;
+            } catch (e) {
+                console.error('Failed to load logs:', e);
+            }
+        }
+
+        loadLogs();
+        setInterval(loadLogs, 3000);
     </script>
 </body>
 </html>`;
@@ -303,6 +506,136 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
         status: 200,
         headers: { 'Content-Type': 'text/html; charset=utf-8' },
     });
+}
+
+export async function apiEnvVars(request: RouterRequest): Promise<Response> {
+    if (!checkAuth(request)) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    }
+
+    try {
+        // Get all environment variables from ENV
+        const envVars: Record<string, any> = {};
+        const sensitiveKeys = ['API_KEY', 'TOKEN', 'SECRET', 'PASSWORD', 'PRIVATE'];
+
+        for (const key in ENV) {
+            if (Object.prototype.hasOwnProperty.call(ENV, key)) {
+                const value = (ENV as any)[key];
+                // Mask sensitive values
+                const isSensitive = sensitiveKeys.some(sk => key.includes(sk));
+                if (isSensitive && typeof value === 'string' && value.length > 0) {
+                    envVars[key] = value.substring(0, 4) + '***' + value.substring(value.length - 4);
+                } else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+                    envVars[key] = value;
+                } else {
+                    envVars[key] = typeof value;
+                }
+            }
+        }
+
+        return new Response(JSON.stringify({ envVars }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    } catch (e) {
+        return new Response(JSON.stringify({ error: (e as Error).message }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+export async function apiUserConfigs(request: RouterRequest): Promise<Response> {
+    if (!checkAuth(request)) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    }
+
+    try {
+        // DATABASE.list() API is not standardized across environments
+        // Return empty for now - users can view configs via /set command in Telegram
+        return new Response(JSON.stringify({ configs: {} }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    } catch (e) {
+        return new Response(JSON.stringify({ error: (e as Error).message }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+export async function apiUpdateUserConfig(request: RouterRequest): Promise<Response> {
+    if (!checkAuth(request)) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    }
+
+    try {
+        const body = await request.json() as any;
+        const { chatId, config } = body;
+
+        if (!chatId) {
+            return new Response(JSON.stringify({ error: 'Missing chatId' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
+        const configKey = `user_config:${chatId}`;
+
+        // Get existing config
+        const existingConfigStr = await ENV.DATABASE.get(configKey);
+        const existingConfig = existingConfigStr ? JSON.parse(existingConfigStr) : {};
+
+        // Merge with new config
+        const updatedConfig = { ...existingConfig, ...config };
+
+        // Save to database
+        await ENV.DATABASE.put(configKey, JSON.stringify(updatedConfig));
+
+        return new Response(JSON.stringify({ success: true, config: updatedConfig }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    } catch (e) {
+        return new Response(JSON.stringify({ error: (e as Error).message }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+export async function apiLogs(request: RouterRequest): Promise<Response> {
+    if (!checkAuth(request)) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    }
+
+    try {
+        const url = new URL(request.url);
+        const count = parseInt(url.searchParams.get('count') || '100');
+        const logs = logManager.getRecentLogs(count);
+        return new Response(JSON.stringify({ logs }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    } catch (e) {
+        return new Response(JSON.stringify({ error: (e as Error).message }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    }
 }
 
 export async function apiStats(request: RouterRequest): Promise<Response> {

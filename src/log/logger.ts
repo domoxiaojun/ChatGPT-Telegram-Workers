@@ -1,5 +1,6 @@
 import type { LogLevelType } from '../config/types';
 import { ENV } from '../config/env';
+import { logManager } from '../route/log-manager';
 
 const LOG_LEVEL_PRIORITY: Record<LogLevelType, number> = {
     debug: 1,
@@ -20,6 +21,7 @@ function LogLevel(level: LogLevelType, ...args: any[]) {
 
     const formattedMessage = `[${timestamp}] [${level.toUpperCase()}] ${logStr}`;
 
+    // Send to console
     switch (level) {
         case 'error':
             console.error(formattedMessage);
@@ -35,6 +37,13 @@ function LogLevel(level: LogLevelType, ...args: any[]) {
             break;
         default:
             console.log(formattedMessage);
+    }
+
+    // Send to logManager for dashboard
+    try {
+        logManager.addLog(level, logStr);
+    } catch (e) {
+        // Ignore errors to prevent log loop
     }
 }
 
