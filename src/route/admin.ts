@@ -119,6 +119,11 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
                                 <option value="AI_ASR_PROVIDER">AI_ASR_PROVIDER</option>
                                 <option value="AI_TTS_PROVIDER">AI_TTS_PROVIDER</option>
                                 <option value="SYSTEM_INIT_MESSAGE">SYSTEM_INIT_MESSAGE</option>
+                                <option value="MAX_HISTORY_LENGTH">MAX_HISTORY_LENGTH</option>
+                                <option value="CHAT_MODEL">CHAT_MODEL</option>
+                                <option value="VISION_MODEL">VISION_MODEL</option>
+                                <option value="IMAGE_MODEL">IMAGE_MODEL</option>
+                                <option value="CURRENT_MODE">CURRENT_MODE</option>
                                 <option value="TIMEZONE">TIMEZONE</option>
                             </optgroup>
                             <optgroup label="OpenAI">
@@ -126,15 +131,116 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
                                 <option value="OPENAI_VISION_MODEL">OPENAI_VISION_MODEL</option>
                                 <option value="OPENAI_TTS_MODEL">OPENAI_TTS_MODEL</option>
                                 <option value="OPENAI_TTS_VOICE">OPENAI_TTS_VOICE</option>
+                                <option value="OPENAI_TTS_PROMPT">OPENAI_TTS_PROMPT</option>
+                                <option value="OPENAI_TTS_EXTRA_PARAMS">OPENAI_TTS_EXTRA_PARAMS</option>
                                 <option value="OPENAI_STT_MODEL">OPENAI_STT_MODEL</option>
+                                <option value="OPENAI_API_BASE">OPENAI_API_BASE</option>
+                                <option value="OPENAI_API_EXTRA_PARAMS">OPENAI_API_EXTRA_PARAMS</option>
+                                <option value="OPENAI_EMBEDDING_MODEL">OPENAI_EMBEDDING_MODEL</option>
+                                <option value="OPENAI_REASONING_EFFORT">OPENAI_REASONING_EFFORT</option>
+                                <option value="USE_OPENAI_BUILDIN">USE_OPENAI_BUILDIN</option>
+                                <option value="OPENAI_IMAGE_MODEL">OPENAI_IMAGE_MODEL</option>
                             </optgroup>
                             <optgroup label="Google/Gemini">
                                 <option value="GOOGLE_CHAT_MODEL">GOOGLE_CHAT_MODEL</option>
                                 <option value="GOOGLE_VISION_MODEL">GOOGLE_VISION_MODEL</option>
                                 <option value="GOOGLE_IMAGE_MODEL">GOOGLE_IMAGE_MODEL</option>
+                                <option value="GOOGLE_TTS_MODEL">GOOGLE_TTS_MODEL</option>
+                                <option value="GOOGLE_TTS_VOICE">GOOGLE_TTS_VOICE</option>
+                                <option value="GOOGLE_TTS_PROMPT">GOOGLE_TTS_PROMPT</option>
+                                <option value="GOOGLE_TTS_EXTRA_PARAMS">GOOGLE_TTS_EXTRA_PARAMS</option>
+                                <option value="GOOGLE_API_BASE">GOOGLE_API_BASE</option>
+                                <option value="GOOGLE_API_EXTRA_PARAMS">GOOGLE_API_EXTRA_PARAMS</option>
+                                <option value="GOOGLE_EMBEDDING_MODEL">GOOGLE_EMBEDDING_MODEL</option>
+                                <option value="USE_GOOGLE_BUILDIN">USE_GOOGLE_BUILDIN</option>
+                                <option value="GOOGLE_MAPS_MODEL">GOOGLE_MAPS_MODEL</option>
                             </optgroup>
                             <optgroup label="Anthropic">
                                 <option value="ANTHROPIC_CHAT_MODEL">ANTHROPIC_CHAT_MODEL</option>
+                                <option value="ANTHROPIC_VISION_MODEL">ANTHROPIC_VISION_MODEL</option>
+                                <option value="ANTHROPIC_API_BASE">ANTHROPIC_API_BASE</option>
+                                <option value="ANTHROPIC_API_EXTRA_PARAMS">ANTHROPIC_API_EXTRA_PARAMS</option>
+                                <option value="USE_ANTHROPIC_BUILDIN">USE_ANTHROPIC_BUILDIN</option>
+                            </optgroup>
+                            <optgroup label="XAI (Grok)">
+                                <option value="XAI_CHAT_MODEL">XAI_CHAT_MODEL</option>
+                                <option value="XAI_VISION_MODEL">XAI_VISION_MODEL</option>
+                                <option value="XAI_IMAGE_MODEL">XAI_IMAGE_MODEL</option>
+                                <option value="XAI_API_BASE">XAI_API_BASE</option>
+                                <option value="XAI_API_EXTRA_PARAMS">XAI_API_EXTRA_PARAMS</option>
+                                <option value="USE_XAI_BUILDIN">USE_XAI_BUILDIN</option>
+                            </optgroup>
+                            <optgroup label="Cohere">
+                                <option value="COHERE_CHAT_MODEL">COHERE_CHAT_MODEL</option>
+                                <option value="COHERE_API_BASE">COHERE_API_BASE</option>
+                            </optgroup>
+                            <optgroup label="Mistral">
+                                <option value="MISTRAL_CHAT_MODEL">MISTRAL_CHAT_MODEL</option>
+                                <option value="MISTRAL_API_BASE">MISTRAL_API_BASE</option>
+                            </optgroup>
+                            <optgroup label="Azure">
+                                <option value="AZURE_CHAT_MODEL">AZURE_CHAT_MODEL</option>
+                                <option value="AZURE_IMAGE_MODEL">AZURE_IMAGE_MODEL</option>
+                                <option value="AZURE_COMPLETIONS_API">AZURE_COMPLETIONS_API</option>
+                                <option value="AZURE_DALLE_API">AZURE_DALLE_API</option>
+                            </optgroup>
+                            <optgroup label="Fish Audio">
+                                <option value="FISH_TTS_VOICE">FISH_TTS_VOICE</option>
+                            </optgroup>
+                            <optgroup label="OAI-Like / Custom">
+                                <option value="OAILIKE_CHAT_MODEL">OAILIKE_CHAT_MODEL</option>
+                                <option value="OAILIKE_VISION_MODEL">OAILIKE_VISION_MODEL</option>
+                                <option value="OAILIKE_IMAGE_MODEL">OAILIKE_IMAGE_MODEL</option>
+                                <option value="OAILIKE_API_BASE">OAILIKE_API_BASE</option>
+                                <option value="OAILIKE_API_KEY">OAILIKE_API_KEY</option>
+                                <option value="OAILIKE_API_EXTRA_PARAMS">OAILIKE_API_EXTRA_PARAMS</option>
+                                <option value="OAILIKE_EMBEDDING_MODEL">OAILIKE_EMBEDDING_MODEL</option>
+                                <option value="OAILIKE_RERANK_MODEL">OAILIKE_RERANK_MODEL</option>
+                                <option value="OAILIKE_STT_MODEL">OAILIKE_STT_MODEL</option>
+                                <option value="OAILIKE_TTS_MODEL">OAILIKE_TTS_MODEL</option>
+                                <option value="OAILIKE_TTS_VOICE">OAILIKE_TTS_VOICE</option>
+                                <option value="OAILIKE_TTS_EXTRA_PARAMS">OAILIKE_TTS_EXTRA_PARAMS</option>
+                                <option value="OAILIKE_IMAGE_SIZE">OAILIKE_IMAGE_SIZE</option>
+                                <option value="USE_OAILIKE_RELAY_TOOLS">USE_OAILIKE_RELAY_TOOLS</option>
+                            </optgroup>
+                            <optgroup label="Vertex AI">
+                                <option value="VERTEX_CHAT_MODEL">VERTEX_CHAT_MODEL</option>
+                                <option value="VERTEX_VISION_MODEL">VERTEX_VISION_MODEL</option>
+                                <option value="VERTEX_IMAGE_MODEL">VERTEX_IMAGE_MODEL</option>
+                                <option value="VERTEX_PROJECT_ID">VERTEX_PROJECT_ID</option>
+                                <option value="VERTEX_LOCATION">VERTEX_LOCATION</option>
+                            </optgroup>
+                            <optgroup label="DALL-E">
+                                <option value="DALL_E_MODEL">DALL_E_MODEL</option>
+                                <option value="DALL_E_IMAGE_SIZE">DALL_E_IMAGE_SIZE</option>
+                                <option value="DALL_E_IMAGE_QUALITY">DALL_E_IMAGE_QUALITY</option>
+                                <option value="DALL_E_IMAGE_STYLE">DALL_E_IMAGE_STYLE</option>
+                            </optgroup>
+                            <optgroup label="Workers AI">
+                                <option value="WORKERS_CHAT_MODEL">WORKERS_CHAT_MODEL</option>
+                                <option value="WORKERS_IMAGE_MODEL">WORKERS_IMAGE_MODEL</option>
+                            </optgroup>
+                            <optgroup label="Tools & Functions">
+                                <option value="USE_TOOLS">USE_TOOLS</option>
+                                <option value="USE_MCP">USE_MCP</option>
+                                <option value="TOOL_MODEL">TOOL_MODEL</option>
+                                <option value="FUNCTION_REPLY_ASAP">FUNCTION_REPLY_ASAP</option>
+                            </optgroup>
+                            <optgroup label="Model Parameters">
+                                <option value="CHAT_TEMPERATURE">CHAT_TEMPERATURE</option>
+                                <option value="MAX_TOKENS">MAX_TOKENS</option>
+                            </optgroup>
+                            <optgroup label="Text & Audio Output">
+                                <option value="TEXT_OUTPUT">TEXT_OUTPUT</option>
+                                <option value="TEXT_HANDLE_TYPE">TEXT_HANDLE_TYPE</option>
+                                <option value="AUDIO_OUTPUT">AUDIO_OUTPUT</option>
+                                <option value="AUDIO_HANDLE_TYPE">AUDIO_HANDLE_TYPE</option>
+                                <option value="AUDIO_CONTAINS_TEXT">AUDIO_CONTAINS_TEXT</option>
+                            </optgroup>
+                            <optgroup label="Advanced">
+                                <option value="MAPPING_KEY">MAPPING_KEY</option>
+                                <option value="MAPPING_VALUE">MAPPING_VALUE</option>
+                                <option value="RERANK_AGENT">RERANK_AGENT</option>
                             </optgroup>
                         </select>
                     </div>
@@ -365,8 +471,20 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
 
                 Object.keys(envVars).sort().forEach(key => {
                     html += '<tr style="border-bottom: 1px solid #f0f0f0;">';
-                    html += '<td style="padding: 10px; font-family: monospace; font-weight: bold;">' + key + '</td>';
-                    html += '<td style="padding: 10px; font-family: monospace; word-break: break-all;">' + String(envVars[key]) + '</td>';
+                    html += '<td style="padding: 10px; font-family: monospace; font-weight: bold; vertical-align: top;">' + key + '</td>';
+
+                    // Format value for display
+                    let displayValue = envVars[key];
+                    try {
+                        // Try to parse as JSON for pretty printing
+                        const parsed = JSON.parse(displayValue);
+                        displayValue = '<pre style="margin: 0; white-space: pre-wrap; word-break: break-word;">' + JSON.stringify(parsed, null, 2) + '</pre>';
+                    } catch (e) {
+                        // Not JSON, display as-is
+                        displayValue = '<span style="word-break: break-all;">' + String(displayValue) + '</span>';
+                    }
+
+                    html += '<td style="padding: 10px; font-family: monospace;">' + displayValue + '</td>';
                     html += '</tr>';
                 });
 
