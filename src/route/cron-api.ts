@@ -2,59 +2,6 @@ import type { RouterRequest } from '../utils/router';
 import { ENV } from '../config/env';
 import { addTask, getTaskById, loadAllTasks, removeTask, scheduleSingleTask, unscheduleSingleTask, updateTask, validateCronExpression, validateTimezone } from '../cron';
 
-// Parse cron add arguments (same logic as CronCommandHandler)
-function parseAddArgs(args: string, defaultTimezone: string): { cronExpr: string; timezone: string; prompt: string } {
-    // Try to parse as simple time format first: HH:MM
-    const timeMatch = args.match(/^(\d{1,2}):(\d{2})\s+(.+)$/);
-    if (timeMatch) {
-        const hour = Number.parseInt(timeMatch[1], 10);
-        const minute = Number.parseInt(timeMatch[2], 10);
-        if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
-            const remaining = timeMatch[3];
-            const tzMatch = remaining.match(/^([A-Za-z_/]+)\s+(.+)$/);
-            if (tzMatch && validateTimezone(tzMatch[1])) {
-                return {
-                    cronExpr: `${minute} ${hour} * * *`,
-                    timezone: tzMatch[1],
-                    prompt: tzMatch[2].trim(),
-                };
-            }
-            return {
-                cronExpr: `${minute} ${hour} * * *`,
-                timezone: defaultTimezone,
-                prompt: remaining.trim(),
-            };
-        }
-    }
-
-    // Try to parse as full cron expression
-    const cronParts = args.split(/\s+/);
-    if (cronParts.length >= 6) {
-        const potentialCron = cronParts.slice(0, 5).join(' ');
-        if (validateCronExpression(potentialCron)) {
-            if (validateTimezone(cronParts[5])) {
-                return {
-                    cronExpr: potentialCron,
-                    timezone: cronParts[5],
-                    prompt: cronParts.slice(6).join(' ').trim(),
-                };
-            }
-            return {
-                cronExpr: potentialCron,
-                timezone: defaultTimezone,
-                prompt: cronParts.slice(5).join(' ').trim(),
-            };
-        }
-    }
-
-    // Fallback: treat as daily at 9:00
-    return {
-        cronExpr: '0 9 * * *',
-        timezone: defaultTimezone,
-        prompt: args.trim(),
-    };
-}
-
 // Simple token authentication
 function checkAuth(request: RouterRequest): boolean {
     const authToken = ENV.ADMIN_TOKEN || process.env.ADMIN_TOKEN;
@@ -102,47 +49,9 @@ export async function apiCronCreate(request: RouterRequest): Promise<Response> {
 
     try {
         const body = await request.json() as any;
-        let { cronExpr, timezone, prompt, chatId, botToken, botName, chatType, userId, args } = body;
+        const { cronExpr, timezone, prompt, chatId, botToken, botName, chatType, userId } = body;
 
-        if (!chatId) {
-            return new Response(JSON.stringify({ error: 'Missing chatId' }), {
-                status: 400,
-                headers: { 'Content-Type': 'application/json' },
-            });
-        }
-
-        // If args provided, parse it (Dashboard format)
-        if (args) {
-            // Get user config to retrieve timezone
-            const configKey = `user_config:${chatId}`;
-            const configStr = await ENV.DATABASE.get(configKey);
-            let userTimezone = 'Asia/Shanghai';
-            if (configStr) {
-                try {
-                    const config = JSON.parse(configStr);
-                    userTimezone = config.TIMEZONE || 'Asia/Shanghai';
-                } catch (e) {
-                    // Use default if parse fails
-                }
-            }
-            const parsed = parseAddArgs(args, userTimezone);
-            cronExpr = parsed.cronExpr;
-            timezone = parsed.timezone;
-            prompt = parsed.prompt;
-        }
-
-        // Use first available bot token if not provided
-        if (!botToken) {
-            botToken = ENV.TELEGRAM_AVAILABLE_TOKENS[0];
-            if (!botToken) {
-                return new Response(JSON.stringify({ error: 'No bot token available' }), {
-                    status: 400,
-                    headers: { 'Content-Type': 'application/json' },
-                });
-            }
-        }
-
-        if (!cronExpr || !prompt) {
+        if (!cronExpr || !prompt || !chatId || !botToken) {
             return new Response(JSON.stringify({ error: 'Missing required fields' }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' },
