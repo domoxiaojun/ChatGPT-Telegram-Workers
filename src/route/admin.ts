@@ -606,6 +606,9 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
                     html += '<tr style="border-bottom: 2px solid #e5e5e5;"><th style="text-align: left; padding: 8px; width: 40%;">Key</th><th style="text-align: left; padding: 8px;">Value</th><th style="text-align: center; padding: 8px; width: 80px;">Action</th></tr>';
 
                     Object.keys(config).forEach(configKey => {
+                        // Skip internal fields
+                        if (configKey === 'DEFINE_KEYS') return;
+
                         html += '<tr style="border-bottom: 1px solid #f0f0f0;">';
 
                         // Escape HTML entities in key
