@@ -35,7 +35,7 @@ export class AnswerChatInlineQuery implements AnswerInlineQueryType {
         }
         const isStream = chosenInline.result_id === ':c stream';
         const OnStream = OnStreamHander(sender as unknown as MessageSender, context as unknown as WorkerContext, question);
-        const messages = injectSystemMessage([{ role: 'user', content: question }], context.USER_CONFIG.SYSTEM_INIT_MESSAGE);
+        const messages = injectSystemMessage([{ role: 'user', content: question }], context.USER_CONFIG.SYSTEM_INIT_MESSAGE, context.USER_CONFIG.TIMEZONE);
 
         try {
             const resp = await agent.request({

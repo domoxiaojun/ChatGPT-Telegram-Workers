@@ -102,7 +102,7 @@ export async function requestCompletionsFromLLM(params: LLMChatRequestParams | n
 
     const messages = [...trimmedHistory, params];
     const llmParams: LLMChatParams = {
-        messages: injectSystemMessage(messages, context.USER_CONFIG.SYSTEM_INIT_MESSAGE),
+        messages: injectSystemMessage(messages, context.USER_CONFIG.SYSTEM_INIT_MESSAGE, context.USER_CONFIG.TIMEZONE),
         cache: [],
     };
     const answer = await workflow(agent, llmParams, context.USER_CONFIG, onStream);
@@ -207,11 +207,12 @@ function extractResultText(result: { messages: ResponseMessage[]; content: strin
     return lastMessage.content;
 };
 
-export function injectSystemMessage(messages: ModelMessage[], systemMessage: string | null) {
+export function injectSystemMessage(messages: ModelMessage[], systemMessage: string | null, timezone?: string) {
     if (systemMessage) {
         // 注入{{CURRENT_TIME}}
         const now = new Date();
         const localTime = now.toLocaleString('en-US', {
+            timeZone: timezone || 'UTC',
             year: 'numeric',
             month: '2-digit',
             day: '2-digit',

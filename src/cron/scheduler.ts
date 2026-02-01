@@ -82,6 +82,22 @@ async function executeCronTask(task: CronTask): Promise<void> {
     log.info(`Executing cron task ${task.id}: "${task.prompt.substring(0, 50)}..."`);
 
     try {
+        // Get current time in task's timezone
+        const now = new Date();
+        const localTime = now.toLocaleString('en-US', {
+            timeZone: task.timezone,
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+        });
+
+        // Build prompt with timezone-aware time context
+        const promptWithTime = `[Current time: ${localTime} (${task.timezone})]\n\n${task.prompt}`;
+
         // Build fake Telegram message
         const fakeMessage: Telegram.Message = {
             message_id: 0,
@@ -97,7 +113,7 @@ async function executeCronTask(task: CronTask): Promise<void> {
                       first_name: 'Cron',
                   }
                 : undefined,
-            text: task.prompt,
+            text: promptWithTime,
         };
 
         // Create context
@@ -110,7 +126,7 @@ async function executeCronTask(task: CronTask): Promise<void> {
         // Build params for LLM request
         const params: LLMChatRequestParams = {
             role: 'user',
-            content: task.prompt,
+            content: promptWithTime,
         };
 
         // Execute chat with LLM

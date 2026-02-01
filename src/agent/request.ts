@@ -186,7 +186,7 @@ function appendStreamSources(content: string, sources: Array<{ url: string; titl
         return content;
     }
 
-    const maxSources = 10; // 限制显示数量，防止 Telegram 限流
+    const maxSources = 10;
 
     // Escape URL for Telegram MarkdownV2: only ) and \ need escaping inside (...)
     const escapeUrlForTelegram = (url: string) => url.replace(/([)\\])/g, '\\$1');
@@ -198,19 +198,16 @@ function appendStreamSources(content: string, sources: Array<{ url: string; titl
     });
 
     // Google 风格：文本中只保留 [1] 标记，移除内联链接
-    // 将文本中的 [[N]](url) 替换为 [N]
     let cleanedContent = content;
     for (const [url, index] of urlToIndex) {
-        // 转义 URL 中的特殊字符用于正则表达式
         const escapedUrl = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        // 替换 [[任意数字]](url) 为 [index]
         cleanedContent = cleanedContent.replace(
             new RegExp(`\\[\\[\\d+\\]\\]\\(${escapedUrl}\\)`, 'g'),
-            `[${index}]`
+            `[${index}]`,
         );
     }
 
-    // 底部显示 [[1]](url) [[2]](url) 格式的完整链接
+    // 底部显示可点击链接: [1](url) [2](url) 格式
     const formattedSources = sources
         .slice(0, maxSources)
         .map((source, i) => `[${i + 1}](${escapeUrlForTelegram(source.url)})`)

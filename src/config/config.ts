@@ -274,6 +274,8 @@ export class AgentShareConfig {
     AI_TTS_PROVIDER = 'openai';
     // 全局默认初始化消息
     SYSTEM_INIT_MESSAGE: string | null = null;
+    // 用户时区，用于 {{CURRENT_TIME}} 替换
+    TIMEZONE = 'Asia/Shanghai';
 }
 
 // -- Open AI 配置 --
