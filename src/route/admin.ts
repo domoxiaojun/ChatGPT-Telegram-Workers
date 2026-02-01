@@ -485,14 +485,17 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
         }
 
         async function showAddCronModal() {
-            const cronExpr = prompt('Cron expression (e.g., 0 9 * * * for daily at 9:00):');
-            if (!cronExpr) return;
-            const timezone = prompt('Timezone (e.g., Asia/Singapore):', 'Asia/Shanghai');
-            if (!timezone) return;
-            const chatId = prompt('Chat ID (numeric):');
-            if (!chatId) return;
-            const aiPrompt = prompt('Prompt for AI:');
-            if (!aiPrompt) return;
+            const input = prompt('Format: ChatID | Time/Cron [Timezone] Prompt\\nExamples:\\n- 123456 | 09:00 Daily report\\n- 123456 | 09:00 Asia/Tokyo Morning news\\n- 123456 | 0 9 * * * Asia/Shanghai Daily report');
+            if (!input) return;
+
+            const parts = input.split('|').map(s => s.trim());
+            if (parts.length !== 2) {
+                alert('Invalid format. Use: ChatID | Time/Cron [Timezone] Prompt');
+                return;
+            }
+
+            const chatId = parts[0];
+            const args = parts[1];
 
             try {
                 const url = '/api/cron' + (urlToken ? '?token=' + urlToken : '');
@@ -500,10 +503,8 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        cronExpr: cronExpr,
-                        timezone: timezone,
                         chatId: chatId,
-                        prompt: aiPrompt
+                        args: args
                     })
                 });
 
