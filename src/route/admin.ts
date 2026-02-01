@@ -188,27 +188,65 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
                 const data = await response.json();
                 const tasks = data.tasks || [];
 
+                const container = document.getElementById('cron-list');
                 if (tasks.length === 0) {
-                    document.getElementById('cron-list').innerHTML = '<p style="color: #999;">No cron tasks yet</p>';
+                    container.innerHTML = '<p style="color: #999;">No cron tasks yet</p>';
                     return;
                 }
 
-                let html = '<table style="width: 100%; border-collapse: collapse;">';
-                html += '<tr style="border-bottom: 2px solid #e5e5e5;"><th style="text-align: left; padding: 10px;">Status</th><th style="text-align: left; padding: 10px;">Schedule</th><th style="text-align: left; padding: 10px;">Prompt</th><th style="text-align: left; padding: 10px;">Actions</th></tr>';
+                const table = document.createElement('table');
+                table.style.cssText = 'width: 100%; border-collapse: collapse;';
+
+                const headerRow = document.createElement('tr');
+                headerRow.style.borderBottom = '2px solid #e5e5e5';
+                ['Status', 'Schedule', 'Prompt', 'Actions'].forEach(text => {
+                    const th = document.createElement('th');
+                    th.textContent = text;
+                    th.style.cssText = 'text-align: left; padding: 10px;';
+                    headerRow.appendChild(th);
+                });
+                table.appendChild(headerRow);
 
                 tasks.forEach(task => {
-                    const status = task.enabled ? '✅' : '⏸️';
-                    const promptPreview = task.prompt.length > 50 ? task.prompt.substring(0, 50) + '...' : task.prompt;
-                    html += '<tr style="border-bottom: 1px solid #f0f0f0;">';
-                    html += '<td style="padding: 10px;">' + status + '</td>';
-                    html += '<td style="padding: 10px; font-family: monospace; font-size: 12px;">' + task.cronExpr + ' (' + task.timezone + ')</td>';
-                    html += '<td style="padding: 10px;">' + promptPreview + '</td>';
-                    html += '<td style="padding: 10px;"><button onclick="toggleCronTask(\'' + task.id + '\', ' + !task.enabled + ')" style="margin-right: 5px; padding: 4px 8px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">' + (task.enabled ? 'Disable' : 'Enable') + '</button><button onclick="deleteCronTask(\'' + task.id + '\')" style="padding: 4px 8px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;">Delete</button></td>';
-                    html += '</tr>';
+                    const row = document.createElement('tr');
+                    row.style.borderBottom = '1px solid #f0f0f0';
+
+                    const statusCell = document.createElement('td');
+                    statusCell.textContent = task.enabled ? '✅' : '⏸️';
+                    statusCell.style.padding = '10px';
+                    row.appendChild(statusCell);
+
+                    const scheduleCell = document.createElement('td');
+                    scheduleCell.textContent = task.cronExpr + ' (' + task.timezone + ')';
+                    scheduleCell.style.cssText = 'padding: 10px; font-family: monospace; font-size: 12px;';
+                    row.appendChild(scheduleCell);
+
+                    const promptCell = document.createElement('td');
+                    promptCell.textContent = task.prompt.length > 50 ? task.prompt.substring(0, 50) + '...' : task.prompt;
+                    promptCell.style.padding = '10px';
+                    row.appendChild(promptCell);
+
+                    const actionsCell = document.createElement('td');
+                    actionsCell.style.padding = '10px';
+
+                    const toggleBtn = document.createElement('button');
+                    toggleBtn.textContent = task.enabled ? 'Disable' : 'Enable';
+                    toggleBtn.style.cssText = 'margin-right: 5px; padding: 4px 8px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;';
+                    toggleBtn.onclick = () => toggleCronTask(task.id, !task.enabled);
+                    actionsCell.appendChild(toggleBtn);
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = 'Delete';
+                    deleteBtn.style.cssText = 'padding: 4px 8px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;';
+                    deleteBtn.onclick = () => deleteCronTask(task.id);
+                    actionsCell.appendChild(deleteBtn);
+
+                    row.appendChild(actionsCell);
+                    table.appendChild(row);
                 });
 
-                html += '</table>';
-                document.getElementById('cron-list').innerHTML = html;
+                container.innerHTML = '';
+                container.appendChild(table);
             } catch (e) {
                 console.error('Failed to load cron tasks:', e);
                 document.getElementById('cron-list').innerHTML = '<p style="color: #ef4444;">Failed to load tasks: ' + e.message + '</p>';
