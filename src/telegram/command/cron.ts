@@ -17,8 +17,6 @@ import { ENV } from '../../config/env';
 import { log } from '../../log/logger';
 import { COMMAND_AUTH_CHECKER } from './system';
 
-const DEFAULT_TIMEZONE = 'Asia/Shanghai';
-
 export class CronCommandHandler implements CommandHandler {
     command = '/cron';
     scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
@@ -81,7 +79,7 @@ export class CronCommandHandler implements CommandHandler {
             return sender.sendPlainText('Usage: /cron add <time|cron_expr> [timezone] <prompt>\n\nExamples:\n/cron add 09:00 每日早报\n/cron add 0 9 * * * Asia/Tokyo Good morning!');
         }
 
-        const { cronExpr, timezone, prompt } = this.parseAddArgs(args);
+        const { cronExpr, timezone, prompt } = this.parseAddArgs(args, context.USER_CONFIG.TIMEZONE);
 
         if (!prompt) {
             return sender.sendPlainText('Please provide a prompt for the AI.');
@@ -115,7 +113,7 @@ export class CronCommandHandler implements CommandHandler {
         return sender.sendPlainText(`✅ Task added!\n\nID: ${task.id.substring(0, 8)}\nSchedule: ${cronExpr} (${timezone})\nPrompt: ${prompt.substring(0, 100)}${prompt.length > 100 ? '...' : ''}`);
     }
 
-    private parseAddArgs(args: string): { cronExpr: string; timezone: string; prompt: string } {
+    private parseAddArgs(args: string, defaultTimezone: string): { cronExpr: string; timezone: string; prompt: string } {
         // Try to parse as simple time format first: HH:MM
         const timeMatch = args.match(/^(\d{1,2}):(\d{2})\s+(.+)$/);
         if (timeMatch) {
@@ -134,7 +132,7 @@ export class CronCommandHandler implements CommandHandler {
                 }
                 return {
                     cronExpr: `${minute} ${hour} * * *`,
-                    timezone: DEFAULT_TIMEZONE,
+                    timezone: defaultTimezone,
                     prompt: remaining.trim(),
                 };
             }
@@ -155,7 +153,7 @@ export class CronCommandHandler implements CommandHandler {
                 }
                 return {
                     cronExpr: potentialCron,
-                    timezone: DEFAULT_TIMEZONE,
+                    timezone: defaultTimezone,
                     prompt: cronParts.slice(5).join(' ').trim(),
                 };
             }
@@ -164,7 +162,7 @@ export class CronCommandHandler implements CommandHandler {
         // Fallback: treat as daily at 9:00
         return {
             cronExpr: '0 9 * * *',
-            timezone: DEFAULT_TIMEZONE,
+            timezone: defaultTimezone,
             prompt: args.trim(),
         };
     }
