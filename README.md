@@ -61,6 +61,17 @@ This is a significantly refactored ChatGPT Telegram bot project that supports mu
 - **App Store IAP**: Cross-country in-app purchase price lookup
 
 **🔧 Management Features**
+- **Gateway Dashboard**: Web-based control panel at `/admin`
+  - Real-time status monitoring and uptime tracking
+  - Usage statistics (total users, groups, messages)
+  - Cron task management with enable/disable/delete controls
+  - Token-based authentication via `ADMIN_TOKEN` environment variable
+- **Cron Scheduled Tasks**: User-configurable scheduled AI messages
+  - `/cron add` - Create scheduled tasks with cron expressions
+  - `/cron list` - View all tasks for current chat
+  - `/cron del` - Delete tasks
+  - `/cron on/off` - Enable/disable tasks
+  - Timezone support with configurable `TIMEZONE` environment variable
 - **Multiple Commands**:
   - `/set` - Advanced settings with mapping and workflow support
   - `/settings` - Quick settings menu
@@ -227,6 +238,7 @@ All tools are defined in `src/tools/internal/` and can be extended via environme
 - [Deployment Guide](./doc/en/DEPLOY.md)
 - [Local Development](./doc/en/LOCAL.md)
 - [Platform Deployment](./doc/en/PLATFORM.md)
+- [Gateway Dashboard Guide](./GATEWAY_DASHBOARD.md) - Web-based control panel and cron task management
 - [Server-Side Tools Guide](./SERVER_TOOLS.md) - Comprehensive guide for Anthropic, Google, xAI, and OpenAI server-side tools
 - [Image Editing Complete Guide](./IMAGE_EDITING_COMPLETE_GUIDE.md) - Full guide for AI image generation and editing features
 - [Changelog](./doc/en/CHANGELOG.md)

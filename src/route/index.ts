@@ -5,6 +5,8 @@ import { createTelegramBotAPI } from '../telegram/api';
 import { commandsBindScope, commandsDocument } from '../telegram/command';
 import { handleUpdate } from '../telegram/handler';
 import { Router } from '../utils/router';
+import { adminDashboard, apiStats } from './admin';
+import { apiCronCreate, apiCronDelete, apiCronList, apiCronUpdate } from './cron-api';
 import { errorToString, makeResponse200, renderHTML } from './utils';
 
 const helpLink = 'https://github.com/TBXark/ChatGPT-Telegram-Workers/blob/master/doc/en/DEPLOY.md';
@@ -107,6 +109,12 @@ export function createRouter(): Router {
     const router = new Router();
     router.get('/', defaultIndexAction);
     router.get('/init', bindWebHookAction);
+    router.get('/admin', adminDashboard);
+    router.get('/api/stats', apiStats);
+    router.get('/api/cron', apiCronList);
+    router.post('/api/cron', apiCronCreate);
+    router.put('/api/cron/:id', apiCronUpdate);
+    router.delete('/api/cron/:id', apiCronDelete);
     router.post('/telegram/:token/webhook', telegramWebhook);
     router.post('/telegram/:token/safehook', telegramSafeHook);
     router.all('*', () => new Response('Not Found', { status: 404 }));

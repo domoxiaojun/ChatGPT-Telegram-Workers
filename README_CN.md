@@ -61,6 +61,17 @@
 - **App Store内购**: 跨国家应用内购价格查询
 
 **🔧 管理功能**
+- **Gateway 控制面板**: 基于 Web 的控制台，访问地址 `/admin`
+  - 实时状态监控和运行时间追踪
+  - 使用统计（总用户数、群组数、消息数）
+  - 定时任务管理，支持启用/禁用/删除操作
+  - 通过 `ADMIN_TOKEN` 环境变量进行基于 token 的身份验证
+- **Cron 定时任务**: 用户可配置的定时 AI 消息
+  - `/cron add` - 使用 cron 表达式创建定时任务
+  - `/cron list` - 查看当前聊天的所有任务
+  - `/cron del` - 删除任务
+  - `/cron on/off` - 启用/禁用任务
+  - 支持时区配置，可通过 `TIMEZONE` 环境变量设置
 - **多命令支持**:
   - `/set` - 高级设置，支持映射和工作流
   - `/settings` - 快捷设置菜单
@@ -227,6 +238,7 @@ src/
 - [部署指南](./doc/cn/DEPLOY.md)
 - [本地开发](./doc/cn/LOCAL.md)
 - [平台部署](./doc/cn/PLATFORM.md)
+- [Gateway 控制面板指南](./GATEWAY_DASHBOARD_CN.md) - Web 控制台和定时任务管理
 - [服务端工具指南](./SERVER_TOOLS_CN.md) - Anthropic、Google、xAI 和 OpenAI 服务端工具完整指南
 - [图片编辑完整指南](./IMAGE_EDITING_COMPLETE_GUIDE_CN.md) - AI 图片生成和编辑功能完整指南
 - [更新日志](./doc/cn/CHANGELOG.md)

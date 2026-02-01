@@ -35,6 +35,8 @@ export class EnvironmentConfig {
     I_AM_A_GENEROUS_PERSON = false;
     // 白名单
     CHAT_WHITE_LIST: string[] = [];
+    // Admin dashboard token
+    ADMIN_TOKEN: string | null = null;
     // 用户配置
     LOCK_USER_CONFIG_KEYS = [
         // 默认为API BASE 防止被替换导致token 泄露
