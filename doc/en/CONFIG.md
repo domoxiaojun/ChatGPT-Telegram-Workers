@@ -821,7 +821,7 @@ Default `MAPPING_KEY`:
 
 ### Scheduled Tasks (Docker Deployment)
 
-Use the `/cron` command to set up scheduled AI tasks. The bot will automatically generate and send AI responses at specified times.
+Use the `/cron` command to set up scheduled AI tasks. The bot will automatically send your prompt to AI at the specified time and deliver the generated response to the chat.
 
 | Command | Description | Example |
 |---------|-------------|---------|
@@ -835,12 +835,26 @@ Use the `/cron` command to set up scheduled AI tasks. The bot will automatically
 - Simple format: `HH:MM` (daily, default timezone Asia/Shanghai)
 - Full cron: `min hour day month weekday` (e.g., `0 9 * * 1-5` for weekdays at 9am)
 
-**Examples:**
+**Use Case Examples:**
 ```bash
-/cron add 09:00 Daily news summary              # Every day at 9:00
-/cron add 09:00 Asia/Tokyo Good morning         # Specify timezone
-/cron add 0 9 * * 1-5 Weekday weather report    # Weekdays at 9:00
-/cron add 30 */2 * * * Drink water reminder     # Every 2 hours at :30
+# Daily news & info
+/cron add 08:00 Summarize today's tech news highlights
+/cron add 09:00 What's the weather like today?
+
+# Reminders
+/cron add 12:00 Remind me to take a lunch break
+/cron add 22:00 Time to rest, good night!
+
+# Work & study assistant
+/cron add 0 9 * * 1-5 What's my work plan for today? List my todos
+/cron add 07:30 Give me an English word to learn today
+
+# Group chat engagement
+/cron add 10:00 Good morning everyone! Any topics to discuss today?
+/cron add 0 12 * * 5 It's Friday! What are your weekend plans?
+
+# Specify timezone
+/cron add 09:00 Asia/Tokyo おはようございます
 ```
 
 > **Note**: This feature is only available in Docker deployment mode. Cloudflare Workers does not support dynamic scheduled tasks.

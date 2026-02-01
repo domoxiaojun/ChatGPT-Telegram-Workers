@@ -1,5 +1,6 @@
 import type * as Telegram from 'telegram-bot-api-types';
 import type { ScheduledTask } from 'node-cron';
+import type { LLMChatRequestParams } from '../agent/types';
 import type { CronTask } from './types';
 import { schedule, validate } from 'node-cron';
 import { MiddleContext, ShareContext, WorkerContext } from '../config/context';
@@ -106,8 +107,14 @@ async function executeCronTask(task: CronTask): Promise<void> {
 
         const context = await WorkerContext.from(shareContext, middleContext);
 
+        // Build params for LLM request
+        const params: LLMChatRequestParams = {
+            role: 'user',
+            content: task.prompt,
+        };
+
         // Execute chat with LLM
-        await chatWithLLM(fakeMessage, null, context, null);
+        await chatWithLLM(fakeMessage, params, context, null);
 
         // Update last run time
         await updateTask(task.id, { lastRunAt: Date.now() });
