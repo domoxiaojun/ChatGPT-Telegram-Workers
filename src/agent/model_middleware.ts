@@ -851,6 +851,9 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
         return content;
     }
 
+    // Escape URL for Telegram MarkdownV2: only ) and \ need escaping inside (...)
+    const escapeUrlForTelegram = (url: string) => url.replace(/([)\\])/g, '\\$1');
+
     switch (provider) {
         case 'google.generative-ai':
         case 'google.vertex.chat':
@@ -877,7 +880,7 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
                         const maps = chunk?.maps as { title?: string; uri?: string; placeId?: string; text?: string } | undefined;
                         const uri = web?.uri ?? maps?.uri ?? '#';
                         const title = web?.title ?? maps?.title;
-                        return `[[${i + 1}\\]](${uri})`;
+                        return `[[${i + 1}\\]](${escapeUrlForTelegram(uri)})`;
                     })
                     .join('\x20');
 
@@ -902,14 +905,14 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
             if ((metadata?.pplx?.citations ?? []).length > 0) {
                 const replacer = (content: string, urls: string[]) => {
                     for (const [i, url] of Object.entries(urls)) {
-                        content = content.replace(new RegExp(`\\[(${+i + 1})\\]`, 'g'), `[[$1\\]](${url})`);
+                        content = content.replace(new RegExp(`\\[(${+i + 1})\\]`, 'g'), `[[$1\\]](${escapeUrlForTelegram(url)})`);
                     }
                     return content;
                 };
                 return replacer(content, metadata?.pplx?.citations);
             }
             if ((metadata?.openai?.citations ?? []).length > 0) {
-                const sources = metadata?.openai?.citations?.map(({ url_citation: { title, url } }: { url_citation: { title: string; url: string } }) => `- [${`${title.length > 40 ? `${title.slice(0, 40)}...` : title}`}](${url})`).join('\n>');
+                const sources = metadata?.openai?.citations?.map(({ url_citation: { title, url } }: { url_citation: { title: string; url: string } }) => `- [${`${title.length > 40 ? `${title.slice(0, 40)}...` : title}`}](${escapeUrlForTelegram(url)})`).join('\n>');
                 return sources ? `${content.trimEnd()}\n\n>sources:\n>${sources}` : content;
             }
             return content;
