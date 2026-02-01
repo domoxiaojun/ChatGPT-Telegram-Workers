@@ -606,16 +606,29 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
 
                     Object.keys(config).forEach(configKey => {
                         html += '<tr style="border-bottom: 1px solid #f0f0f0;">';
-                        html += '<td style="padding: 8px; font-family: monospace; font-weight: bold;">' + configKey + '</td>';
+
+                        // Escape HTML entities in key
+                        const escapedKey = configKey.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                        html += '<td style="padding: 8px; font-family: monospace; font-weight: bold;">' + escapedKey + '</td>';
 
                         let configValue = config[configKey];
                         if (typeof configValue === 'object') {
                             configValue = JSON.stringify(configValue);
                         }
-                        html += '<td style="padding: 8px; font-family: monospace; word-break: break-all;">' + String(configValue) + '</td>';
+
+                        // Escape HTML entities in value
+                        const escapedValue = String(configValue).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                        html += '<td style="padding: 8px; font-family: monospace; word-break: break-all;">' + escapedValue + '</td>';
 
                         html += '<td style="padding: 8px; text-align: center;">';
-                        html += '<button onclick="deleteUserConfigKey(\\\'' + chatId + '\\\', \\\'' + configKey + '\\\')" style="padding: 4px 8px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Delete</button>';
+
+                        // Use JSON.stringify for proper JS string escaping, then HTML-escape the quotes
+                        const jsStr1 = JSON.stringify(chatId);
+                        const jsStr2 = JSON.stringify(configKey);
+                        const htmlSafeStr1 = jsStr1.replace(/"/g, '&quot;');
+                        const htmlSafeStr2 = jsStr2.replace(/"/g, '&quot;');
+
+                        html += '<button onclick="deleteUserConfigKey(' + htmlSafeStr1 + ',' + htmlSafeStr2 + ')" style="padding: 4px 8px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Delete</button>';
                         html += '</td>';
                         html += '</tr>';
                     });
