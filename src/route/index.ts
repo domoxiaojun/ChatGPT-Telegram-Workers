@@ -5,7 +5,7 @@ import { createTelegramBotAPI } from '../telegram/api';
 import { commandsBindScope, commandsDocument } from '../telegram/command';
 import { handleUpdate } from '../telegram/handler';
 import { Router } from '../utils/router';
-import { adminDashboard, apiEnvVars, apiLogs, apiStats, apiUpdateUserConfig, apiUserConfigs } from './admin';
+import { adminDashboard, apiEnvVars, apiLogs, apiStats, apiUpdateUserConfig, apiUserConfigs, apiDeleteUserConfigKey } from './admin';
 import { apiCronCreate, apiCronDelete, apiCronList, apiCronUpdate } from './cron-api';
 import { errorToString, makeResponse200, renderHTML } from './utils';
 
@@ -115,6 +115,7 @@ export function createRouter(): Router {
     router.get('/api/logs', apiLogs);
     router.get('/api/user-configs', apiUserConfigs);
     router.post('/api/user-config', apiUpdateUserConfig);
+    router.post('/api/user-config/delete', apiDeleteUserConfigKey);
     router.get('/api/cron', apiCronList);
     router.post('/api/cron', apiCronCreate);
     router.put('/api/cron/:id', apiCronUpdate);

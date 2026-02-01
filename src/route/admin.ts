@@ -125,6 +125,53 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
                                 <option value="IMAGE_MODEL">IMAGE_MODEL</option>
                                 <option value="CURRENT_MODE">CURRENT_MODE</option>
                                 <option value="TIMEZONE">TIMEZONE</option>
+                                <option value="LANGUAGE">LANGUAGE</option>
+                                <option value="AUTO_TRIM_HISTORY">AUTO_TRIM_HISTORY</option>
+                                <option value="ENABLE_FILE">ENABLE_FILE</option>
+                                <option value="SUPPORT_FORMAT">SUPPORT_FORMAT</option>
+                                <option value="ENABLE_SHOWINFO">ENABLE_SHOWINFO</option>
+                                <option value="SHOW_PARTS">SHOW_PARTS</option>
+                                <option value="SHOW_THINKING_TEXT">SHOW_THINKING_TEXT</option>
+                                <option value="EXPANDABLE_THINKING">EXPANDABLE_THINKING</option>
+                                <option value="ENABLE_WORKFLOW">ENABLE_WORKFLOW</option>
+                                <option value="STREAM_MODE">STREAM_MODE</option>
+                                <option value="SAFE_MODE">SAFE_MODE</option>
+                                <option value="DEBUG_MODE">DEBUG_MODE</option>
+                                <option value="LOG_LEVEL">LOG_LEVEL</option>
+                            </optgroup>
+                            <optgroup label="Message & Display">
+                                <option value="SHOW_REPLY_BUTTON">SHOW_REPLY_BUTTON</option>
+                                <option value="EXTRA_MESSAGE_CONTEXT">EXTRA_MESSAGE_CONTEXT</option>
+                                <option value="ENABLE_REPLY_TO_MENTION">ENABLE_REPLY_TO_MENTION</option>
+                                <option value="CHAT_TRIGGER_PREFIX">CHAT_TRIGGER_PREFIX</option>
+                                <option value="IGNORE_TEXT_PREFIX">IGNORE_TEXT_PREFIX</option>
+                                <option value="HIDE_MIDDLE_MESSAGE">HIDE_MIDDLE_MESSAGE</option>
+                                <option value="CALL_INFO">CALL_INFO</option>
+                                <option value="MESSAGE_COMPATIBLE">MESSAGE_COMPATIBLE</option>
+                                <option value="ENABLE_SEARCH_SOURCE">ENABLE_SEARCH_SOURCE</option>
+                                <option value="DISABLE_WEB_PREVIEW">DISABLE_WEB_PREVIEW</option>
+                                <option value="SEND_IMAGE_AS_FILE">SEND_IMAGE_AS_FILE</option>
+                                <option value="QUOTE_EXPANDABLE">QUOTE_EXPANDABLE</option>
+                                <option value="ADD_QUOTE_LIMIT">ADD_QUOTE_LIMIT</option>
+                                <option value="ADD_QUOTE_SCOPE">ADD_QUOTE_SCOPE</option>
+                                <option value="AUDIO_TEXT_FORMAT">AUDIO_TEXT_FORMAT</option>
+                                <option value="STORE_MEDIA_MESSAGE">STORE_MEDIA_MESSAGE</option>
+                                <option value="STORE_TEXT_CHUNK_MESSAGE">STORE_TEXT_CHUNK_MESSAGE</option>
+                            </optgroup>
+                            <optgroup label="Telegraph & Scheduling">
+                                <option value="TELEGRAPH_NUM_LIMIT">TELEGRAPH_NUM_LIMIT</option>
+                                <option value="TELEGRAPH_SCOPE">TELEGRAPH_SCOPE</option>
+                                <option value="TELEGRAPH_AUTHOR_URL">TELEGRAPH_AUTHOR_URL</option>
+                                <option value="EXPIRED_TIME">EXPIRED_TIME</option>
+                                <option value="CRON_CHECK_TIME">CRON_CHECK_TIME</option>
+                                <option value="SCHEDULE_GROUP_DELETE_TYPE">SCHEDULE_GROUP_DELETE_TYPE</option>
+                                <option value="SCHEDULE_PRIVATE_DELETE_TYPE">SCHEDULE_PRIVATE_DELETE_TYPE</option>
+                            </optgroup>
+                            <optgroup label="Commands & Tools Blocking">
+                                <option value="HIDE_COMMAND_BUTTONS">HIDE_COMMAND_BUTTONS</option>
+                                <option value="BLOCK_COMMANDS">BLOCK_COMMANDS</option>
+                                <option value="BLOCK_TOOLS">BLOCK_TOOLS</option>
+                                <option value="BLOCK_AGENTS">BLOCK_AGENTS</option>
                             </optgroup>
                             <optgroup label="OpenAI">
                                 <option value="OPENAI_CHAT_MODEL">OPENAI_CHAT_MODEL</option>
@@ -437,14 +484,39 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
             }
         }
 
-        function showAddCronModal() {
+        async function showAddCronModal() {
             const cronExpr = prompt('Cron expression (e.g., 0 9 * * * for daily at 9:00):');
             if (!cronExpr) return;
             const timezone = prompt('Timezone (e.g., Asia/Singapore):', 'Asia/Shanghai');
             if (!timezone) return;
-            const prompt = prompt('Prompt for AI:');
-            if (!prompt) return;
-            alert('Note: This is a simplified UI. Use /cron command in Telegram for full functionality.');
+            const chatId = prompt('Chat ID (numeric):');
+            if (!chatId) return;
+            const aiPrompt = prompt('Prompt for AI:');
+            if (!aiPrompt) return;
+
+            try {
+                const url = '/api/cron' + (urlToken ? '?token=' + urlToken : '');
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        cronExpr: cronExpr,
+                        timezone: timezone,
+                        chatId: chatId,
+                        prompt: aiPrompt
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'HTTP ' + response.status);
+                }
+
+                alert('Cron task created successfully!');
+                loadCronTasks();
+            } catch (e) {
+                alert('Failed to create cron task: ' + e.message);
+            }
         }
 
         loadCronTasks();
@@ -524,9 +596,31 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
                 Object.keys(configs).sort().forEach(key => {
                     const chatId = key.replace('user_config:', '');
                     const config = configs[key];
-                    html += '<details style="margin-bottom: 10px; border: 1px solid #e5e5e5; border-radius: 4px; padding: 10px;">';
+
+                    html += '<details open style="margin-bottom: 10px; border: 1px solid #e5e5e5; border-radius: 4px; padding: 10px;">';
                     html += '<summary style="cursor: pointer; font-weight: bold; font-family: monospace;">Chat ID: ' + chatId + '</summary>';
-                    html += '<pre style="margin-top: 10px; background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px;">' + JSON.stringify(config, null, 2) + '</pre>';
+
+                    // Create table for config items
+                    html += '<table style="width: 100%; margin-top: 10px; border-collapse: collapse;">';
+                    html += '<tr style="border-bottom: 2px solid #e5e5e5;"><th style="text-align: left; padding: 8px; width: 40%;">Key</th><th style="text-align: left; padding: 8px;">Value</th><th style="text-align: center; padding: 8px; width: 80px;">Action</th></tr>';
+
+                    Object.keys(config).forEach(configKey => {
+                        html += '<tr style="border-bottom: 1px solid #f0f0f0;">';
+                        html += '<td style="padding: 8px; font-family: monospace; font-weight: bold;">' + configKey + '</td>';
+
+                        let configValue = config[configKey];
+                        if (typeof configValue === 'object') {
+                            configValue = JSON.stringify(configValue);
+                        }
+                        html += '<td style="padding: 8px; font-family: monospace; word-break: break-all;">' + String(configValue) + '</td>';
+
+                        html += '<td style="padding: 8px; text-align: center;">';
+                        html += '<button onclick="deleteUserConfigKey(\'' + chatId + '\', \'' + configKey + '\')" style="padding: 4px 8px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Delete</button>';
+                        html += '</td>';
+                        html += '</tr>';
+                    });
+
+                    html += '</table>';
                     html += '</details>';
                 });
                 html += '</div>';
@@ -577,6 +671,34 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
                 loadUserConfigs();
             } catch (e) {
                 alert('Failed to save setting: ' + e.message);
+            }
+        }
+
+        // Delete user config key
+        async function deleteUserConfigKey(chatId, configKey) {
+            if (!confirm('Are you sure you want to delete ' + configKey + ' for Chat ID ' + chatId + '?')) {
+                return;
+            }
+
+            try {
+                const url = '/api/user-config/delete' + (urlToken ? '?token=' + urlToken : '');
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chatId: chatId,
+                        key: configKey
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+
+                alert('Setting deleted successfully!');
+                loadUserConfigs();
+            } catch (e) {
+                alert('Failed to delete setting: ' + e.message);
             }
         }
 
@@ -742,6 +864,56 @@ export async function apiUpdateUserConfig(request: RouterRequest): Promise<Respo
         await ENV.DATABASE.put(configKey, JSON.stringify(updatedConfig));
 
         return new Response(JSON.stringify({ success: true, config: updatedConfig }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    } catch (e) {
+        return new Response(JSON.stringify({ error: (e as Error).message }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    }
+}
+
+export async function apiDeleteUserConfigKey(request: RouterRequest): Promise<Response> {
+    if (!checkAuth(request)) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    }
+
+    try {
+        const body = await request.json() as any;
+        const { chatId, key } = body;
+
+        if (!chatId || !key) {
+            return new Response(JSON.stringify({ error: 'Missing chatId or key' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
+        const configKey = `user_config:${chatId}`;
+
+        // Get existing config
+        const existingConfigStr = await ENV.DATABASE.get(configKey);
+        if (!existingConfigStr) {
+            return new Response(JSON.stringify({ error: 'Config not found' }), {
+                status: 404,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
+
+        const existingConfig = JSON.parse(existingConfigStr);
+
+        // Delete the specified key
+        delete existingConfig[key];
+
+        // Save updated config back to database
+        await ENV.DATABASE.put(configKey, JSON.stringify(existingConfig));
+
+        return new Response(JSON.stringify({ success: true }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
         });
