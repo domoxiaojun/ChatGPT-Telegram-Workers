@@ -32,6 +32,7 @@ import {
     TTSCommandHandler,
     VersionCommandHandler,
 } from './system';
+import { CronCommandHandler } from './cron';
 
 const SYSTEM_COMMANDS: CommandHandler[] = [
     new StartCommandHandler(),
@@ -54,6 +55,7 @@ const SYSTEM_COMMANDS: CommandHandler[] = [
     new TTSCommandHandler(),
     new BlockUserCommandHandler(),
     new BlocklistCommandHandler(),
+    new CronCommandHandler(),
 ];
 
 // const commandHanders: any[] = [

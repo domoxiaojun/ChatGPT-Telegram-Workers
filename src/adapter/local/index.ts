@@ -7,6 +7,7 @@ import { defaultRequestBuilder, initEnv, startServerV2 } from 'cf-worker-adapter
 import { schedule } from 'node-cron';
 import worker from '../../';
 import { ENV } from '../../config/env';
+import { initCronScheduler } from '../../cron';
 import { createRouter } from '../../route/index';
 import { createTelegramBotAPI } from '../../telegram/api';
 import { handleUpdate } from '../../telegram/handler';
@@ -46,6 +47,9 @@ console.log(`database: ${config?.database?.type} is ready`);
 // 初始化环境变量
 const env = initEnv(TOML_PATH, { DATABASE: cache });
 ENV.merge(env);
+
+// 初始化用户定时任务调度器
+initCronScheduler().catch(e => console.error('Failed to init cron scheduler:', e));
 
 // long polling 模式
 async function runPolling() {

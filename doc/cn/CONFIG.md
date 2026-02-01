@@ -817,6 +817,33 @@ GOOGLE_TTS_EXTRA_PARAMS='{
 | `/settings` | 显示当前设置 | `/settings` |
 | `/history` | 显示聊天历史 | `/history` |
 | `/model` | 显示/更改模型 | `/model` |
+| `/cron` | 管理定时AI任务 | `/cron add 09:00 每日早报` |
+
+### 定时任务 (Docker 部署)
+
+使用 `/cron` 命令设置定时触发的 AI 任务。Bot 会在指定时间自动生成并发送 AI 回复。
+
+| 命令 | 描述 | 示例 |
+|------|------|------|
+| `/cron list` | 查看当前聊天的所有任务 | `/cron list` |
+| `/cron add` | 添加定时任务 | `/cron add 09:00 每日早报` |
+| `/cron del` | 删除任务 | `/cron del abc123` |
+| `/cron on` | 启用任务 | `/cron on abc123` |
+| `/cron off` | 禁用任务 | `/cron off abc123` |
+
+**时间格式：**
+- 简化格式：`HH:MM` (默认每天执行，时区 Asia/Shanghai)
+- 完整 cron：`分 时 日 月 周` (如 `0 9 * * 1-5` 表示工作日9点)
+
+**示例：**
+```bash
+/cron add 09:00 每日早报                    # 每天9:00
+/cron add 09:00 Asia/Tokyo おはよう         # 指定时区
+/cron add 0 9 * * 1-5 工作日天气预报         # 工作日9:00
+/cron add 30 */2 * * * 每两小时提醒喝水      # 每2小时的30分
+```
+
+> **注意**: 此功能仅在 Docker 部署模式下可用，Cloudflare Workers 不支持动态定时任务。
 
 ### 自定义命令
 

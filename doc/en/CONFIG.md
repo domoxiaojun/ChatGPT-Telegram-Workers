@@ -817,6 +817,33 @@ Default `MAPPING_KEY`:
 | `/settings` | Show current settings | `/settings` |
 | `/history` | Show chat history | `/history` |
 | `/model` | Show/change model | `/model` |
+| `/cron` | Manage scheduled AI tasks | `/cron add 09:00 Daily summary` |
+
+### Scheduled Tasks (Docker Deployment)
+
+Use the `/cron` command to set up scheduled AI tasks. The bot will automatically generate and send AI responses at specified times.
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/cron list` | List all tasks for current chat | `/cron list` |
+| `/cron add` | Add a scheduled task | `/cron add 09:00 Daily summary` |
+| `/cron del` | Delete a task | `/cron del abc123` |
+| `/cron on` | Enable a task | `/cron on abc123` |
+| `/cron off` | Disable a task | `/cron off abc123` |
+
+**Time Format:**
+- Simple format: `HH:MM` (daily, default timezone Asia/Shanghai)
+- Full cron: `min hour day month weekday` (e.g., `0 9 * * 1-5` for weekdays at 9am)
+
+**Examples:**
+```bash
+/cron add 09:00 Daily news summary              # Every day at 9:00
+/cron add 09:00 Asia/Tokyo Good morning         # Specify timezone
+/cron add 0 9 * * 1-5 Weekday weather report    # Weekdays at 9:00
+/cron add 30 */2 * * * Drink water reminder     # Every 2 hours at :30
+```
+
+> **Note**: This feature is only available in Docker deployment mode. Cloudflare Workers does not support dynamic scheduled tasks.
 
 ### Custom Commands
 
