@@ -846,8 +846,8 @@ function recordModelLog({ config, model, record }: { config: AgentUserConfig; mo
     }
 }
 
-export function metaDataExtractor(metadata: any, provider: string, content: string) {
-    if (!metadata || !ENV.ENABLE_SEARCH_SOURCE) {
+export function metaDataExtractor(metadata: any, provider: string, content: string, options?: { streamSources?: Array<{ url: string; title: string }>; responseMessages?: any[] }) {
+    if (!ENV.ENABLE_SEARCH_SOURCE) {
         return content;
     }
 
@@ -913,6 +913,59 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
                 return sources ? `${content.trimEnd()}\n\n>sources:\n>${sources}` : content;
             }
             return content;
+        }
+        case 'xai.chat':
+        case 'xai.responses':
+        {
+            // Handle xAI sources from both stream mode and non-stream mode
+            let sources: Array<{ url: string; title: string }> = [];
+
+            // Stream mode: sources collected via 'source' events
+            if (options?.streamSources && options.streamSources.length > 0) {
+                sources = options.streamSources;
+            }
+            // Non-stream mode: extract sources from response messages
+            else if (options?.responseMessages) {
+                for (const message of options.responseMessages) {
+                    if (message.role === 'assistant' && Array.isArray(message.content)) {
+                        for (const part of message.content) {
+                            if (part.type === 'source' && part.sourceType === 'url') {
+                                sources.push({ url: part.url, title: part.title || part.url });
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (sources.length === 0) {
+                return content;
+            }
+
+            const maxSources = 10;
+
+            // 创建 URL 到索引的映射
+            const urlToIndex = new Map<string, number>();
+            sources.slice(0, maxSources).forEach((source, i) => {
+                urlToIndex.set(source.url, i + 1);
+            });
+
+            // Google 风格：文本中只保留 [1] 标记，移除内联链接
+            let cleanedContent = content;
+            for (const [url, index] of urlToIndex) {
+                const escapedUrl = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                cleanedContent = cleanedContent.replace(
+                    new RegExp(`\\[\\[\\d+\\]\\]\\(${escapedUrl}\\)`, 'g'),
+                    `[${index}]`,
+                );
+            }
+
+            // 底部显示可点击链接: [[1]] [[2]] 格式
+            const formattedSources = sources
+                .slice(0, maxSources)
+                .map((source, i) => `[[${i + 1}\\]](${source.url})`)
+                .join(' ');
+
+            return `${cleanedContent.trimEnd()}\n\n>sources:\n>${formattedSources}`;
         }
         default:
             return content;

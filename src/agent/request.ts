@@ -181,38 +181,6 @@ function stripGrokRenderTags(content: string): string {
     return content.replace(/\[grok:render\b[^\]]*>[\s\S]*?(?:<\/argument>\s*)+/gi, '');
 }
 
-function appendStreamSources(content: string, sources: Array<{ url: string; title: string }>): string {
-    if (!sources || sources.length === 0) {
-        return content;
-    }
-
-    const maxSources = 10;
-
-    // 创建 URL 到索引的映射
-    const urlToIndex = new Map<string, number>();
-    sources.slice(0, maxSources).forEach((source, i) => {
-        urlToIndex.set(source.url, i + 1);
-    });
-
-    // Google 风格：文本中只保留 [1] 标记，移除内联链接
-    let cleanedContent = content;
-    for (const [url, index] of urlToIndex) {
-        const escapedUrl = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        cleanedContent = cleanedContent.replace(
-            new RegExp(`\\[\\[\\d+\\]\\]\\(${escapedUrl}\\)`, 'g'),
-            `[${index}]`,
-        );
-    }
-
-    // 底部显示可点击链接: [[1]] [[2]] 格式
-    const formattedSources = sources
-        .slice(0, maxSources)
-        .map((source, i) => `[[${i + 1}\\]](${source.url})`)
-        .join(' ');
-
-    return `${cleanedContent.trimEnd()}\n\n>sources:\n>${formattedSources}`;
-}
-
 export async function requestChatCompletionsV2({ model, messages, tools, activeTools, toolChoice, context, cache }: { model: LanguageModelV3; toolModel?: LanguageModelV3; prompt?: string; messages: ModelMessage[]; tools?: any; activeTools: string[]; toolChoice?: ToolChoice[] | undefined; context: AgentUserConfig; cache?: string[] }, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> {
     // DEBUG: Log messages before sending to SDK
     log.info(`[requestChatCompletionsV2] messages before SDK: ${JSON.stringify(messages.map(m => {
@@ -248,17 +216,22 @@ export async function requestChatCompletionsV2({ model, messages, tools, activeT
 
         contentFull = await streamHandler(stream.fullStream, dataExtractor, onStream, messageInfo);
         responseMessages = messageInfo.occured_error ? [{ role: 'assistant', content: contentFull }] : (await stream.response).messages;
-        contentFull = messageInfo.occured_error ? contentFull : metaDataExtractor(await stream.providerMetadata, model.provider, contentFull);
-
-        // 附加 xAI sources (从 stream 收集的)
-        if ((model.provider === 'xai.chat' || model.provider === 'xai.responses') && (messageInfo as any).sources && (messageInfo as any).sources.length > 0) {
-            contentFull = appendStreamSources(contentFull, (messageInfo as any).sources);
-        }
+        contentFull = messageInfo.occured_error ? contentFull : metaDataExtractor(
+            await stream.providerMetadata,
+            model.provider,
+            contentFull,
+            { streamSources: (messageInfo as any).sources }
+        );
     } else {
         const result = await generateText(handeredParams);
         contentFull = `${result.reasoning ? `>\`Thought for several seconds\`\n>${(result.reasoningText ?? '').trim().replace(/\n/g, '\n>')}\n>✹\n` : ''}${result.text}`;
         responseMessages = result.response.messages;
-        contentFull = metaDataExtractor(result.providerMetadata, model.provider, contentFull);
+        contentFull = metaDataExtractor(
+            result.providerMetadata,
+            model.provider,
+            contentFull,
+            { responseMessages: result.response.messages }
+        );
     }
 
     // Clean xAI internal render tags from output
