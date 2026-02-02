@@ -191,6 +191,12 @@ function appendStreamSources(content: string, sources: Array<{ url: string; titl
     // Escape URL for Telegram MarkdownV2: only ) and \ need escaping inside (...)
     const escapeUrlForTelegram = (url: string) => url.replace(/([)\\])/g, '\\$1');
 
+    // Convert number to circled number (①②③...)
+    const toCircledNumber = (n: number): string => {
+        const circled = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
+        return circled[n - 1] || `${n}`;
+    };
+
     // 创建 URL 到索引的映射
     const urlToIndex = new Map<string, number>();
     sources.slice(0, maxSources).forEach((source, i) => {
@@ -207,11 +213,11 @@ function appendStreamSources(content: string, sources: Array<{ url: string; titl
         );
     }
 
-    // 底部显示可点击链接: [1](url) [2](url) 格式
+    // 底部显示可点击链接: ①②③ 格式
     const formattedSources = sources
         .slice(0, maxSources)
-        .map((source, i) => `[${i + 1}](${escapeUrlForTelegram(source.url)})`)
-        .join('\x20');
+        .map((source, i) => `[${toCircledNumber(i + 1)}](${escapeUrlForTelegram(source.url)})`)
+        .join(' ');
 
     return `${cleanedContent.trimEnd()}\n\n>sources:\n>${formattedSources}`;
 }
