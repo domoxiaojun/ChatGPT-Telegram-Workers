@@ -55,6 +55,33 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
         .log-level { font-weight: bold; }
         .log-level.info { color: #4fc3f7; }
         .log-level.error { color: #ef5350; }
+
+        /* Mobile responsive styles */
+        @media (max-width: 768px) {
+            .header { padding: 15px; }
+            .header h1 { font-size: 20px; }
+            .header p { font-size: 12px; }
+            .container { padding: 0 10px; margin: 10px auto; }
+            .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .card { padding: 12px; }
+            .card .value { font-size: 24px; }
+            .card h3 { font-size: 12px; }
+            .tabs { flex-wrap: wrap; gap: 5px; }
+            .tab { padding: 8px 12px; font-size: 12px; }
+            .log-container { font-size: 10px; padding: 10px; max-height: 300px; }
+            table { font-size: 12px; }
+            table th, table td { padding: 6px 4px !important; }
+            button { font-size: 10px !important; padding: 4px 6px !important; }
+            details summary { font-size: 14px; }
+            input, select { font-size: 14px; padding: 8px !important; }
+        }
+
+        @media (max-width: 480px) {
+            .grid { grid-template-columns: 1fr; }
+            .card .value { font-size: 20px; }
+            .tabs { justify-content: center; }
+            .tab { flex: 1; text-align: center; padding: 8px 5px; font-size: 11px; }
+        }
     </style>
 </head>
 <body>
@@ -597,6 +624,10 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
                 Object.keys(configs).sort().forEach(key => {
                     const chatId = key.replace('user_config:', '');
                     const config = configs[key];
+
+                    // Skip if no visible config keys (only DEFINE_KEYS or empty)
+                    const visibleKeys = Object.keys(config).filter(k => k !== 'DEFINE_KEYS');
+                    if (visibleKeys.length === 0) return;
 
                     html += '<details open style="margin-bottom: 10px; border: 1px solid #e5e5e5; border-radius: 4px; padding: 10px;">';
                     html += '<summary style="cursor: pointer; font-weight: bold; font-family: monospace;">Chat ID: ' + chatId + '</summary>';
