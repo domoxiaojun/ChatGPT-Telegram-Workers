@@ -263,13 +263,7 @@ function markData(text: string, markd: Record<string, string>, type: 'INCODE' | 
         if (isIncode) {
             markd[`${type} ${i}`] = match[0];
         } else {
-            // For links, we need to unescape the URL part except for ) and \
-            // According to Telegram MarkdownV2 spec: inside (...) only ) and \ must be escaped
-            const linkText = match[1];
-            let linkUrl = match[2];
-            // Remove escapes from URL except for \) and \\
-            linkUrl = linkUrl.replace(/\\([^)\\])/g, '$1');
-            markd[`${type} ${i}`] = `[${linkText}](${linkUrl})`;
+            markd[`${type} ${i}`] = `[${match[1]}](${match[2]})`;
         }
         text = text.replace(match[0], `${type} ${i}`);
         i++;
