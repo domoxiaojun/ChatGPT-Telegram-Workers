@@ -73,7 +73,8 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
             table th, table td { padding: 6px 4px !important; }
             button { font-size: 10px !important; padding: 4px 6px !important; }
             details summary { font-size: 14px; }
-            input, select { font-size: 14px; padding: 8px !important; }
+            input, select { font-size: 14px; padding: 8px !important; max-width: 100%; box-sizing: border-box; }
+            .config-form-grid { grid-template-columns: 1fr !important; }
         }
 
         @media (max-width: 480px) {
@@ -81,6 +82,7 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
             .card .value { font-size: 20px; }
             .tabs { justify-content: center; }
             .tab { flex: 1; text-align: center; padding: 8px 5px; font-size: 11px; }
+            .config-form-grid { grid-template-columns: 1fr !important; }
         }
     </style>
 </head>
@@ -136,7 +138,7 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
 
                 <div style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 4px; padding: 15px; margin-bottom: 15px;">
                     <h5 style="margin: 0 0 10px 0;">Add/Update Setting</h5>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                    <div class="config-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                         <input type="text" id="config-chat-id" placeholder="Chat ID (e.g., 123456789)" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace;">
                         <select id="config-key" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
                             <option value="">Select setting...</option>
