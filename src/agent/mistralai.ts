@@ -9,7 +9,7 @@ export class Mistral implements ChatAgent {
     readonly modelKey = 'MISTRAL_CHAT_MODEL';
 
     readonly enable = (context: AgentUserConfig): boolean => {
-        return !!(context.MISTRAL_API_KEY);
+        return context.MISTRAL_API_KEY.length > 0;
     };
 
     readonly model = (ctx: AgentUserConfig): string => {

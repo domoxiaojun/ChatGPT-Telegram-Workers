@@ -1,4 +1,5 @@
 import type { AgentUserConfig } from '../../config/types';
+import { selectKey } from '../../agent/key-manager';
 
 export default {
     schema: {
@@ -80,7 +81,8 @@ async function generateVideo({
     }
 
     const model = 'veo-3.1-fast-generate-preview';
-    const url = `${config.GOOGLE_API_BASE}/models/${model}:predictLongRunning?key=${config.GOOGLE_API_KEY}`;
+    const apiKey = selectKey('google', config.GOOGLE_API_KEY) || '';
+    const url = `${config.GOOGLE_API_BASE}/models/${model}:predictLongRunning?key=${apiKey}`;
 
     const requestBody = {
         instances: [{
@@ -119,7 +121,7 @@ async function generateVideo({
 
     const { name: op_name } = await resp.json();
     console.log(`Google veo operation name: ${op_name}`);
-    const operationUrl = `${config.GOOGLE_API_BASE}/${op_name}?key=${config.GOOGLE_API_KEY}`;
+    const operationUrl = `${config.GOOGLE_API_BASE}/${op_name}?key=${apiKey}`;
     
     // max wait time: 15 minutes
     const MAX_TIME = 15 * 60 * 1000;
@@ -131,7 +133,7 @@ async function generateVideo({
             const { done, response } = await resp.json();
             if (done) {
                 for (const { video } of response?.generateVideoResponse?.generatedSamples || []) {
-                    video_urls.push(`${video.uri}&key=${config.GOOGLE_API_KEY}`);
+                    video_urls.push(`${video.uri}&key=${apiKey}`);
                 }
                 break;
             }

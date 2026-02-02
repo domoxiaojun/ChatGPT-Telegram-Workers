@@ -3,6 +3,7 @@ import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
 import { Logger } from '../log';
 import { requestText2Image } from './image';
+import { selectKey } from './key-manager';
 import { createLlmModel } from './llm';
 import { warpLLMParams } from './model_middleware';
 import { requestChatCompletionsV2 } from './request';
@@ -13,7 +14,7 @@ export class AzureChatAI implements ChatAgent {
     readonly modelKey = 'AZURE_CHAT_MODEL';
 
     readonly enable = (context: AgentUserConfig): boolean => {
-        return !!(context.AZURE_API_KEY && context.AZURE_RESOURCE_NAME && context.AZURE_CHAT_MODEL);
+        return context.AZURE_API_KEY.length > 0 && !!context.AZURE_RESOURCE_NAME && !!context.AZURE_CHAT_MODEL;
     };
 
     readonly model = (ctx: AgentUserConfig, params?: LLMChatRequestParams): string => {
@@ -44,7 +45,7 @@ export class AzureImageAI implements ImageAgent {
     readonly modelKey = 'AZURE_IMAGE_MODEL';
 
     readonly enable = (context: AgentUserConfig): boolean => {
-        return !!(context.AZURE_API_KEY && context.AZURE_RESOURCE_NAME && context.AZURE_IMAGE_MODEL);
+        return context.AZURE_API_KEY.length > 0 && !!context.AZURE_RESOURCE_NAME && !!context.AZURE_IMAGE_MODEL;
     };
 
     readonly model = (ctx: AgentUserConfig) => {
@@ -54,12 +55,13 @@ export class AzureImageAI implements ImageAgent {
     @Logger
     readonly request = async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
         const url = `https://${context.AZURE_RESOURCE_NAME}.openai.azure.com/openai/deployments/${context.AZURE_IMAGE_MODEL}/chat/completions?${context.AZURE_API_VERSION}`;
-        if (!url || !context.AZURE_API_KEY) {
+        const apiKey = selectKey('azure', context.AZURE_API_KEY);
+        if (!url || !apiKey) {
             throw new Error('Azure DALL-E API is not set');
         }
         const header = {
             'Content-Type': 'application/json',
-            'api-key': context.AZURE_API_KEY,
+            'api-key': apiKey,
         };
         const { n = 1, size, style, quality } = extraParams || {};
         const body = {

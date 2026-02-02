@@ -1,13 +1,14 @@
 import type { AgentUserConfig } from '../config/env';
 import type { TTSAgent } from './types';
 import { ENV } from '../config/env';
+import { selectKey } from './key-manager';
 
 export class FishTTS implements TTSAgent {
     readonly name = 'fish';
     readonly modelKey = 'FISH_TTS_MODEL';
 
     readonly enable = (context: AgentUserConfig): boolean => {
-        return (context.FISH_TTS_MODEL !== '' || context.FISH_TTS_VOICE !== '') && context.FISH_API_KEY !== '';
+        return (context.FISH_TTS_MODEL !== '' || context.FISH_TTS_VOICE !== '') && context.FISH_API_KEY.length > 0;
     };
 
     model = (ctx: AgentUserConfig): string => {
@@ -21,7 +22,7 @@ export class FishTTS implements TTSAgent {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${context.FISH_API_KEY}`,
+                'Authorization': `Bearer ${selectKey('fish', context.FISH_API_KEY) || ''}`,
                 ...(reference_id && { model: context.FISH_TTS_MODEL }),
             },
             body: JSON.stringify({

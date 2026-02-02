@@ -2,6 +2,7 @@ import type { AgentUserConfig } from '../config/types';
 import type { CallbackQueryContext } from '../telegram/query';
 import { loadChatLLM } from '.';
 import { ENV } from '../config/env';
+import { selectKey } from './key-manager';
 
 export async function getModels(context: AgentUserConfig, agent: string) {
     const configKey = `${agent}_MODELS_API`;
@@ -14,12 +15,14 @@ export async function getModels(context: AgentUserConfig, agent: string) {
     }
     const headers = {} as Record<string, string>;
     if (agent === 'ANTHROPIC') {
-        headers['x-api-key'] = context.ANTHROPIC_API_KEY ?? '';
+        headers['x-api-key'] = selectKey('anthropic', context.ANTHROPIC_API_KEY) || '';
         headers['anthropic-version'] = '2023-06-01';
     } else if (agent === 'GOOGLE') {
-        url += `?key=${context.GOOGLE_API_KEY}`;
+        url += `?key=${selectKey('google', context.GOOGLE_API_KEY) || ''}`;
     } else {
-        headers.Authorization = `Bearer ${context[`${agent.toUpperCase()}_API_KEY`]}`;
+        const keyName = `${agent.toUpperCase()}_API_KEY`;
+        const keys = context[keyName];
+        headers.Authorization = `Bearer ${selectKey(agent.toLowerCase(), keys) || ''}`;
     }
 
     const result = await fetch(url, { headers });

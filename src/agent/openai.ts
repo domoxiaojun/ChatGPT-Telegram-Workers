@@ -7,6 +7,7 @@ import { generateImage } from 'ai';
 import { log, Logger } from '../log';
 import { base64StringToBlob } from '../utils';
 import { requestText2Image } from './image';
+import { selectKey } from './key-manager';
 import { createLlmModel } from './llm';
 import { warpLLMParams } from './model_middleware';
 import { requestChatCompletionsV2 } from './request';
@@ -18,8 +19,7 @@ export class OpenAIBase {
     };
 
     apikey = (context: AgentUserConfig): string => {
-        const length = context.OPENAI_API_KEY.length;
-        return context.OPENAI_API_KEY[Math.floor(Math.random() * length)];
+        return selectKey('openai', context.OPENAI_API_KEY) || '';
     };
 }
 

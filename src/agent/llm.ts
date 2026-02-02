@@ -9,6 +9,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { OpenAICompatibleChatLanguageModel } from '@ai-sdk/openai-compatible';
 import { createXai } from '@ai-sdk/xai';
 import { isCfWorker } from '../telegram/utils/tg_utils';
+import { selectKey } from './key-manager';
 
 export async function createLlmModel(model: string, context: AgentUserConfig): Promise<LanguageModelV3> {
     let [agent, model_id] = model.includes(':') ? model.trim().split(':') : [context.AI_CHAT_PROVIDER, model];
@@ -31,7 +32,7 @@ export async function createLlmModel(model: string, context: AgentUserConfig): P
 
             const provider = createOpenAI({
                 baseURL: context.OPENAI_API_BASE,
-                apiKey: context.OPENAI_API_KEY[Math.floor(Math.random() * context.OPENAI_API_KEY.length)],
+                apiKey: selectKey('openai', context.OPENAI_API_KEY) || undefined,
                 fetch: mockFetch(model_id, context, agent),
             });
             if (isResponseApi) {
@@ -41,19 +42,19 @@ export async function createLlmModel(model: string, context: AgentUserConfig): P
         case 'anthropic':
             return createAnthropic({
                 baseURL: context.ANTHROPIC_API_BASE,
-                apiKey: context.ANTHROPIC_API_KEY || undefined,
+                apiKey: selectKey('anthropic', context.ANTHROPIC_API_KEY) || undefined,
                 fetch: mockFetch(model_id, context, agent),
             }).languageModel(model_id);
         case 'google':
             return createGoogleGenerativeAI({
                 baseURL: context.GOOGLE_API_BASE,
-                apiKey: context.GOOGLE_API_KEY || undefined,
+                apiKey: selectKey('google', context.GOOGLE_API_KEY) || undefined,
                 fetch: mockFetch(model_id, context, agent),
             }).languageModel(model_id);
         case 'cohere':
             return createCohere({
                 baseURL: context.COHERE_API_BASE,
-                apiKey: context.COHERE_API_KEY || undefined,
+                apiKey: selectKey('cohere', context.COHERE_API_KEY) || undefined,
                 fetch: mockFetch(model_id, context, agent),
             }).languageModel(model_id);
         case 'vertex':
@@ -71,7 +72,7 @@ export async function createLlmModel(model: string, context: AgentUserConfig): P
         case 'xai':
             const xaiProvider = createXai({
                 baseURL: context.XAI_API_BASE,
-                apiKey: context.XAI_API_KEY || undefined,
+                apiKey: selectKey('xai', context.XAI_API_KEY) || undefined,
                 fetch: mockFetch(model_id, context, agent),
             });
             // Use Responses API for models matching XAI_RESPONSE_MODELS
@@ -87,7 +88,7 @@ export async function createLlmModel(model: string, context: AgentUserConfig): P
                 provider: 'oailike',
                 url: ({ path }: { path: string }) => `${context.OAILIKE_API_BASE}${path}`,
                 headers: () => ({
-                    Authorization: `Bearer ${context.OAILIKE_API_KEY}`,
+                    Authorization: `Bearer ${selectKey('oailike', context.OAILIKE_API_KEY) || ''}`,
                 }),
                 includeUsage: true,
                 metadataExtractor: extraMetadataExtractor(model_id),

@@ -3,6 +3,7 @@ import type { AgentUserConfig } from '../config/env';
 import type { ASRAgent, ChatAgent, ChatStreamTextHandler, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
 import { log, Logger } from '../log';
 import { requestText2Image } from './image';
+import { selectKey } from './key-manager';
 import { createLlmModel } from './llm';
 import { warpLLMParams } from './model_middleware';
 import { renderImage } from './openai';
@@ -12,7 +13,11 @@ export class OpenAILikeBase {
     readonly name = 'oailike';
 
     readonly enable = (context: AgentUserConfig): boolean => {
-        return !!context.OAILIKE_API_KEY;
+        return context.OAILIKE_API_KEY.length > 0;
+    };
+
+    readonly apikey = (context: AgentUserConfig): string => {
+        return selectKey('oailike', context.OAILIKE_API_KEY) || '';
     };
 }
 
@@ -20,7 +25,7 @@ export class OpenAILike extends OpenAILikeBase implements ChatAgent {
     readonly modelKey = 'OAILIKE_CHAT_MODEL';
 
     readonly enable = (context: AgentUserConfig): boolean => {
-        return !!context.OAILIKE_API_KEY;
+        return context.OAILIKE_API_KEY.length > 0;
     };
 
     readonly model = (ctx: AgentUserConfig, params?: LLMChatRequestParams): string => {
@@ -51,7 +56,7 @@ export class OpenAILikeImage extends OpenAILikeBase implements ImageAgent {
         const url = `${context.OAILIKE_API_BASE}/images/generations`;
         const header = {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${context.OAILIKE_API_KEY}`,
+            'Authorization': `Bearer ${this.apikey(context)}`,
         };
         const body: any = {
             prompt,
@@ -78,7 +83,7 @@ export class OpenAILikeASR extends OpenAILikeBase implements ASRAgent {
     request = async (audio: Blob, context: AgentUserConfig): Promise<string> => {
         const url = `${context.OAILIKE_API_BASE}/audio/transcriptions`;
         const header = {
-            Authorization: `Bearer ${context.OAILIKE_API_KEY}`,
+            Authorization: `Bearer ${this.apikey(context)}`,
             Accept: 'application/json',
         };
         const formData = new FormData();
@@ -119,7 +124,7 @@ export class OpenAILikeTTS extends OpenAILikeBase {
     readonly request = async (text: string, context: AgentUserConfig): Promise<Blob> => {
         const url = `${context.OAILIKE_API_BASE}/audio/speech`;
         const headers = {
-            'Authorization': `Bearer ${context.OAILIKE_API_KEY}`,
+            'Authorization': `Bearer ${this.apikey(context)}`,
             'Content-Type': 'application/json',
         };
         const resp = await fetch(url, {

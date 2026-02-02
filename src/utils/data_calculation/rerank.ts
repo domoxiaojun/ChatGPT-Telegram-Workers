@@ -1,5 +1,6 @@
 import type { AgentUserConfig } from '../../config/env';
 import { cosineSimilarity } from 'ai';
+import { selectKey } from '../../agent/key-manager';
 import { GoogleEmbedding, OpenaiEmbedding, OpenAILikeEmbedding } from './embedding';
 
 interface RerankResult {
@@ -66,7 +67,7 @@ export class Rerank {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${context.OAILIKE_API_KEY}`,
+                'Authorization': `Bearer ${selectKey('oailike', context.OAILIKE_API_KEY) || ''}`,
             },
             body: JSON.stringify({
                 model: context.OAILIKE_RERANK_MODEL,

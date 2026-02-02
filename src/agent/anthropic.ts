@@ -10,7 +10,7 @@ export class Anthropic implements ChatAgent {
     readonly modelKey = 'ANTHROPIC_CHAT_MODEL';
 
     readonly enable = (context: AgentUserConfig): boolean => {
-        return !!(context.ANTHROPIC_API_KEY);
+        return context.ANTHROPIC_API_KEY.length > 0;
     };
 
     readonly model = (ctx: AgentUserConfig, params?: LLMChatRequestParams): string => {

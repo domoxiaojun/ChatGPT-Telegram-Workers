@@ -3,6 +3,7 @@ import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, Imag
 import { createXai } from '@ai-sdk/xai';
 import { generateImage } from 'ai';
 import { Logger } from '../log';
+import { selectKey } from './key-manager';
 import { createLlmModel } from './llm';
 import { warpLLMParams } from './model_middleware';
 import { requestChatCompletionsV2 } from './request';
@@ -12,7 +13,7 @@ export class XAI implements ChatAgent {
     readonly modelKey = 'XAI_CHAT_MODEL';
 
     readonly enable = (context: AgentUserConfig): boolean => {
-        return !!(context.XAI_API_KEY);
+        return context.XAI_API_KEY.length > 0;
     };
 
     readonly model = (ctx: AgentUserConfig, params?: LLMChatRequestParams): string => {
@@ -34,7 +35,7 @@ export class XAIImage implements ImageAgent {
     readonly modelKey = 'XAI_IMAGE_MODEL';
 
     readonly enable = (context: AgentUserConfig): boolean => {
-        return !!(context.XAI_API_KEY);
+        return context.XAI_API_KEY.length > 0;
     };
 
     readonly model = (ctx: AgentUserConfig): string => {
@@ -59,7 +60,7 @@ export class XAIImage implements ImageAgent {
         // 传递 size 或 aspectRatio 会导致 IMAGE_PROCESS_FAILED 错误
         const { images } = await generateImage({
             model: createXai({
-                apiKey: context.XAI_API_KEY || undefined,
+                apiKey: selectKey('xai', context.XAI_API_KEY) || undefined,
                 baseURL: context.XAI_API_BASE,
             }).image(this.model(context)),
             prompt,

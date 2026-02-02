@@ -9,7 +9,7 @@ export class Cohere implements ChatAgent {
     readonly modelKey = 'COHERE_CHAT_MODEL';
 
     readonly enable = (context: AgentUserConfig): boolean => {
-        return !!(context.COHERE_API_KEY);
+        return context.COHERE_API_KEY.length > 0;
     };
 
     readonly model = (ctx: AgentUserConfig): string => {

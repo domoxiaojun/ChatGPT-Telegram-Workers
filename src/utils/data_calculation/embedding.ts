@@ -2,6 +2,7 @@ import type { AgentUserConfig } from '../../config/env';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { embedMany } from 'ai';
+import { selectKey } from '../../agent/key-manager';
 import { OpenAIBase } from '../../agent/openai';
 import { OpenAILikeBase } from '../../agent/openailike';
 
@@ -53,7 +54,7 @@ export class OpenAILikeEmbedding extends OpenAILikeBase {
         const { embeddings, values } = await embedMany({
             model: createOpenAI({
                 baseURL: context.OAILIKE_API_BASE,
-                apiKey: context.OAILIKE_API_KEY || undefined,
+                apiKey: selectKey('oailike', context.OAILIKE_API_KEY) || undefined,
             }).embedding(context.OAILIKE_EMBEDDING_MODEL),
             values: data,
         });
@@ -66,7 +67,7 @@ export class GoogleEmbedding {
         const { embeddings, values } = await embedMany({
             model: createGoogleGenerativeAI({
                 baseURL: context.GOOGLE_API_BASE,
-                apiKey: context.GOOGLE_API_KEY || undefined,
+                apiKey: selectKey('google', context.GOOGLE_API_KEY) || undefined,
             }).embedding(context.GOOGLE_EMBEDDING_MODEL),
             values: data,
             maxRetries: 0,

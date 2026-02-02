@@ -397,8 +397,8 @@ export class DalleAIConfig {
 
 // -- AZURE 配置 --
 export class AzureConfig {
-    // Azure API Key
-    AZURE_API_KEY: string | null = null;
+    // Azure API Key (supports multiple keys separated by comma for rotation)
+    AZURE_API_KEY: string[] = [];
     // Azure Completions API
     // https://RESOURCE_NAME.openai.azure.com/openai/deployments/MODEL_NAME/chat/completions?api-version=VERSION_NAME
     AZURE_COMPLETIONS_API: string | null = null;
@@ -427,8 +427,8 @@ export class WorkersConfig {
 
 // -- Gemini 配置 --
 export class GeminiConfig {
-    // Google Gemini API Key
-    GOOGLE_API_KEY: string | null = null;
+    // Google Gemini API Key (supports multiple keys separated by comma for rotation)
+    GOOGLE_API_KEY: string[] = [];
     // Google Gemini API: Cloudflare AI gateway: https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_name}/google-ai-studio/v1/models
     GOOGLE_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
     // Google Gemini Model
@@ -531,8 +531,8 @@ export class GeminiConfig {
 
 // -- Mistral 配置 --
 export class MistralConfig {
-    // mistral api key
-    MISTRAL_API_KEY: string | null = null;
+    // mistral api key (supports multiple keys separated by comma for rotation)
+    MISTRAL_API_KEY: string[] = [];
     // mistral api base
     MISTRAL_API_BASE = 'https://api.mistral.ai/v1';
     // mistral api model
@@ -543,8 +543,8 @@ export class MistralConfig {
 
 // -- Cohere 配置 --
 export class CohereConfig {
-    // cohere api key
-    COHERE_API_KEY: string | null = null;
+    // cohere api key (supports multiple keys separated by comma for rotation)
+    COHERE_API_KEY: string[] = [];
     // cohere api base
     COHERE_API_BASE = 'https://api.cohere.com/v1';
     // cohere api model
@@ -555,8 +555,8 @@ export class CohereConfig {
 
 // -- Anthropic 配置 --
 export class AnthropicConfig {
-    // Anthropic api key
-    ANTHROPIC_API_KEY: string | null = null;
+    // Anthropic api key (supports multiple keys separated by comma for rotation)
+    ANTHROPIC_API_KEY: string[] = [];
     // Anthropic api base
     ANTHROPIC_API_BASE = 'https://api.anthropic.com/v1';
     // Anthropic api model
@@ -643,8 +643,8 @@ export class AnthropicConfig {
 }
 
 export class OpenAILikeConfig {
-    // oailike api key
-    OAILIKE_API_KEY: string | null = null;
+    // oailike api key (supports multiple keys separated by comma for rotation)
+    OAILIKE_API_KEY: string[] = [];
     // oailike api base
     OAILIKE_API_BASE = 'https://api.openai.com/v1';
     // oailike api model
@@ -710,8 +710,8 @@ export class VertexConfig {
 }
 
 export class XAIConfig {
-    // XAI api key
-    XAI_API_KEY: string | null = null;
+    // XAI api key (supports multiple keys separated by comma for rotation)
+    XAI_API_KEY: string[] = [];
     // XAI api base
     XAI_API_BASE = 'https://api.x.ai/v1';
     // XAI api model
@@ -772,8 +772,8 @@ export class XAIConfig {
 }
 
 export class FishConfig {
-    // Fish api key
-    FISH_API_KEY: string | null = null;
+    // Fish api key (supports multiple keys separated by comma for rotation)
+    FISH_API_KEY: string[] = [];
     // Fish api base
     FISH_API_BASE = ' https://api.fish.audio/v1';
     // Fish reference id, if not set, will use tts model

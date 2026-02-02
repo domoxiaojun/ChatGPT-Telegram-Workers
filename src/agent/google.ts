@@ -4,6 +4,7 @@ import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, Imag
 import { getLogSingleton, Logger } from '../log';
 import { base64StringToBlob } from '../utils/image';
 import { convertAudio } from '../utils/others/audio';
+import { selectKey } from './key-manager';
 import { createLlmModel } from './llm';
 import { warpLLMParams } from './model_middleware';
 import { requestChatCompletionsV2 } from './request';
@@ -11,7 +12,11 @@ import { requestChatCompletionsV2 } from './request';
 class GoogleBase {
     readonly name = 'google';
     readonly enable = (context: AgentUserConfig): boolean => {
-        return !!(context.GOOGLE_API_KEY);
+        return context.GOOGLE_API_KEY.length > 0;
+    };
+
+    readonly apikey = (context: AgentUserConfig): string => {
+        return selectKey('google', context.GOOGLE_API_KEY) || '';
     };
 
     readonly model = (ctx: AgentUserConfig, params?: LLMChatRequestParams): string => {
@@ -54,7 +59,7 @@ export class GoogleImage extends GoogleBase implements ImageAgent {
         }
 
         const { referenceImages } = extraParams || {};
-        const url = `${context.GOOGLE_API_BASE}/models/${this.model(context)}:generateContent?key=${context.GOOGLE_API_KEY}`;
+        const url = `${context.GOOGLE_API_BASE}/models/${this.model(context)}:generateContent?key=${this.apikey(context)}`;
 
         // Build generation config with Gemini 3 Pro Image support
         const generationConfig: any = {
@@ -152,7 +157,7 @@ export class GoogleTTS extends GoogleBase {
     };
 
     readonly request = async (text: string, context: AgentUserConfig): Promise<Blob> => {
-        const url = `${context.GOOGLE_API_BASE}/models/${this.model(context)}:generateContent?key=${context.GOOGLE_API_KEY}`;
+        const url = `${context.GOOGLE_API_BASE}/models/${this.model(context)}:generateContent?key=${this.apikey(context)}`;
         const speech_config: { voice_config?: { prebuilt_voice_config: { voice_name: string } }; multi_speaker_voice_config?: Record<string, any> } = {
             voice_config: {
                 prebuilt_voice_config: { voice_name: context.GOOGLE_TTS_VOICE },
