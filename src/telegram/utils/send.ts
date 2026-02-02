@@ -161,21 +161,9 @@ export class MessageSender {
             // log.debug(`chunk:\n${messages[i]}`);
             lastMessageResponse = await this.sendMessage(messages[i], chatContext);
             if (lastMessageResponse.status === 400) {
-                const errorBody = (await lastMessageResponse.clone().json() as Telegram.ResponseError);
-                const errorMessage = errorBody.description;
-                if (errorMessage.includes('not modified')) {
+                const message = (await lastMessageResponse.clone().json() as Telegram.ResponseError).description;
+                if (message.includes('not modified')) {
                     continue;
-                }
-                // Handle Markdown parsing errors - fallback to Telegraph
-                if (errorMessage.includes("can't parse entities") && context.parse_mode === 'MarkdownV2') {
-                    log.warn(`MarkdownV2 parsing failed, falling back to Telegraph: ${errorMessage}`);
-                    // Use Telegraph as fallback for failed Markdown rendering
-                    const telegraphSender = new TelegraphSender(this.api.token);
-                    const telegraphResp = await telegraphSender.sendMessage(message, context.message.from?.first_name || 'Bot');
-                    if (telegraphResp.status === 200) {
-                        return telegraphResp;
-                    }
-                    log.error('Telegraph fallback also failed, will break');
                 }
             }
             if (lastMessageResponse.status !== 200) {

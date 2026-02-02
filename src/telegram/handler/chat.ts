@@ -333,17 +333,8 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
             }
 
             if (!resp.ok) {
-                const errorJson = await resp.clone().json();
-                const errorDescription = errorJson.description || '';
-                log.error(`send message failed: ${resp.status} ${errorDescription}`);
-                // If MarkdownV2 parsing failed, fallback to plain text for stream updates
-                if (resp.status === 400 && errorDescription.includes("can't parse entities")) {
-                    log.info('MarkdownV2 parsing failed during stream, falling back to plain text');
-                    if (isMessageSender) {
-                        (sender as MessageSender).context.sentMessageIds.length = 0;
-                    }
-                    sentPromise = sender.sendPlainText(text, 'chat');
-                }
+                log.error(`send message failed: ${resp.status} ${await resp.json().then(j => j.description)}`);
+                // return sentPromise = sender.sendPlainText(text, 'chat');
             }
         } catch (e) {
             log.error((e as Error).stack);
@@ -381,22 +372,8 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
                     continue;
                 }
                 if (!finalResp.ok) {
-                    const errorJson = await finalResp.clone().json();
-                    const errorDescription = errorJson.description || '';
-                    log.error(`send message failed: ${finalResp.status} ${errorDescription}`);
-
-                    // If MarkdownV2 parsing failed (400 Bad Request with parse error), try plain text first
-                    if (finalResp.status === 400 && errorDescription.includes("can't parse entities")) {
-                        log.info('MarkdownV2 parsing failed, falling back to plain text');
-                        (sender as MessageSender).context.sentMessageIds.length = 0;
-                        const plainResp = await sender.sendPlainText(data, 'chat');
-                        if (plainResp.ok) {
-                            return plainResp;
-                        }
-                        log.error(`Plain text send also failed: ${plainResp.status}`);
-                    }
-
                     (sender as MessageSender).context.sentMessageIds.length = 0;
+                    log.error(`send message failed: ${finalResp.status} ${await finalResp.json().then(j => j.description)}`);
                     await sendTelegraph(telegraphContext(true, true), question || 'Redo Question', text);
                     return;
                 }
