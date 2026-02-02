@@ -29,7 +29,7 @@ const inlineCodeRegexp = /`[^\n]*?`/g;
 // Match markdown links - URL part uses greedy match to handle escaped parentheses in URLs
 // The URL can contain \\) (escaped close paren) which should not end the match
 // Only an unescaped \) (single backslash + paren) ends the URL
-const linkRegexp = /\\\[([^\]\n]+?)\\\]\\\(((?:[^\\)]|\\.)*)\\\)/g;
+const linkRegexp = /\\\[([^\]\n]+?)\\\]\\\((.+?)\\\)/g;
 const escapeRegexpMatch = [
     // bold & italic
     {
