@@ -130,7 +130,12 @@ async function executeCronTask(task: CronTask): Promise<void> {
         };
 
         // Execute chat with LLM
-        await chatWithLLM(fakeMessage, params, context, null);
+        const response = await chatWithLLM(fakeMessage, params, context, null);
+
+        // Schedule message deletion if EXPIRED_TIME is set
+        if (ENV.EXPIRED_TIME > 0 && response instanceof Response) {
+            await scheduleMessageDeletionForCron(task, response, context);
+        }
 
         // Update last run time
         await updateTask(task.id, { lastRunAt: Date.now() });
@@ -166,4 +171,72 @@ export function validateTimezone(tz: string): boolean {
 
 export function getScheduledJobsCount(): number {
     return scheduledJobs.size;
+}
+
+/**
+ * Schedule message deletion for cron task messages
+ * This function directly stores message IDs to the database for scheduled deletion
+ * to avoid WeakMap garbage collection issues with fake messages
+ */
+async function scheduleMessageDeletionForCron(
+    task: CronTask,
+    response: Response,
+    context: WorkerContext,
+): Promise<void> {
+    try {
+        const botName = context.SHARE_CONTEXT?.botName;
+        if (!botName) {
+            log.warn('Cannot schedule deletion: Bot name not found');
+            return;
+        }
+
+        // Parse response to get message IDs
+        const responseData = await response.clone().json() as any;
+        const sentMessageIds: number[] = [];
+
+        if (Array.isArray(responseData.result)) {
+            // Multiple messages (media group)
+            sentMessageIds.push(...responseData.result.map((r: any) => r.message_id).filter(Boolean));
+        } else if (responseData.result?.message_id) {
+            // Single message
+            sentMessageIds.push(responseData.result.message_id);
+        }
+
+        if (sentMessageIds.length === 0) {
+            log.info('No message IDs to schedule for deletion');
+            return;
+        }
+
+        // Check if we should schedule deletion for this chat type
+        const isGroup = ['group', 'supergroup'].includes(task.chatType);
+        const shouldSchedule = (isGroup && ENV.SCHEDULE_GROUP_DELETE_TYPE.includes('chat'))
+            || (!isGroup && ENV.SCHEDULE_PRIVATE_DELETE_TYPE.includes('chat'));
+
+        if (!shouldSchedule) {
+            log.info(`Skipping deletion schedule: chat type ${task.chatType} not configured for 'chat' message deletion`);
+            return;
+        }
+
+        // Store to database for scheduled deletion
+        const scheduleDeleteKey = context.SHARE_CONTEXT.scheduleDeteleKey;
+        const scheduledData = JSON.parse((await ENV.DATABASE.get(scheduleDeleteKey)) || '{}');
+
+        if (!scheduledData[botName]) {
+            scheduledData[botName] = {};
+        }
+        if (!scheduledData[botName][task.chatId]) {
+            scheduledData[botName][task.chatId] = [];
+        }
+
+        const offsetInMilliseconds = ENV.EXPIRED_TIME * 60 * 1000;
+        scheduledData[botName][task.chatId].push({
+            id: sentMessageIds,
+            ttl: Date.now() + offsetInMilliseconds,
+        });
+
+        await ENV.DATABASE.put(scheduleDeleteKey, JSON.stringify(scheduledData));
+        log.info(`[CRON DELETION] Scheduled deletion for chat ${task.chatId}, message ids: ${sentMessageIds.join(', ')}, TTL: ${ENV.EXPIRED_TIME} minutes`);
+    } catch (e) {
+        log.error(`Failed to schedule message deletion for cron task:`, (e as Error).message);
+    }
 }
