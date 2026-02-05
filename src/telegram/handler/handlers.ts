@@ -346,11 +346,41 @@ export class MergeQuote implements MessageHandler<WorkerContext> {
         const isReplyMe = message.reply_to_message?.from?.id === Number(context.SHARE_CONTEXT.botId);
         const quoteText = message.quote?.text || '';
         const replyText = message.reply_to_message?.text || message.reply_to_message?.caption || '';
+
+        // 检查是否是回复媒体消息（即使没有文字）
+        const hasReplyMedia = message.reply_to_message?.photo ||
+                             message.reply_to_message?.video ||
+                             message.reply_to_message?.voice ||
+                             message.reply_to_message?.audio ||
+                             message.reply_to_message?.document ||
+                             message.reply_to_message?.sticker ||
+                             message.reply_to_message?.animation;
+
         // 开启引用消息且
-        // 不是回复bot且包含回复消息 或 是引用消息 则将回复/引用消息和当前消息合并
-        if (ENV.EXTRA_MESSAGE_CONTEXT && ((!isReplyMe && replyText) || quoteText)) {
+        // 不是回复bot且包含回复消息（文字或媒体） 或 是引用消息 则将回复/引用消息和当前消息合并
+        if (ENV.EXTRA_MESSAGE_CONTEXT && ((!isReplyMe && (replyText || hasReplyMedia)) || quoteText)) {
             // Get the user identifier of the person being replied to
             let attributedQuote = quoteText || replyText;
+
+            // 如果是媒体但没有文字，添加媒体类型说明
+            if (!attributedQuote && hasReplyMedia) {
+                if (message.reply_to_message?.photo) {
+                    attributedQuote = '[photo]';
+                } else if (message.reply_to_message?.video) {
+                    attributedQuote = '[video]';
+                } else if (message.reply_to_message?.voice) {
+                    attributedQuote = '[voice message]';
+                } else if (message.reply_to_message?.audio) {
+                    attributedQuote = '[audio]';
+                } else if (message.reply_to_message?.document) {
+                    attributedQuote = '[document]';
+                } else if (message.reply_to_message?.sticker) {
+                    attributedQuote = '[sticker]';
+                } else if (message.reply_to_message?.animation) {
+                    attributedQuote = '[GIF]';
+                }
+            }
+
             if (!isReplyMe && message.reply_to_message?.from) {
                 const replyUser = message.reply_to_message.from;
                 let replyUserInfo = '';
