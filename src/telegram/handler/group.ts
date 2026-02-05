@@ -158,7 +158,9 @@ export function formatGroupCacheAsContext(messages: GroupCachedMessage[]): strin
         }
         userIdentifier += ` (ID:${msg.userId})`;
 
-        const time = new Date(msg.timestamp).toISOString().substring(11, 19); // HH:MM:SS
+        // 显示本地时间：MM-DD HH:MM
+        const date = new Date(msg.timestamp);
+        const time = `${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
         contextLines.push(`[${time}] ${userIdentifier}: ${msg.text}`);
     }
 
