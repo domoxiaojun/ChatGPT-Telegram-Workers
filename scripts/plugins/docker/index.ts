@@ -6,10 +6,10 @@ FROM node:20-alpine as builder
 
 WORKDIR /build
 COPY package.json /build/
-RUN apk add --no-cache python3 make g++ sqlite-dev && \\
+RUN apk add --no-cache python3 py3-setuptools make g++ sqlite-dev && \\
     npm install --omit=dev --production && \\
     npm rebuild --build-from-source && \\
-    apk del python3 make g++
+    apk del python3 py3-setuptools make g++
 
 FROM node:20-alpine as prod
 
