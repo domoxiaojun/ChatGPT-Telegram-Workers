@@ -17,6 +17,30 @@ const {
     TOML_PATH = '/app/config.toml',
 } = process.env;
 
+// Global error handlers to prevent silent failures
+// In Docker/K8s environments, the container will be automatically restarted
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('=== Unhandled Promise Rejection ===');
+    console.error('Reason:', reason);
+    console.error('Promise:', promise);
+    console.error('Stack:', reason instanceof Error ? reason.stack : 'N/A');
+
+    // In Docker, exit and let the orchestrator restart the container
+    // This ensures a clean state rather than running with potential corruption
+    console.error('Exiting process to allow container restart...');
+    process.exit(1);
+});
+
+process.on('uncaughtException', (error) => {
+    console.error('=== Uncaught Exception ===');
+    console.error('Error:', error);
+    console.error('Stack:', error.stack);
+
+    // Exit immediately for uncaught exceptions
+    console.error('Exiting process due to uncaught exception...');
+    process.exit(1);
+});
+
 interface Config {
     database: {
         type: 'memory' | 'local' | 'sqlite' | 'redis';

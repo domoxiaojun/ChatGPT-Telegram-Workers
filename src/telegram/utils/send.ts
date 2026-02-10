@@ -85,52 +85,66 @@ export class MessageSender {
         const maxRetries = 3;
         let resp: Response;
 
-        if (context?.message_id) {
-            const params: Telegram.EditMessageTextParams = {
-                chat_id: context.chat_id,
-                message_id: context.message_id,
-                parse_mode: context.parse_mode || undefined,
-                text: message,
-            };
-            if (context.disable_web_page_preview) {
-                params.link_preview_options = {
-                    is_disabled: true,
-                };
-            }
-            resp = await this.api.editMessageText(params);
-        } else {
-            const params: Telegram.SendMessageParams = {
-                chat_id: context.chat_id,
-                message_thread_id: context.message_thread_id || undefined,
-                parse_mode: context.parse_mode || undefined,
-                text: message,
-            };
-            if (context.reply_to_message_id) {
-                params.reply_parameters = {
-                    message_id: context.reply_to_message_id,
+        try {
+            if (context?.message_id) {
+                const params: Telegram.EditMessageTextParams = {
                     chat_id: context.chat_id,
-                    allow_sending_without_reply: context.allow_sending_without_reply || undefined,
+                    message_id: context.message_id,
+                    parse_mode: context.parse_mode || undefined,
+                    text: message,
                 };
-            }
-            if (context.disable_web_page_preview) {
-                params.link_preview_options = {
-                    is_disabled: true,
+                if (context.disable_web_page_preview) {
+                    params.link_preview_options = {
+                        is_disabled: true,
+                    };
+                }
+                resp = await this.api.editMessageText(params);
+            } else {
+                const params: Telegram.SendMessageParams = {
+                    chat_id: context.chat_id,
+                    message_thread_id: context.message_thread_id || undefined,
+                    parse_mode: context.parse_mode || undefined,
+                    text: message,
                 };
+                if (context.reply_to_message_id) {
+                    params.reply_parameters = {
+                        message_id: context.reply_to_message_id,
+                        chat_id: context.chat_id,
+                        allow_sending_without_reply: context.allow_sending_without_reply || undefined,
+                    };
+                }
+                if (context.disable_web_page_preview) {
+                    params.link_preview_options = {
+                        is_disabled: true,
+                    };
+                }
+                resp = await this.api.sendMessage(params);
             }
-            resp = await this.api.sendMessage(params);
-        }
 
-        // Handle 429 rate limit errors with retry
-        if (resp.status === 429 && retryCount < maxRetries) {
-            const errorBody = await resp.clone().json() as { parameters?: { retry_after?: number } };
-            const retryAfter = errorBody.parameters?.retry_after || resp.headers.get('Retry-After');
-            const waitTime = retryAfter ? Number.parseInt(retryAfter as string) : 5;
-            log.error(`Status 429, need wait: ${waitTime}s (retry ${retryCount + 1}/${maxRetries})`);
-            await waitUntil(Date.now() + waitTime * 1000);
-            return this.sendMessage(message, context, retryCount + 1);
-        }
+            // Handle 429 rate limit errors with retry
+            if (resp.status === 429 && retryCount < maxRetries) {
+                const errorBody = await resp.clone().json() as { parameters?: { retry_after?: number } };
+                const retryAfter = errorBody.parameters?.retry_after || resp.headers.get('Retry-After');
+                const waitTime = retryAfter ? Number.parseInt(retryAfter as string) : 5;
+                log.error(`Status 429, need wait: ${waitTime}s (retry ${retryCount + 1}/${maxRetries})`);
+                await waitUntil(Date.now() + waitTime * 1000);
+                return this.sendMessage(message, context, retryCount + 1);
+            }
 
-        return resp;
+            return resp;
+        } catch (error: any) {
+            // Handle network errors with retry
+            if (retryCount < maxRetries && (error.code === 'ETIMEDOUT' || error.code === 'ENETUNREACH' || error.message?.includes('fetch failed'))) {
+                const waitTime = Math.pow(2, retryCount) * 2; // Exponential backoff: 2s, 4s, 8s
+                log.error(`Network error (${error.code || error.message}), retrying in ${waitTime}s (retry ${retryCount + 1}/${maxRetries})`);
+                await waitUntil(Date.now() + waitTime * 1000);
+                return this.sendMessage(message, context, retryCount + 1);
+            }
+
+            // Log error and rethrow
+            log.error(`Failed to send message after ${retryCount + 1} attempts: ${error.message}`);
+            throw error;
+        }
     }
 
     private async sendLongMessage(message: string, context: MessageContext, expandParams?: ExpandParams): Promise<Response> {
@@ -138,46 +152,52 @@ export class MessageSender {
         const messages = renderMessage(context.parse_mode, message, expandParams);
         let lastMessageResponse = null;
         let lastMessageRespJson = null;
-        for (let i = 0; i < messages.length; i++) {
-            if (ENV.LOG_POSITION_ON_TOP) {
-                // 不发送中间片段
-                if (i > 0 && i < context.sentMessageIds.length - 1) {
+
+        try {
+            for (let i = 0; i < messages.length; i++) {
+                if (ENV.LOG_POSITION_ON_TOP) {
+                    // 不发送中间片段
+                    if (i > 0 && i < context.sentMessageIds.length - 1) {
+                        continue;
+                    }
+                } else if (context.sentMessageIds.length > 2 && i < context.sentMessageIds.length - 2) {
+                    // 只发送最后两个: 由于日志原因可能被分割为两块
                     continue;
                 }
-            } else if (context.sentMessageIds.length > 2 && i < context.sentMessageIds.length - 2) {
-                // 只发送最后两个: 由于日志原因可能被分割为两块
-                continue;
-            }
 
-            // 不发送空消息
-            if (messages[i].trim() === '') {
-                continue;
-            }
-
-            chatContext.message_id = context.sentMessageIds[i] ?? null;
-            // 存在reply_to_message_id 且 非第一个片段，回复消息的id为上一个片段的id
-            context.reply_to_message_id && i > 0 && (chatContext.reply_to_message_id = context.sentMessageIds[i - 1]);
-            log.info(`message id: ${chatContext.message_id}`);
-            // log.debug(`chunk:\n${messages[i]}`);
-            lastMessageResponse = await this.sendMessage(messages[i], chatContext);
-            if (lastMessageResponse.status === 400) {
-                const message = (await lastMessageResponse.clone().json() as Telegram.ResponseError).description;
-                if (message.includes('not modified')) {
+                // 不发送空消息
+                if (messages[i].trim() === '') {
                     continue;
                 }
+
+                chatContext.message_id = context.sentMessageIds[i] ?? null;
+                // 存在reply_to_message_id 且 非第一个片段，回复消息的id为上一个片段的id
+                context.reply_to_message_id && i > 0 && (chatContext.reply_to_message_id = context.sentMessageIds[i - 1]);
+                log.info(`message id: ${chatContext.message_id}`);
+                // log.debug(`chunk:\n${messages[i]}`);
+                lastMessageResponse = await this.sendMessage(messages[i], chatContext);
+                if (lastMessageResponse.status === 400) {
+                    const message = (await lastMessageResponse.clone().json() as Telegram.ResponseError).description;
+                    if (message.includes('not modified')) {
+                        continue;
+                    }
+                }
+                if (lastMessageResponse.status !== 200) {
+                    break;
+                }
+                lastMessageRespJson = await lastMessageResponse.clone().json() as Telegram.ResponseWithMessage;
+                this.context.sentMessageIds[i] = lastMessageRespJson.result.message_id;
+                // 用于后续发送媒体编辑
+                this.context.message_id = lastMessageRespJson.result.message_id;
             }
-            if (lastMessageResponse.status !== 200) {
-                break;
+            if (lastMessageResponse === null) {
+                throw new Error('Send message failed');
             }
-            lastMessageRespJson = await lastMessageResponse.clone().json() as Telegram.ResponseWithMessage;
-            this.context.sentMessageIds[i] = lastMessageRespJson.result.message_id;
-            // 用于后续发送媒体编辑
-            this.context.message_id = lastMessageRespJson.result.message_id;
+            return lastMessageResponse;
+        } catch (error: any) {
+            log.error(`Failed to send long message: ${error.message}`);
+            throw error;
         }
-        if (lastMessageResponse === null) {
-            throw new Error('Send message failed');
-        }
-        return lastMessageResponse;
     }
 
     sendRichText(
