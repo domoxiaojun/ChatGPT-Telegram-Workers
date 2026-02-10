@@ -2,11 +2,14 @@ import * as fs from 'node:fs/promises';
 import path from 'node:path';
 
 const dockerfile = `
-FROM --platform=$BUILDPLATFORM node:20-alpine as builder
+FROM node:20-alpine as builder
 
 WORKDIR /build
 COPY package.json /build/
-RUN npm install --omit=dev --production
+RUN apk add --no-cache python3 make g++ sqlite-dev && \\
+    npm install --omit=dev --production && \\
+    npm rebuild --build-from-source && \\
+    apk del python3 make g++
 
 FROM node:20-alpine as prod
 
