@@ -2,20 +2,13 @@ import * as fs from 'node:fs/promises';
 import path from 'node:path';
 
 const dockerfile = `
-FROM node:20-alpine as builder
-
-WORKDIR /build
-COPY package.json /build/
-RUN apk add --no-cache python3 make g++ sqlite-dev && \\
-    npm install --omit=dev --production && \\
-    apk del python3 make g++
-
-FROM node:20-alpine as prod
+FROM node:20-alpine as PROD
 
 WORKDIR /app
-COPY --from=builder /build/node_modules /app/node_modules
 COPY index.js package.json /app/
-RUN apk add --no-cache sqlite
+RUN npm install --only=production && \\
+apk add --no-cache sqlite && \\
+npm cache clean --force
 EXPOSE 8787
 CMD ["node", "index.js"]
 `;
