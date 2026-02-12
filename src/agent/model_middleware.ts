@@ -444,6 +444,19 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
             activeTools = activeTools.filter(t => t !== 'code_execution');
         }
 
+        // Code Execution does not support audio/video file types
+        // Supported: .png, .jpeg, .csv, .xml, .cpp, .java, .py, .js, .ts
+        if (activeTools.includes('code_execution') && Array.isArray(userMessage.content)) {
+            const hasUnsupportedFile = userMessage.content.some((part: any) =>
+                part.type === 'file' && part.mediaType && (part.mediaType.startsWith('audio/') || part.mediaType.startsWith('video/')),
+            );
+            if (hasUnsupportedFile) {
+                log.warn('[warpLLMParams] Code Execution does not support audio/video files. Removing Code Execution.');
+                delete tools.code_execution;
+                activeTools = activeTools.filter(t => t !== 'code_execution');
+            }
+        }
+
         if (activeTools.length > 0) {
             log.info(`[warpLLMParams] Google server-side tools enabled: ${activeTools.join(', ')}`);
         }
