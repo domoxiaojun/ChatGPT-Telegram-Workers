@@ -85,6 +85,8 @@ export class EnvironmentConfig {
     HIDE_COMMAND_BUTTONS: string[] = [];
     // 禁用部分命令
     BLOCK_COMMANDS: string[] = [];
+    // 忽略的命令（不触发 AI 回复，用于第三方机器人命令）
+    IGNORE_COMMANDS: string[] = [];
     // 显示快捷回复按钮
     SHOW_REPLY_BUTTON = false;
     // 额外引用消息开关

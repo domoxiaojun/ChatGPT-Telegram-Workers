@@ -130,6 +130,14 @@ async function handlePluginCommand(message: Telegram.Message, command: string, r
 export async function handleCommandMessage(message: Telegram.Message, context: WorkerContext): Promise<Response | UnionData | ImageResult | null> {
     let text = (message.text || message.caption || '').trim();
 
+    // Check if message starts with an ignored command
+    for (const ignoredCmd of ENV.IGNORE_COMMANDS) {
+        if (text === ignoredCmd || text.startsWith(`${ignoredCmd} `) || text.startsWith(`${ignoredCmd}\n`)) {
+            log.info(`[IGNORE COMMAND] Ignoring command: ${ignoredCmd}`);
+            return new Response('Ignored command', { status: 200 });
+        }
+    }
+
     if (ENV.CUSTOM_COMMAND[text]) {
         // 替换自定义命令为系统命令
         text = ENV.CUSTOM_COMMAND[text].value;

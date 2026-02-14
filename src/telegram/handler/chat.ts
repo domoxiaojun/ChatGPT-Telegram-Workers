@@ -334,6 +334,10 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
 
             if (!resp.ok) {
                 log.error(`send message failed: ${resp.status} ${await resp.json().then(j => j.description)}`);
+                // Clear sentMessageIds on render error to prevent future messages from trying to edit failed messages
+                if (isMessageSender) {
+                    (sender as MessageSender).context.sentMessageIds.length = 0;
+                }
                 // return sentPromise = sender.sendPlainText(text, 'chat');
             }
         } catch (e) {

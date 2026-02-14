@@ -181,8 +181,15 @@ export class MessageSender {
                     if (message.includes('not modified')) {
                         continue;
                     }
+                    // Clear sentMessageIds on render error to prevent future messages from trying to edit failed messages
+                    log.error(`Render failed with 400 error: ${message}. Clearing sentMessageIds to allow fresh messages.`);
+                    context.sentMessageIds.length = 0;
+                    break;
                 }
                 if (lastMessageResponse.status !== 200) {
+                    // Clear sentMessageIds on any error to prevent future messages from trying to edit failed messages
+                    log.error(`Send failed with status ${lastMessageResponse.status}. Clearing sentMessageIds.`);
+                    context.sentMessageIds.length = 0;
                     break;
                 }
                 lastMessageRespJson = await lastMessageResponse.clone().json() as Telegram.ResponseWithMessage;
