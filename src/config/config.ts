@@ -720,7 +720,7 @@ export class XAIConfig {
     XAI_CHAT_MODEL = 'grok-4-1-fast';
     XAI_VISION_MODEL = 'grok-2-vision';
     // XAI image model
-    XAI_IMAGE_MODEL = 'grok-2-image';
+    XAI_IMAGE_MODEL = 'grok-imagine-image';
     // XAI API Extra Params, key is model name prefix, separated by commas; value is extra Params,  support path(camelCase), split by '.'
     // for example: XAI_API_EXTRA_PARAMS = { 'grok-3': { 'temperature': 0.5 } };
     XAI_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {};

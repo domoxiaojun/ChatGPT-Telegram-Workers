@@ -1,6 +1,6 @@
 # Complete Guide to Image Editing Features
 
-**Last Updated:** 2025-12-20
+**Last Updated:** 2025-02-15
 
 ---
 
@@ -13,7 +13,7 @@
 | **Google** | ✅ | ✅ | ❌ | Implicit | 4K resolution, Google Search | Quick editing, real-time data visualization |
 | **Vertex** | ✅ | ✅ | ✅ | 6 explicit modes | - | Professional editing, precise control |
 | **OpenAI** | ✅ | ✅ | ✅ | Implicit | - | Balanced performance, DALL-E 3 generation |
-| **xAI** | ✅ | ❌ | ❌ | - | - | Generation only (up to 10 images) |
+| **xAI** | ✅ | ✅ | ❌ | Implicit | Video generation, I2V, video editing | Image editing, video creation |
 
 ### Telegram Usage
 
@@ -283,45 +283,190 @@ The code **automatically adjusts**:
 
 ---
 
-## 4. xAI (Grok/Aurora)
+## 4. xAI (Grok Imagine)
 
 ### Configuration
 ```env
 XAI_API_KEY=your-api-key
-XAI_IMAGE_MODEL=grok-2-image
+XAI_IMAGE_MODEL=grok-imagine-image  # New image generation and editing model
 ```
 
 ### Features
 - ✅ Text-to-image generation
-- ✅ Up to 10 images per request
-- ⚠️ **Fixed size 1024x768** (no custom size/aspectRatio support)
-- ❌ **No image editing support** (API limitation, only Web interface supports it)
+- ✅ **Image editing (Image-to-Image)** - Now supported!
+- ✅ Aspect ratio support (aspectRatio)
+- ✅ **Video generation (via xai_video tool)**
+- ✅ **Image-to-video (I2V)**
+- ✅ **Video editing (V2V)**
 - ❌ No mask support
 - ❌ No explicit edit modes
 
-### Important Limitations
-According to AI SDK official documentation and source code:
-1. **No `size` parameter support** - Passing it causes `IMAGE_PROCESS_FAILED` error
-2. **No `aspectRatio` parameter support** - Passing it causes `IMAGE_PROCESS_FAILED` error
-3. **Default size: 1024x768** - Cannot be changed
-4. **Text-to-image generation only** - No image editing support
+### Image Features
+
+#### Models
+- `grok-2-image` - Legacy image generation model
+- `grok-imagine-image` - **New image generation and editing model (Recommended)**
+
+#### Text-to-Image Generation
+```
+/img a cute dog in the garden
+```
+
+#### Image Editing (Now Supported!)
+```
+# Reply to an image to edit it
+[Reply to image] /img turn the cat into a golden retriever
+[Reply to image] /img change the background to a beach sunset
+[Reply to image] /img make the image more vibrant
+```
+
+#### Supported Parameters
+- `aspectRatio`: Aspect ratio (e.g., "16:9", "9:16", "1:1")
+- `n`: Number of images to generate (1-10)
+
+### Video Features ⭐
+
+xAI provides powerful video generation capabilities through the `xai_video` tool.
+
+#### Model
+- `grok-imagine-video` - Video generation, image-to-video, and video editing model
+
+#### 1. Text-to-Video
+```json
+{
+  "name": "xai_video",
+  "arguments": {
+    "prompt": "A yorkie among dandelions at Crissy Field in San Francisco",
+    "mode": "text-to-video",
+    "aspectRatio": "16:9",
+    "duration": 5,
+    "resolution": "720p"
+  }
+}
+```
+
+#### 2. Image-to-Video
+```json
+{
+  "name": "xai_video",
+  "arguments": {
+    "prompt": "The cat slowly turns its head and blinks",
+    "mode": "image-to-video",
+    "imageUrl": "https://example.com/cat.png",
+    "duration": 5,
+    "aspectRatio": "16:9"
+  }
+}
+```
+
+#### 3. Video Editing
+```json
+{
+  "name": "xai_video",
+  "arguments": {
+    "prompt": "Render this cat as a dog in the style of 90s anime",
+    "mode": "video-edit",
+    "videoUrl": "https://example.com/video.mp4"
+  }
+}
+```
+
+#### Video Parameters
+- `mode`: Generation mode
+  - `text-to-video` - Text to video
+  - `image-to-video` - Image to video
+  - `video-edit` - Video editing
+- `aspectRatio`: Aspect ratio (generation mode only)
+  - `16:9`, `9:16`, `1:1`
+- `duration`: Duration in seconds (generation mode only)
+  - Fixed at 5 seconds
+- `resolution`: Video resolution (generation mode only)
+  - `480p`, `720p`
+- `imageUrl`: Image URL (required for image-to-video mode)
+- `videoUrl`: Video URL (required for video-edit mode)
+
+#### Important Notes
+- Video generation is **asynchronous** and takes approximately 1-5 minutes
+- Video editing mode **does not support** `duration` and `aspectRatio` parameters
+- Polling timeout: 10 minutes
+- Polling interval: 5 seconds
 
 ### Usage Examples
-```
-# Generate image (supported)
-/img a cute dog in the garden
 
-# Image editing (not supported)
-[Reply to image] /img make this in Van Gogh style  # ❌ Will error
+#### Image Generation
+```
+/img a beautiful sunset over the ocean
 ```
 
-### Important Note
-xAI API currently **only supports text-to-image generation**, not image editing. Image editing feature is only available in Grok Web interface.
+#### Image Editing
+```
+[Reply to image] /img turn this cat into a golden retriever
+[Reply to image] /img change the background to a futuristic city
+```
 
-For image editing, please use:
-- **Google** - Quick editing
-- **Vertex** - Professional editing
-- **OpenAI** - Balanced choice
+#### Video Generation (via LLM tool call)
+```
+Generate a 5-second video of a yorkie playing among dandelions
+```
+
+The LLM will automatically call the `xai_video` tool:
+```json
+{
+  "name": "xai_video",
+  "arguments": {
+    "prompt": "A yorkie playing among dandelions",
+    "mode": "text-to-video",
+    "duration": 5
+  }
+}
+```
+
+### Technical Implementation
+
+#### Image Editing
+```typescript
+// src/agent/xai.ts
+import { createXai } from '@ai-sdk/xai';
+import { generateImage } from 'ai';
+
+// Image editing
+const { images } = await generateImage({
+    model: xaiClient.image('grok-imagine-image'),
+    prompt: {
+        text: 'turn the cat into a golden retriever',
+        images: [imageBuffer], // Reference image
+    },
+    n: 1,
+    aspectRatio: '16:9',
+});
+```
+
+#### Video Generation
+```typescript
+// src/tools/internal/xai_video.ts
+import { experimental_generateVideo as generateVideo } from 'ai';
+
+// Text-to-video
+const { videos } = await generateVideo({
+    model: xaiClient.video('grok-imagine-video'),
+    prompt: 'A yorkie among dandelions',
+    duration: 5,
+    aspectRatio: '16:9',
+    providerOptions: {
+        xai: {
+            resolution: '720p',
+            pollTimeoutMs: 600000, // 10 minutes
+            pollIntervalMs: 5000,
+        },
+    },
+});
+```
+
+### Limitations
+- Image editing: No mask support
+- Video generation: Fixed 5-second duration
+- Video editing: No custom duration or aspect ratio
+- Only 1 video per request
 
 ---
 
@@ -331,9 +476,10 @@ For image editing, please use:
 | Feature | Google | Vertex | OpenAI | xAI |
 |---------|--------|--------|--------|-----|
 | Text Generation | ✅ | ✅ | ✅ | ✅ |
-| Image Editing | ✅ | ✅ | ✅ | ❌ |
+| Image Editing | ✅ | ✅ | ✅ | ✅ |
 | Mask Support | ❌ | ✅ | ✅ | ❌ |
-| Multi-image Input | ✅(14) | ✅ | ❌(1) | ❌(1) |
+| Multi-image Input | ✅(14) | ✅ | ❌(1) | ✅(1) |
+| Video Generation | ❌ | ❌ | ❌ | ✅ |
 
 ### Editing Control
 | Feature | Google | Vertex | OpenAI | xAI |
@@ -342,6 +488,7 @@ For image editing, please use:
 | Negative Prompt | ❌ | ✅ | ❌ | ❌ |
 | Quality Control | ❌ | ✅ | ✅ | ❌ |
 | Mask Modes | ❌ | ✅(5 modes) | ✅ | ❌ |
+| Video Editing | ❌ | ❌ | ❌ | ✅ |
 
 ### Performance
 | Metric | Google | Vertex | OpenAI | xAI |
@@ -387,12 +534,20 @@ For image editing, please use:
 }
 ```
 
-### Style Transfer (xAI - Generation Only)
+### Style Transfer (xAI - Now Supports Editing!)
 ```json
 {
   "agent": "xai",
   "prompts": ["A beautiful sunset over the ocean with vibrant colors"]
-  // ❌ Does not support referenceImages (image editing)
+}
+```
+
+### Image Editing (xAI)
+```json
+{
+  "agent": "xai",
+  "prompts": ["Turn this cat into a golden retriever"],
+  "referenceImages": ["base64_image"]
 }
 ```
 
@@ -420,11 +575,12 @@ For image editing, please use:
 - ✅ Fast response
 - ⚠️ Medium editing capabilities
 
-**xAI - Generation Only**
-- ✅ High-quality image generation
-- ✅ Multiple image generation (up to 10)
-- ❌ No image editing support
-- ⚠️ API limitations (editing only on Web interface)
+**xAI - Image Editing and Video Creation**
+- ✅ Image generation and editing
+- ✅ Text-to-video generation
+- ✅ Image-to-video generation
+- ✅ Video editing and transformation
+- ❌ No mask editing support
 
 ### Prompt Best Practices
 
@@ -465,8 +621,11 @@ DALL_E_MODEL=dall-e-2  # or gpt-image-1
 **Experimental/Style Transfer:**
 ```env
 AI_IMAGE_PROVIDER=xai
-XAI_IMAGE_MODEL=grok-2-image
+XAI_IMAGE_MODEL=grok-imagine-image
 ```
+
+**Video Generation (xAI):**
+Call `xai_video` tool via LLM, supports text-to-video, image-to-video, and video editing.
 
 ---
 
@@ -493,13 +652,13 @@ XAI_IMAGE_MODEL=grok-2-image
 **Solution:** Use Vertex AI or describe the area through detailed prompts
 
 ### xAI Editing Error
-**Issue:** "Bad Request: IMAGE_PROCESS_FAILED"
-**Cause 1:** xAI API doesn't support image editing (only Web interface supports it)
-**Cause 2:** Passed unsupported parameters (`size`, `aspectRatio`)
-**Solution:**
-- Use xAI for image generation only, use Google/Vertex/OpenAI for editing
-- Don't pass `size` or `aspectRatio` parameters
-- xAI generates 1024x768 images by default
+**Issue:** "xAI API does not support image editing yet"
+**Cause:** Using legacy `grok-2-image` model
+**Solution:** Update configuration to use `grok-imagine-image` model
+
+```env
+XAI_IMAGE_MODEL=grok-imagine-image
+```
 
 ---
 
@@ -531,35 +690,63 @@ const actualModel = isEditMode
 ### Telegram Command Support
 ```typescript
 // src/telegram/command/system.ts
-// Only Google, Vertex, OpenAI support image editing
-if (['google', 'vertex', 'openai'].includes(agent.name)) {
+// Google, Vertex, OpenAI, xAI all support image editing
+if (['google', 'vertex', 'openai', 'xai'].includes(agent.name)) {
     extraParams.referenceImages = await getTelegramFile(...);
 }
-// xAI doesn't support editing, will throw error in agent
 ```
 
 ### xAI Using AI SDK
 ```typescript
 // src/agent/xai.ts
-import { xai } from '@ai-sdk/xai';
-import { generateImage } from 'ai';
+import { createXai } from '@ai-sdk/xai';
+import { generateImage, experimental_generateVideo as generateVideo } from 'ai';
 
-// Important: Don't pass size, aspectRatio parameters
+// Image generation
 const { images } = await generateImage({
-    model: xai({
-        apiKey: context.XAI_API_KEY,
-        baseURL: context.XAI_API_BASE,
-    }).image('grok-2-image'),
+    model: xaiClient.image('grok-imagine-image'),
     prompt,
     n,
-    // Don't pass size, aspectRatio - xAI doesn't support them
+    aspectRatio,
 });
-// Default output: 1024x768
+
+// Image editing
+const { images } = await generateImage({
+    model: xaiClient.image('grok-imagine-image'),
+    prompt: {
+        text: 'turn the cat into a golden retriever',
+        images: [imageBuffer],
+    },
+});
+
+// Video generation
+const { videos } = await generateVideo({
+    model: xaiClient.video('grok-imagine-video'),
+    prompt: 'A yorkie among dandelions',
+    duration: 5,
+    aspectRatio: '16:9',
+    providerOptions: {
+        xai: {
+            resolution: '720p',
+            pollTimeoutMs: 600000,
+        },
+    },
+});
 ```
 
 ---
 
 ## Changelog
+
+### 2025-02-15
+- ✅ **xAI added image editing support** (grok-imagine-image)
+- ✅ **xAI added video generation features** (grok-imagine-video)
+- ✅ Supports text-to-video (T2V)
+- ✅ Supports image-to-video (I2V)
+- ✅ Supports video editing (V2V)
+- ✅ Added `xai_video` tool
+- ✅ Updated default model to `grok-imagine-image`
+- ✅ Supports aspectRatio parameter
 
 ### 2025-12-20
 - ✅ Upgraded to new AI SDK `generateImage` API
@@ -567,12 +754,9 @@ const { images } = await generateImage({
 - ✅ Vertex added smart edit mode selection (with/without mask)
 - ✅ Vertex supports 6 edit modes and advanced parameters
 - ✅ OpenAI added image editing support (auto-downgrade)
-- ✅ xAI added image generation support (**no editing support**)
 - ✅ Updated dependencies to latest beta versions
 - ✅ Preserved Google's original editing functionality
 - ✅ Fixed Vertex "Mask image is missing" error
-- ✅ Fixed xAI "IMAGE_PROCESS_FAILED" error (removed unsupported parameters)
-- ✅ xAI now uses AI SDK (correctly handles parameter limitations)
 
 ---
 
@@ -588,4 +772,4 @@ const { images } = await generateImage({
 ---
 
 **Maintainer:** Claude Code
-**Last Updated:** 2025-12-20
+**Last Updated:** 2025-02-15

@@ -9,11 +9,11 @@
 ### 支持的 Agents
 
 | Agent | 生成 | 编辑 | 遮罩 | 编辑模式 | 新功能 | 推荐场景 |
-|-------|------|------|------|----------|--------|---------|
+|-------|------|------|------|----------|--------|------------|
 | **Google** | ✅ | ✅ | ❌ | 隐式 | 4K分辨率、Google Search | 快速编辑、实时数据可视化 |
 | **Vertex** | ✅ | ✅ | ✅ | 6种显式 | - | 专业编辑、精确控制 |
 | **OpenAI** | ✅ | ✅ | ✅ | 隐式 | - | 平衡性能、DALL-E 3生成 |
-| **xAI** | ✅ | ❌ | ❌ | - | - | 仅生成（最多10张） |
+| **xAI** | ✅ | ✅ | ❌ | 隐式 | 视频生成、图生视频、视频编辑 | 图片编辑、视频创作 |
 
 ### Telegram 使用
 
@@ -283,57 +283,197 @@ DALL_E_MODEL=dall-e-2  # 或 dall-e-3, gpt-image-1
 
 ---
 
-## 4. xAI (Grok/Aurora)
+## 4. xAI (Grok Imagine)
 
 ### 配置
 ```env
 XAI_API_KEY=your-api-key
-XAI_IMAGE_MODEL=grok-2-image
+XAI_IMAGE_MODEL=grok-imagine-image  # 新版图片生成和编辑模型
 ```
 
 ### 特点
 - ✅ 文本生成图片
-- ✅ 最多10张图片/次
-- ⚠️ **固定尺寸 1024x768**（不支持自定义 size/aspectRatio）
-- ❌ **不支持图片编辑**（API 限制，仅 Web 界面支持）
+- ✅ **图片编辑（Image-to-Image）** - 现已支持！
+- ✅ 支持宽高比（aspectRatio）
+- ✅ **视频生成（通过 xai_video 工具）**
+- ✅ **图生视频（Image-to-Video）**
+- ✅ **视频编辑（Video-to-Video）**
 - ❌ 无遮罩支持
 - ❌ 无显式编辑模式
 
-### 重要限制
-根据 AI SDK 官方文档和源码：
-1. **不支持 `size` 参数** - 传递会导致 `IMAGE_PROCESS_FAILED` 错误
-2. **不支持 `aspectRatio` 参数** - 传递会导致 `IMAGE_PROCESS_FAILED` 错误
-3. **默认尺寸：1024x768** - 无法更改
-4. **仅支持文本到图片生成** - 不支持图片编辑
+### 图片功能
+
+#### 模型
+- `grok-2-image` - 旧版图片生成模型
+- `grok-imagine-image` - **新版图片生成和编辑模型（推荐）**
+
+#### 文本生成图片
+```
+/img a cute dog in the garden
+```
+
+#### 图片编辑（现已支持！）
+```
+# 回复图片进行编辑
+[回复图片] /img 把猫变成金毛犬
+[回复图片] /img 将背景改成海滩日落
+[回复图片] /img 让图片更加色彩鲜艳
+```
+
+#### 支持的参数
+- `aspectRatio`: 宽高比（如 "16:9", "9:16", "1:1"）
+- `n`: 生成数量（1-10张）
+
+### 视频功能 ⭐
+
+xAI 提供强大的视频生成能力，通过 `xai_video` 工具调用。
+
+#### 模型
+- `grok-imagine-video` - 视频生成、图生视频、视频编辑模型
+
+#### 1. 文本生成视频（Text-to-Video）
+```json
+{
+  "name": "xai_video",
+  "arguments": {
+    "prompt": "一只约克夏在旧金山Crissy Field的蒲公英丛中",
+    "mode": "text-to-video",
+    "aspectRatio": "16:9",
+    "duration": 5,
+    "resolution": "720p"
+  }
+}
+```
+
+#### 2. 图生视频（Image-to-Video）
+```json
+{
+  "name": "xai_video",
+  "arguments": {
+    "prompt": "猫慢慢转头并眨眼",
+    "mode": "image-to-video",
+    "imageUrl": "https://example.com/cat.png",
+    "duration": 5,
+    "aspectRatio": "16:9"
+  }
+}
+```
+
+#### 3. 视频编辑（Video-to-Video）
+```json
+{
+  "name": "xai_video",
+  "arguments": {
+    "prompt": "将这只猫渲染成90年代动漫风格的狗",
+    "mode": "video-edit",
+    "videoUrl": "https://example.com/video.mp4"
+  }
+}
+```
+
+#### 视频参数说明
+- `mode`: 模式
+  - `text-to-video` - 文本生成视频
+  - `image-to-video` - 图片生成视频
+  - `video-edit` - 视频编辑
+- `aspectRatio`: 宽高比（仅生成模式）
+  - `16:9`, `9:16`, `1:1`
+- `duration`: 时长（仅生成模式）
+  - 固定 5 秒
+- `resolution`: 分辨率（仅生成模式）
+  - `480p`, `720p`
+- `imageUrl`: 图片URL（图生视频模式必需）
+- `videoUrl`: 视频URL（视频编辑模式必需）
+
+#### 重要说明
+- 视频生成是**异步操作**，需要等待约 1-5 分钟
+- 视频编辑模式**不支持** `duration` 和 `aspectRatio` 参数
+- 轮询超时时间：10 分钟
+- 轮询间隔：5 秒
 
 ### 使用示例
-```
-# 生成图片（支持）
-/img a cute dog in the garden
 
-# 图片编辑（不支持）
-[回复图片] /img make this in Van Gogh style  # ❌ 会报错
+#### 图片生成
+```
+/img a beautiful sunset over the ocean
 ```
 
-### 重要说明
-xAI API 目前**仅支持文本到图片生成**，不支持图片编辑。图片编辑功能仅在 Grok Web 界面可用。
+#### 图片编辑
+```
+[回复图片] /img 把这只猫变成金毛犬
+[回复图片] /img 将背景换成未来科技城市
+```
 
-如需图片编辑，请使用：
-- **Google** - 快速编辑
-- **Vertex** - 专业编辑
-- **OpenAI** - 平衡选择
+#### 视频生成（通过 LLM 工具调用）
+```
+生成一个5秒的视频：一只约克夏在蒲公英丛中玩耍
+```
+
+LLM 会自动调用 `xai_video` 工具：
+```json
+{
+  "name": "xai_video",
+  "arguments": {
+    "prompt": "一只约克夏在蒲公英丛中玩耍",
+    "mode": "text-to-video",
+    "duration": 5
+  }
+}
+```
+
+### 技术实现
+
+#### 图片编辑
+```typescript
+// src/agent/xai.ts
+import { createXai } from '@ai-sdk/xai';
+import { generateImage } from 'ai';
+
+// 图片编辑
+const { images } = await generateImage({
+    model: xaiClient.image('grok-imagine-image'),
+    prompt: {
+        text: '把猫变成金毛犬',
+        images: [imageBuffer], // 参考图片
+    },
+    n: 1,
+    aspectRatio: '16:9',
+});
+```
+
+#### 视频生成
+```typescript
+// src/tools/internal/xai_video.ts
+import { experimental_generateVideo as generateVideo } from 'ai';
+
+// 文本生成视频
+const { videos } = await generateVideo({
+    model: xaiClient.video('grok-imagine-video'),
+    prompt: '一只约克夏在蒲公英丛中',
+    duration: 5,
+    aspectRatio: '16:9',
+    providerOptions: {
+        xai: {
+            resolution: '720p',
+            pollTimeoutMs: 600000, // 10分钟
+            pollIntervalMs: 5000,
+        },
+    },
+});
+```
+
+### 限制说明
+- 图片编辑：不支持遮罩（mask）
+- 视频生成：固定 5 秒时长
+- 视频编辑：不支持自定义时长和宽高比
+- 每次只能生成 1 个视频
 
 ---
 
 ## 完整功能对比
 
 ### 基础功能
-| 功能 | Google | Vertex | OpenAI | xAI |
-|------|--------|--------|--------|-----|
-| 文本生成 | ✅ | ✅ | ✅ | ✅ |
-| 图片编辑 | ✅ | ✅ | ✅ | ❌ |
-| 遮罩支持 | ❌ | ✅ | ✅ | ❌ |
-| 多图输入 | ✅(14) | ✅ | ❌(1) | ❌(1) |
+| 功能 | Google | Vertex | OpenAI | xAI |\n|------|--------|--------|--------|-----|\n| 文本生成 | ✅ | ✅ | ✅ | ✅ |\n| 图片编辑 | ✅ | ✅ | ✅ | ✅ |\n| 遮罩支持 | ❌ | ✅ | ✅ | ❌ |\n| 多图输入 | ✅(14) | ✅ | ❌(1) | ✅(1) |\n| 视频生成 | ❌ | ❌ | ❌ | ✅ |
 
 ### 编辑控制
 | 功能 | Google | Vertex | OpenAI | xAI |
@@ -342,6 +482,7 @@ xAI API 目前**仅支持文本到图片生成**，不支持图片编辑。图�
 | 负面提示 | ❌ | ✅ | ❌ | ❌ |
 | 质量控制 | ❌ | ✅ | ✅ | ❌ |
 | 遮罩模式 | ❌ | ✅(5种) | ✅ | ❌ |
+| 视频编辑 | ❌ | ❌ | ❌ | ✅ |
 
 ### 性能
 | 指标 | Google | Vertex | OpenAI | xAI |
@@ -420,11 +561,12 @@ xAI API 目前**仅支持文本到图片生成**，不支持图片编辑。图�
 - ✅ 快速响应
 - ⚠️ 编辑功能中等
 
-**xAI - 仅用于生成**
-- ✅ 高质量图片生成
-- ✅ 多张图片生成（最多10张）
-- ❌ 不支持图片编辑
-- ⚠️ API 限制（编辑仅限 Web 界面）
+**xAI - 图片编辑和视频创作**
+- ✅ 图片生成和编辑
+- ✅ 文本生成视频
+- ✅ 图片生成视频
+- ✅ 视频编辑转换
+- ❌ 不支持遮罩编辑
 
 ### 提示词最佳实践
 
@@ -465,8 +607,11 @@ DALL_E_MODEL=dall-e-2  # 或 gpt-image-1
 **实验性/风格转换：**
 ```env
 AI_IMAGE_PROVIDER=xai
-XAI_IMAGE_MODEL=grok-2-image
+XAI_IMAGE_MODEL=grok-imagine-image
 ```
+
+**视频生成（xAI）：**
+通过 LLM 工具调用 `xai_video`，支持文本生成视频、图生视频、视频编辑。
 
 ---
 
@@ -493,13 +638,13 @@ XAI_IMAGE_MODEL=grok-2-image
 **解决：** 使用 Vertex AI 或通过详细提示词描述区域
 
 ### xAI 编辑报错
-**问题：** "Bad Request: IMAGE_PROCESS_FAILED"
-**原因 1：** xAI API 不支持图片编辑（仅 Web 界面支持）
-**原因 2：** 传递了不支持的参数（`size`、`aspectRatio`）
-**解决：**
-- xAI 仅用于图片生成，编辑请使用 Google/Vertex/OpenAI
-- 不要传递 `size` 或 `aspectRatio` 参数
-- xAI 默认生成 1024x768 图片
+**问题：** "xAI API does not support image editing yet"
+**原因：** 使用了旧版 `grok-2-image` 模型
+**解决：** 更新配置使用 `grok-imagine-image` 模型
+
+```env
+XAI_IMAGE_MODEL=grok-imagine-image
+```
 
 ---
 
@@ -541,25 +686,54 @@ if (['google', 'vertex', 'openai'].includes(agent.name)) {
 ### xAI 使用 AI SDK
 ```typescript
 // src/agent/xai.ts
-import { xai } from '@ai-sdk/xai';
-import { generateImage } from 'ai';
+import { createXai } from '@ai-sdk/xai';
+import { generateImage, experimental_generateVideo as generateVideo } from 'ai';
 
-// 重要：不传递 size、aspectRatio 参数
+// 图片生成
 const { images } = await generateImage({
-    model: xai({
-        apiKey: context.XAI_API_KEY,
-        baseURL: context.XAI_API_BASE,
-    }).image('grok-2-image'),
+    model: xaiClient.image('grok-imagine-image'),
     prompt,
     n,
-    // 不传递 size、aspectRatio - xAI 不支持
+    aspectRatio,
 });
-// 默认输出：1024x768
+
+// 图片编辑
+const { images } = await generateImage({
+    model: xaiClient.image('grok-imagine-image'),
+    prompt: {
+        text: '把猫变成金毛犬',
+        images: [imageBuffer],
+    },
+});
+
+// 视频生成
+const { videos } = await generateVideo({
+    model: xaiClient.video('grok-imagine-video'),
+    prompt: '一只约克夏在蒲公英丛中',
+    duration: 5,
+    aspectRatio: '16:9',
+    providerOptions: {
+        xai: {
+            resolution: '720p',
+            pollTimeoutMs: 600000,
+        },
+    },
+});
 ```
 
 ---
 
 ## 更新日志
+
+### 2025-02-15
+- ✅ **xAI 添加图片编辑支持**（grok-imagine-image）
+- ✅ **xAI 添加视频生成功能**（grok-imagine-video）
+- ✅ 支持文本生成视频（Text-to-Video）
+- ✅ 支持图片生成视频（Image-to-Video）
+- ✅ 支持视频编辑（Video-to-Video）
+- ✅ 新增 `xai_video` 工具
+- ✅ 更新默认模型为 `grok-imagine-image`
+- ✅ 支持 aspectRatio 参数
 
 ### 2025-12-20
 - ✅ 升级到新的 AI SDK `generateImage` API
@@ -588,4 +762,4 @@ const { images } = await generateImage({
 ---
 
 **维护者：** Claude Code
-**最后更新：** 2025-12-20
+**最后更新：** 2025-02-15

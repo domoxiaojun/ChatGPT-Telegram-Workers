@@ -1,7 +1,7 @@
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
 import { createXai } from '@ai-sdk/xai';
-import { generateImage } from 'ai';
+import { experimental_generateVideo as generateVideo, generateImage } from 'ai';
 import { Logger } from '../log';
 import { selectKey } from './key-manager';
 import { createLlmModel } from './llm';
@@ -39,7 +39,7 @@ export class XAIImage implements ImageAgent {
     };
 
     readonly model = (ctx: AgentUserConfig): string => {
-        return ctx.XAI_IMAGE_MODEL || 'grok-2-image';
+        return ctx.XAI_IMAGE_MODEL || 'grok-imagine-image';
     };
 
     @Logger
@@ -47,25 +47,35 @@ export class XAIImage implements ImageAgent {
         const {
             n = 1,
             referenceImages,
+            aspectRatio,
         } = extraParams || {};
 
-        // xAI API 目前只支持文本到图片生成
-        // 图片编辑功能仅在网页版可用，API 尚未提供
+        const xaiClient = createXai({
+            apiKey: selectKey('xai', context.XAI_API_KEY) || undefined,
+            baseURL: context.XAI_API_BASE,
+        });
+
+        // 支持图片编辑（Image-to-Image）
         if (referenceImages && referenceImages.length > 0) {
-            throw new Error('xAI API does not support image editing yet. Image editing is only available on Grok web interface. Use Google, Vertex, or OpenAI for image editing.');
+            const { images } = await generateImage({
+                model: xaiClient.image(this.model(context)),
+                prompt: {
+                    text: prompt,
+                    images: referenceImages, // 传入参考图片的 Buffer 数组
+                },
+                n,
+                ...(aspectRatio && { aspectRatio }),
+            });
+
+            return this.render(images, prompt);
         }
 
-        // 重要：xAI 不支持 size 和 aspectRatio 参数
-        // 默认生成 1024x768 的图片
-        // 传递 size 或 aspectRatio 会导致 IMAGE_PROCESS_FAILED 错误
+        // 文本到图片生成（Text-to-Image）
         const { images } = await generateImage({
-            model: createXai({
-                apiKey: selectKey('xai', context.XAI_API_KEY) || undefined,
-                baseURL: context.XAI_API_BASE,
-            }).image(this.model(context)),
+            model: xaiClient.image(this.model(context)),
             prompt,
             n,
-            // 不传递 size、aspectRatio 等参数，xAI 不支持
+            ...(aspectRatio && { aspectRatio }),
         });
 
         return this.render(images, prompt);
