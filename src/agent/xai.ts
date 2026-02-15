@@ -57,28 +57,30 @@ export class XAIImage implements ImageAgent {
 
         // 支持图片编辑（Image-to-Image）
         if (referenceImages && referenceImages.length > 0) {
-            const { images } = await generateImage({
+            const result = await generateImage({
                 model: xaiClient.image(this.model(context)),
                 prompt: {
                     text: prompt,
-                    images: referenceImages, // 传入参考图片的 Buffer 数组
+                    images: referenceImages,
                 },
                 n,
                 ...(aspectRatio && { aspectRatio }),
             });
 
-            return this.render(images, prompt);
+            const revisedPrompt = (result.providerMetadata?.xai?.images as any)?.[0]?.revisedPrompt;
+            return this.render(result.images, revisedPrompt || prompt);
         }
 
         // 文本到图片生成（Text-to-Image）
-        const { images } = await generateImage({
+        const result = await generateImage({
             model: xaiClient.image(this.model(context)),
             prompt,
             n,
             ...(aspectRatio && { aspectRatio }),
         });
 
-        return this.render(images, prompt);
+        const revisedPrompt = (result.providerMetadata?.xai?.images as any)?.[0]?.revisedPrompt;
+        return this.render(result.images, revisedPrompt || prompt);
     };
 
     readonly render = async (result: Response | GeneratedImage[] | string[], prompt: string): Promise<ImageResult> => {
