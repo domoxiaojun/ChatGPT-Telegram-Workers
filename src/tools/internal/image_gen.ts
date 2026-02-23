@@ -15,7 +15,7 @@ export default {
                 agent: {
                     type: 'string',
                     description: 'The image agent to use. Default is "default".',
-                    enum: ['default', 'dalle', 'openai', 'workers', 'azure', 'vertex', 'oailike', 'kling', 'google', 'xai'],
+                    enum: ['default', 'dalle', 'openai', 'workers', 'azure', 'vertex', 'oailike', 'kling', 'google', 'xai', 'bfl'],
                     default: 'default',
                 },
                 prompts: {
@@ -49,11 +49,11 @@ export default {
                 referenceImages: {
                     type: 'array',
                     items: { type: 'string' },
-                    description: 'Reference images for image-to-image generation. Can be URLs or base64-encoded images. Supported by vertex and google agents.',
+                    description: 'Reference images for image-to-image generation. Can be URLs or base64-encoded images. Supported by vertex, google, xai, and bfl agents.',
                 },
                 mask: {
                     type: 'string',
-                    description: 'Mask image for inpainting (optional). Can be URL or base64-encoded image. Only supported by vertex agent.',
+                    description: 'Mask image for inpainting (optional). Can be URL or base64-encoded image. Supported by vertex and bfl (flux-pro-1.0-fill) agents.',
                 },
                 editMode: {
                     type: 'string',

@@ -35,7 +35,7 @@ This is a significantly refactored ChatGPT Telegram bot project that supports mu
   - **OpenAI**: webSearch, codeInterpreter, fileSearch, imageGeneration, MCP
 - **Function Calling**: Built-in tool functions with support for custom functions via environment variables
 - **Image & Video Generation**:
-  - Images: DALL-E, Google Imagen, Kling AI, Vertex AI, Workers AI
+  - Images: DALL-E, Google Imagen, Kling AI, Vertex AI, Workers AI, xAI, **Black Forest Labs (FLUX.2)**
   - Videos: Google Veo 3.1 Fast (8-second videos with audio)
 - **Voice Processing**:
   - TTS: OpenAI, Google, Fish Audio with multi-speaker support
@@ -163,6 +163,7 @@ Key configuration options:
 - `ANTHROPIC_API_KEY`: Anthropic API key
 - `GOOGLE_API_KEY`: Google API key
 - `XAI_API_KEY`: xAI Grok API key
+- `BFL_API_KEY`: Black Forest Labs (FLUX) API key
 
 **Advanced Configuration:**
 - **Server-Side Tools**:
@@ -218,7 +219,7 @@ The bot comes with a rich set of built-in tools that can be called by AI models:
 - **command** - Execute Telegram commands from AI
 
 **🎨 Creative Tools**
-- **image_gen** - Multi-provider image generation (DALL-E, Google, Vertex, xAI, Kling, Workers)
+- **image_gen** - Multi-provider image generation (DALL-E, Google, Vertex, xAI, Kling, Workers, **BFL/FLUX**)
 - **google_veo** - Google Veo 3.1 video generation (8-second videos with audio)
 - **kling** - KlingAI image/video generation with editing support
 

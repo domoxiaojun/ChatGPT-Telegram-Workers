@@ -35,7 +35,8 @@
   - **OpenAI**: webSearch、codeInterpreter、fileSearch、imageGeneration、MCP
 - **函数调用**: 内置多种工具函数，支持通过环境变量添加自定义函数
 - **图像与视频生成**:
-  - 图像：DALL-E、Google Imagen、Kling AI、Vertex AI、Workers AI
+  - 图像：DALL-E、Google Imagen、Kling AI、Vertex AI、Workers AI、xAI、**Black Forest Labs (FLUX.2)**
+  - 视频：Google Veo 3.1 Fast（8秒带音频视频）
   - 视频：Google Veo 3.1 Fast（8秒视频+音频）
 - **语音处理**:
   - TTS：OpenAI、Google、Fish Audio，支持多说话人
@@ -163,6 +164,7 @@ src/
 - `ANTHROPIC_API_KEY`: Anthropic API密钥
 - `GOOGLE_API_KEY`: Google API密钥
 - `XAI_API_KEY`: xAI Grok API密钥
+- `BFL_API_KEY`: Black Forest Labs (FLUX) API密钥
 
 **高级配置：**
 - **服务端工具**:
@@ -218,7 +220,7 @@ src/
 - **command** - 从AI执行Telegram命令
 
 **🎨 创意工具**
-- **image_gen** - 多提供商图像生成（DALL-E、Google、Vertex、xAI、Kling、Workers）
+- **image_gen** - 多提供商图像生成（DALL-E、Google、Vertex、xAI、Kling、Workers、**BFL/FLUX**）
 - **google_veo** - Google Veo 3.1视频生成（8秒视频+音频）
 - **kling** - KlingAI图像/视频生成，支持编辑
 

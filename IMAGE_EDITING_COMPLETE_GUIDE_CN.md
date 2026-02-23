@@ -1,6 +1,6 @@
 # 图片编辑功能完整指南
 
-**更新时间：** 2025-12-20
+**更新时间：** 2026-02-23
 
 ---
 
@@ -14,6 +14,7 @@
 | **Vertex** | ✅ | ✅ | ✅ | 6种显式 | - | 专业编辑、精确控制 |
 | **OpenAI** | ✅ | ✅ | ✅ | 隐式 | - | 平衡性能、DALL-E 3生成 |
 | **xAI** | ✅ | ✅ | ❌ | 隐式 | 视频生成、图生视频、视频编辑 | 图片编辑、视频创作 |
+| **BFL (FLUX)** | ✅ | ✅ | ✅ | 隐式 | 多参考图（最多10张）、inpainting | 高质量生成、风格迁移、多参考图编辑 |
 
 ### Telegram 使用
 
@@ -220,7 +221,7 @@ VERTEX_CREDENTIALS={"client_email":"...","private_key":"..."}
 
 #### maskMode（遮罩模式）
 - `MASK_MODE_USER_PROVIDED` - 手动提供遮罩
-- `MASK_MODE_DETECTION_BOX` - 自动检测边界
+- `MASK_MODE_DETECTION_BOX` - 自动检测边界框
 - `MASK_MODE_CLOTHING_AREA` - 服装区域分割
 - `MASK_MODE_PARSED_PERSON` - 人体解析
 
@@ -309,7 +310,7 @@ XAI_IMAGE_MODEL=grok-imagine-image  # 新版图片生成和编辑模型
 
 #### 文本生成图片
 ```
-/img a cute dog in the garden
+/img 一只可爱的小狗在花园里
 ```
 
 #### 图片编辑（现已支持！）
@@ -376,20 +377,16 @@ xAI 提供强大的视频生成能力，通过 `xai_video` 工具调用。
   - `text-to-video` - 文本生成视频
   - `image-to-video` - 图片生成视频
   - `video-edit` - 视频编辑
-- `aspectRatio`: 宽高比（仅生成模式）
-  - `16:9`, `9:16`, `1:1`
-- `duration`: 时长（仅生成模式）
-  - 固定 5 秒
-- `resolution`: 分辨率（仅生成模式）
-  - `480p`, `720p`
+- `aspectRatio`: 宽高比（仅生成模式）：`16:9`, `9:16`, `1:1`
+- `duration`: 时长（仅生成模式）：固定 5 秒
+- `resolution`: 分辨率（仅生成模式）：`480p`, `720p`
 - `imageUrl`: 图片URL（图生视频模式必需）
 - `videoUrl`: 视频URL（视频编辑模式必需）
 
 #### 重要说明
 - 视频生成是**异步操作**，需要等待约 1-5 分钟
 - 视频编辑模式**不支持** `duration` 和 `aspectRatio` 参数
-- 轮询超时时间：10 分钟
-- 轮询间隔：5 秒
+- 轮询超时时间：10 分钟 / 轮询间隔：5 秒
 
 ### 使用示例
 
@@ -421,47 +418,6 @@ LLM 会自动调用 `xai_video` 工具：
 }
 ```
 
-### 技术实现
-
-#### 图片编辑
-```typescript
-// src/agent/xai.ts
-import { createXai } from '@ai-sdk/xai';
-import { generateImage } from 'ai';
-
-// 图片编辑
-const { images } = await generateImage({
-    model: xaiClient.image('grok-imagine-image'),
-    prompt: {
-        text: '把猫变成金毛犬',
-        images: [imageBuffer], // 参考图片
-    },
-    n: 1,
-    aspectRatio: '16:9',
-});
-```
-
-#### 视频生成
-```typescript
-// src/tools/internal/xai_video.ts
-import { experimental_generateVideo as generateVideo } from 'ai';
-
-// 文本生成视频
-const { videos } = await generateVideo({
-    model: xaiClient.video('grok-imagine-video'),
-    prompt: '一只约克夏在蒲公英丛中',
-    duration: 5,
-    aspectRatio: '16:9',
-    providerOptions: {
-        xai: {
-            resolution: '720p',
-            pollTimeoutMs: 600000, // 10分钟
-            pollIntervalMs: 5000,
-        },
-    },
-});
-```
-
 ### 限制说明
 - 图片编辑：不支持遮罩（mask）
 - 视频生成：固定 5 秒时长
@@ -470,33 +426,112 @@ const { videos } = await generateVideo({
 
 ---
 
+## 5. Black Forest Labs (FLUX)
+
+### 配置
+```env
+BFL_API_KEY=your-api-key
+BFL_IMAGE_MODEL=flux-2-klein-9b  # 默认，速度最快（亚秒级）
+
+# 其他选项：见下方模型表格
+```
+
+### 模型
+
+#### FLUX.2（最新一代）— 全部支持编辑
+| 模型 ID | 生成 | 编辑 | 最多参考图 | 说明 |
+|---------|------|------|-----------|------|
+| **flux-2-pro** | ✅ | ✅ | 8张 | 生产级，速度/质量平衡 |
+| **flux-2-max** | ✅ | ✅ | 8张 | 最高质量 |
+| **flux-2-flex** | ✅ | ✅ | 8张 | 可调步数（1-50），排版专用 |
+| flux-2-klein-9b | ✅ | ✅ | 4张 | 速度最快（亚秒级）（**默认**） |
+| flux-2-klein-4b | ✅ | ✅ | 4张 | 速度最快（亚秒级），质量较低 |
+
+#### FLUX.1 / FLUX Kontext
+| 模型 ID | 生成 | 编辑 | 多参考图 | Inpainting | 说明 |
+|---------|------|------|---------|-----------|------|
+| flux-kontext-pro | ✅ | ✅ | ✅(最多10张) | ❌ | 上下文编辑 |
+| flux-kontext-max | ✅ | ✅ | ✅(最多10张) | ❌ | 高质量上下文编辑 |
+| flux-pro-1.1-ultra | ✅ | ❌ | ❌ | ❌ | 超高分辨率（4MP）生成 |
+| flux-pro-1.1 | ✅ | ❌ | ❌ | ❌ | 快速生成 |
+| flux-pro | ✅ | ❌ | ❌ | ❌ | FLUX.1 [pro] 生成 |
+| flux-pro-1.0-fill | ❌ | ✅ | ✅ | ✅ | 遮罩 inpainting/outpainting |
+| flux-dev | ✅ | ❌ | ❌ | ❌ | 开源权重，仅非商业用途 |
+
+### 特点
+- ✅ 文本生成图片
+- ✅ **图片编辑（Image-to-Image）** — 所有 FLUX.2 + flux-kontext-pro/max
+- ✅ **多参考图**（FLUX.2 最多8张，Kontext 最多10张）
+- ✅ **遮罩 inpainting**（通过 `flux-pro-1.0-fill`）
+- ✅ 支持宽高比
+- ✅ 精细质量控制（steps、guidance、safety tolerance）
+- ❌ 无显式编辑模式
+
+### 文本生成图片
+```
+/img 一个宏大的未来都市黄昏风景，电影感光线
+```
+
+### 图片编辑（回复图片）
+```
+[回复图片] /img 将这张变成油画风格
+[回复图片] /img 将背景换成雪山
+[回复图片] /img 让主体穿上红色夹克
+```
+
+### 高级参数（通过 LLM 工具调用）
+
+| 参数 | 类型 | 范围 | 说明 |
+|------|------|------|------|
+| `steps` | 整数 | > 0 | 生成步数（越高质量越好） |
+| `guidance` | 数字 | ≥ 0 | 引导强度（提示词遵循度） |
+| `safetyTolerance` | 整数 | 0–6 | 安全过滤级别（0最严格） |
+| `outputFormat` | 字符串 | jpeg/png | 输出格式 |
+| `imagePromptStrength` | 数字 | 0–1 | 参考图对输出的影响强度 |
+| `aspectRatio` | 字符串 | 如 16:9 | 输出宽高比 |
+
+### 遮罩 Inpainting（flux-pro-1.0-fill）
+```json
+{
+  "agent": "bfl",
+  "prompts": ["在墙上添加一个发光的霓虹灯牌"],
+  "referenceImages": ["base64_image"],
+  "mask": "base64_mask_白色区域为编辑区"
+}
+```
+遮罩规范（与 Vertex 相同）：
+- **白色** = 要编辑的区域
+- **黑色** = 保持不变
+
+---
+
 ## 完整功能对比
 
 ### 基础功能
-| 功能 | Google | Vertex | OpenAI | xAI |
-|------|--------|--------|--------|-----|
-| 文本生成 | ✅ | ✅ | ✅ | ✅ |
-| 图片编辑 | ✅ | ✅ | ✅ | ✅ |
-| 遮罩支持 | ❌ | ✅ | ✅ | ❌ |
-| 多图输入 | ✅(14) | ✅ | ❌(1) | ✅(1) |
-| 视频生成 | ❌ | ❌ | ❌ | ✅ |
+| 功能 | Google | Vertex | OpenAI | xAI | BFL |
+|------|--------|--------|--------|-----|-----|
+| 文本生成 | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 图片编辑 | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 遮罩支持 | ❌ | ✅ | ✅ | ❌ | ✅(fill模型) |
+| 多图输入 | ✅(14) | ✅ | ❌(1) | ✅(1) | ✅(最多10张) |
+| 视频生成 | ❌ | ❌ | ❌ | ✅ | ❌ |
 
 ### 编辑控制
-| 功能 | Google | Vertex | OpenAI | xAI |
-|------|--------|--------|--------|-----|
-| 显式编辑模式 | ❌ | ✅(6种) | ❌ | ❌ |
-| 负面提示 | ❌ | ✅ | ❌ | ❌ |
-| 质量控制 | ❌ | ✅ | ✅ | ❌ |
-| 遮罩模式 | ❌ | ✅(5种) | ✅ | ❌ |
-| 视频编辑 | ❌ | ❌ | ❌ | ✅ |
+| 功能 | Google | Vertex | OpenAI | xAI | BFL |
+|------|--------|--------|--------|-----|-----|
+| 显式编辑模式 | ❌ | ✅(6种) | ❌ | ❌ | ❌ |
+| 负面提示 | ❌ | ✅ | ❌ | ❌ | ❌ |
+| 质量控制 | ❌ | ✅ | ✅ | ❌ | ✅(steps/guidance) |
+| 遮罩模式 | ❌ | ✅(5种) | ✅ | ❌ | ✅(fill模型) |
+| 视频编辑 | ❌ | ❌ | ❌ | ✅ | ❌ |
 
 ### 性能
-| 指标 | Google | Vertex | OpenAI | xAI |
-|------|--------|--------|--------|-----|
-| 速度 | 快 | 中 | 快 | 快 |
-| 质量 | 好 | 很好 | 好-很好 | 好 |
-| 成本 | 低 | 中 | 中 | 中 |
-| 每次最多 | 4张 | 4张 | 10张 | 10张 |
+| 指标 | Google | Vertex | OpenAI | xAI | BFL |
+|------|--------|--------|--------|-----|-----|
+| 速度 | 快 | 中 | 快 | 快 | 快（klein）/ 中（pro/max） |
+| 质量 | 好 | 很好 | 好-很好 | 好 | 很好 |
+| 成本 | 低 | 中 | 中 | 中 | 中 |
+| 每次最多 | 4张 | 4张 | 10张 | 10张 | 1张 |
 
 ---
 
@@ -534,14 +569,64 @@ const { videos } = await generateVideo({
 }
 ```
 
-### 风格转换（xAI - 仅生成）
+### 风格转换（xAI）
 ```json
 {
   "agent": "xai",
   "prompts": ["A beautiful sunset over the ocean with vibrant colors"]
-  // ❌ 不支持 referenceImages（图片编辑）
 }
 ```
+
+### 图片编辑（xAI）
+```json
+{
+  "agent": "xai",
+  "prompts": ["把这只猫变成金毛犬"],
+  "referenceImages": ["base64_image"]
+}
+```
+
+### 生成图片（BFL）
+```json
+{
+  "agent": "bfl",
+  "prompts": ["一幅宇航员在火星上的电影感肖像，戏剧性打光"],
+  "radio": "16:9"
+}
+```
+
+### 编辑图片（BFL - 快速）
+```json
+{
+  "agent": "bfl",
+  "prompts": ["将背景换成雪山"],
+  "referenceImages": ["base64_image"]
+}
+```
+
+### 编辑图片（BFL - 高质量精细控制）
+```json
+{
+  "agent": "bfl",
+  "prompts": ["将这张图变成吉卜力工作室风格的插画"],
+  "referenceImages": ["base64_image"],
+  "steps": 40,
+  "guidance": 7.5,
+  "safetyTolerance": 2,
+  "imagePromptStrength": 0.8
+}
+```
+
+### Inpainting（BFL - 带遮罩）
+```json
+{
+  "agent": "bfl",
+  "prompts": ["在墙上添加一个发光的霓虹灯牌"],
+  "referenceImages": ["base64_image"],
+  "mask": "base64_mask_白色区域为编辑区"
+}
+```
+> 注意：inpainting 需将 `BFL_IMAGE_MODEL` 设置为 `flux-pro-1.0-fill`。
 
 ---
 
@@ -573,6 +658,13 @@ const { videos } = await generateVideo({
 - ✅ 图片生成视频
 - ✅ 视频编辑转换
 - ❌ 不支持遮罩编辑
+
+**BFL (FLUX) - 高质量生成与编辑**
+- ✅ FLUX.2 生成和编辑（最多8张参考图）
+- ✅ FLUX Kontext 上下文编辑（最多10张参考图）
+- ✅ 遮罩 inpainting（`flux-pro-1.0-fill`）
+- ✅ 精细控制（steps、guidance、safety tolerance）
+- ❌ 无显式编辑模式
 
 ### 提示词最佳实践
 
@@ -616,6 +708,18 @@ AI_IMAGE_PROVIDER=xai
 XAI_IMAGE_MODEL=grok-imagine-image
 ```
 
+**BFL FLUX.2 生成与编辑：**
+```env
+AI_IMAGE_PROVIDER=bfl
+BFL_IMAGE_MODEL=flux-2-pro
+```
+
+**BFL Inpainting（带遮罩）：**
+```env
+AI_IMAGE_PROVIDER=bfl
+BFL_IMAGE_MODEL=flux-pro-1.0-fill
+```
+
 **视频生成（xAI）：**
 通过 LLM 工具调用 `xai_video`，支持文本生成视频、图生视频、视频编辑。
 
@@ -652,6 +756,15 @@ XAI_IMAGE_MODEL=grok-imagine-image
 XAI_IMAGE_MODEL=grok-imagine-image
 ```
 
+### BFL Inpainting 无效
+**问题：** 带遮罩编辑不生效
+**原因：** 普通 FLUX.2 模型不支持遮罩，需使用专用 fill 模型
+**解决：** 将模型切换为 `flux-pro-1.0-fill`
+
+```env
+BFL_IMAGE_MODEL=flux-pro-1.0-fill
+```
+
 ---
 
 ## 技术实现细节
@@ -682,11 +795,44 @@ const actualModel = isEditMode
 ### Telegram 命令支持
 ```typescript
 // src/telegram/command/system.ts
-// 仅 Google、Vertex、OpenAI 支持图片编辑
-if (['google', 'vertex', 'openai'].includes(agent.name)) {
+// Google、Vertex、OpenAI、xAI、BFL 均支持图片编辑
+if (['google', 'vertex', 'openai', 'xai', 'bfl'].includes(agent.name)) {
     extraParams.referenceImages = await getTelegramFile(...);
 }
-// xAI 不支持编辑，会在 agent 中抛出错误
+```
+
+### BFL 使用 AI SDK
+```typescript
+// src/agent/blackforestlabs.ts
+import { createBlackForestLabs } from '@ai-sdk/black-forest-labs';
+import { generateImage } from 'ai';
+
+// 文本生成图片
+const { images } = await generateImage({
+    model: bflClient.image('flux-2-klein-9b'),
+    prompt,
+    aspectRatio: '16:9',
+    providerOptions: { blackForestLabs: { steps: 30, safetyTolerance: 2 } },
+});
+
+// 图片编辑（支持所有 FLUX.2 + kontext 模型）
+const { images } = await generateImage({
+    model: bflClient.image('flux-2-pro'),
+    prompt: {
+        text: '把猫变成金毛犬',
+        images: ['https://...'],  // URL 或 base64
+    },
+});
+
+// 带遮罩 inpainting（flux-pro-1.0-fill）
+const { images } = await generateImage({
+    model: bflClient.image('flux-pro-1.0-fill'),
+    prompt: {
+        text: '添加一个发光的霓虹灯牌',
+        images: ['base64_image'],
+        mask: 'base64_mask',
+    },
+});
 ```
 
 ### xAI 使用 AI SDK
@@ -731,6 +877,15 @@ const { videos } = await generateVideo({
 
 ## 更新日志
 
+### 2026-02-23
+- ✅ **新增 Black Forest Labs (BFL / FLUX) 图片 Agent**
+- ✅ FLUX.2 系列：flux-2-pro、flux-2-max、flux-2-flex、flux-2-klein-4b/9b — 全部支持编辑（最多8张参考图）
+- ✅ FLUX Kontext：flux-kontext-pro/max — 上下文编辑（最多10张参考图）
+- ✅ 支持遮罩 inpainting（flux-pro-1.0-fill）
+- ✅ 支持 steps、guidance、safetyTolerance、outputFormat、imagePromptStrength、aspectRatio
+- ✅ 新增 `BFL_API_KEY`、`BFL_API_BASE`、`BFL_IMAGE_MODEL` 配置项
+- ✅ 在 `/img` 命令编辑白名单中注册 `bfl` Agent
+
 ### 2025-02-15
 - ✅ **xAI 添加图片编辑支持**（grok-imagine-image）
 - ✅ **xAI 添加视频生成功能**（grok-imagine-video）
@@ -747,12 +902,9 @@ const { videos } = await generateVideo({
 - ✅ Vertex 添加智能编辑模式选择（有/无 mask）
 - ✅ Vertex 支持 6 种编辑模式和高级参数
 - ✅ OpenAI 添加图片编辑支持（自动降级）
-- ✅ xAI 添加图片生成支持（**不支持编辑**）
 - ✅ 更新依赖到最新 beta 版本
 - ✅ 保留 Google 原有编辑功能
 - ✅ 修复 Vertex "Mask image is missing" 错误
-- ✅ 修复 xAI "IMAGE_PROCESS_FAILED" 错误（移除不支持的参数）
-- ✅ xAI 改用 AI SDK（正确处理参数限制）
 
 ---
 
@@ -763,9 +915,10 @@ const { videos } = await generateVideo({
 - [Vertex AI Model Versions](https://cloud.google.com/vertex-ai/generative-ai/docs/image/model-versioning)
 - [OpenAI Image Generation](https://platform.openai.com/docs/guides/images)
 - [xAI API Documentation](https://docs.x.ai/docs/overview)
+- [Black Forest Labs API Documentation](https://docs.bfl.ml/quick_start/introduction)
 - [AI SDK Documentation](https://sdk.vercel.ai/docs/ai-sdk-core/generating-images)
 
 ---
 
 **维护者：** Claude Code
-**最后更新：** 2025-02-15
+**最后更新：** 2026-02-23

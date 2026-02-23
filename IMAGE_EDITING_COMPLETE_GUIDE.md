@@ -1,6 +1,6 @@
 # Complete Guide to Image Editing Features
 
-**Last Updated:** 2025-02-15
+**Last Updated:** 2026-02-23
 
 ---
 
@@ -14,6 +14,7 @@
 | **Vertex** | ✅ | ✅ | ✅ | 6 explicit modes | - | Professional editing, precise control |
 | **OpenAI** | ✅ | ✅ | ✅ | Implicit | - | Balanced performance, DALL-E 3 generation |
 | **xAI** | ✅ | ✅ | ❌ | Implicit | Video generation, I2V, video editing | Image editing, video creation |
+| **BFL (FLUX)** | ✅ | ✅ | ✅ | Implicit | Multi-reference (up to 10 images), inpainting | High-quality generation, style transfer, multi-ref editing |
 
 ### Telegram Usage
 
@@ -470,33 +471,112 @@ const { videos } = await generateVideo({
 
 ---
 
+## 5. Black Forest Labs (FLUX)
+
+### Configuration
+```env
+BFL_API_KEY=your-api-key
+BFL_IMAGE_MODEL=flux-2-klein-9b  # Default, fastest (sub-second)
+
+# Other options: see model table below
+```
+
+### Models
+
+#### FLUX.2 (Latest Generation) — All support editing
+| Model ID | Generation | Editing | Max ref images | Notes |
+|----------|-----------|---------|---------------|-------|
+| **flux-2-pro** | ✅ | ✅ | 8 | Production-grade, speed/quality balance (Recommended) |
+| **flux-2-max** | ✅ | ✅ | 8 | Highest quality |
+| **flux-2-flex** | ✅ | ✅ | 8 | Adjustable steps (1-50), typography specialist |
+| flux-2-klein-9b | ✅ | ✅ | 4 | Fastest (sub-second), lower quality |
+| flux-2-klein-4b | ✅ | ✅ | 4 | Fastest (sub-second), lowest quality |
+
+#### FLUX.1 / FLUX Kontext
+| Model ID | Generation | Editing | Multi-ref | Inpainting | Notes |
+|----------|-----------|---------|-----------|-----------|-------|
+| flux-kontext-pro | ✅ | ✅ | ✅(up to 10) | ❌ | In-context editing |
+| flux-kontext-max | ✅ | ✅ | ✅(up to 10) | ❌ | Higher quality in-context editing |
+| flux-pro-1.1-ultra | ✅ | ❌ | ❌ | ❌ | Ultra high-res (4MP) generation |
+| flux-pro-1.1 | ✅ | ❌ | ❌ | ❌ | Fast generation |
+| flux-pro | ✅ | ❌ | ❌ | ❌ | FLUX.1 [pro] generation |
+| flux-pro-1.0-fill | ❌ | ✅ | ✅ | ✅ | Inpainting/outpainting with mask |
+| flux-dev | ✅ | ❌ | ❌ | ❌ | Open-weights, non-commercial |
+
+### Features
+- ✅ Text-to-image generation
+- ✅ **Image editing (Image-to-Image)** — all FLUX.2 models + flux-kontext-pro/max
+- ✅ **Multi-reference images** (up to 8 for FLUX.2, up to 10 for kontext)
+- ✅ **Inpainting with mask** (via `flux-pro-1.0-fill`)
+- ✅ Aspect ratio support
+- ✅ Fine-grained quality controls (steps, guidance, safety tolerance)
+- ❌ No explicit edit modes
+
+### Text-to-Image Generation
+```
+/img a cinematic landscape of a futuristic city at dusk
+```
+
+### Image Editing (Reply to image)
+```
+[Reply to image] /img turn this into an oil painting
+[Reply to image] /img change the background to a snowy mountain
+[Reply to image] /img make the subject wear a red jacket
+```
+
+### Advanced Parameters (via LLM tool call)
+
+| Parameter | Type | Range | Description |
+|-----------|------|-------|-------------|
+| `steps` | integer | > 0 | Generation steps (higher = better quality) |
+| `guidance` | number | ≥ 0 | Guidance scale (prompt adherence) |
+| `safetyTolerance` | integer | 0–6 | Safety filter level (0 = strictest) |
+| `outputFormat` | string | jpeg/png | Output format |
+| `imagePromptStrength` | number | 0–1 | How strongly reference images influence output |
+| `aspectRatio` | string | e.g. 16:9 | Output aspect ratio |
+
+### Inpainting with Mask (flux-pro-1.0-fill)
+```json
+{
+  "agent": "bfl",
+  "prompts": ["add a glowing neon sign on the wall"],
+  "referenceImages": ["base64_image"],
+  "mask": "base64_mask_white_area_to_edit"
+}
+```
+Mask convention (same as Vertex):
+- **White** = area to edit
+- **Black** = keep unchanged
+
+---
+
 ## Complete Feature Comparison
 
 ### Basic Features
-| Feature | Google | Vertex | OpenAI | xAI |
-|---------|--------|--------|--------|-----|
-| Text Generation | ✅ | ✅ | ✅ | ✅ |
-| Image Editing | ✅ | ✅ | ✅ | ✅ |
-| Mask Support | ❌ | ✅ | ✅ | ❌ |
-| Multi-image Input | ✅(14) | ✅ | ❌(1) | ✅(1) |
-| Video Generation | ❌ | ❌ | ❌ | ✅ |
+| Feature | Google | Vertex | OpenAI | xAI | BFL |
+|---------|--------|--------|--------|-----|-----|
+| Text Generation | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Image Editing | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Mask Support | ❌ | ✅ | ✅ | ❌ | ✅(fill model) |
+| Multi-image Input | ✅(14) | ✅ | ❌(1) | ✅(1) | ✅(up to 10) |
+| Video Generation | ❌ | ❌ | ❌ | ✅ | ❌ |
 
 ### Editing Control
-| Feature | Google | Vertex | OpenAI | xAI |
-|---------|--------|--------|--------|-----|
-| Explicit Edit Modes | ❌ | ✅(6 modes) | ❌ | ❌ |
-| Negative Prompt | ❌ | ✅ | ❌ | ❌ |
-| Quality Control | ❌ | ✅ | ✅ | ❌ |
-| Mask Modes | ❌ | ✅(5 modes) | ✅ | ❌ |
-| Video Editing | ❌ | ❌ | ❌ | ✅ |
+| Feature | Google | Vertex | OpenAI | xAI | BFL |
+|---------|--------|--------|--------|-----|-----|
+| Explicit Edit Modes | ❌ | ✅(6 modes) | ❌ | ❌ | ❌ |
+| Negative Prompt | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Quality Control | ❌ | ✅ | ✅ | ❌ | ✅(steps/guidance) |
+| Mask Modes | ❌ | ✅(5 modes) | ✅ | ❌ | ✅(fill model) |
+| Video Editing | ❌ | ❌ | ❌ | ✅ | ❌ |
 
 ### Performance
-| Metric | Google | Vertex | OpenAI | xAI |
-|--------|--------|--------|--------|-----|
-| Speed | Fast | Medium | Fast | Fast |
-| Quality | Good | Very Good | Good-Very Good | Good |
-| Cost | Low | Medium | Medium | Medium |
-| Max Per Request | 4 images | 4 images | 10 images | 10 images |
+| Metric | Google | Vertex | OpenAI | xAI | BFL |
+|--------|--------|--------|--------|-----|-----|
+| Speed | Fast | Medium | Fast | Fast | Medium |
+| Quality | Good | Very Good | Good-Very Good | Good | Very Good |
+| Cost | Low | Medium | Medium | Medium | Medium |
+| Max Per Request | 4 images | 4 images | 10 images | 10 images | 1 image |
 
 ---
 
@@ -551,6 +631,48 @@ const { videos } = await generateVideo({
 }
 ```
 
+### Generate Image (BFL)
+```json
+{
+  "agent": "bfl",
+  "prompts": ["a cinematic portrait of an astronaut on Mars, dramatic lighting"],
+  "radio": "16:9"
+}
+```
+
+### Edit Image (BFL - fast)
+```json
+{
+  "agent": "bfl",
+  "prompts": ["change the background to a snowy mountain"],
+  "referenceImages": ["base64_image"]
+}
+```
+
+### Edit Image (BFL - high quality with controls)
+```json
+{
+  "agent": "bfl",
+  "prompts": ["turn this into a Studio Ghibli style illustration"],
+  "referenceImages": ["base64_image"],
+  "steps": 40,
+  "guidance": 7.5,
+  "safetyTolerance": 2,
+  "imagePromptStrength": 0.8
+}
+```
+
+### Inpainting (BFL - with mask)
+```json
+{
+  "agent": "bfl",
+  "prompts": ["add a glowing neon sign on the wall"],
+  "referenceImages": ["base64_image"],
+  "mask": "base64_mask_white_area_to_edit"
+}
+```
+> Note: Set `BFL_IMAGE_MODEL=flux-pro-1.0-fill` for inpainting.
+
 ---
 
 ## Practical Tips
@@ -581,6 +703,13 @@ const { videos } = await generateVideo({
 - ✅ Image-to-video generation
 - ✅ Video editing and transformation
 - ❌ No mask editing support
+
+**BFL (FLUX) - High Quality Generation & Editing**
+- ✅ FLUX.2 generation and editing (up to 8 reference images)
+- ✅ FLUX Kontext in-context editing (up to 10 reference images)
+- ✅ Inpainting with mask (`flux-pro-1.0-fill`)
+- ✅ Fine-grained controls (steps, guidance, safety tolerance)
+- ❌ No explicit edit modes
 
 ### Prompt Best Practices
 
@@ -622,6 +751,18 @@ DALL_E_MODEL=dall-e-2  # or gpt-image-1
 ```env
 AI_IMAGE_PROVIDER=xai
 XAI_IMAGE_MODEL=grok-imagine-image
+```
+
+**BFL FLUX.2 Generation & Editing:**
+```env
+AI_IMAGE_PROVIDER=bfl
+BFL_IMAGE_MODEL=flux-2-pro
+```
+
+**BFL Inpainting (with mask):**
+```env
+AI_IMAGE_PROVIDER=bfl
+BFL_IMAGE_MODEL=flux-pro-1.0-fill
 ```
 
 **Video Generation (xAI):**
@@ -690,10 +831,44 @@ const actualModel = isEditMode
 ### Telegram Command Support
 ```typescript
 // src/telegram/command/system.ts
-// Google, Vertex, OpenAI, xAI all support image editing
-if (['google', 'vertex', 'openai', 'xai'].includes(agent.name)) {
+// Google, Vertex, OpenAI, xAI, BFL all support image editing
+if (['google', 'vertex', 'openai', 'xai', 'bfl'].includes(agent.name)) {
     extraParams.referenceImages = await getTelegramFile(...);
 }
+```
+
+### BFL Using AI SDK
+```typescript
+// src/agent/blackforestlabs.ts
+import { createBlackForestLabs } from '@ai-sdk/black-forest-labs';
+import { generateImage } from 'ai';
+
+// Text-to-image generation
+const { images } = await generateImage({
+    model: bflClient.image('flux-2-pro'),
+    prompt,
+    aspectRatio: '16:9',
+    providerOptions: { blackForestLabs: { steps: 30, safetyTolerance: 2 } },
+});
+
+// Image editing (reply to image, supports all FLUX.2 + kontext models)
+const { images } = await generateImage({
+    model: bflClient.image('flux-2-pro'),
+    prompt: {
+        text: 'turn the cat into a golden retriever',
+        images: ['https://...'],  // URL or base64
+    },
+});
+
+// Inpainting with mask (flux-pro-1.0-fill)
+const { images } = await generateImage({
+    model: bflClient.image('flux-pro-1.0-fill'),
+    prompt: {
+        text: 'add a glowing neon sign',
+        images: ['base64_image'],
+        mask: 'base64_mask',
+    },
+});
 ```
 
 ### xAI Using AI SDK
@@ -738,6 +913,15 @@ const { videos } = await generateVideo({
 
 ## Changelog
 
+### 2026-02-23
+- ✅ **Added Black Forest Labs (BFL / FLUX) image agent**
+- ✅ FLUX.2 series: flux-2-pro, flux-2-max, flux-2-flex, flux-2-klein-4b/9b — all support editing (up to 8 reference images)
+- ✅ FLUX Kontext: flux-kontext-pro/max — in-context editing (up to 10 reference images)
+- ✅ Inpainting with mask support via `flux-pro-1.0-fill`
+- ✅ Supports steps, guidance, safetyTolerance, outputFormat, imagePromptStrength, aspectRatio
+- ✅ Added `BFL_API_KEY`, `BFL_API_BASE`, `BFL_IMAGE_MODEL` config keys
+- ✅ Registered `bfl` agent in `/img` command editing allowlist
+
 ### 2025-02-15
 - ✅ **xAI added image editing support** (grok-imagine-image)
 - ✅ **xAI added video generation features** (grok-imagine-video)
@@ -767,9 +951,10 @@ const { videos } = await generateVideo({
 - [Vertex AI Model Versions](https://cloud.google.com/vertex-ai/generative-ai/docs/image/model-versioning)
 - [OpenAI Image Generation](https://platform.openai.com/docs/guides/images)
 - [xAI API Documentation](https://docs.x.ai/docs/overview)
+- [Black Forest Labs API Documentation](https://docs.bfl.ml/quick_start/introduction)
 - [AI SDK Documentation](https://sdk.vercel.ai/docs/ai-sdk-core/generating-images)
 
 ---
 
 **Maintainer:** Claude Code
-**Last Updated:** 2025-02-15
+**Last Updated:** 2026-02-23

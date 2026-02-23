@@ -8,6 +8,7 @@ import {
     AgentShareConfig,
     AnthropicConfig,
     AzureConfig,
+    BlackForestLabsConfig,
     CohereConfig,
     DalleAIConfig,
     DefineKeys,
@@ -39,7 +40,8 @@ export type AgentUserConfig = Record<string, any>
     & ExtraUserConfig
     & VertexConfig
     & XAIConfig
-    & FishConfig;
+    & FishConfig
+    & BlackForestLabsConfig;
 
 function createAgentUserConfig(): AgentUserConfig {
     return Object.assign(
@@ -59,6 +61,7 @@ function createAgentUserConfig(): AgentUserConfig {
         new VertexConfig(),
         new XAIConfig(),
         new FishConfig(),
+        new BlackForestLabsConfig(),
     );
 }
 

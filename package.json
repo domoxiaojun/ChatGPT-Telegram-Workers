@@ -50,6 +50,7 @@
         "@ai-sdk/openai": "^3.0.30",
         "@ai-sdk/openai-compatible": "^2.0.30",
         "@ai-sdk/provider": "^3.0.8",
+        "@ai-sdk/black-forest-labs": "^1.0.20",
         "@ai-sdk/xai": "^3.0.57",
         "@ffmpeg.wasm/core-st": "^0.13.2",
         "@ffmpeg.wasm/main": "^0.13.1",

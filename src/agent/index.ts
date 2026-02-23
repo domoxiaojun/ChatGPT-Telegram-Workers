@@ -7,6 +7,7 @@ import { AzureChatAI, AzureImageAI } from './azure';
 import { Cohere } from './cohere';
 import { FishTTS } from './fish';
 import { Google, GoogleImage, GoogleTTS } from './google';
+import { BlackForestLabsImage } from './blackforestlabs';
 import { KlingAI } from './kling';
 import { Mistral } from './mistralai';
 import { Dalle, OpenAI, OpenAIASR, OpenAIFM, OpenAITTS } from './openai';
@@ -50,6 +51,7 @@ export const IMAGE_AGENTS: ImageAgent[] = [
     new KlingAI(),
     new GoogleImage(),
     new XAIImage(),
+    new BlackForestLabsImage(),
 ];
 
 export function loadImageGen(context: AgentUserConfig): ImageAgent {

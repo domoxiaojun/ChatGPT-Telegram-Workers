@@ -785,6 +785,23 @@ export class FishConfig {
     FISH_TTS_EXTRA_PARAMS: Record<string, any> = {};
 }
 
+export class BlackForestLabsConfig {
+    // Black Forest Labs API key (supports multiple keys separated by comma for rotation)
+    BFL_API_KEY: string[] = [];
+    // Black Forest Labs API base URL
+    BFL_API_BASE = 'https://api.bfl.ai/v1';
+    // Black Forest Labs image model
+    // FLUX.2 (generation + editing, up to 8 ref images):
+    //   flux-2-pro, flux-2-max, flux-2-flex, flux-2-klein-4b, flux-2-klein-9b
+    // FLUX Kontext (in-context editing, up to 10 ref images):
+    //   flux-kontext-pro, flux-kontext-max
+    // FLUX.1 generation only:
+    //   flux-pro-1.1-ultra, flux-pro-1.1, flux-pro, flux-dev
+    // Inpainting with mask:
+    //   flux-pro-1.0-fill
+    BFL_IMAGE_MODEL = 'flux-2-klein-9b';
+}
+
 export class DefineKeys {
     DEFINE_KEYS: string[] = [];
 }

@@ -6,6 +6,7 @@
       "dependencies": {
         "@ai-sdk/anthropic": "^3.0.46",
         "@ai-sdk/azure": "^3.0.31",
+        "@ai-sdk/black-forest-labs": "^1.0.20",
         "@ai-sdk/cohere": "^3.0.21",
         "@ai-sdk/google": "^3.0.30",
         "@ai-sdk/google-vertex": "^4.0.61",
@@ -52,6 +53,8 @@
     "@ai-sdk/anthropic": ["@ai-sdk/anthropic@3.0.46", "", { "dependencies": { "@ai-sdk/provider": "3.0.8", "@ai-sdk/provider-utils": "4.0.15" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-zXJPiNHaIiQ6XUqLeSYZ3ZbSzjqt1pNWEUf2hlkXlmmw8IF8KI0ruuGaDwKCExmtuNRf0E4TDxhsc9wRgWTzpw=="],
 
     "@ai-sdk/azure": ["@ai-sdk/azure@3.0.31", "", { "dependencies": { "@ai-sdk/openai": "3.0.30", "@ai-sdk/provider": "3.0.8", "@ai-sdk/provider-utils": "4.0.15" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-W9x6nt+yf+Ns0/Wx7U9TXHLmfu7mOUqy1b/drtVd3DvNfDudyruQM/YjM2268Q0FatSrPlA2RlnPVPGRH/4V8Q=="],
+
+    "@ai-sdk/black-forest-labs": ["@ai-sdk/black-forest-labs@1.0.20", "", { "dependencies": { "@ai-sdk/provider": "3.0.8", "@ai-sdk/provider-utils": "4.0.15" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-ILz09o0npSMTZvazqd0PdIKLs4jgdXZSD3rhA8Z0/j79sKhdFOeQhdBbca1P1b5NNB9KyXj0+IISXvHyD773zQ=="],
 
     "@ai-sdk/cohere": ["@ai-sdk/cohere@3.0.21", "", { "dependencies": { "@ai-sdk/provider": "3.0.8", "@ai-sdk/provider-utils": "4.0.15" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-HDUvNX2UhGpX0VyeAdOStFy07ZvjFtL+hXT5cXcwK/TBNiIhPFovTYHKVNSdNAxbH2eO7zRzygjMVUEX1X0Btw=="],
 
