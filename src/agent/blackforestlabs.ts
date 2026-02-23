@@ -69,7 +69,7 @@ export class BlackForestLabsImage implements ImageAgent {
                 ...(providerOptionsParam && { providerOptions: providerOptionsParam }),
             } as any);
 
-            return this.render(result.images, prompt);
+            return this.render(result.images);
         }
 
         // 文本到图片生成（Text-to-Image）
@@ -80,17 +80,17 @@ export class BlackForestLabsImage implements ImageAgent {
             ...(providerOptionsParam && { providerOptions: providerOptionsParam }),
         } as any);
 
-        return this.render(result.images, prompt);
+        return this.render(result.images);
     };
 
-    readonly render = async (result: Response | GeneratedImage[] | string[], prompt: string): Promise<ImageResult> => {
+    readonly render = async (result: Response | GeneratedImage[] | string[]): Promise<ImageResult> => {
         const images = result as GeneratedImage[];
         if (images.length === 0) {
             throw new Error('No images generated');
         }
         return {
             raw: images.map(({ uint8Array }) => new Blob([Buffer.from(uint8Array)], { type: 'image/png' })),
-            text: prompt,
+            text: '',
         };
     };
 }
