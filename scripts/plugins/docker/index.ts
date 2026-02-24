@@ -6,10 +6,9 @@ FROM node:20-alpine as PROD
 
 WORKDIR /app
 COPY index.js package.json /app/
-RUN apk add --no-cache sqlite python3 make g++ && \\
-npm install --omit=dev && \\
-npm cache clean --force && \\
-apk del python3 make g++
+RUN npm install --omit=dev && \\
+apk add --no-cache sqlite && \\
+npm cache clean --force
 EXPOSE 8787
 CMD ["node", "index.js"]
 `;
