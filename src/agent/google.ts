@@ -63,7 +63,7 @@ export class GoogleImage extends GoogleBase implements ImageAgent {
 
         // Build generation config with Gemini 3 Pro Image support
         const generationConfig: any = {
-            response_modalities: ['text', 'image'],
+            response_modalities: ['TEXT', 'IMAGE'],
         };
 
         // Add imageConfig for Gemini 3 Pro Image (aspect ratio and resolution)
