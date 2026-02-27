@@ -137,7 +137,7 @@ export class GoogleImage extends GoogleBase implements ImageAgent {
                 completion: usage.candidatesTokenCount,
             };
         }
-        return this.render(images, text || prompt);
+        return this.render(images, text);
     };
 
     readonly render = async (result: Response | GeneratedImage[] | any[], prompt: string): Promise<ImageResult> => {
