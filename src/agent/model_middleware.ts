@@ -584,9 +584,16 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
 
         // Code Execution tool - 代码执行（Python + Bash）
         // 支持数组配置或布尔开关（向后兼容）
+        // 动态找最新版本：取所有 codeExecution_YYYYMMDD 中日期最大的
         if (context.USE_ANTHROPIC_BUILDIN.includes('codeExecution') || context.ANTHROPIC_ENABLE_CODE_EXECUTION) {
-            tools.code_execution = anthropicTools.codeExecution_20250825();
-            activeTools.push('code_execution');
+            const codeExecKey = Object.keys(anthropicTools)
+                .filter(k => /^codeExecution_\d{8}$/.test(k))
+                .sort()
+                .at(-1);
+            if (codeExecKey) {
+                tools.code_execution = (anthropicTools as any)[codeExecKey]();
+                activeTools.push('code_execution');
+            }
         }
 
         if (context.ANTHROPIC_ENABLE_WEB_FETCH || context.ANTHROPIC_ENABLE_WEB_SEARCH || context.ANTHROPIC_ENABLE_CODE_EXECUTION) {

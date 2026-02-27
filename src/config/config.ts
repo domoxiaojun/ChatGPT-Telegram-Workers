@@ -438,7 +438,7 @@ export class GeminiConfig {
     // Google Gemini Vision Model
     GOOGLE_VISION_MODEL = 'gemini-2.5-flash';
     // Google Gemini Image Model
-    GOOGLE_IMAGE_MODEL = 'gemini-2.0-flash-exp';
+    GOOGLE_IMAGE_MODEL = 'gemini-3.1-flash-image-preview';
     // Google Embedding Model
     GOOGLE_EMBEDDING_MODEL = 'text-embedding-004';
     // Google API Extra Params, key is model name prefix, separated by commas; value is extra Params, support path(camelCase), split by '.'
@@ -471,10 +471,10 @@ export class GeminiConfig {
     GOOGLE_MAPS_MODEL = 'gemini-2.5-flash';
     GOOGLE_TTS_MODEL = 'gemini-2.5-flash-preview-tts';
 
-    // Gemini 3 Pro Image Configuration (gemini-3-pro-image-preview)
-    // Image aspect ratio: "1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"
+    // Gemini 3.1 Flash Image Configuration (gemini-3.1-flash-image-preview)
+    // Image aspect ratio: "1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9", "1:8", "8:1", "1:4", "4:1"
     GOOGLE_IMAGE_ASPECT_RATIO: string | null = null;
-    // Image resolution: "1K", "2K", "4K"
+    // Image resolution: "1K", "2K", "4K", "512"
     GOOGLE_IMAGE_SIZE: string | null = null;
     // Enable Google Search grounding for real-time data (weather, stocks, current events)
     GOOGLE_IMAGE_ENABLE_GOOGLE_SEARCH = false;
