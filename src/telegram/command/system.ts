@@ -20,6 +20,7 @@ import { getTools } from '../../tools';
 import { WssRequest } from '../../utils/others/wsrequest';
 import { createTelegramBotAPI } from '../api';
 import { chatWithLLM, OnStreamHander, sendImages, tts } from '../handler/chat';
+import { getGroupMessageCacheKey } from '../handler/group';
 import { escape } from '../utils/md2tgmd';
 import { checkIsNeedTagIds, sendAction } from '../utils/send';
 import { chunkArray, getTelegramFile, isCfWorker, isTelegramChatTypeGroup, UUIDv4 } from '../utils/tg_utils';
@@ -149,6 +150,9 @@ export class HelpCommandHandler implements CommandHandler {
 class BaseNewCommandHandler {
     static async handle(showID: boolean, message: Telegram.Message, subcommand: string, context: WorkerContext): Promise<Response> {
         await ENV.DATABASE.delete(context.SHARE_CONTEXT.chatHistoryKey);
+        if (ENV.GROUP_MESSAGE_LISTEN_MODE && isTelegramChatTypeGroup(message.chat.type)) {
+            await ENV.DATABASE.delete(getGroupMessageCacheKey(message.chat.id));
+        }
         const text = ENV.I18N.command.new.new_chat_start + (showID ? `(${message.chat.id})` : '');
         const params: Telegram.SendMessageParams = {
             chat_id: message.chat.id,
