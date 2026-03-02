@@ -243,6 +243,15 @@ export class GroupMention implements MessageHandler {
         // 在检查触发之前，先缓存所有群组消息（如果启用了监听模式）
         await cacheGroupMessage(message, context);
 
+        // 检查是否是被忽略的命令（用于第三方机器人命令）
+        const text = (message.text || message.caption || '').trim();
+        for (const ignoredCmd of ENV.IGNORE_COMMANDS) {
+            if (text === ignoredCmd || text.startsWith(`${ignoredCmd} `) || text.startsWith(`${ignoredCmd}\n`)) {
+                log.info(`[IGNORE COMMAND] Ignoring command in group: ${ignoredCmd}`);
+                return new Response('Ignored command', { status: 200 });
+            }
+        }
+
         // 处理回复消息, 如果回复的是当前机器人的消息交给下一个中间件处理
         const replyMe = `${message.reply_to_message?.from?.id}` === `${context.SHARE_CONTEXT.botId}`;
         if (replyMe) {
