@@ -270,17 +270,41 @@ ANTHROPIC_STRUCTURED_OUTPUT_MODE="auto"  # auto | outputFormat | tool
 
 ### 1. Google Search - Google 搜索
 
-**功能**：使用 Google 搜索引擎获取实时信息。
+**功能**：使用 Google 搜索引擎获取实时信息。支持网页搜索、图片搜索和时间范围过滤。
 
-**配置**：
+**基础配置**：
 ```bash
 USE_GOOGLE_BUILDIN=["googleSearch"]
 ```
 
+**高级配置**：
+```bash
+# 启用网页搜索（默认：true）
+GOOGLE_SEARCH_ENABLE_WEB_SEARCH=true
+
+# 启用图片搜索，仅支持图片模型（默认：false）
+GOOGLE_SEARCH_ENABLE_IMAGE_SEARCH=false
+
+# 时间范围过滤（ISO 8601 格式）
+GOOGLE_SEARCH_TIME_RANGE_FILTER='{"startTime": "2025-01-01T00:00:00Z", "endTime": "2025-12-31T23:59:59Z"}'
+```
+
+**功能特性**：
+- **网页搜索**：搜索网页获取实时信息
+- **图片搜索**：基于搜索结果搜索和生成图片（需要 `gemini-3.1-flash-image-preview` 等支持图片的模型）
+- **时间范围过滤**：将搜索结果限制在特定时间段内
+- **Grounding**：自动结果验证和来源归属
+
+**使用场景**：
+- 实时新闻和时事查询
+- 基于上下文的图片搜索和生成
+- 特定时间范围内的历史数据
+- 基于位置的信息查询
+
 **注意**：
 - 需要 Gemini 2.0+ 模型
-- 自动集成 Google 搜索结果
-- 支持 Grounding（结果验证）
+- 图片搜索仅适用于支持图片的模型，如 `gemini-3.1-flash-image-preview`
+- 时间范围过滤可帮助将结果缩小到特定时期
 
 ---
 

@@ -74,16 +74,41 @@ When enabled, generate images based on real-time information:
 - 🌤️ Real-time weather maps
 - 📈 Latest stock charts
 - 🗺️ Geographic data visualization
+- 🖼️ Image search and generation
 
+**Basic Configuration:**
 ```env
 GOOGLE_IMAGE_ENABLE_GOOGLE_SEARCH=true
 ```
 
+**Advanced Configuration:**
+```env
+# Enable web search (default: true)
+GOOGLE_SEARCH_ENABLE_WEB_SEARCH=true
+
+# Enable image search for image-capable models (default: false)
+GOOGLE_SEARCH_ENABLE_IMAGE_SEARCH=true
+
+# Time range filter (ISO 8601 format)
+GOOGLE_SEARCH_TIME_RANGE_FILTER='{"startTime": "2025-01-01T00:00:00Z", "endTime": "2025-12-31T23:59:59Z"}'
+```
+
+**Features:**
+- **Web Search**: Search for real-time information to enhance image generation
+- **Image Search**: Search for reference images and incorporate them into generation
+- **Time Range Filter**: Restrict search results to specific time periods
+
 Example prompts:
 ```
+# Basic real-time data
 /img Generate an infographic about today's weather forecast in Taipei
 /img Create a chart showing Tesla stock prices from the past week
-/img Make an infographic about AI development in 2025
+
+# Image search + generation
+/img Search for photos of the 2026 Super Bowl halftime show and create a space-themed version
+
+# Time-filtered search
+/img Create an infographic about major tech events in January 2026
 ```
 
 #### Advanced Text Rendering

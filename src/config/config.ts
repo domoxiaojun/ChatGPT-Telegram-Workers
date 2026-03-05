@@ -458,6 +458,15 @@ export class GeminiConfig {
     GOOGLE_BUILDIN = ['googleSearch', 'codeExecution', 'urlContext', 'googleMaps', 'fileSearch', 'enterpriseWebSearch'];
     USE_GOOGLE_BUILDIN: string[] = [];
 
+    // Google Search configuration
+    // Enable web search (default: true when googleSearch is enabled)
+    GOOGLE_SEARCH_ENABLE_WEB_SEARCH = true;
+    // Enable image search for image-capable models (e.g., gemini-3.1-flash-image-preview)
+    GOOGLE_SEARCH_ENABLE_IMAGE_SEARCH = false;
+    // Time range filter for search results (ISO 8601 format)
+    // Example: { startTime: '2025-01-01T00:00:00Z', endTime: '2025-12-31T23:59:59Z' }
+    GOOGLE_SEARCH_TIME_RANGE_FILTER: { startTime?: string; endTime?: string } = {};
+
     // File Search configuration (for RAG)
     // Example: ['fileSearchStores/my-store-123']
     GOOGLE_FILE_SEARCH_STORES: string[] = [];

@@ -270,17 +270,41 @@ ANTHROPIC_STRUCTURED_OUTPUT_MODE="auto"  # auto | outputFormat | tool
 
 ### 1. Google Search - Google Search
 
-**Function**: Use Google search engine to retrieve real-time information.
+**Function**: Use Google search engine to retrieve real-time information. Supports web search, image search, and time range filtering.
 
-**Configuration**:
+**Basic Configuration**:
 ```bash
 USE_GOOGLE_BUILDIN=["googleSearch"]
 ```
 
+**Advanced Configuration**:
+```bash
+# Enable web search (default: true)
+GOOGLE_SEARCH_ENABLE_WEB_SEARCH=true
+
+# Enable image search for image-capable models (default: false)
+GOOGLE_SEARCH_ENABLE_IMAGE_SEARCH=false
+
+# Time range filter (ISO 8601 format)
+GOOGLE_SEARCH_TIME_RANGE_FILTER='{"startTime": "2025-01-01T00:00:00Z", "endTime": "2025-12-31T23:59:59Z"}'
+```
+
+**Features**:
+- **Web Search**: Search the web for real-time information
+- **Image Search**: Search and generate images based on search results (requires `gemini-3.1-flash-image-preview` or similar models)
+- **Time Range Filter**: Restrict search results to a specific time period
+- **Grounding**: Automatic result verification with source attribution
+
+**Use Cases**:
+- Real-time news and current events
+- Image search and generation with context
+- Historical data within specific time ranges
+- Location-based information queries
+
 **Note**:
 - Requires Gemini 2.0+ models
-- Automatic Google search result integration
-- Supports Grounding (result verification)
+- Image search only works with image-capable models like `gemini-3.1-flash-image-preview`
+- Time range filter helps narrow down results to specific periods
 
 ---
 

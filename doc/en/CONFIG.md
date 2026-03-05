@@ -560,6 +560,21 @@ Google Gemini provides various built-in tools.
 | `USE_GOOGLE_BUILDIN` | Enabled tools | `[]` |
 | `GOOGLE_PROVIDER_OPTIONS` | Provider options | See below |
 
+#### Google Search Configuration
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `GOOGLE_SEARCH_ENABLE_WEB_SEARCH` | Enable web search | `true` |
+| `GOOGLE_SEARCH_ENABLE_IMAGE_SEARCH` | Enable image search (for image-capable models) | `false` |
+| `GOOGLE_SEARCH_TIME_RANGE_FILTER` | Time range filter for search results | `{}` |
+
+**Time Range Filter Example**:
+```bash
+GOOGLE_SEARCH_TIME_RANGE_FILTER='{"startTime": "2025-01-01T00:00:00Z", "endTime": "2025-12-31T23:59:59Z"}'
+```
+
+**Image Search**: Only works with image-capable models like `gemini-3.1-flash-image-preview`. When enabled, the model can search for and generate images based on search results.
+
 **Provider Options**:
 ```javascript
 GOOGLE_PROVIDER_OPTIONS = {

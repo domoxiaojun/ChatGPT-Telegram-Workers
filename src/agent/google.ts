@@ -95,7 +95,30 @@ export class GoogleImage extends GoogleBase implements ImageAgent {
 
         // Add Google Search grounding tool for Gemini 3 Pro Image
         if (context.GOOGLE_IMAGE_ENABLE_GOOGLE_SEARCH) {
-            body.tools = [{ google_search: {} }];
+            // Build Google Search configuration with new API
+            const searchConfig: any = {};
+
+            // Configure search types (web and/or image search)
+            const searchTypes: any = {};
+            if (context.GOOGLE_SEARCH_ENABLE_WEB_SEARCH) {
+                searchTypes.web_search = {};
+            }
+            if (context.GOOGLE_SEARCH_ENABLE_IMAGE_SEARCH) {
+                searchTypes.image_search = {};
+            }
+            if (Object.keys(searchTypes).length > 0) {
+                searchConfig.search_types = searchTypes;
+            }
+
+            // Configure time range filter if provided
+            if (context.GOOGLE_SEARCH_TIME_RANGE_FILTER.startTime && context.GOOGLE_SEARCH_TIME_RANGE_FILTER.endTime) {
+                searchConfig.time_range_filter = {
+                    start_time: context.GOOGLE_SEARCH_TIME_RANGE_FILTER.startTime,
+                    end_time: context.GOOGLE_SEARCH_TIME_RANGE_FILTER.endTime,
+                };
+            }
+
+            body.tools = [{ google_search: Object.keys(searchConfig).length > 0 ? searchConfig : {} }];
         }
 
         if (referenceImages && referenceImages.length > 0) {

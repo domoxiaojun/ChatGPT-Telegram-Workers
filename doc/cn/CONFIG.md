@@ -560,6 +560,21 @@ Google Gemini 提供多种内置工具。
 | `USE_GOOGLE_BUILDIN` | 启用的工具 | `[]` |
 | `GOOGLE_PROVIDER_OPTIONS` | 提供商选项 | 见下方 |
 
+#### Google Search 配置
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `GOOGLE_SEARCH_ENABLE_WEB_SEARCH` | 启用网页搜索 | `true` |
+| `GOOGLE_SEARCH_ENABLE_IMAGE_SEARCH` | 启用图片搜索（仅支持图片模型） | `false` |
+| `GOOGLE_SEARCH_TIME_RANGE_FILTER` | 搜索结果时间范围过滤 | `{}` |
+
+**时间范围过滤示例**:
+```bash
+GOOGLE_SEARCH_TIME_RANGE_FILTER='{"startTime": "2025-01-01T00:00:00Z", "endTime": "2025-12-31T23:59:59Z"}'
+```
+
+**图片搜索**: 仅适用于支持图片的模型，如 `gemini-3.1-flash-image-preview`。启用后，模型可以基于搜索结果搜索和生成图片。
+
 **Provider Options**:
 ```javascript
 GOOGLE_PROVIDER_OPTIONS = {

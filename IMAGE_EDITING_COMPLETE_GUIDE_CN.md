@@ -74,16 +74,41 @@ GOOGLE_IMAGE_ENABLE_GOOGLE_SEARCH=true
 - 🌤️ 实时天气地图
 - 📈 最新股票图表
 - 🗺️ 地理数据可视化
+- 🖼️ 图片搜索和生成
 
+**基础配置：**
 ```env
 GOOGLE_IMAGE_ENABLE_GOOGLE_SEARCH=true
 ```
 
+**高级配置：**
+```env
+# 启用网页搜索（默认：true）
+GOOGLE_SEARCH_ENABLE_WEB_SEARCH=true
+
+# 启用图片搜索，仅支持图片模型（默认：false）
+GOOGLE_SEARCH_ENABLE_IMAGE_SEARCH=true
+
+# 时间范围过滤（ISO 8601 格式）
+GOOGLE_SEARCH_TIME_RANGE_FILTER='{"startTime": "2025-01-01T00:00:00Z", "endTime": "2025-12-31T23:59:59Z"}'
+```
+
+**功能特性：**
+- **网页搜索**：搜索实时信息以增强图片生成
+- **图片搜索**：搜索参考图片并将其融入生成过程
+- **时间范围过滤**：将搜索结果限制在特定时间段内
+
 示例提示词：
 ```
+# 基础实时数据
 /img 生成今天台北的天气预报信息图
 /img 创建一个展示过去一周特斯拉股价的图表
-/img 制作一张关于2025年AI发展的信息图
+
+# 图片搜索 + 生成
+/img 搜索2026年超级碗中场秀的照片，并创建一个太空主题版本
+
+# 时间过滤搜索
+/img 创建一张关于2026年1月重大科技事件的信息图
 ```
 
 #### 高级文本渲染

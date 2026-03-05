@@ -394,10 +394,34 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
         // Add configured Google built-in tools
         for (const toolName of context.USE_GOOGLE_BUILDIN) {
             switch (toolName) {
-                case 'googleSearch':
-                    tools.google_search = google.tools.googleSearch({});
+                case 'googleSearch': {
+                    // Build Google Search configuration with new features
+                    const searchConfig: any = {};
+
+                    // Configure search types (web and/or image search)
+                    const searchTypes: any = {};
+                    if (context.GOOGLE_SEARCH_ENABLE_WEB_SEARCH) {
+                        searchTypes.webSearch = {};
+                    }
+                    if (context.GOOGLE_SEARCH_ENABLE_IMAGE_SEARCH) {
+                        searchTypes.imageSearch = {};
+                    }
+                    if (Object.keys(searchTypes).length > 0) {
+                        searchConfig.searchTypes = searchTypes;
+                    }
+
+                    // Configure time range filter if provided
+                    if (context.GOOGLE_SEARCH_TIME_RANGE_FILTER.startTime && context.GOOGLE_SEARCH_TIME_RANGE_FILTER.endTime) {
+                        searchConfig.timeRangeFilter = {
+                            startTime: context.GOOGLE_SEARCH_TIME_RANGE_FILTER.startTime,
+                            endTime: context.GOOGLE_SEARCH_TIME_RANGE_FILTER.endTime,
+                        };
+                    }
+
+                    tools.google_search = google.tools.googleSearch(searchConfig);
                     activeTools.push('google_search');
                     break;
+                }
                 case 'codeExecution':
                     tools.code_execution = google.tools.codeExecution({});
                     activeTools.push('code_execution');

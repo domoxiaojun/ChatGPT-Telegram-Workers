@@ -5,7 +5,7 @@ export default {
         name: 'google_buildin',
         description: `Turn on the google gemini built-in tool.
         Available tools: googleSearch, codeExecution, urlContext, googleMaps.
-        googleSearch: search the web for information.
+        googleSearch: search the web for information. Supports web search and image search (for image-capable models). Can filter results by time range.
         codeExecution: execute code.
         urlContext: search the web for information based on the url.
         googleMaps: search for location-based information and places using Google Maps.
