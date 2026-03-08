@@ -73,9 +73,9 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
                 let targetModel = config.TOOL_MODEL;
 
                 currentModel = wrapLanguageModel({
-                    model: await createLlmModel(targetModel, config),
+                    model: await createLlmModel(targetModel, config) as any,
                     middleware,
-                });
+                }) as any;
             }
             record = getLogSingleton({ config });
             // record model log
@@ -93,11 +93,11 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
         },
 
         wrapGenerate: async ({ doGenerate, params, model }: { doGenerate: () => Promise<any>; params: any; model: LanguageModelV3 }) => {
-            return extractReasoning.wrapGenerate!({ doGenerate, doStream: () => model.doStream(params), params, model });
+            return extractReasoning.wrapGenerate!({ doGenerate, doStream: () => model.doStream(params), params, model } as any);
         },
 
         wrapStream: async ({ doStream, params, model }: { doStream: () => Promise<any>; params: any; model: LanguageModelV3 }) => {
-            return extractReasoning.wrapStream!({ doStream, doGenerate: () => model.doGenerate(params), params, model });
+            return extractReasoning.wrapStream!({ doStream, doGenerate: () => model.doGenerate(params), params, model } as any);
         },
 
         transformParams: async ({ type, params }: { type: 'generate' | 'stream'; params: LanguageModelV3CallOptions }) => {
