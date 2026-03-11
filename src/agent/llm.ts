@@ -36,9 +36,9 @@ export async function createLlmModel(model: string, context: AgentUserConfig): P
                 fetch: mockFetch(model_id, context, agent),
             });
             if (isResponseApi) {
-                return provider.responses(model_id);
+                return provider.responses(model_id) as unknown as LanguageModelV3;
             }
-            return provider.languageModel(model_id);
+            return provider.languageModel(model_id) as unknown as LanguageModelV3;
         case 'anthropic':
             return createAnthropic({
                 baseURL: context.ANTHROPIC_API_BASE,
@@ -79,7 +79,7 @@ export async function createLlmModel(model: string, context: AgentUserConfig): P
             const useResponsesApi = context.XAI_RESPONSE_MODELS.includes('*')
                 || context.XAI_RESPONSE_MODELS.some(prefix => model_id.startsWith(prefix));
             if (useResponsesApi) {
-                return xaiProvider.responses(model_id);
+                return xaiProvider.responses(model_id) as unknown as LanguageModelV3;
             }
             return xaiProvider.languageModel(model_id);
         case 'oailike':
