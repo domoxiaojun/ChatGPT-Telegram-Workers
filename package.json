@@ -53,14 +53,14 @@
         "@ai-sdk/xai": "^4.0.0-beta.5",
         "@ffmpeg.wasm/core-st": "^0.13.2",
         "@ffmpeg.wasm/main": "^0.13.1",
-        "ai": "7.0.0-beta.12",
+        "ai": "7.0.0-beta.14",
         "cf-worker-adapter": "^1.4.0",
         "node-cron": "^4.2.1",
         "zod": "^4.3.6"
     },
     "devDependencies": {
-        "@antfu/eslint-config": "^7.7.0",
-        "@cloudflare/workers-types": "^4.20260310.1",
+        "@antfu/eslint-config": "^7.7.2",
+        "@cloudflare/workers-types": "^4.20260312.1",
         "@rollup/plugin-node-resolve": "^16.0.3",
         "@types/node": "^25.4.0",
         "@types/node-cron": "^3.0.11",
@@ -83,7 +83,7 @@
         "wrangler": "^4.72.0"
     },
     "overrides": {
-        "@ai-sdk/gateway": "4.0.0-beta.7",
+        "@ai-sdk/gateway": "4.0.0-beta.8",
         "@ai-sdk/provider": "4.0.0-beta.0",
         "@ai-sdk/provider-utils": "5.0.0-beta.1"
     }
