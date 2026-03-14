@@ -1,6 +1,8 @@
 /* eslint-disable no-case-declarations */
-import type { LanguageModelV3 } from '@ai-sdk/provider';
+import type { LanguageModelV3, LanguageModelV4 } from '@ai-sdk/provider';
 import type { ModelMessage, StepResult, TextStreamPart } from 'ai';
+
+type LLMModel = LanguageModelV3 | LanguageModelV4;
 import type { AgentUserConfig } from '../config/env';
 import type { MessageInfo, ToolChoice } from './model_middleware';
 import type { ChatStreamTextHandler, OpenAIFuncCallData, ResponseMessage } from './types';
@@ -181,7 +183,7 @@ function stripGrokRenderTags(content: string): string {
     return content.replace(/\[grok:render\b[^\]]*>[\s\S]*?(?:<\/argument>\s*)+/gi, '');
 }
 
-export async function requestChatCompletionsV2({ model, messages, tools, activeTools, toolChoice, context, cache }: { model: LanguageModelV3; toolModel?: LanguageModelV3; prompt?: string; messages: ModelMessage[]; tools?: any; activeTools: string[]; toolChoice?: ToolChoice[] | undefined; context: AgentUserConfig; cache?: string[] }, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> {
+export async function requestChatCompletionsV2({ model, messages, tools, activeTools, toolChoice, context, cache }: { model: LLMModel; toolModel?: LLMModel; prompt?: string; messages: ModelMessage[]; tools?: any; activeTools: string[]; toolChoice?: ToolChoice[] | undefined; context: AgentUserConfig; cache?: string[] }, onStream: ChatStreamTextHandler | null): Promise<{ messages: ResponseMessage[]; content: string }> {
     // DEBUG: Log messages before sending to SDK
     log.info(`[requestChatCompletionsV2] messages before SDK: ${JSON.stringify(messages.map(m => {
         if (m.role === 'user' && Array.isArray(m.content)) {
@@ -405,7 +407,7 @@ function thinkingExtractor(messageInfo: MessageInfo) {
     };
 }
 
-async function combineParams({ context, middleware, model, messages, activeTools, tools, prepareStepPre, onStepFinish, onChunk }: { context: AgentUserConfig; middleware: any; model: LanguageModelV3; messages: ModelMessage[]; activeTools: string[]; tools: any; prepareStepPre: (middleware: (...args: any[]) => any) => any; onStepFinish: (data: StepResult<any>) => void; onChunk: (data: { chunk: TextStreamPart<any> }) => void }) {
+async function combineParams({ context, middleware, model, messages, activeTools, tools, prepareStepPre, onStepFinish, onChunk }: { context: AgentUserConfig; middleware: any; model: LLMModel; messages: ModelMessage[]; activeTools: string[]; tools: any; prepareStepPre: (middleware: (...args: any[]) => any) => any; onStepFinish: (data: StepResult<any>) => void; onChunk: (data: { chunk: TextStreamPart<any> }) => void }) {
     // Build Anthropic provider options with cache control and tool streaming
     const anthropicOptions: Record<string, any> = {
         ...context.ANTHROPIC_PROVIDER_OPTIONS,

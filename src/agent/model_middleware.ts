@@ -1,7 +1,9 @@
 /* eslint-disable no-case-declarations */
 /* eslint-disable unused-imports/no-unused-vars */
-import type { LanguageModelV3, LanguageModelV3CallOptions, LanguageModelV3Prompt } from '@ai-sdk/provider';
+import type { LanguageModelV3, LanguageModelV4, LanguageModelV4CallOptions, LanguageModelV4Prompt } from '@ai-sdk/provider';
 import type { ModelMessage, StepResult, TextStreamPart, ToolCallPart, ToolResultPart } from 'ai';
+
+type LLMModel = LanguageModelV3 | LanguageModelV4;
 import type { AgentUserConfig } from '../config/env';
 import type { LogStruct } from '../log';
 import type { ToolResult } from '../tools/types';
@@ -30,7 +32,7 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
     const tools = await getTools();
     let hasRecordFirstChunkTime = false;
     let record: LogStruct;
-    let currentModel: LanguageModelV3;
+    let currentModel: LLMModel;
     // chunk内容修改导致收集的message一并修改，暂恢复原think处理逻辑
     // const thinkingTag = '>`Thinking\\.\\.\\.`';
     // let thinkingStart = false;
@@ -67,7 +69,7 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
     // };
 
     return {
-        prepareStepPre: (middleware: any) => async ({ model, stepNumber, steps }: { model: LanguageModelV3; stepNumber: number; steps: StepResult<any>[] }) => {
+        prepareStepPre: (middleware: any) => async ({ model, stepNumber, steps }: { model: LLMModel; stepNumber: number; steps: StepResult<any>[] }) => {
             currentModel = model;
             if (activeTools.length > 0) {
                 let targetModel = config.TOOL_MODEL;
@@ -92,15 +94,15 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
             };
         },
 
-        wrapGenerate: async ({ doGenerate, params, model }: { doGenerate: () => Promise<any>; params: any; model: LanguageModelV3 }) => {
+        wrapGenerate: async ({ doGenerate, params, model }: { doGenerate: () => Promise<any>; params: any; model: LLMModel }) => {
             return extractReasoning.wrapGenerate!({ doGenerate, doStream: () => model.doStream(params), params, model } as any);
         },
 
-        wrapStream: async ({ doStream, params, model }: { doStream: () => Promise<any>; params: any; model: LanguageModelV3 }) => {
+        wrapStream: async ({ doStream, params, model }: { doStream: () => Promise<any>; params: any; model: LLMModel }) => {
             return extractReasoning.wrapStream!({ doStream, doGenerate: () => model.doGenerate(params), params, model } as any);
         },
 
-        transformParams: async ({ type, params }: { type: 'generate' | 'stream'; params: LanguageModelV3CallOptions }) => {
+        transformParams: async ({ type, params }: { type: 'generate' | 'stream'; params: LanguageModelV4CallOptions }) => {
             log.info(`start ${type} call`);
 
             // transform tool choice
@@ -267,7 +269,7 @@ function stripInternalMarks(content: any): any {
     return content;
 }
 
-function warpMessages(params: LanguageModelV3CallOptions, allTools: Record<string, any>, activeTools: string[], isResponseApi: boolean, rawSystemPrompt: string | undefined) {
+function warpMessages(params: LanguageModelV4CallOptions, allTools: Record<string, any>, activeTools: string[], isResponseApi: boolean, rawSystemPrompt: string | undefined) {
     const { prompt: messages, tools } = params;
 
     const getSystemContent = () => {
@@ -368,16 +370,16 @@ function warpMessages(params: LanguageModelV3CallOptions, allTools: Record<strin
     isResponseApi && (params.prompt = handleResponseApiMessage(messages));
 }
 
-function warpModel(model: LanguageModelV3, config: AgentUserConfig, activeTools: string[], toolChoice: ToolChoice, chatModel: string) {
-    const mutableModel = model as Writeable<LanguageModelV3>;
+function warpModel(model: LLMModel, config: AgentUserConfig, activeTools: string[], toolChoice: ToolChoice, chatModel: string) {
+    const mutableModel = model as Writeable<LLMModel>;
     const effectiveModel = (activeTools.length > 0 && toolChoice?.type !== 'none') ? (config.TOOL_MODEL || chatModel) : chatModel;
     if (effectiveModel !== mutableModel.modelId) {
-        let newModel: LanguageModelV3 | undefined;
+        let newModel: LLMModel | undefined;
         mutableModel.modelId = newModel?.modelId ?? effectiveModel;
     }
 }
 
-export async function warpLLMParams({ messages, model, cache }: { messages: ModelMessage[]; model: LanguageModelV3; cache?: string[] }, context: AgentUserConfig) {
+export async function warpLLMParams({ messages, model, cache }: { messages: ModelMessage[]; model: LLMModel; cache?: string[] }, context: AgentUserConfig) {
     const allTools = await getTools();
     const userMessage = messages.findLast(m => m.role === 'user')!;
     // support text message and text part
@@ -880,7 +882,7 @@ function trimActiveTools(activeTools: string[], toolNames: string[]) {
     return activeTools.length > 0 ? activeTools.filter(name => !toolNames.includes(name)) : [];
 }
 
-function recordModelLog({ config, model, record }: { config: AgentUserConfig; model: LanguageModelV3; record: LogStruct }) {
+function recordModelLog({ config, model, record }: { config: AgentUserConfig; model: LLMModel; record: LogStruct }) {
     log.info(`provider: ${model.provider}, modelId: ${model.modelId} `);
     record.start_time = Date.now();
     record.model = model.modelId;
@@ -1076,7 +1078,7 @@ async function handleToolResult({ tools, toolResults, onStream, config }: { tool
     }
 }
 
-function handleResponseApiMessage(messages: LanguageModelV3Prompt) {
+function handleResponseApiMessage(messages: LanguageModelV4Prompt) {
     // Issue: When the message contains inference messages, tool calls and tool results do not contain ref_id.
     // https://github.com/vercel/ai/issues/7099
     // temporary fix: remove reasoning text

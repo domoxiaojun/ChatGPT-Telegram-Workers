@@ -1,6 +1,8 @@
 /* eslint-disable no-case-declarations */
 import type { MetadataExtractor } from '@ai-sdk/openai-compatible';
-import type { LanguageModelV3 } from '@ai-sdk/provider';
+import type { LanguageModelV3, LanguageModelV4 } from '@ai-sdk/provider';
+
+type LLMModel = LanguageModelV3 | LanguageModelV4;
 import type { AgentUserConfig } from '../config/types';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createCohere } from '@ai-sdk/cohere';
@@ -11,7 +13,7 @@ import { createXai } from '@ai-sdk/xai';
 import { isCfWorker } from '../telegram/utils/tg_utils';
 import { selectKey } from './key-manager';
 
-export async function createLlmModel(model: string, context: AgentUserConfig): Promise<LanguageModelV3> {
+export async function createLlmModel(model: string, context: AgentUserConfig): Promise<LLMModel> {
     let [agent, model_id] = model.includes(':') ? model.trim().split(':') : [context.AI_CHAT_PROVIDER, model];
     // if agent not exists, fallback to model
     const availableAgents = ['openai', 'anthropic', 'google', 'cohere', 'vertex', 'xai', 'oailike'];
@@ -36,9 +38,9 @@ export async function createLlmModel(model: string, context: AgentUserConfig): P
                 fetch: mockFetch(model_id, context, agent),
             });
             if (isResponseApi) {
-                return provider.responses(model_id) as unknown as LanguageModelV3;
+                return provider.responses(model_id) as unknown as LLMModel;
             }
-            return provider.languageModel(model_id) as unknown as LanguageModelV3;
+            return provider.languageModel(model_id) as unknown as LLMModel;
         case 'anthropic':
             return createAnthropic({
                 baseURL: context.ANTHROPIC_API_BASE,
@@ -79,7 +81,7 @@ export async function createLlmModel(model: string, context: AgentUserConfig): P
             const useResponsesApi = context.XAI_RESPONSE_MODELS.includes('*')
                 || context.XAI_RESPONSE_MODELS.some(prefix => model_id.startsWith(prefix));
             if (useResponsesApi) {
-                return xaiProvider.responses(model_id) as unknown as LanguageModelV3;
+                return xaiProvider.responses(model_id) as unknown as LLMModel;
             }
             return xaiProvider.languageModel(model_id);
         case 'oailike':
@@ -110,7 +112,7 @@ export async function createLlmModel(model: string, context: AgentUserConfig): P
     //                     { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
     //                 ],
     //             },
-    //         } as LanguageModelV1;
+    //         } as LLMModelV1;
     //         return modelInstance;
     //     }
     //     return (await registryFactory(context)).languageModel(model);
