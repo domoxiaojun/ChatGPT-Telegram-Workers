@@ -1,24 +1,23 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "chatgpt-telegram-workers",
       "dependencies": {
-        "@ai-sdk/anthropic": "^4.0.0-beta.2",
+        "@ai-sdk/anthropic": "^4.0.0-beta.3",
         "@ai-sdk/azure": "^4.0.0-beta.6",
         "@ai-sdk/black-forest-labs": "^2.0.0-beta.1",
         "@ai-sdk/cohere": "^4.0.0-beta.1",
-        "@ai-sdk/google": "^4.0.0-beta.8",
-        "@ai-sdk/google-vertex": "^5.0.0-beta.9",
+        "@ai-sdk/google": "^4.0.0-beta.9",
+        "@ai-sdk/google-vertex": "^5.0.0-beta.11",
         "@ai-sdk/mcp": "^2.0.0-beta.3",
         "@ai-sdk/mistral": "^4.0.0-beta.1",
         "@ai-sdk/openai": "^4.0.0-beta.6",
         "@ai-sdk/openai-compatible": "^3.0.0-beta.2",
-        "@ai-sdk/xai": "^4.0.0-beta.6",
+        "@ai-sdk/xai": "^4.0.0-beta.8",
         "@ffmpeg.wasm/core-st": "^0.13.2",
         "@ffmpeg.wasm/main": "^0.13.1",
-        "ai": "7.0.0-beta.15",
+        "ai": "7.0.0-beta.17",
         "cf-worker-adapter": "^1.4.0",
         "node-cron": "^4.2.1",
         "zod": "^4.3.6",
@@ -50,12 +49,12 @@
     },
   },
   "overrides": {
-    "@ai-sdk/gateway": "4.0.0-beta.9",
+    "@ai-sdk/gateway": "4.0.0-beta.10",
     "@ai-sdk/provider": "4.0.0-beta.0",
     "@ai-sdk/provider-utils": "5.0.0-beta.1",
   },
   "packages": {
-    "@ai-sdk/anthropic": ["@ai-sdk/anthropic@4.0.0-beta.2", "", { "dependencies": { "@ai-sdk/provider": "4.0.0-beta.0", "@ai-sdk/provider-utils": "5.0.0-beta.1" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-OPjjxJJKRFRVdhw1hPJiidJTcrud2AThkDn2vFPSAXvpDFGXFetyBThmsz6XytFSRz6xa8buPTe9qmMmyK9VMQ=="],
+    "@ai-sdk/anthropic": ["@ai-sdk/anthropic@4.0.0-beta.3", "", { "dependencies": { "@ai-sdk/provider": "4.0.0-beta.0", "@ai-sdk/provider-utils": "5.0.0-beta.1" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-dkXMyzfu23WZdTeqbk07LJMhmnRIwkSLvfM4ibUf1JICcfZHX91jcfReKAViD/hG34XrEf+Z8FiLAEm9anYNMw=="],
 
     "@ai-sdk/azure": ["@ai-sdk/azure@4.0.0-beta.6", "", { "dependencies": { "@ai-sdk/openai": "4.0.0-beta.6", "@ai-sdk/provider": "4.0.0-beta.0", "@ai-sdk/provider-utils": "5.0.0-beta.1" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-PYq+hudwstgyIiwg7wVnS8fkiv6Ur7+1H+Bsjer1wPddToemi/QurVZTeVdFM0T17WDe3NGwYmYb6veW3F+HVw=="],
 
@@ -63,11 +62,11 @@
 
     "@ai-sdk/cohere": ["@ai-sdk/cohere@4.0.0-beta.1", "", { "dependencies": { "@ai-sdk/provider": "4.0.0-beta.0", "@ai-sdk/provider-utils": "5.0.0-beta.1" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-j72NAtHUNF7JyjYUCzzSgIQWMoT1UGu0+xkVrZuc8A6OBOPyebToK8YlW5wIXrpztQu6pR7uP1Ws/XWhC6zBYg=="],
 
-    "@ai-sdk/gateway": ["@ai-sdk/gateway@4.0.0-beta.9", "", { "dependencies": { "@ai-sdk/provider": "4.0.0-beta.0", "@ai-sdk/provider-utils": "5.0.0-beta.1", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-vuNe9NdxvE6P/01s++p6CqEschtW6IBRlxGGx2ArnnX+gobDs2qNMjPSGzI/4a36+luFdVb82f7wK8fM9J9log=="],
+    "@ai-sdk/gateway": ["@ai-sdk/gateway@4.0.0-beta.10", "", { "dependencies": { "@ai-sdk/provider": "4.0.0-beta.0", "@ai-sdk/provider-utils": "5.0.0-beta.1", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-ZOd2r842mG2PzzgqKN4fhuEtvFZwquIgYog1jixvLKrB/sr6V63QiCpbNptgCysYtqKFJc0AHlaRwBrSwfs0fQ=="],
 
-    "@ai-sdk/google": ["@ai-sdk/google@4.0.0-beta.8", "", { "dependencies": { "@ai-sdk/provider": "4.0.0-beta.0", "@ai-sdk/provider-utils": "5.0.0-beta.1" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-FWIFC8vH/RYPYHbsRMpLKO2pikHtG1EEK/8/qJ3wwEiFTUnF2uv5Qq7pXhSCqYLPtimayR/A1dYuuRuwsK4o9Q=="],
+    "@ai-sdk/google": ["@ai-sdk/google@4.0.0-beta.9", "", { "dependencies": { "@ai-sdk/provider": "4.0.0-beta.0", "@ai-sdk/provider-utils": "5.0.0-beta.1" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-77s6el9FUJ2+z7reknav3ZMNO3X3G1ew4g2Dqz4vXJfRBW1mPhR/tuwQzwfkIqQNxSgHZufpa6B4N5rBHPQGeQ=="],
 
-    "@ai-sdk/google-vertex": ["@ai-sdk/google-vertex@5.0.0-beta.9", "", { "dependencies": { "@ai-sdk/anthropic": "4.0.0-beta.2", "@ai-sdk/google": "4.0.0-beta.8", "@ai-sdk/provider": "4.0.0-beta.0", "@ai-sdk/provider-utils": "5.0.0-beta.1", "google-auth-library": "^10.5.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-qidK8bmUU+C4QUrO0mQr5sot0gpyLgm0U9nqiabE7PFQv1dZ01Cq/VzJZ6O4Dga5RraHFAGd7lzdjN3WncJ8eA=="],
+    "@ai-sdk/google-vertex": ["@ai-sdk/google-vertex@5.0.0-beta.11", "", { "dependencies": { "@ai-sdk/anthropic": "4.0.0-beta.3", "@ai-sdk/google": "4.0.0-beta.9", "@ai-sdk/provider": "4.0.0-beta.0", "@ai-sdk/provider-utils": "5.0.0-beta.1", "google-auth-library": "^10.5.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-1qeiHKzuqjkbFuFAQNqvRXM2KJM35HS/ul8QrA6sFHz9obkTdAHAH4Dkn82w+nHFTpHWwHkJG8qK3LnYrf1j8A=="],
 
     "@ai-sdk/mcp": ["@ai-sdk/mcp@2.0.0-beta.3", "", { "dependencies": { "@ai-sdk/provider": "4.0.0-beta.0", "@ai-sdk/provider-utils": "5.0.0-beta.1", "pkce-challenge": "^5.0.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-Cp6jan+ksMLJ1WADjNrvvdP9WBwndvUVnaeAqNoRPiVQfAM+6UuNdWw5Lf1oEW4lo7h0OXJjfbKYBzIURRSlTA=="],
 
@@ -81,7 +80,7 @@
 
     "@ai-sdk/provider-utils": ["@ai-sdk/provider-utils@5.0.0-beta.1", "", { "dependencies": { "@ai-sdk/provider": "4.0.0-beta.0", "@standard-schema/spec": "^1.1.0", "eventsource-parser": "^3.0.6" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-e9Mj9t34xmsizK5PddLx6PMIV6Fai8zX8zNYLV4p/pAoBUVUaomRTZmryG8u5RFBOTaOekHWqTC7buHCAXRn5A=="],
 
-    "@ai-sdk/xai": ["@ai-sdk/xai@4.0.0-beta.6", "", { "dependencies": { "@ai-sdk/openai-compatible": "3.0.0-beta.2", "@ai-sdk/provider": "4.0.0-beta.0", "@ai-sdk/provider-utils": "5.0.0-beta.1" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-XzPqY2VTxs7DPtIzDRAeJle47Fn4foTDoQMR65f5lzyv2dpFbw0y+Yk/m5sZC/RiLE8XEBle4vf0D+COyqNY9w=="],
+    "@ai-sdk/xai": ["@ai-sdk/xai@4.0.0-beta.8", "", { "dependencies": { "@ai-sdk/openai-compatible": "3.0.0-beta.2", "@ai-sdk/provider": "4.0.0-beta.0", "@ai-sdk/provider-utils": "5.0.0-beta.1" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-TsfHTSgBEPaOk8g9B9RxcTdI+16dGxkHokWYLKqo9YD92HaPBADkRZfV7CfI7+UDN/clf7EHlFx9/cExcvJNpw=="],
 
     "@antfu/eslint-config": ["@antfu/eslint-config@7.7.2", "", { "dependencies": { "@antfu/install-pkg": "^1.1.0", "@clack/prompts": "^1.1.0", "@e18e/eslint-plugin": "^0.2.0", "@eslint-community/eslint-plugin-eslint-comments": "^4.7.1", "@eslint/markdown": "^7.5.1", "@stylistic/eslint-plugin": "^5.10.0", "@typescript-eslint/eslint-plugin": "^8.57.0", "@typescript-eslint/parser": "^8.57.0", "@vitest/eslint-plugin": "^1.6.10", "ansis": "^4.2.0", "cac": "^7.0.0", "eslint-config-flat-gitignore": "^2.2.1", "eslint-flat-config-utils": "^3.0.2", "eslint-merge-processors": "^2.0.0", "eslint-plugin-antfu": "^3.2.2", "eslint-plugin-command": "^3.5.2", "eslint-plugin-import-lite": "^0.5.2", "eslint-plugin-jsdoc": "^62.7.1", "eslint-plugin-jsonc": "^3.1.1", "eslint-plugin-n": "^17.24.0", "eslint-plugin-no-only-tests": "^3.3.0", "eslint-plugin-perfectionist": "^5.6.0", "eslint-plugin-pnpm": "^1.6.0", "eslint-plugin-regexp": "^3.1.0", "eslint-plugin-toml": "^1.3.1", "eslint-plugin-unicorn": "^63.0.0", "eslint-plugin-unused-imports": "^4.4.1", "eslint-plugin-vue": "^10.8.0", "eslint-plugin-yml": "^3.3.1", "eslint-processor-vue-blocks": "^2.0.0", "globals": "^17.4.0", "local-pkg": "^1.1.2", "parse-gitignore": "^2.0.0", "toml-eslint-parser": "^1.0.3", "vue-eslint-parser": "^10.4.0", "yaml-eslint-parser": "^2.0.0" }, "peerDependencies": { "@angular-eslint/eslint-plugin": "^21.1.0", "@angular-eslint/eslint-plugin-template": "^21.1.0", "@angular-eslint/template-parser": "^21.1.0", "@eslint-react/eslint-plugin": "^2.11.0", "@next/eslint-plugin-next": ">=15.0.0", "@prettier/plugin-xml": "^3.4.1", "@unocss/eslint-plugin": ">=0.50.0", "astro-eslint-parser": "^1.0.2", "eslint": "^9.10.0 || ^10.0.0", "eslint-plugin-astro": "^1.2.0", "eslint-plugin-format": ">=0.1.0", "eslint-plugin-jsx-a11y": ">=6.10.2", "eslint-plugin-react-hooks": "^7.0.0", "eslint-plugin-react-refresh": "^0.5.0", "eslint-plugin-solid": "^0.14.3", "eslint-plugin-svelte": ">=2.35.1", "eslint-plugin-vuejs-accessibility": "^2.4.1", "prettier-plugin-astro": "^0.14.0", "prettier-plugin-slidev": "^1.0.5", "svelte-eslint-parser": ">=0.37.0" }, "optionalPeers": ["@angular-eslint/eslint-plugin", "@angular-eslint/eslint-plugin-template", "@angular-eslint/template-parser", "@eslint-react/eslint-plugin", "@next/eslint-plugin-next", "@prettier/plugin-xml", "@unocss/eslint-plugin", "astro-eslint-parser", "eslint-plugin-astro", "eslint-plugin-format", "eslint-plugin-jsx-a11y", "eslint-plugin-react-hooks", "eslint-plugin-react-refresh", "eslint-plugin-solid", "eslint-plugin-svelte", "eslint-plugin-vuejs-accessibility", "prettier-plugin-astro", "prettier-plugin-slidev", "svelte-eslint-parser"], "bin": { "eslint-config": "bin/index.mjs" } }, "sha512-CGCcwASry9hk8cOYl82sfTsqmma4DyDfmQSaOJ9p8OtJlVMouDV0MCueDZzUu7iHl+DraSSN6J6sXSkzG6LzcQ=="],
 
@@ -615,7 +614,7 @@
 
     "aggregate-error": ["aggregate-error@3.1.0", "", { "dependencies": { "clean-stack": "^2.0.0", "indent-string": "^4.0.0" } }, "sha512-4I7Td01quW/RpocfNayFdFVk1qSuoh0E7JrbRJ16nH01HhKFQ88INq9Sd+nd72zqRySlr9BmDA8xlEJ6vJMrYA=="],
 
-    "ai": ["ai@7.0.0-beta.15", "", { "dependencies": { "@ai-sdk/gateway": "4.0.0-beta.9", "@ai-sdk/provider": "4.0.0-beta.0", "@ai-sdk/provider-utils": "5.0.0-beta.1", "@opentelemetry/api": "1.9.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-oDS2Djv27g/LiwSNjEXJ9AsufC7ZrWe5TkvI22zGEKWQqlx0YTQaHdygMZu79Gh2Fyz8B2uflqg5Abfn/wuM7w=="],
+    "ai": ["ai@7.0.0-beta.17", "", { "dependencies": { "@ai-sdk/gateway": "4.0.0-beta.10", "@ai-sdk/provider": "4.0.0-beta.0", "@ai-sdk/provider-utils": "5.0.0-beta.1", "@opentelemetry/api": "1.9.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-XBVy7fwlvRA1e5VtAQ5HPdLijbgcZu9ZVIFanoV3sL/p7ZofSzBNQLpRZKXC2Hn+oRQRuM9Bjg13AMQW7ymUZA=="],
 
     "ajv": ["ajv@6.14.0", "", { "dependencies": { "fast-deep-equal": "^3.1.1", "fast-json-stable-stringify": "^2.0.0", "json-schema-traverse": "^0.4.1", "uri-js": "^4.2.2" } }, "sha512-IWrosm/yrn43eiKqkfkHis7QioDleaXQHdDVPKg0FSwwd/DuvyX79TZnFOnYpB7dcsFAMmtFztZuXPDvSePkFw=="],
 

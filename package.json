@@ -40,20 +40,20 @@
         "clean": "rm -rf dist"
     },
     "dependencies": {
-        "@ai-sdk/anthropic": "^4.0.0-beta.2",
+        "@ai-sdk/anthropic": "^4.0.0-beta.3",
         "@ai-sdk/azure": "^4.0.0-beta.6",
         "@ai-sdk/cohere": "^4.0.0-beta.1",
-        "@ai-sdk/google": "^4.0.0-beta.8",
-        "@ai-sdk/google-vertex": "^5.0.0-beta.9",
+        "@ai-sdk/google": "^4.0.0-beta.9",
+        "@ai-sdk/google-vertex": "^5.0.0-beta.11",
         "@ai-sdk/mcp": "^2.0.0-beta.3",
         "@ai-sdk/mistral": "^4.0.0-beta.1",
         "@ai-sdk/openai": "^4.0.0-beta.6",
         "@ai-sdk/openai-compatible": "^3.0.0-beta.2",
         "@ai-sdk/black-forest-labs": "^2.0.0-beta.1",
-        "@ai-sdk/xai": "^4.0.0-beta.6",
+        "@ai-sdk/xai": "^4.0.0-beta.8",
         "@ffmpeg.wasm/core-st": "^0.13.2",
         "@ffmpeg.wasm/main": "^0.13.1",
-        "ai": "7.0.0-beta.15",
+        "ai": "7.0.0-beta.17",
         "cf-worker-adapter": "^1.4.0",
         "node-cron": "^4.2.1",
         "zod": "^4.3.6"
@@ -83,7 +83,7 @@
         "wrangler": "^4.73.0"
     },
     "overrides": {
-        "@ai-sdk/gateway": "4.0.0-beta.9",
+        "@ai-sdk/gateway": "4.0.0-beta.10",
         "@ai-sdk/provider": "4.0.0-beta.0",
         "@ai-sdk/provider-utils": "5.0.0-beta.1"
     }
