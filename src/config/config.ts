@@ -475,9 +475,9 @@ export class GeminiConfig {
 
     // Google Maps Grounding - location context for location-aware responses (latitude, longitude)
     GOOGLE_RETRIEVAL_CONFIG: { latLng?: { latitude: number; longitude: number } } = {};
-    // Model to use when googleMaps tool is active (only gemini-2.5-flash supports Maps)
+    // Model to use when googleMaps tool is active (gemini-2.x and gemini-3.x support Maps)
     // Set to empty string to disable auto-switching
-    GOOGLE_MAPS_MODEL = 'gemini-2.5-flash';
+    GOOGLE_MAPS_MODEL = 'gemini-3-flash-preview';
     GOOGLE_TTS_MODEL = 'gemini-2.5-flash-preview-tts';
 
     // Gemini 3.1 Flash Image Configuration (gemini-3.1-flash-image-preview)

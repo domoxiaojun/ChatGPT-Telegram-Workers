@@ -435,11 +435,11 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
                 case 'googleMaps':
                     // Google Maps only supported on Gemini 2.x models
                     // Skip if current model doesn't support it to avoid API errors
-                    if (model.modelId.startsWith('gemini-2')) {
+                    if (model.modelId.startsWith('gemini-2') || model.modelId.startsWith('gemini-3')) {
                         tools.google_maps = google.tools.googleMaps({});
                         activeTools.push('google_maps');
                     } else {
-                        log.info(`[warpLLMParams] Google Maps not supported on ${model.modelId}, skipping. Switch to gemini-2.x to enable Maps.`);
+                        log.info(`[warpLLMParams] Google Maps not supported on ${model.modelId}, skipping. Switch to gemini-2.x or gemini-3.x to enable Maps.`);
                     }
                     break;
                 case 'fileSearch':
