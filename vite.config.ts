@@ -1,6 +1,5 @@
 import type { LibraryFormats, Plugin } from 'vite';
 import * as path from 'node:path';
-import { nodeResolve } from '@rollup/plugin-node-resolve';
 import cleanup from 'rollup-plugin-cleanup';
 import nodeExternals from 'rollup-plugin-node-externals';
 import { defineConfig } from 'vite';
@@ -11,9 +10,6 @@ import { createVersionPlugin, versionDefine } from './scripts/plugins/version';
 
 const { BUILD_MODE } = process.env;
 const plugins: Plugin[] = [
-    nodeResolve({
-        preferBuiltins: true,
-    }),
     cleanup({
         comments: 'none',
         extensions: ['js', 'ts'],
