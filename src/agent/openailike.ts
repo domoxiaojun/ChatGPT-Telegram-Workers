@@ -1,7 +1,7 @@
 import type { UserModelMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ASRAgent, ChatAgent, ChatStreamTextHandler, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
-import { log, Logger } from '../log';
+import { log, withLogger } from '../log';
 import { requestText2Image } from './image';
 import { selectKey } from './key-manager';
 import { createLlmModel } from './llm';
@@ -51,8 +51,7 @@ export class OpenAILikeImage extends OpenAILikeBase implements ImageAgent {
         return ctx.OAILIKE_IMAGE_MODEL;
     };
 
-    @Logger
-    request = async (prompt: string, context: AgentUserConfig): Promise<ImageResult> => {
+    request = withLogger(async (prompt: string, context: AgentUserConfig): Promise<ImageResult> => {
         const url = `${context.OAILIKE_API_BASE}/images/generations`;
         const header = {
             'Content-Type': 'application/json',
@@ -67,7 +66,7 @@ export class OpenAILikeImage extends OpenAILikeBase implements ImageAgent {
             ...context.OAILIKE_API_EXTRA_PARAMS,
         };
         return requestText2Image(url, header, body, this.render);
-    };
+    });
 
     readonly render = renderImage;
 }
@@ -79,8 +78,7 @@ export class OpenAILikeASR extends OpenAILikeBase implements ASRAgent {
         return ctx.OAILIKE_STT_MODEL;
     };
 
-    @Logger
-    request = async (audio: Blob, context: AgentUserConfig): Promise<string> => {
+    request = withLogger(async (audio: Blob, context: AgentUserConfig): Promise<string> => {
         const url = `${context.OAILIKE_API_BASE}/audio/transcriptions`;
         const header = {
             Authorization: `Bearer ${this.apikey(context)}`,
@@ -111,7 +109,7 @@ export class OpenAILikeASR extends OpenAILikeBase implements ASRAgent {
         }
         log.info(`Transcription: ${resp.text}`);
         return resp.text;
-    };
+    });
 }
 
 export class OpenAILikeTTS extends OpenAILikeBase {

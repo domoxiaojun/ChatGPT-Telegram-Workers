@@ -1,6 +1,6 @@
 import type { AgentUserConfig } from '../config/env';
 import type { GeneratedImage, ImageAgent, ImageResult } from './types';
-import { log, Logger } from '../log';
+import { log, withLogger } from '../log';
 import { createTelegramBotAPI } from '../telegram/api';
 
 export class KlingAI implements ImageAgent {
@@ -14,8 +14,7 @@ export class KlingAI implements ImageAgent {
         return this.modelKey;
     };
 
-    @Logger
-    readonly request = async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
+    readonly request = withLogger(async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
         const { n, radio, inputs = [], args, type } = extraParams || {};
         const COOKIES = context.KLINGAI_COOKIE;
         let cookie = '';
@@ -54,7 +53,7 @@ export class KlingAI implements ImageAgent {
             throw new Error(resp.data?.message || 'Failed to get task id, see logs for more details');
         }
         return this.handleTask(taskId, headers, prompt);
-    };
+    });
 
     readonly handleTask = async (taskId: string, headers: Record<string, string>, prompt: string) => {
         // max wait time 600s

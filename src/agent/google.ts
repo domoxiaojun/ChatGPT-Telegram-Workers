@@ -1,7 +1,7 @@
 import type { FilePart, ImagePart, UserContent, UserModelMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
-import { getLogSingleton, Logger } from '../log';
+import { getLogSingleton, withLogger } from '../log';
 import { base64StringToBlob } from '../utils/image';
 import { convertAudio } from '../utils/others/audio';
 import { selectKey } from './key-manager';
@@ -52,8 +52,7 @@ export class GoogleImage extends GoogleBase implements ImageAgent {
         return ctx.GOOGLE_IMAGE_MODEL;
     };
 
-    @Logger
-    request = async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
+    request = withLogger(async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
         if (prompt.trim() === '') {
             throw new Error('Please provide a prompt.');
         }
@@ -161,7 +160,7 @@ export class GoogleImage extends GoogleBase implements ImageAgent {
             };
         }
         return this.render(images, text);
-    };
+    });
 
     readonly render = async (result: Response | GeneratedImage[] | any[], prompt: string): Promise<ImageResult> => {
         const images = result as { inlineData: { mimeType: string; data: string } }[];

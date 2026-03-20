@@ -49,6 +49,25 @@ export function Logger(
     return value;
 }
 
+export function withLogger<T extends (...args: any[]) => Promise<any>>(fn: T): T {
+    const configIndex = 1;
+    return async function (this: any, ...args: any[]) {
+        const config: AgentUserConfig = args[configIndex];
+        const log = getLogSingleton({ config });
+        log.model = args[0]?.model || this.model?.(config, args[0]);
+        log.start_time = Date.now();
+        const result = await fn.apply(this, args);
+        log.end_time = Date.now();
+        if (result?.usage) {
+            log.tokens = {
+                prompt: result.usage.prompt_tokens,
+                completion: result.usage.completion_tokens,
+            };
+        }
+        return result;
+    } as T;
+}
+
 export function getLogSingleton({ config, init = true }: { config: AgentUserConfig; init?: boolean }): LogStruct {
     const initLog: LogStruct = {
         model: '',

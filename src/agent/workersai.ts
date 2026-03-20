@@ -1,7 +1,7 @@
 import type { AgentUserConfig } from '../config/env';
 import type { SseChatCompatibleOptions } from './request';
 import type { ChatAgent, ChatStreamTextHandler, ImageAgent, ImageResult, LLMChatParams, ResponseMessage } from './types';
-import { Logger } from '../log';
+import { withLogger } from '../log';
 import { base64StringToBlob } from '../utils/image';
 import { isJsonResponse, requestChatCompletions } from './request';
 
@@ -85,8 +85,7 @@ export class WorkersImage extends WorkerBase implements ImageAgent {
         return ctx.WORKERS_IMAGE_MODEL;
     };
 
-    @Logger
-    readonly request = async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
+    readonly request = withLogger(async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
         const id = context.CLOUDFLARE_ACCOUNT_ID;
         const token = context.CLOUDFLARE_TOKEN;
         if (!id || !token) {
@@ -102,5 +101,5 @@ export class WorkersImage extends WorkerBase implements ImageAgent {
             return { raw: [await base64StringToBlob(image)] };
         }
         return { raw: [await raw.blob()], text: prompt };
-    };
+    });
 }

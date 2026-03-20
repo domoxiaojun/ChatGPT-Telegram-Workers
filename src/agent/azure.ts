@@ -1,7 +1,7 @@
 import type { UserModelMessage } from 'ai';
 import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
-import { Logger } from '../log';
+import { withLogger } from '../log';
 import { requestText2Image } from './image';
 import { selectKey } from './key-manager';
 import { createLlmModel } from './llm';
@@ -52,8 +52,7 @@ export class AzureImageAI implements ImageAgent {
         return ctx.AZURE_IMAGE_MODEL || '';
     };
 
-    @Logger
-    readonly request = async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
+    readonly request = withLogger(async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
         const url = `https://${context.AZURE_RESOURCE_NAME}.openai.azure.com/openai/deployments/${context.AZURE_IMAGE_MODEL}/chat/completions?${context.AZURE_API_VERSION}`;
         const apiKey = selectKey('azure', context.AZURE_API_KEY);
         if (!url || !apiKey) {
@@ -76,7 +75,7 @@ export class AzureImageAI implements ImageAgent {
             body.size = '1024x1024';
         }
         return requestText2Image(url, header, body, this.render);
-    };
+    });
 
     readonly render = async (response: Response | GeneratedImage[] | string[], prompt: string): Promise<ImageResult> => {
         const resp = await (response as Response).json();

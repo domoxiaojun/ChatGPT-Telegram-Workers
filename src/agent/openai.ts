@@ -4,7 +4,7 @@ import type { AgentUserConfig } from '../config/env';
 import type { ASRAgent, ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage, TTSAgent } from './types';
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateImage } from 'ai';
-import { log, Logger } from '../log';
+import { log, withLogger } from '../log';
 import { base64StringToBlob } from '../utils';
 import { requestText2Image } from './image';
 import { selectKey } from './key-manager';
@@ -56,8 +56,7 @@ export class Dalle extends OpenAIBase implements ImageAgent {
         return ctx.DALL_E_MODEL;
     };
 
-    @Logger
-    request = async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
+    request = withLogger(async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
         const {
             n = 1,
             size = '1024x1024',
@@ -117,7 +116,7 @@ export class Dalle extends OpenAIBase implements ImageAgent {
             body.quality = quality || context.DALL_E_IMAGE_QUALITY;
         }
         return requestText2Image(url, header, body, this.render);
-    };
+    });
 
     readonly render = renderImage;
 }
@@ -129,8 +128,7 @@ export class OpenAIASR extends OpenAIBase implements ASRAgent {
         return ctx.OPENAI_STT_MODEL;
     };
 
-    @Logger
-    request = async (audio: Blob, context: AgentUserConfig): Promise<string> => {
+    request = withLogger(async (audio: Blob, context: AgentUserConfig): Promise<string> => {
         const url = `${context.OPENAI_API_BASE}/audio/transcriptions`;
         const header = {
             Authorization: `Bearer ${this.apikey(context)}`,
@@ -158,7 +156,7 @@ export class OpenAIASR extends OpenAIBase implements ASRAgent {
         }
         log.info(`Transcription: ${resp.text}`);
         return resp.text;
-    };
+    });
 }
 
 export class OpenAITTS extends OpenAIBase implements TTSAgent {

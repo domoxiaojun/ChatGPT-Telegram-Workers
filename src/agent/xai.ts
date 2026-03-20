@@ -2,7 +2,7 @@ import type { AgentUserConfig } from '../config/env';
 import type { ChatAgent, ChatStreamTextHandler, GeneratedImage, ImageAgent, ImageResult, LLMChatParams, LLMChatRequestParams, ResponseMessage } from './types';
 import { createXai } from '@ai-sdk/xai';
 import { experimental_generateVideo as generateVideo, generateImage } from 'ai';
-import { Logger } from '../log';
+import { withLogger } from '../log';
 import { selectKey } from './key-manager';
 import { createLlmModel } from './llm';
 import { warpLLMParams } from './model_middleware';
@@ -42,8 +42,7 @@ export class XAIImage implements ImageAgent {
         return ctx.XAI_IMAGE_MODEL || 'grok-imagine-image';
     };
 
-    @Logger
-    request = async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
+    request = withLogger(async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
         const {
             n = 1,
             referenceImages,
@@ -81,7 +80,7 @@ export class XAIImage implements ImageAgent {
 
         const revisedPrompt = (result.providerMetadata?.xai?.images as any)?.[0]?.revisedPrompt;
         return this.render(result.images, revisedPrompt || prompt);
-    };
+    });
 
     readonly render = async (result: Response | GeneratedImage[] | string[], prompt: string): Promise<ImageResult> => {
         const images = result as GeneratedImage[];

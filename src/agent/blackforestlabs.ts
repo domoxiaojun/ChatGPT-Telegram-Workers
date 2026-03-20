@@ -2,7 +2,7 @@ import type { AgentUserConfig } from '../config/env';
 import type { GeneratedImage, ImageAgent, ImageResult } from './types';
 import { createBlackForestLabs } from '@ai-sdk/black-forest-labs';
 import { generateImage } from 'ai';
-import { Logger } from '../log';
+import { withLogger } from '../log';
 import { selectKey } from './key-manager';
 
 export class BlackForestLabsImage implements ImageAgent {
@@ -17,8 +17,7 @@ export class BlackForestLabsImage implements ImageAgent {
         return ctx.BFL_IMAGE_MODEL || 'flux-kontext-pro';
     };
 
-    @Logger
-    request = async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
+    request = withLogger(async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
         const {
             referenceImages,
             mask,
@@ -81,7 +80,7 @@ export class BlackForestLabsImage implements ImageAgent {
         } as any);
 
         return this.render(result.images);
-    };
+    });
 
     readonly render = async (result: Response | GeneratedImage[] | string[]): Promise<ImageResult> => {
         const images = result as GeneratedImage[];
