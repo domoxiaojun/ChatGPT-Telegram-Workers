@@ -42,18 +42,18 @@
     "dependencies": {
         "@ai-sdk/anthropic": "^4.0.0-beta.10",
         "@ai-sdk/azure": "^4.0.0-beta.13",
-        "@ai-sdk/cohere": "^4.0.0-beta.6",
-        "@ai-sdk/google": "^4.0.0-beta.14",
-        "@ai-sdk/google-vertex": "^5.0.0-beta.19",
+        "@ai-sdk/cohere": "^4.0.0-beta.7",
+        "@ai-sdk/google": "^4.0.0-beta.15",
+        "@ai-sdk/google-vertex": "^5.0.0-beta.20",
         "@ai-sdk/mcp": "^2.0.0-beta.10",
-        "@ai-sdk/mistral": "^4.0.0-beta.6",
+        "@ai-sdk/mistral": "^4.0.0-beta.8",
         "@ai-sdk/openai": "^4.0.0-beta.13",
-        "@ai-sdk/openai-compatible": "^3.0.0-beta.8",
+        "@ai-sdk/openai-compatible": "^3.0.0-beta.9",
         "@ai-sdk/black-forest-labs": "^2.0.0-beta.6",
-        "@ai-sdk/xai": "^4.0.0-beta.14",
+        "@ai-sdk/xai": "^4.0.0-beta.15",
         "@ffmpeg.wasm/core-st": "^0.13.2",
         "@ffmpeg.wasm/main": "^0.13.1",
-        "ai": "7.0.0-beta.30",
+        "ai": "7.0.0-beta.33",
         "cf-worker-adapter": "^1.4.0",
         "node-cron": "^4.2.1",
         "zod": "^4.3.6"
@@ -79,10 +79,10 @@
         "vite-plugin-checker": "^0.12.0",
         "vite-plugin-dts": "^4.5.4",
         "vitest": "^4.1.0",
-        "wrangler": "^4.75.0"
+        "wrangler": "^4.76.0"
     },
     "overrides": {
-        "@ai-sdk/gateway": "4.0.0-beta.17",
+        "@ai-sdk/gateway": "4.0.0-beta.18",
         "@ai-sdk/provider": "4.0.0-beta.4",
         "@ai-sdk/provider-utils": "5.0.0-beta.6"
     }
