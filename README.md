@@ -37,6 +37,10 @@ This is a significantly refactored ChatGPT Telegram bot project that supports mu
 - **Image & Video Generation**:
   - Images: DALL-E, Google Imagen, Kling AI, Vertex AI, Workers AI, xAI, **Black Forest Labs (FLUX.2)**
   - Videos: Google Veo 3.1 Fast (8-second videos with audio)
+- **Music Generation**:
+  - Google Lyria 3 Clip (30-second clips)
+  - Google Lyria 3 Pro (full-length songs with verses, choruses, bridges)
+  - Support for custom lyrics, multi-language, timestamp control, and instrumental tracks
 - **Voice Processing**:
   - TTS: OpenAI, Google, Fish Audio with multi-speaker support
   - ASR: Automatic Speech Recognition from voice messages

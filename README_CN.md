@@ -37,7 +37,10 @@
 - **图像与视频生成**:
   - 图像：DALL-E、Google Imagen、Kling AI、Vertex AI、Workers AI、xAI、**Black Forest Labs (FLUX.2)**
   - 视频：Google Veo 3.1 Fast（8秒带音频视频）
-  - 视频：Google Veo 3.1 Fast（8秒视频+音频）
+- **音乐生成**:
+  - Google Lyria 3 Clip（30秒短片段）
+  - Google Lyria 3 Pro（完整歌曲，支持副歌、主歌、桥段）
+  - 支持自定义歌词、多语言、时间戳控制和纯器乐曲目
 - **语音处理**:
   - TTS：OpenAI、Google、Fish Audio，支持多说话人
   - ASR：自动语音识别，支持语音消息转文字
