@@ -492,6 +492,35 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
     // xAI provider tools are only supported by the Responses API, not Chat API
     // Chat API should use searchParameters instead
     if (model.provider === 'xai.responses') {
+        // xAI Responses API only supports images, not audio/video
+        // Filter out unsupported media types and replace with text description
+        if (Array.isArray(userMessage.content)) {
+            const hasUnsupportedMedia = userMessage.content.some((part: any) =>
+                part.type === 'file' && part.mediaType &&
+                (part.mediaType.startsWith('audio/') || part.mediaType.startsWith('video/'))
+            );
+
+            if (hasUnsupportedMedia) {
+                log.warn('[warpLLMParams] xAI Responses API does not support audio/video. Converting to text description.');
+                userMessage.content = userMessage.content.map((part: any) => {
+                    if (part.type === 'file' && part.mediaType) {
+                        if (part.mediaType.startsWith('video/')) {
+                            return {
+                                type: 'text',
+                                text: '[User sent a video/animated sticker. Note: xAI cannot view video content - only static images are supported. Please ask the user to describe it or send a static image instead.]'
+                            };
+                        }
+                        if (part.mediaType.startsWith('audio/')) {
+                            return {
+                                type: 'text',
+                                text: '[User sent an audio file. Note: xAI cannot process audio - only images are supported. Please ask the user to provide a text transcript or description.]'
+                            };
+                        }
+                    }
+                    return part;
+                });
+            }
+        }
         const { webSearch, xSearch, codeExecution, xaiTools } = await import('@ai-sdk/xai');
 
         // 支持数组配置或布尔开关（向后兼容）
