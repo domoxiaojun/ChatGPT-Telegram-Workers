@@ -432,8 +432,23 @@ async function combineParams({ context, middleware, model, messages, activeTools
         xaiOptions.store = false;
     }
 
+    // Build OpenAI provider options with instructions for Responses API
+    const openaiOptions: Record<string, any> = {
+        ...context.OPENAI_PROVIDER_OPTIONS,
+    };
+
+    // OpenAI Responses API (GPT-5/o1/o3/o4 series) uses 'instructions' parameter
+    // which has higher priority than system/developer messages
+    // This ensures system prompt is properly followed by reasoning models
+    if (model.provider === 'openai.responses') {
+        const systemPrompt = messages.find(m => m.role === 'system')?.content;
+        if (systemPrompt && typeof systemPrompt === 'string') {
+            openaiOptions.instructions = systemPrompt;
+        }
+    }
+
     const providerOptions = {
-        openai: context.OPENAI_PROVIDER_OPTIONS,
+        openai: openaiOptions,
         anthropic: anthropicOptions,
         google: context.GOOGLE_PROVIDER_OPTIONS,
         xai: xaiOptions,
