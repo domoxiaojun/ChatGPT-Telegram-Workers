@@ -30,14 +30,14 @@
 |------|-----------|--------|-----|--------|------|
 | **成本优化** | ✅ Cache Control | ✅ | ❌ | ❌ | 降低 50%+ API 成本 |
 | **网页搜索** | ✅ Web Search | ✅ Google Search | ✅ Web Search | ✅ Web Search | 实时搜索互联网 |
-| **网页获取** | ✅ Web Fetch | ✅ URL Context | ❌ | ❌ | 获取网页内容 |
+| **网页获取** | ✅ Web Fetch | ✅ URL Context | ✅ (内置) | ✅ (内置) | 获取网页内容 |
 | **代码执行** | ✅ Python+Bash | ✅ Python | ✅ Python | ✅ Python | 沙盒代码执行 |
 | **社交搜索** | ❌ | ❌ | ✅ X Search | ❌ | 搜索 Twitter/X |
 | **地图服务** | ❌ | ✅ Maps | ❌ | ❌ | 地理位置信息 |
 | **文件搜索** | ❌ | ✅ File Search | ✅ File Search | ✅ File Search | 搜索上传文件 |
 | **图片生成** | ❌ | ❌ | ❌ | ✅ Image Gen | AI 图片生成 |
 | **MCP 协议** | ❌ | ❌ | ❌ | ✅ MCP | 远程工具调用 |
-| **引用溯源** | ✅ Citations | ❌ | ❌ | ❌ | 标注信息来源 |
+| **引用溯源** | ✅ Citations | ❌ | ❌ | ✅ Citations | 标注信息来源 |
 | **上下文管理** | ✅ | ❌ | ❌ | ❌ | 自动清理历史 |
 | **工具流式** | ✅ | ❌ | ❌ | ❌ | 实时进度显示 |
 
@@ -515,9 +515,14 @@ AI_CHAT_PROVIDER="openai"
 
 ---
 
-### 1. Web Search - 网页搜索
+### 1. Web Search - 网页搜索与页面读取 ⭐
 
-**功能**：实时搜索互联网，获取最新信息并提供引用。
+**功能**：实时搜索互联网并读取网页内容（三合一工具）。
+
+**三大能力**：
+1. **搜索** - 搜索网络信息
+2. **打开页面** - 读取指定 URL 的完整内容
+3. **页面内查找** - 在已打开的页面中搜索特定模式
 
 **配置**：
 ```bash
@@ -535,14 +540,42 @@ OPENAI_WEB_SEARCH_USER_LOCATION="Beijing, China"       # 用户位置（本地�
 **注意**：不支持经纬度格式（OpenAI API 限制）
 
 **使用示例**：
+
+**示例 1 - 网页搜索**：
 ```
 用户: 2024 年最新的 AI 技术趋势是什么？
 
 GPT 会:
-1. 自动调用 web_search 工具
+1. 自动调用 web_search 工具（动作：search）
 2. 搜索最新信息
 3. 返回结果并附带来源链接
 ```
+
+**示例 2 - 读取网页**：
+```
+用户: 读取这篇文章并总结：https://example.com/article
+
+GPT 会:
+1. 调用 web_search 工具（动作：openPage）
+2. 抓取并读取完整页面内容
+3. 分析并总结内容
+```
+
+**示例 3 - 页面内查找**：
+```
+用户: 在 https://example.com/pricing 找到价格信息
+
+GPT 会:
+1. 打开页面（动作：openPage）
+2. 搜索价格模式（动作：findInPage）
+3. 提取相关价格详情
+```
+
+**与其他提供商对比**：
+- **OpenAI webSearch**：搜索 + 读取页面 + 页面内查找（三合一）⭐
+- **Anthropic**：webSearch（仅搜索）+ webFetch（读取页面，独立工具）
+- **xAI**：webSearch（搜索 + 读取页面，二合一）
+- **Google**：googleSearch（仅搜索）
 
 ---
 

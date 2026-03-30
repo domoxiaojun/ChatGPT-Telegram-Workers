@@ -30,14 +30,14 @@ Server-side tools are functions executed by AI providers on their servers, elimi
 |---------|-----------|--------|-----|--------|-------------|
 | **Cost Optimization** | ✅ Cache Control | ✅ | ❌ | ❌ | Reduce 50%+ API costs |
 | **Web Search** | ✅ Web Search | ✅ Google Search | ✅ Web Search | ✅ Web Search | Real-time internet search |
-| **Web Fetch** | ✅ Web Fetch | ✅ URL Context | ❌ | ❌ | Fetch web content |
+| **Web Fetch** | ✅ Web Fetch | ✅ URL Context | ✅ (Built-in) | ✅ (Built-in) | Fetch web content |
 | **Code Execution** | ✅ Python+Bash | ✅ Python | ✅ Python | ✅ Python | Sandbox code execution |
 | **Social Search** | ❌ | ❌ | ✅ X Search | ❌ | Search Twitter/X |
 | **Map Services** | ❌ | ✅ Maps | ❌ | ❌ | Geographic information |
 | **File Search** | ❌ | ✅ File Search | ✅ File Search | ✅ File Search | Search uploaded files |
 | **Image Generation** | ❌ | ❌ | ❌ | ✅ Image Gen | AI image generation |
 | **MCP Protocol** | ❌ | ❌ | ❌ | ✅ MCP | Remote tool invocation |
-| **Citations** | ✅ Citations | ❌ | ❌ | ❌ | Source attribution |
+| **Citations** | ✅ Citations | ❌ | ❌ | ✅ Citations | Source attribution |
 | **Context Management** | ✅ | ❌ | ❌ | ❌ | Auto history cleanup |
 | **Tool Streaming** | ✅ | ❌ | ❌ | ❌ | Real-time progress |
 
@@ -515,9 +515,14 @@ AI_CHAT_PROVIDER="openai"
 
 ---
 
-### 1. Web Search - Web Search
+### 1. Web Search - Web Search & Page Reading ⭐
 
-**Function**: Real-time internet search to retrieve latest information with citations.
+**Function**: Real-time internet search and web page content reading (3-in-1 tool).
+
+**Three Capabilities**:
+1. **Search** - Search the web for information
+2. **Open Page** - Read full content from specific URLs
+3. **Find in Page** - Search for patterns within opened pages
 
 **Configuration**:
 ```bash
@@ -534,15 +539,43 @@ OPENAI_WEB_SEARCH_USER_LOCATION="Beijing, China"       # User location (localize
 
 **Note**: Does not support coordinate format (OpenAI API limitation)
 
-**Usage Example**:
+**Usage Examples**:
+
+**Example 1 - Web Search**:
 ```
 User: What are the latest AI technology trends in 2024?
 
 GPT will:
-1. Automatically invoke web_search tool
+1. Automatically invoke web_search tool (action: search)
 2. Search for latest information
 3. Return results with source links
 ```
+
+**Example 2 - Read Web Page**:
+```
+User: Read this article and summarize it: https://example.com/article
+
+GPT will:
+1. Invoke web_search tool (action: openPage)
+2. Fetch and read the full page content
+3. Analyze and summarize the content
+```
+
+**Example 3 - Find in Page**:
+```
+User: Find pricing information on https://example.com/pricing
+
+GPT will:
+1. Open the page (action: openPage)
+2. Search for pricing patterns (action: findInPage)
+3. Extract relevant pricing details
+```
+
+**Comparison with Other Providers**:
+- **OpenAI webSearch**: Search + Read pages + Find in page (3-in-1) ⭐
+- **Anthropic**: webSearch (search only) + webFetch (read pages, separate tool)
+- **xAI**: webSearch (search + read pages, 2-in-1)
+- **Google**: googleSearch (search only)
 
 ---
 

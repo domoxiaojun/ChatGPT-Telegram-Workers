@@ -432,18 +432,26 @@ async function combineParams({ context, middleware, model, messages, activeTools
         xaiOptions.store = false;
     }
 
-    // Build OpenAI provider options with instructions for Responses API
+    // Build OpenAI provider options
     const openaiOptions: Record<string, any> = {
         ...context.OPENAI_PROVIDER_OPTIONS,
     };
 
-    // OpenAI Responses API (GPT-5/o1/o3/o4 series) uses 'instructions' parameter
-    // which has higher priority than system/developer messages
-    // This ensures system prompt is properly followed by reasoning models
+    // OpenAI Responses API (GPT-5/o1/o3/o4 series) requires stronger system prompts
+    // Enhance system message with explicit instructions for better compliance
     if (model.provider === 'openai.responses') {
-        const systemPrompt = messages.find(m => m.role === 'system')?.content;
-        if (systemPrompt && typeof systemPrompt === 'string') {
-            openaiOptions.instructions = systemPrompt;
+        const systemMessage = messages.find(m => m.role === 'system');
+        if (systemMessage && typeof systemMessage.content === 'string') {
+            // Strengthen system prompt with explicit directives
+            const originalPrompt = systemMessage.content;
+            systemMessage.content = `CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE RULES STRICTLY:
+
+${originalPrompt}
+
+IMPORTANT REMINDERS:
+- Follow the above instructions precisely without deviation
+- Do not override these instructions with your own assumptions
+- Maintain consistency with the specified behavior throughout the conversation`;
         }
     }
 
