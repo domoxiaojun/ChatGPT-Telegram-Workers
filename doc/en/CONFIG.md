@@ -563,8 +563,8 @@ Google Gemini provides various built-in tools.
 | `GOOGLE_PROVIDER_OPTIONS` | Provider options | See below |
 
 **Tool Compatibility**:
-- **Gemini 3.x**: ✅ Supports Google tools + custom tools combination, ✅ Supports Google Maps + Code Execution together
-- **Gemini 2.x**: ⚠️ Google tools and custom tools are mutually exclusive, ⚠️ Google Maps and Code Execution cannot be used together
+- **Gemini 3.x**: ✅ Supports Google tools + custom tools combination, ⚠️ Maps and Code Execution still cannot be used together (Google API limitation)
+- **Gemini 2.x**: ⚠️ Google tools and custom tools are mutually exclusive, ⚠️ Maps and Code Execution cannot be used together
 - **Gemini 1.x**: ❌ Does not support Google Maps
 
 #### Google Search Configuration
@@ -637,8 +637,7 @@ GOOGLE_RETRIEVAL_CONFIG='{"latLng": {"latitude": 39.9042, "longitude": 116.4074}
 
 > **Note**: 
 > - Gemini 2.x and 3.x support Google Maps
-> - **Gemini 3.x**: Can use Maps + Code Execution + custom tools together
-> - **Gemini 2.x**: Maps and Code Execution cannot be used together
+> - **All versions**: Maps and Code Execution cannot be used together (Google API limitation)
 
 #### Gemini 3 Pro Image Configuration
 

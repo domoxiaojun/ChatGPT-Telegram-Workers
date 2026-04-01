@@ -273,17 +273,18 @@ ANTHROPIC_STRUCTURED_OUTPUT_MODE="auto"  # auto | outputFormat | tool
 > Gemini 3 模型（如 `gemini-3-flash-preview`、`gemini-3-pro-preview`）现在支持**同时使用 Google 内置工具和自定义函数工具**！这是 Google 在 2026年3月17日发布的 [Tool Combination API](https://ai.google.dev/gemini-api/docs/tool-combination) 带来的重大更新。
 > 
 > **版本对比**：
-> - **Gemini 3.x**: ✅ 支持 Google 工具 + 自定义工具组合，✅ 支持 Google Maps + Code Execution 同时使用
-> - **Gemini 2.x**: ⚠️ Google 工具和自定义工具互斥（只能选一种），⚠️ Google Maps 和 Code Execution 不能同时使用
-> - **Gemini 1.x**: ❌ 不支持 Google Maps
+> - **Gemini 3.x**: ✅ 支持 Google 工具 + 自定义工具组合
+> - **Gemini 2.x**: ⚠️ Google 工具和自定义工具互斥（只能选一种）
+> - **所有版本**: ⚠️ Maps 和 Code Execution 不能同时使用（Google API 限制）
 > 
 > **实际应用示例**：
 > ```bash
 > # Gemini 3 可以同时使用：
-> USE_GOOGLE_BUILDIN=["googleSearch", "googleMaps", "codeExecution"]
+> USE_GOOGLE_BUILDIN=["googleSearch", "urlContext", "codeExecution"]
 > USE_TOOLS=["duckduckgo", "web", "weather"]  # 自定义工具
 > 
-> # 结果：AI 可以同时调用 Google Search、Maps、Code Execution 和你的自定义工具！
+> # 结果：AI 可以同时调用 Google Search、URL Context、Code Execution 和你的自定义工具！
+> # 注意：Maps 和 Code Execution 仍不能同时使用
 > ```
 
 ### 1. Google Search - Google 搜索
@@ -357,14 +358,14 @@ USE_GOOGLE_BUILDIN=["codeExecution"]
 ```
 
 **版本兼容性**：
-- **Gemini 3.x**: ✅ 可与 Google Maps 和自定义工具同时使用
-- **Gemini 2.x**: ⚠️ 不能与 Google Maps 同时使用
-- **所有版本**: 仅支持 Python，不支持 Bash
+- **Gemini 3.x**: ✅ 可与自定义工具同时使用
+- **Gemini 2.x**: ⚠️ 不能与自定义工具同时使用
+- **所有版本**: ⚠️ 不能与 Google Maps 同时使用（Google API 限制）
 
 **限制**：
 - 仅支持 Python
 - 不支持 Bash
-- ~~不能与 Google Maps 同时使用~~（Gemini 3 已解除此限制）
+- 不能与 Google Maps 同时使用（Google API 服务端限制）
 
 ---
 
@@ -380,8 +381,9 @@ GOOGLE_MAPS_MODEL="gemini-2.5-flash"  # Maps 专用模型
 ```
 
 **版本要求**：
-- **Gemini 3.x**: ✅ 支持，可与 Code Execution 和自定义工具同时使用
-- **Gemini 2.x**: ✅ 支持，但不能与 Code Execution 同时使用
+- **Gemini 3.x**: ✅ 支持，可与自定义工具同时使用
+- **Gemini 2.x**: ✅ 支持，但不能与自定义工具同时使用
+- **所有版本**: ⚠️ 不能与 Code Execution 同时使用（Google API 限制）
 - **Gemini 1.x**: ❌ 不支持
 
 **使用示例**：
@@ -396,17 +398,17 @@ Gemini 会:
 
 **Gemini 3 新能力**：
 ```bash
-# Gemini 3 可以同时使用 Maps + Code Execution + 自定义工具
-USE_GOOGLE_BUILDIN=["googleMaps", "codeExecution"]
+# Gemini 3 可以同时使用 Maps + 自定义工具（但不能加 Code Execution）
+USE_GOOGLE_BUILDIN=["googleMaps", "googleSearch"]
 USE_TOOLS=["weather", "web"]
 
 # 示例场景：
-用户: 查询旧金山附近的餐厅，并用 Python 分析评分分布
+用户: 查询旧金山附近的餐厅，并获取天气信息
 
 Gemini 3 会:
 1. 使用 Google Maps 搜索餐厅
-2. 使用 Code Execution 分析数据
-3. 可能调用自定义 web 工具获取更多信息
+2. 调用自定义 weather 工具获取天气
+3. 综合信息给出建议
 ```
 
 ---

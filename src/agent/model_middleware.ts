@@ -466,10 +466,10 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
             }
         }
 
-        // Google Maps and Code Execution conflict on older Gemini models
-        // Gemini 3 with tool combination API supports using both together
-        if (activeTools.includes('google_maps') && activeTools.includes('code_execution') && !isGemini3) {
-            log.warn('[warpLLMParams] Google Maps and Code Execution cannot be used together on Gemini 2.x. Removing Code Execution. Use Gemini 3 to enable both.');
+        // Google Maps and Code Execution cannot be used together (Google API limitation)
+        // This is a server-side restriction that applies to all Gemini versions
+        if (activeTools.includes('google_maps') && activeTools.includes('code_execution')) {
+            log.warn('[warpLLMParams] Google Maps and Code Execution cannot be used together (Google API restriction). Removing Code Execution.');
             delete tools.code_execution;
             activeTools = activeTools.filter(t => t !== 'code_execution');
         }

@@ -273,17 +273,18 @@ ANTHROPIC_STRUCTURED_OUTPUT_MODE="auto"  # auto | outputFormat | tool
 > Gemini 3 models (e.g., `gemini-3-flash-preview`, `gemini-3-pro-preview`) now support **combining Google built-in tools with custom function tools simultaneously**! This is a major update enabled by Google's [Tool Combination API](https://ai.google.dev/gemini-api/docs/tool-combination) released on March 17, 2026.
 > 
 > **Version Comparison**:
-> - **Gemini 3.x**: ✅ Supports Google tools + custom tools combination, ✅ Supports Google Maps + Code Execution together
-> - **Gemini 2.x**: ⚠️ Google tools and custom tools are mutually exclusive (choose one), ⚠️ Google Maps and Code Execution cannot be used together
-> - **Gemini 1.x**: ❌ Does not support Google Maps
+> - **Gemini 3.x**: ✅ Supports Google tools + custom tools combination
+> - **Gemini 2.x**: ⚠️ Google tools and custom tools are mutually exclusive (choose one)
+> - **All versions**: ⚠️ Maps and Code Execution cannot be used together (Google API limitation)
 > 
 > **Practical Example**:
 > ```bash
 > # Gemini 3 can use simultaneously:
-> USE_GOOGLE_BUILDIN=["googleSearch", "googleMaps", "codeExecution"]
+> USE_GOOGLE_BUILDIN=["googleSearch", "urlContext", "codeExecution"]
 > USE_TOOLS=["duckduckgo", "web", "weather"]  # Custom tools
 > 
-> # Result: AI can call Google Search, Maps, Code Execution AND your custom tools at the same time!
+> # Result: AI can call Google Search, URL Context, Code Execution AND your custom tools at the same time!
+> # Note: Maps and Code Execution still cannot be used together
 > ```
 
 ### 1. Google Search - Google Search
@@ -356,10 +357,15 @@ Gemini will:
 USE_GOOGLE_BUILDIN=["codeExecution"]
 ```
 
+**Version Compatibility**:
+- **Gemini 3.x**: ✅ Can be used with custom tools simultaneously
+- **Gemini 2.x**: ⚠️ Cannot be used with custom tools simultaneously
+- **All versions**: ⚠️ Cannot be used with Google Maps simultaneously (Google API limitation)
+
 **Limitations**:
 - Python only
 - No Bash support
-- Cannot be used simultaneously with Google Maps
+- Cannot be used simultaneously with Google Maps (Google API server-side limitation)
 
 ---
 
@@ -375,9 +381,10 @@ GOOGLE_MAPS_MODEL="gemini-2.5-flash"  # Maps-specific model
 ```
 
 **Requirements**:
-- Requires Gemini 2.x models
-- Cannot be used simultaneously with Code Execution
-- User location must be provided
+- **Gemini 3.x**: ✅ Supported, can be used with custom tools simultaneously
+- **Gemini 2.x**: ✅ Supported, but cannot be used with custom tools simultaneously
+- **All versions**: ⚠️ Cannot be used with Code Execution simultaneously (Google API limitation)
+- **Gemini 1.x**: ❌ Not supported
 
 **Usage Example**:
 ```
@@ -387,6 +394,21 @@ Gemini will:
 1. Use configured location information
 2. Search for nearby restaurants
 3. Return recommendation list
+```
+
+**Gemini 3 New Capabilities**:
+```bash
+# Gemini 3 can use Maps + custom tools (but cannot add Code Execution)
+USE_GOOGLE_BUILDIN=["googleMaps", "googleSearch"]
+USE_TOOLS=["weather", "web"]
+
+# Example scenario:
+User: Find restaurants near San Francisco and get weather information
+
+Gemini 3 will:
+1. Use Google Maps to search for restaurants
+2. Call custom weather tool to get weather
+3. Provide comprehensive recommendations
 ```
 
 ---

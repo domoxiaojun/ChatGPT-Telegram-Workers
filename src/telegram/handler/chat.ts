@@ -15,6 +15,7 @@ import { imageToBase64String } from '../../utils/image';
 import { convertAudio } from '../../utils/others/audio';
 import { createTelegramBotAPI } from '../api';
 import { escape, SEGMENTATION_MARK } from '../utils/md2tgmd';
+import { validateMarkdownV2, markdownToHTML, stripFormatting } from '../utils/render_fallback';
 import { MessageSender, sendAction, TelegraphSender } from '../utils/send';
 import { getTelegramFile, isTelegramChatTypeGroup, waitUntil } from '../utils/tg_utils';
 import { formatGroupCacheAsContext, loadGroupMessageCache } from './group';
@@ -317,6 +318,13 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
 
             const data = mergeLogMessages(text, context?.USER_CONFIG);
             expandParams.addQuote = addQuotePrerequisites && data.length > ENV.ADD_QUOTE_LIMIT;
+
+            // Validate MarkdownV2 format and log warnings
+            const validation = validateMarkdownV2(data);
+            if (!validation.valid) {
+                log.warn('[Render] MarkdownV2 validation issues detected:', validation.issues.join(', '));
+            }
+
             log.info(`sent message ids: ${isMessageSender ? sender.context.sentMessageIds : sender.context.inline_message_id}`);
             isMessageSender && sendAction(sender.api.token, sender.context.chat_id, 'typing');
             sentPromise = sender.sendRichText(data, undefined, 'chat', expandParams);
@@ -377,7 +385,38 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
                 }
                 if (!finalResp.ok) {
                     (sender as MessageSender).context.sentMessageIds.length = 0;
-                    log.error(`send message failed: ${finalResp.status} ${await finalResp.json().then(j => j.description)}`);
+                    const errorData = await finalResp.json();
+                    const errorDesc = errorData.description || '';
+                    log.error(`send message failed: ${finalResp.status} ${errorDesc}`);
+
+                    // Try fallback strategies before Telegraph
+                    if (errorDesc.includes('parse') || errorDesc.includes('entities') || errorDesc.includes('markdown')) {
+                        log.info('[Render] Attempting HTML fallback...');
+                        try {
+                            const htmlText = markdownToHTML(data);
+                            const htmlResp = await sender.sendRichText(htmlText, 'HTML', 'chat', expandParams);
+                            if (htmlResp.ok) {
+                                log.info('[Render] HTML fallback succeeded');
+                                return htmlResp;
+                            }
+                        } catch (htmlError) {
+                            log.warn('[Render] HTML fallback failed:', (htmlError as Error).message);
+                        }
+
+                        log.info('[Render] Attempting plain text fallback...');
+                        try {
+                            const plainText = stripFormatting(data);
+                            const plainResp = await sender.sendRichText(plainText, undefined, 'chat', { ...expandParams, addQuote: false });
+                            if (plainResp.ok) {
+                                log.info('[Render] Plain text fallback succeeded');
+                                return plainResp;
+                            }
+                        } catch (plainError) {
+                            log.warn('[Render] Plain text fallback failed:', (plainError as Error).message);
+                        }
+                    }
+
+                    // All fallbacks failed, use Telegraph
                     await sendTelegraph(telegraphContext(true, true), question || 'Redo Question', text);
                     return;
                 }

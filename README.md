@@ -56,7 +56,7 @@ This is a significantly refactored ChatGPT Telegram bot project that supports mu
 - **Multi-language Support**: Chinese, English, Portuguese, etc.
 - **Custom Trigger Words**: Configurable bot response keywords
 - **Message Replacement**: Custom replacement rules to simplify environment variable management
-- **Long Text Processing**: Smart splitting with Telegraph article conversion and file output
+- **Long Text Processing**: Smart splitting with Telegraph article conversion and file output, intelligent rendering fallback (MarkdownV2 → HTML → Plain Text → Telegraph)
 - **Quote Message Merging**: Automatic handling of reply messages with expandable content
 - **Group Management**: Smart group responses with @mention detection, per-user context, and speaker identification
 - **Group Message Listening Mode**: Cache group message history so AI can see full conversation context when triggered (configurable cache size and TTL)
