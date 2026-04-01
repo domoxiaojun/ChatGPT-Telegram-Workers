@@ -393,6 +393,9 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
     if (model.provider.startsWith('google') || model.provider.startsWith('vertex')) {
         const { google } = await import('@ai-sdk/google');
 
+        // Check if this is Gemini 3 model (supports tool combination)
+        const isGemini3 = model.modelId.startsWith('gemini-3');
+
         // Add configured Google built-in tools
         for (const toolName of context.USE_GOOGLE_BUILDIN) {
             switch (toolName) {
@@ -463,9 +466,10 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
             }
         }
 
-        // Google Maps and Code Execution cannot be used together
-        if (activeTools.includes('google_maps') && activeTools.includes('code_execution')) {
-            log.warn('[warpLLMParams] Google Maps and Code Execution cannot be used together. Removing Code Execution.');
+        // Google Maps and Code Execution conflict on older Gemini models
+        // Gemini 3 with tool combination API supports using both together
+        if (activeTools.includes('google_maps') && activeTools.includes('code_execution') && !isGemini3) {
+            log.warn('[warpLLMParams] Google Maps and Code Execution cannot be used together on Gemini 2.x. Removing Code Execution. Use Gemini 3 to enable both.');
             delete tools.code_execution;
             activeTools = activeTools.filter(t => t !== 'code_execution');
         }
@@ -829,8 +833,12 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
         log.info(`[warpLLMParams] xAI tools enabled, clearing custom tools. Active tools: ${xaiToolKeys.join(', ')}`);
     }
 
-    // If using Google built-in tools, clear custom tools (keep Google tools)
-    if (model.provider.startsWith('google') && (context.SEARCH_GROUNDING || context.USE_GOOGLE_BUILDIN.length > 0)) {
+    // Gemini 3 supports combining Google built-in tools with custom function calling
+    const hasGoogleTools = model.provider.startsWith('google') && (context.SEARCH_GROUNDING || context.USE_GOOGLE_BUILDIN.length > 0);
+
+    // If using Google built-in tools on non-Gemini-3 models, clear custom tools (keep Google tools only)
+    // Note: isGemini3 is defined earlier in the Google tools section
+    if (hasGoogleTools && model.modelId && !model.modelId.startsWith('gemini-3')) {
         // Clear only custom tools from validTools, keep Google server-side tools
         const googleToolKeys = Object.keys(tools).filter(k =>
             k.startsWith('google_') || k.startsWith('enterprise_') ||
@@ -846,6 +854,8 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
         // only use first system message and last user message
         // params.messages = [params.messages.find(p => p.role === 'system')!, params.messages.findLast(p => p.role === 'user')!];
     }
+    // Gemini 3 can use both Google tools and custom tools together - no clearing needed
+    // For Gemini 3, tools object already contains both Google tools and custom tools merged above
     // only gemini-2 support google_buildin
     if (!model.modelId.startsWith('gemini-2')) {
         activeTools = activeTools.filter(t => t !== 'google_buildin');

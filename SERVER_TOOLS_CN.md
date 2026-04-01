@@ -268,6 +268,24 @@ ANTHROPIC_STRUCTURED_OUTPUT_MODE="auto"  # auto | outputFormat | tool
 
 ## 🌐 Google 工具
 
+> **🆕 Gemini 3 工具组合支持 (2026年4月)**
+> 
+> Gemini 3 模型（如 `gemini-3-flash-preview`、`gemini-3-pro-preview`）现在支持**同时使用 Google 内置工具和自定义函数工具**！这是 Google 在 2026年3月17日发布的 [Tool Combination API](https://ai.google.dev/gemini-api/docs/tool-combination) 带来的重大更新。
+> 
+> **版本对比**：
+> - **Gemini 3.x**: ✅ 支持 Google 工具 + 自定义工具组合，✅ 支持 Google Maps + Code Execution 同时使用
+> - **Gemini 2.x**: ⚠️ Google 工具和自定义工具互斥（只能选一种），⚠️ Google Maps 和 Code Execution 不能同时使用
+> - **Gemini 1.x**: ❌ 不支持 Google Maps
+> 
+> **实际应用示例**：
+> ```bash
+> # Gemini 3 可以同时使用：
+> USE_GOOGLE_BUILDIN=["googleSearch", "googleMaps", "codeExecution"]
+> USE_TOOLS=["duckduckgo", "web", "weather"]  # 自定义工具
+> 
+> # 结果：AI 可以同时调用 Google Search、Maps、Code Execution 和你的自定义工具！
+> ```
+
 ### 1. Google Search - Google 搜索
 
 **功能**：使用 Google 搜索引擎获取实时信息。支持网页搜索、图片搜索和时间范围过滤。
@@ -338,10 +356,15 @@ Gemini 会:
 USE_GOOGLE_BUILDIN=["codeExecution"]
 ```
 
+**版本兼容性**：
+- **Gemini 3.x**: ✅ 可与 Google Maps 和自定义工具同时使用
+- **Gemini 2.x**: ⚠️ 不能与 Google Maps 同时使用
+- **所有版本**: 仅支持 Python，不支持 Bash
+
 **限制**：
 - 仅支持 Python
 - 不支持 Bash
-- 不能与 Google Maps 同时使用
+- ~~不能与 Google Maps 同时使用~~（Gemini 3 已解除此限制）
 
 ---
 
@@ -356,10 +379,10 @@ GOOGLE_RETRIEVAL_CONFIG='{"latLng":{"latitude":37.7749,"longitude":-122.4194}}'
 GOOGLE_MAPS_MODEL="gemini-2.5-flash"  # Maps 专用模型
 ```
 
-**要求**：
-- 需要 Gemini 2.x 模型
-- 不能与 Code Execution 同时使用
-- 需要提供用户位置
+**版本要求**：
+- **Gemini 3.x**: ✅ 支持，可与 Code Execution 和自定义工具同时使用
+- **Gemini 2.x**: ✅ 支持，但不能与 Code Execution 同时使用
+- **Gemini 1.x**: ❌ 不支持
 
 **使用示例**：
 ```
@@ -369,6 +392,21 @@ Gemini 会:
 1. 根据配置的位置信息
 2. 搜索附近餐厅
 3. 返回推荐列表
+```
+
+**Gemini 3 新能力**：
+```bash
+# Gemini 3 可以同时使用 Maps + Code Execution + 自定义工具
+USE_GOOGLE_BUILDIN=["googleMaps", "codeExecution"]
+USE_TOOLS=["weather", "web"]
+
+# 示例场景：
+用户: 查询旧金山附近的餐厅，并用 Python 分析评分分布
+
+Gemini 3 会:
+1. 使用 Google Maps 搜索餐厅
+2. 使用 Code Execution 分析数据
+3. 可能调用自定义 web 工具获取更多信息
 ```
 
 ---
@@ -906,12 +944,15 @@ OPENAI_ENABLE_WEB_SEARCH=true
 **症状**：某些工具组合报错
 
 **已知冲突**：
-- Google: Maps + Code Execution 不能同时使用
+- ~~Google: Maps + Code Execution 不能同时使用~~（Gemini 3 已解除此限制）
+- **Google Gemini 2.x**: Maps + Code Execution 不能同时使用
+- **Google Gemini 2.x**: Google 工具和自定义工具互斥
 - xAI: 仅 Responses API 支持原生工具
 - OpenAI: 服务端工具仅支持 Responses API（不支持 Chat Completions API）
 
 **解决**：
-- 选择其中一个工具
+- **推荐**：升级到 Gemini 3 模型（`gemini-3-flash-preview`）以解除工具限制
+- 或选择其中一个工具
 - 或使用不同的 API
 
 ---

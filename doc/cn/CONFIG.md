@@ -552,6 +552,8 @@ ANTHROPIC_PROVIDER_OPTIONS = {
 
 Google Gemini 提供多种内置工具。
 
+> **🆕 Gemini 3 工具组合支持**: Gemini 3 模型（如 `gemini-3-flash-preview`）支持同时使用 Google 内置工具和自定义函数工具。旧版本（Gemini 2.x 及更早）只能使用 Google 工具或自定义工具，不能混用。
+
 #### 基础配置
 
 | 变量 | 描述 | 默认值 |
@@ -559,6 +561,11 @@ Google Gemini 提供多种内置工具。
 | `GOOGLE_BUILDIN` | 可用工具列表 | `['googleSearch', 'codeExecution', 'urlContext', 'googleMaps', 'fileSearch', 'enterpriseWebSearch']` |
 | `USE_GOOGLE_BUILDIN` | 启用的工具 | `[]` |
 | `GOOGLE_PROVIDER_OPTIONS` | 提供商选项 | 见下方 |
+
+**工具兼容性**:
+- **Gemini 3.x**: ✅ 支持 Google 工具 + 自定义工具组合，✅ 支持 Google Maps + Code Execution 同时使用
+- **Gemini 2.x**: ⚠️ Google 工具和自定义工具互斥，⚠️ Google Maps 和 Code Execution 不能同时使用
+- **Gemini 1.x**: ❌ 不支持 Google Maps
 
 #### Google Search 配置
 
@@ -628,7 +635,10 @@ GOOGLE_FILE_SEARCH_STORES='["fileSearchStores/my-store-123"]'
 GOOGLE_RETRIEVAL_CONFIG='{"latLng": {"latitude": 39.9042, "longitude": 116.4074}}'
 ```
 
-> **注意**: 只有 gemini-2.5-flash 支持 Google Maps
+> **注意**: 
+> - Gemini 2.x 和 3.x 支持 Google Maps
+> - **Gemini 3.x**: 可以同时使用 Maps + Code Execution + 自定义工具
+> - **Gemini 2.x**: Maps 和 Code Execution 不能同时使用
 
 #### Gemini 3 Pro Image 配置
 

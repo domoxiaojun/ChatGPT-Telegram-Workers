@@ -268,6 +268,24 @@ ANTHROPIC_STRUCTURED_OUTPUT_MODE="auto"  # auto | outputFormat | tool
 
 ## 🌐 Google Tools
 
+> **🆕 Gemini 3 Tool Combination Support (April 2026)**
+> 
+> Gemini 3 models (e.g., `gemini-3-flash-preview`, `gemini-3-pro-preview`) now support **combining Google built-in tools with custom function tools simultaneously**! This is a major update enabled by Google's [Tool Combination API](https://ai.google.dev/gemini-api/docs/tool-combination) released on March 17, 2026.
+> 
+> **Version Comparison**:
+> - **Gemini 3.x**: ✅ Supports Google tools + custom tools combination, ✅ Supports Google Maps + Code Execution together
+> - **Gemini 2.x**: ⚠️ Google tools and custom tools are mutually exclusive (choose one), ⚠️ Google Maps and Code Execution cannot be used together
+> - **Gemini 1.x**: ❌ Does not support Google Maps
+> 
+> **Practical Example**:
+> ```bash
+> # Gemini 3 can use simultaneously:
+> USE_GOOGLE_BUILDIN=["googleSearch", "googleMaps", "codeExecution"]
+> USE_TOOLS=["duckduckgo", "web", "weather"]  # Custom tools
+> 
+> # Result: AI can call Google Search, Maps, Code Execution AND your custom tools at the same time!
+> ```
+
 ### 1. Google Search - Google Search
 
 **Function**: Use Google search engine to retrieve real-time information. Supports web search, image search, and time range filtering.

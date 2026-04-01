@@ -552,6 +552,8 @@ For reasoning models like Claude 3.7 Sonnet:
 
 Google Gemini provides various built-in tools.
 
+> **🆕 Gemini 3 Tool Combination Support**: Gemini 3 models (e.g., `gemini-3-flash-preview`) support combining Google built-in tools with custom function tools in a single request. Older versions (Gemini 2.x and earlier) can only use Google tools OR custom tools, not both.
+
 #### Basic Configuration
 
 | Variable | Description | Default |
@@ -559,6 +561,11 @@ Google Gemini provides various built-in tools.
 | `GOOGLE_BUILDIN` | Available tools list | `['googleSearch', 'codeExecution', 'urlContext', 'googleMaps', 'fileSearch', 'enterpriseWebSearch']` |
 | `USE_GOOGLE_BUILDIN` | Enabled tools | `[]` |
 | `GOOGLE_PROVIDER_OPTIONS` | Provider options | See below |
+
+**Tool Compatibility**:
+- **Gemini 3.x**: ✅ Supports Google tools + custom tools combination, ✅ Supports Google Maps + Code Execution together
+- **Gemini 2.x**: ⚠️ Google tools and custom tools are mutually exclusive, ⚠️ Google Maps and Code Execution cannot be used together
+- **Gemini 1.x**: ❌ Does not support Google Maps
 
 #### Google Search Configuration
 
@@ -628,7 +635,10 @@ Example:
 GOOGLE_RETRIEVAL_CONFIG='{"latLng": {"latitude": 39.9042, "longitude": 116.4074}}'
 ```
 
-> **Note**: Only gemini-2.5-flash supports Google Maps
+> **Note**: 
+> - Gemini 2.x and 3.x support Google Maps
+> - **Gemini 3.x**: Can use Maps + Code Execution + custom tools together
+> - **Gemini 2.x**: Maps and Code Execution cannot be used together
 
 #### Gemini 3 Pro Image Configuration
 
