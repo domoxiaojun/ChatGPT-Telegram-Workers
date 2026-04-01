@@ -72,6 +72,18 @@ export function validateMarkdownV2(text: string): { valid: boolean; issues: stri
         }
     }
 
+    // Check for invalid nested formatting patterns
+    const invalidPatterns = [
+        { pattern: /\*\*_[^_]*_\*\*/, desc: 'Invalid nested bold+italic (**_text_**), use ***text*** instead' },
+        { pattern: /__\*[^*]*\*__/, desc: 'Invalid nested underline+italic (__*text*__), use ___text___ instead' },
+    ];
+
+    for (const { pattern, desc } of invalidPatterns) {
+        if (pattern.test(text)) {
+            issues.push(desc);
+        }
+    }
+
     return {
         valid: issues.length === 0,
         issues,

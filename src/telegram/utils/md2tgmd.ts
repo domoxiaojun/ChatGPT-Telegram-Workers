@@ -1,5 +1,5 @@
 /* eslint-disable regexp/no-super-linear-backtracking */
-const escapeChars = /[_*[\]()\\~`>#+\-=|{}.!]/g;
+const escapeChars = /[_*[\]()\\~`>#+\-=|{}.!?]/g;
 export const SEGMENTATION_MARK = '//SEGMENTATIONMARK//';
 export const escapedChars = {
     '\\*': 'ESCAPEASTERISK',
@@ -23,13 +23,11 @@ export const escapedChars = {
     '\\!': 'ESCAPEEXCLAMATION',
     '\\?': 'ESCAPEQUESTION',
 };
-export const escapedRegexp = /\\[*_~|`\\()[\]{}>#+\-=.!]/g;
+export const escapedRegexp = /\\[*_~|`\\()[\]{}>#+\-=.!?]/g;
 const reverseCodeRegexp = /\\`\\`\\`([\s\S]+)\\`\\`\\`$/g;
-const inlineCodeRegexp = /`[^\n]*?`/g;
-// Match markdown links - URL part uses greedy match to handle escaped parentheses in URLs
-// The URL can contain \\) (escaped close paren) which should not end the match
-// Only an unescaped \) (single backslash + paren) ends the URL
-const linkRegexp = /\\\[([^\]\n]+?)\\\]\\\((.+?)\\\)/g;
+const inlineCodeRegexp = /(?<!\\)`(?:[^`\n]|\\`)*?(?<!\\)`/g;
+// Match markdown links before escaping - raw format [text](url)
+const linkRegexp = /\[([^\]\n]+?)\]\(([^)]+)\)/g;
 const escapeRegexpMatch = [
     // bold & italic
     {
@@ -85,7 +83,24 @@ const escapeRegexpMatch = [
 
 export const escapedCharsReverseMap = new Map(Object.entries(escapedChars).map(([key, value]) => [value, key]));
 
+/**
+ * Validate and fix nested formatting issues
+ * Prevents invalid combinations like **_text_** which should be ***text***
+ */
+function normalizeNestedFormatting(text: string): string {
+    // Fix **_text_** -> ***text***
+    text = text.replace(/\*\*_([^_]+)_\*\*/g, '***$1***');
+    // Fix __*text*__ -> ___text___
+    text = text.replace(/__\*([^*]+)\*__/g, '___$1___');
+    // Fix *_text_* -> _text_ (prefer single underscore for italic)
+    text = text.replace(/\*_([^_]+)_\*/g, '_$1_');
+    return text;
+}
+
 export function escape(text: string, expandParams: ExpandParams = { addQuote: false, quoteExpandable: false }): string {
+    // Normalize nested formatting before processing
+    text = normalizeNestedFormatting(text);
+
     const lines = text.split('\n');
     const codeStack: number[] = [];
     const result: string[] = [];
@@ -263,7 +278,9 @@ function markData(text: string, markd: Record<string, string>, type: 'INCODE' | 
         if (isIncode) {
             markd[`${type} ${i}`] = match[0];
         } else {
-            markd[`${type} ${i}`] = `[${match[1]}](${match[2]})`;
+            // Escape special characters in URL for MarkdownV2
+            const url = match[2].replace(/([()\\])/g, '\\$1');
+            markd[`${type} ${i}`] = `[${match[1]}](${url})`;
         }
         text = text.replace(match[0], `${type} ${i}`);
         i++;
