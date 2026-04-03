@@ -152,9 +152,12 @@ function handleEscape(text: string, type: 'text' | 'code', { addQuote }: ExpandP
     text = text.replace(escapedRegexp, match => escapedChars[match as keyof typeof escapedChars]);
     if (type === 'text') {
         const markd: Record<string, string> = {};
-        text = markData(text, markd).text;
-        text = text.replace(escapeChars, match => `\\${match}`);
+        // Extract inline code first
+        text = markData(text, markd, 'INCODE').text;
+        // Extract links BEFORE escaping to preserve [text](url) format
         text = markData(text, markd, 'LINK').text;
+        // Now escape special characters (links are already extracted as placeholders)
+        text = text.replace(escapeChars, match => `\\${match}`);
 
         escapeRegexpMatch.forEach(item => text = text.replace(item.regex, item.value));
         Object.entries(markd).forEach(([key, value]) => {
