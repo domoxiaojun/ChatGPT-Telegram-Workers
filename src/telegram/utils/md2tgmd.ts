@@ -278,9 +278,10 @@ function markData(text: string, markd: Record<string, string>, type: 'INCODE' | 
         if (isIncode) {
             markd[`${type} ${i}`] = match[0];
         } else {
-            // Escape special characters in URL for MarkdownV2
-            const url = match[2].replace(/([()\\])/g, '\\$1');
-            markd[`${type} ${i}`] = `[${match[1]}](${url})`;
+            // For links: don't escape the link text, only escape ) and \ in URL
+            const linkText = match[1];
+            const url = match[2].replace(/([)\\])/g, '\\$1');
+            markd[`${type} ${i}`] = `[${linkText}](${url})`;
         }
         text = text.replace(match[0], `${type} ${i}`);
         i++;
