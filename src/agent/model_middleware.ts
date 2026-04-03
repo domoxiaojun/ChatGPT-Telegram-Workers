@@ -69,7 +69,7 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
     // };
 
     return {
-        prepareStepPre: (middleware: any) => async ({ model, stepNumber, steps }: { model: LLMModel; stepNumber: number; steps: StepResult<any>[] }) => {
+        prepareStepPre: (middleware: any) => async ({ model, stepNumber, steps }: { model: LLMModel; stepNumber: number; steps: StepResult<any, any>[] }) => {
             currentModel = model;
             if (activeTools.length > 0) {
                 let targetModel = config.TOOL_MODEL;
@@ -139,7 +139,7 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
             }
         },
 
-        onStepFinish: async ({ text, toolResults, usage, request, response, finishReason }: StepResult<any>) => {
+        onStepFinish: async ({ text, toolResults, usage, request, response, finishReason }: StepResult<any, any>) => {
             log.info('llm request end');
             log.info(`[onStepFinish] text: "${text}", text length: ${text?.length || 0}, toolResults count: ${toolResults.length}`);
             log.debug('step raw request:', request);
@@ -151,8 +151,8 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
             // Send tool results to user (image_generation, code_execution, etc.)
             if (toolResults.length > 0) {
                 // Deduplicate by toolCallId to avoid processing same tool multiple times
-                const uniqueResults = toolResults.filter((result, index, self) =>
-                    index === self.findIndex(r => r.toolCallId === result.toolCallId)
+                const uniqueResults = toolResults.filter((result: any, index: number, self: any[]) =>
+                    index === self.findIndex((r: any) => r.toolCallId === result.toolCallId)
                 );
 
                 if (uniqueResults.length < toolResults.length) {
@@ -214,7 +214,7 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
                 log.info(`tool details: ${JSON.stringify(func_logs, null, 2)}`);
                 log.debug(`tool results: ${JSON.stringify(toolResults, null, 2)}`);
 
-                const toolNames = [...new Set(toolResults.map(i => i.toolName))];
+                const toolNames = [...new Set(toolResults.map((i: any) => i.toolName))];
                 log.info(`finish tools: ${toolNames}`);
             }
 

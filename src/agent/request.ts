@@ -407,7 +407,7 @@ function thinkingExtractor(messageInfo: MessageInfo) {
     };
 }
 
-async function combineParams({ context, middleware, model, messages, activeTools, tools, prepareStepPre, onStepFinish, onChunk }: { context: AgentUserConfig; middleware: any; model: LLMModel; messages: ModelMessage[]; activeTools: string[]; tools: any; prepareStepPre: (middleware: (...args: any[]) => any) => any; onStepFinish: (data: StepResult<any>) => void; onChunk: (data: { chunk: TextStreamPart<any> }) => void }) {
+async function combineParams({ context, middleware, model, messages, activeTools, tools, prepareStepPre, onStepFinish, onChunk }: { context: AgentUserConfig; middleware: any; model: LLMModel; messages: ModelMessage[]; activeTools: string[]; tools: any; prepareStepPre: (middleware: (...args: any[]) => any) => any; onStepFinish: (data: StepResult<any, any>) => void; onChunk: (data: { chunk: TextStreamPart<any> }) => void }) {
     // Build Anthropic provider options with cache control and tool streaming
     const anthropicOptions: Record<string, any> = {
         ...context.ANTHROPIC_PROVIDER_OPTIONS,

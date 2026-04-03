@@ -33,8 +33,10 @@ export function validateMarkdownV2(text: string): { valid: boolean; issues: stri
         issues.push('Unbalanced bold markers (**)');
     }
 
-    // Check for unbalanced italic markers
-    const italicCount = (text.match(/(?<!\\)(?<!\*)\*(?!\*)/g) || []).length;
+    // Check for unbalanced italic markers (excluding list markers)
+    // List markers: "* " or "*   " at start of line
+    const textWithoutLists = text.replace(/^[\s]*\*\s+/gm, '');
+    const italicCount = (textWithoutLists.match(/(?<!\\)(?<!\*)\*(?!\*)/g) || []).length;
     if (italicCount % 2 !== 0) {
         issues.push('Unbalanced italic markers (*)');
     }
@@ -91,6 +93,20 @@ export function validateMarkdownV2(text: string): { valid: boolean; issues: stri
 }
 
 /**
+ * Preprocess text for MarkdownV2 compatibility
+ * Converts unsupported Markdown features to MarkdownV2-safe format
+ */
+export function preprocessMarkdownV2(text: string): string {
+    let processed = text;
+
+    // Convert unordered lists (* item) to bullet points (• item)
+    // Telegram MarkdownV2 doesn't support list syntax
+    processed = processed.replace(/^[\s]*\*\s+/gm, '• ');
+
+    return processed;
+}
+
+/**
  * Convert MarkdownV2 to safe HTML
  * Fallback when MarkdownV2 fails
  */
@@ -102,6 +118,10 @@ export function markdownToHTML(text: string): string {
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
+
+    // Convert unordered lists (must be done before italic conversion)
+    // Match: "* item" or "*   item" at start of line
+    html = html.replace(/^[\s]*\*\s+(.+)$/gm, '• $1');
 
     // Convert code blocks (must be done before inline code)
     html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>');
@@ -197,14 +217,17 @@ export async function sendWithFallback(
 
     // Try MarkdownV2 first
     try {
-        const validation = validateMarkdownV2(text);
+        // Preprocess text to convert unsupported Markdown features
+        const processedText = preprocessMarkdownV2(text);
+
+        const validation = validateMarkdownV2(processedText);
         if (!validation.valid) {
             console.warn('[Render] MarkdownV2 validation failed:', validation.issues);
         }
 
         const resp = await api.sendMessage({
             chat_id: chatId,
-            text,
+            text: processedText,
             parse_mode: 'MarkdownV2',
             ...options,
         });
@@ -212,7 +235,7 @@ export async function sendWithFallback(
         if (resp.ok) {
             return {
                 success: true,
-                text,
+                text: processedText,
                 parseMode: 'MarkdownV2',
             };
         }
