@@ -24,7 +24,7 @@ export const escapedChars = {
     '\\?': 'ESCAPEQUESTION',
 };
 export const escapedRegexp = /\\[*_~|`\\()[\]{}>#+\-=.!?]/g;
-const reverseCodeRegexp = /\\`\\`\\`([\s\S]+)\\`\\`\\`$/g;
+const reverseCodeRegexp = /\\`\\`\\`([\s\S]+?)\\`\\`\\`/g;
 const inlineCodeRegexp = /(?<!\\)`(?:[^`\n]|\\`)*?(?<!\\)`/g;
 // Match markdown links before escaping - raw format [text](url)
 const linkRegexp = /\[([^\]\n]+?)\]\(([^)]+)\)/g;
