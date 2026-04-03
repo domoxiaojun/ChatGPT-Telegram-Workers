@@ -101,7 +101,9 @@ export function preprocessMarkdownV2(text: string): string {
 
     // Convert unordered lists (* item) to bullet points (• item)
     // Telegram MarkdownV2 doesn't support list syntax
-    processed = processed.replace(/^[\s]*\*\s+/gm, '• ');
+    // Handle both regular lists and lists inside blockquotes
+    // Pattern: optional whitespace + optional '>' + optional whitespace + '*' + space
+    processed = processed.replace(/^([\s]*>?[\s]*)\*\s+/gm, '$1• ');
 
     return processed;
 }

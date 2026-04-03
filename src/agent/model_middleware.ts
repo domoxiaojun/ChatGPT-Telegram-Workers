@@ -975,7 +975,7 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
                         content = content.replace(segment.text, `$&[${tag}]`);
                     }
                 }
-                return `${content.trimEnd()}\n\n>sources:\n>${sources}`;
+                return `${content.trimEnd()}\n\n${sources}`;
                 // return `${content}\n## Sources:\n${sources}\n## Search Query:\n${webSearchQueries || ''}`;
                 // return content;
             };
@@ -995,7 +995,7 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
             }
             if ((metadata?.openai?.citations ?? []).length > 0) {
                 const sources = metadata?.openai?.citations?.map(({ url_citation: { title, url } }: { url_citation: { title: string; url: string } }, i: number) => `[[${i + 1}\\]](${url})`).join(' ');
-                return sources ? `${content.trimEnd()}\n\n>sources:\n>${sources}` : content;
+                return sources ? `${content.trimEnd()}\n\n${sources}` : content;
             }
             return content;
         }
@@ -1050,7 +1050,7 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
                 .map((source, i) => `[[${i + 1}\\]](${source.url})`)
                 .join(' ');
 
-            return `${cleanedContent.trimEnd()}\n\n>sources:\n>${formattedSources}`;
+            return `${cleanedContent.trimEnd()}\n\n${formattedSources}`;
         }
         default:
             return content;
