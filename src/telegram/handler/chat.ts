@@ -362,7 +362,7 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
             await waitUntil(nextEnableTime! + 10);
         }
         if (type === 'error') {
-            text = `${cache}\n${text}`;
+            text = `${cache}\n\n${text}`;
         }
         if (isSendDocument(text)) {
             return sendDocument(sender as MessageSender, { question: question || 'Redo Question', answer: text, log: getLog(context?.USER_CONFIG || {} as AgentUserConfig, { onlyModel: false, isParagraph: true }) });
