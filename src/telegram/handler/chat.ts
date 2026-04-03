@@ -362,7 +362,9 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
             await waitUntil(nextEnableTime! + 10);
         }
         if (type === 'error') {
-            text = `${cache}\n\n${text}`;
+            // Add separator to prevent blockquote from interfering with code block
+            // Use a zero-width space or explicit separator to break blockquote context
+            text = `${cache}\n\n${SEGMENTATION_MARK}\n\n${text}`;
         }
         if (isSendDocument(text)) {
             return sendDocument(sender as MessageSender, { question: question || 'Redo Question', answer: text, log: getLog(context?.USER_CONFIG || {} as AgentUserConfig, { onlyModel: false, isParagraph: true }) });
