@@ -6,6 +6,27 @@ import type { ChatAgent, ChatStreamTextHandler, HistoryItem, HistoryModifier, LL
 import { loadChatLLM } from '.';
 import { ENV } from '../config/env';
 import { log } from '../log/logger';
+import { ContextCompressor } from './context_compressor';
+
+// 全局上下文压缩器实例（每个会话一个）
+const compressorCache = new Map<string, ContextCompressor>();
+
+/**
+ * 获取或创建上下文压缩器
+ */
+function getContextCompressor(historyKey: string, context: AgentUserConfig): ContextCompressor {
+    if (!compressorCache.has(historyKey)) {
+        const compressor = new ContextCompressor({
+            enabled: context.ENABLE_CONTEXT_COMPRESSION,
+            thresholdPercent: context.CONTEXT_COMPRESSION_THRESHOLD,
+            protectFirstN: context.CONTEXT_COMPRESSION_PROTECT_HEAD,
+            tailTokenBudget: context.CONTEXT_COMPRESSION_TAIL_BUDGET,
+            summaryTargetRatio: context.CONTEXT_COMPRESSION_SUMMARY_RATIO,
+        });
+        compressorCache.set(historyKey, compressor);
+    }
+    return compressorCache.get(historyKey)!;
+}
 
 export async function loadHistory(key: string, length: number): Promise<HistoryItem[]> {
     // 加载历史记录
@@ -78,6 +99,28 @@ export async function requestCompletionsFromLLM(params: LLMChatRequestParams | n
     // 裁剪历史记录
     let trimmedHistory = trimer(history, context.USER_CONFIG.MAX_HISTORY_LENGTH);
 
+    // 智能上下文压缩
+    if (context.USER_CONFIG.ENABLE_CONTEXT_COMPRESSION) {
+        const compressor = getContextCompressor(
+            context.SHARE_CONTEXT.chatHistoryKey,
+            context.USER_CONFIG
+        );
+
+        // 获取当前模型的上下文长度
+        // 这里使用一个合理的默认值，你可以根据实际模型调整
+        const contextLength = getModelContextLength(context.USER_CONFIG);
+
+        // 检查是否需要压缩
+        if (compressor.shouldCompress(trimmedHistory, contextLength)) {
+            log.info('[CONTEXT COMPRESSION] Triggering intelligent context compression');
+            trimmedHistory = await compressor.compress(
+                trimmedHistory,
+                contextLength,
+                context.USER_CONFIG
+            );
+        }
+    }
+
     // 注入群组缓存（如果存在）
     // 群组缓存应该在裁剪后注入，避免被 trimer 裁剪掉
     const groupChatCache = (context.MIDDLE_CONTEXT as any).groupChatCache;
@@ -135,6 +178,72 @@ export async function requestCompletionsFromLLM(params: LLMChatRequestParams | n
         await storeHistory(history, context);
     }
     return answer;
+}
+
+/**
+ * 获取模型的上下文长度
+ */
+function getModelContextLength(config: AgentUserConfig): number {
+    const provider = config.AI_CHAT_PROVIDER;
+    const model = config[`${provider.toUpperCase()}_CHAT_MODEL`] || '';
+
+    // 常见模型的上下文长度
+    const contextLengths: Record<string, number> = {
+        // OpenAI
+        'gpt-4': 8192,
+        'gpt-4-32k': 32768,
+        'gpt-4-turbo': 128000,
+        'gpt-4o': 128000,
+        'gpt-4o-mini': 128000,
+        'gpt-3.5-turbo': 16385,
+        'gpt-3.5-turbo-16k': 16385,
+        'o1': 200000,
+        'o1-mini': 128000,
+        'o3-mini': 200000,
+
+        // Anthropic
+        'claude-3-opus': 200000,
+        'claude-3-sonnet': 200000,
+        'claude-3-haiku': 200000,
+        'claude-3-5-sonnet': 200000,
+        'claude-3-5-haiku': 200000,
+
+        // Google Gemini
+        'gemini-pro': 32768,
+        'gemini-1.5-pro': 2097152,
+        'gemini-1.5-flash': 1048576,
+        'gemini-2.0-flash': 1048576,
+        'gemini-3-flash-preview': 1048576,  // Gemini 3 Flash Preview
+        'gemini-exp': 2097152,
+
+        // xAI
+        'grok-beta': 131072,
+        'grok-2': 131072,
+
+        // Mistral
+        'mistral-large': 128000,
+        'mistral-medium': 32000,
+        'mistral-small': 32000,
+
+        // DeepSeek
+        'deepseek-chat': 64000,
+        'deepseek-reasoner': 64000,
+    };
+
+    // 尝试精确匹配
+    if (contextLengths[model]) {
+        return contextLengths[model];
+    }
+
+    // 尝试部分匹配
+    for (const [key, length] of Object.entries(contextLengths)) {
+        if (model.includes(key)) {
+            return length;
+        }
+    }
+
+    // 默认值
+    return 128000;
 }
 
 export async function storeHistory(history: ModelMessage[], context: WorkerContext) {

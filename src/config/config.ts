@@ -890,6 +890,21 @@ export class ExtraUserConfig {
     // for example: PARAMS_MODIFIER = ['o1-mini,o3-mini:-temperature|+max_tokens=1000'];
     // priority is higher than EXTRA_PARAMS
     PARAMS_MODIFIER: string[] = ['o1-mini,o3-mini,gpt-4o-mini-search-preview,gpt-4o-search-preview:-temperature'];
+
+    // ===== 智能上下文压缩配置 =====
+    // 是否启用智能上下文压缩
+    ENABLE_CONTEXT_COMPRESSION = true;
+    // 触发压缩的阈值百分比（相对于模型上下文长度）
+    // 对于大上下文模型（如 Gemini 3 Flash 1M tokens），60% 约为 600K tokens
+    CONTEXT_COMPRESSION_THRESHOLD = 0.60;
+    // 保护头部消息数量（系统提示 + 前几条消息）
+    CONTEXT_COMPRESSION_PROTECT_HEAD = 3;
+    // 尾部 token 预算（保护最近的消息）
+    // 增加到 15000 以保护更多最近的对话上下文
+    CONTEXT_COMPRESSION_TAIL_BUDGET = 15000;
+    // 摘要目标比例
+    CONTEXT_COMPRESSION_SUMMARY_RATIO = 0.20;
+
     // start with @key to trigger workflow, support agent, model, temperature, max_tokens;
     // next is the next step prompt: {{result}} is the result of the current step result, {{question}} is user input
     WORKFLOW: {
