@@ -1,4 +1,5 @@
 import app_iap from './app_iap';
+import delegate from './delegate';
 import duckduckgo from './duckduckgo';
 import google_buildin from './google_buildin';
 import google_lyria from './google_lyria';
@@ -18,4 +19,5 @@ export default {
     google_lyria,
     google_buildin,
     xai_video,
+    delegate,
 };

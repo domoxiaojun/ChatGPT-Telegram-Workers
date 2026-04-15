@@ -905,6 +905,18 @@ export class ExtraUserConfig {
     // 摘要目标比例
     CONTEXT_COMPRESSION_SUMMARY_RATIO = 0.20;
 
+    // ===== 子代理委托配置 =====
+    // 是否启用子代理委托（默认关闭，高级功能）
+    // 适用场景：并行研究任务、复杂多步骤工作流、需要隔离上下文的任务
+    // 注意：会增加 API 调用成本和响应时间
+    ENABLE_DELEGATE_AGENT = false;
+    // 最大并发子代理数量
+    DELEGATE_MAX_CONCURRENT = 3;
+    // 子代理默认最大迭代次数
+    DELEGATE_MAX_ITERATIONS = 20;
+    // 子代理使用的模型（可选，默认自动选择便宜的模型）
+    DELEGATE_MODEL?: string;
+
     // start with @key to trigger workflow, support agent, model, temperature, max_tokens;
     // next is the next step prompt: {{result}} is the result of the current step result, {{question}} is user input
     WORKFLOW: {
