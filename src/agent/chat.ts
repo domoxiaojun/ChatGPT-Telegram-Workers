@@ -1,4 +1,3 @@
-/* eslint-disable unused-imports/no-unused-vars */
 import type { ModelMessage } from 'ai';
 import type { WorkerContext } from '../config/context';
 import type { AgentUserConfig } from '../config/env';
@@ -7,6 +6,7 @@ import { loadChatLLM } from '.';
 import { ENV } from '../config/env';
 import { log } from '../log/logger';
 import { ContextCompressor } from './context_compressor';
+import { createUserProfileManager } from './user_profile';
 
 // 全局上下文压缩器实例（每个会话一个）
 const compressorCache = new Map<string, ContextCompressor>();
@@ -144,8 +144,38 @@ export async function requestCompletionsFromLLM(params: LLMChatRequestParams | n
     }
 
     const messages = [...trimmedHistory, params];
+
+    // 获取用户画像并生成系统提示
+    let userProfilePrompt = '';
+    try {
+        // 从 chatHistoryKey 提取正确的 ID
+        // 格式：history:chat_id:bot_id 或 history:chat_id:bot_id:from_id
+        const keyParts = context.SHARE_CONTEXT.chatHistoryKey.split(':');
+        const chatId = keyParts[1]; // chat_id
+        const botId = context.SHARE_CONTEXT.botId;
+        const fromId = keyParts[3]; // from_id (如果存在)
+
+        // 构建 profile key，与 configStoreKey 逻辑一致
+        let profileId = chatId;
+        if (fromId) {
+            profileId = `${chatId}:${botId}:${fromId}`;
+        } else {
+            profileId = `${chatId}:${botId}`;
+        }
+
+        const profileManager = createUserProfileManager(profileId, 0); // botId 已包含在 profileId 中
+        userProfilePrompt = await profileManager.generateSystemPrompt();
+
+        // 增加交互计数（异步，不阻塞）
+        profileManager.incrementInteraction().catch(err =>
+            log.warn('[USER_PROFILE] Failed to increment interaction:', err)
+        );
+    } catch (error) {
+        log.warn('[USER_PROFILE] Failed to load user profile:', error);
+    }
+
     const llmParams: LLMChatParams = {
-        messages: injectSystemMessage(messages, context.USER_CONFIG.SYSTEM_INIT_MESSAGE, context.USER_CONFIG.TIMEZONE),
+        messages: injectSystemMessage(messages, context.USER_CONFIG.SYSTEM_INIT_MESSAGE, context.USER_CONFIG.TIMEZONE, userProfilePrompt),
         cache: [],
     };
     const answer = await workflow(agent, llmParams, context.USER_CONFIG, onStream);
@@ -316,7 +346,7 @@ function extractResultText(result: { messages: ResponseMessage[]; content: strin
     return lastMessage.content;
 };
 
-export function injectSystemMessage(messages: ModelMessage[], systemMessage: string | null, timezone?: string) {
+export function injectSystemMessage(messages: ModelMessage[], systemMessage: string | null, timezone?: string, userProfilePrompt?: string) {
     if (systemMessage) {
         // 注入{{CURRENT_TIME}}
         const now = new Date();
@@ -331,6 +361,12 @@ export function injectSystemMessage(messages: ModelMessage[], systemMessage: str
             hour12: false,
         });
         systemMessage = systemMessage.replace('{{CURRENT_TIME}}', localTime);
+
+        // 注入用户画像（如果存在）
+        if (userProfilePrompt && userProfilePrompt.trim()) {
+            systemMessage = `${systemMessage}\n\n${userProfilePrompt}`;
+        }
+
         messages.unshift({
             role: 'system',
             content: systemMessage,

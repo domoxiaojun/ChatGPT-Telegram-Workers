@@ -33,6 +33,7 @@ import {
     VersionCommandHandler,
 } from './system';
 import { CronCommandHandler } from './cron';
+import { ProfileCommandHandler } from './profile';
 
 const SYSTEM_COMMANDS: CommandHandler[] = [
     new StartCommandHandler(),
@@ -56,6 +57,7 @@ const SYSTEM_COMMANDS: CommandHandler[] = [
     new BlockUserCommandHandler(),
     new BlocklistCommandHandler(),
     new CronCommandHandler(),
+    new ProfileCommandHandler(),
 ];
 
 // const commandHanders: any[] = [
