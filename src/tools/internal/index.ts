@@ -1,4 +1,5 @@
 import app_iap from './app_iap';
+import browser from './browser';
 import delegate from './delegate';
 import duckduckgo from './duckduckgo';
 import google_buildin from './google_buildin';
@@ -20,4 +21,6 @@ export default {
     google_buildin,
     xai_video,
     delegate,
+    browser_navigate: browser.navigate,
+    browser_screenshot: browser.screenshot,
 };

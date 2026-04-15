@@ -917,6 +917,18 @@ export class ExtraUserConfig {
     // 子代理使用的模型（可选，默认自动选择便宜的模型）
     DELEGATE_MODEL?: string;
 
+    // ===== 浏览器自动化配置 =====
+    // Browserless.io API 密钥（云端浏览器，适合 Cloudflare Workers）
+    // 获取：https://www.browserless.io/
+    // 支持单个 Key
+    BROWSERLESS_API_KEY?: string;
+    // 支持多个 Key（逗号分隔，用于轮询）
+    BROWSERLESS_API_KEYS?: string;
+    // 支持 Key 列表（JSON 数组格式）
+    BROWSERLESS_API_KEY_LIST?: string;
+    // Browserless 服务 URL（默认：https://chrome.browserless.io）
+    BROWSERLESS_URL?: string;
+
     // start with @key to trigger workflow, support agent, model, temperature, max_tokens;
     // next is the next step prompt: {{result}} is the result of the current step result, {{question}} is user input
     WORKFLOW: {
