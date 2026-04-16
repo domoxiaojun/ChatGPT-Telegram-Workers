@@ -50,7 +50,11 @@ This is a significantly refactored ChatGPT Telegram bot project that supports mu
 - **Plugin System**: Customizable plugins with template interpolation
 - **MCP Support**: Model Context Protocol integration
 - **Web Crawler**: Pattern-based HTML extraction with dynamic content support
+- **Browser Automation**: Browserless.io integration with API key rotation, load balancing, and failure tracking across multiple accounts; supports JavaScript-rendered page fetching and screenshots
 - **Workflow System**: Multi-step AI processing with @key triggers
+- **Intelligent Context Compression**: Auto-trigger at 60% of model context length; protects head (system prompt + first 3 messages) and tail (last 15K tokens); compresses middle into LLM-generated structured summary using cheapest models (gemini-2.5-flash-lite, gpt-4o-mini, etc.)
+- **Subagent Delegation** (opt-in): Spawn isolated child agents with independent history for parallel research or multi-step independent workflows; max 3 concurrent, uses cheaper models, parent only sees delegation call and final summary
+- **User Profile & Memory**: Persistent per-user profile (language, communication style, timezone, custom notes) auto-injected into system prompts; shared or individual mode in groups
 
 **💬 Chat Enhancements**
 - **Multi-language Support**: Chinese, English, Portuguese, etc.
@@ -88,6 +92,7 @@ This is a significantly refactored ChatGPT Telegram bot project that supports mu
   - `/perplexity` - Perplexity AI integration
   - `/block` / `/blocklist` - User blocking management
   - `/redo` - Retry last message
+  - `/profile` - View/update user profile (language, style, timezone, notes)
 - **User Configuration**: Personalized settings with multi-user support
 - **Whitelist/Blacklist**: Fine-grained access control with user-level blocking
 - **Scheduled Message Deletion**: Automatic cleanup by message type with configurable TTL
@@ -201,6 +206,22 @@ Key configuration options:
   - `MAX_STEPS`: Maximum tool execution steps (default: 5)
   - `OPENAI_REASONING_EFFORT`: Effort level for o1 models (low/medium/high)
   - `PARAMS_MODIFIER`: Per-model parameter overrides
+- **Context Compression** (auto-summarize long conversations):
+  - `ENABLE_CONTEXT_COMPRESSION`: Enable/disable compression (default: `true`)
+  - `CONTEXT_COMPRESSION_THRESHOLD`: Trigger ratio of model context length (default: `0.60`)
+  - `CONTEXT_COMPRESSION_PROTECT_HEAD`: Protected head message count (default: `3`)
+  - `CONTEXT_COMPRESSION_TAIL_BUDGET`: Protected tail token budget (default: `15000`)
+  - `CONTEXT_COMPRESSION_SUMMARY_RATIO`: Summary token ratio (default: `0.20`)
+- **Subagent Delegation** (parallel isolated child agents, opt-in):
+  - `ENABLE_DELEGATE_AGENT`: Enable delegation (default: `false`)
+  - `DELEGATE_MAX_CONCURRENT`: Max concurrent subagents (default: `3`)
+  - `DELEGATE_MAX_ITERATIONS`: Max iterations per subagent (default: `20`)
+  - `DELEGATE_MODEL`: Override model for subagents (optional)
+- **Browser Automation** (Browserless.io with key rotation):
+  - `BROWSERLESS_API_KEY`: Single API key
+  - `BROWSERLESS_API_KEYS`: Comma-separated multiple keys (rotation + load balancing)
+  - `BROWSERLESS_API_KEY_LIST`: JSON array of keys
+  - `BROWSERLESS_URL`: Custom Browserless service URL (optional)
 
 For more configurations, see [Configuration Documentation](./doc/en/CONFIG.md)
 
@@ -219,8 +240,10 @@ The bot comes with a rich set of built-in tools that can be called by AI models:
 **🔧 Utility Tools**
 - **web** - Web crawler with pattern-based HTML extraction
 - **duckduckgo** - DuckDuckGo web search integration
+- **browser_navigate** / **browser_screenshot** - Browser automation via Browserless.io (JS rendering + screenshots), with multi-key rotation
 - **think** - Reasoning/brainstorming for complex tasks
 - **command** - Execute Telegram commands from AI
+- **delegate_task** - Spawn isolated subagents for parallel research / independent workflows (requires `ENABLE_DELEGATE_AGENT=true`)
 
 **🎨 Creative Tools**
 - **image_gen** - Multi-provider image generation (DALL-E, Google, Vertex, xAI, Kling, Workers, **BFL/FLUX**)

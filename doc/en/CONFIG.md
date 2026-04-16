@@ -842,6 +842,7 @@ Default `MAPPING_KEY`:
 | `/history` | Show chat history | `/history` |
 | `/model` | Show/change model | `/model` |
 | `/cron` | Manage scheduled AI tasks | `/cron add 09:00 Daily summary` |
+| `/profile` | View/update user profile | `/profile set language zh` |
 
 ### Scheduled Tasks (Docker Deployment)
 
@@ -1132,6 +1133,84 @@ MCP_local='{
 | `CRON_CHECK_TIME` | Cleanup schedule | `''` |
 | `SCHEDULE_GROUP_DELETE_TYPE` | Group cleanup types | `['tip']` |
 | `SCHEDULE_PRIVATE_DELETE_TYPE` | Private cleanup types | `['tip']` |
+
+### Intelligent Context Compression
+
+Auto-summarizes long conversations when approaching the model's context window limit. Protects head (system prompt + first N messages) and tail (last X tokens), compresses middle messages into an LLM-generated structured summary. Uses the cheapest available model for summary generation.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ENABLE_CONTEXT_COMPRESSION` | Enable/disable compression | `true` |
+| `CONTEXT_COMPRESSION_THRESHOLD` | Trigger ratio of model context length | `0.60` |
+| `CONTEXT_COMPRESSION_PROTECT_HEAD` | Head messages to protect (after system prompt) | `3` |
+| `CONTEXT_COMPRESSION_TAIL_BUDGET` | Tail token budget to protect | `15000` |
+| `CONTEXT_COMPRESSION_SUMMARY_RATIO` | Summary token ratio of compressed range | `0.20` |
+
+**Summary model selection (cheapest-first):**
+- Google: `gemini-2.5-flash-lite` ($0.075/M input)
+- OpenAI: `gpt-4o-mini` ($0.15/M input)
+- xAI: `grok-4.1-fast` ($0.20/M input)
+- Anthropic: `claude-haiku-4-5` ($1.00/M input)
+
+Iterative summary updates are applied when compression runs multiple times. Orphaned tool call/result pairs are automatically cleaned up before compression.
+
+### Subagent Delegation (Opt-in)
+
+Spawn isolated child agents with independent conversation history. Useful for parallel research, multi-step independent workflows, or isolating data-heavy intermediate work from the parent context. Subagents cannot recursively delegate or send Telegram messages; the parent only sees the delegation call and the final summary.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ENABLE_DELEGATE_AGENT` | Enable delegation tool | `false` |
+| `DELEGATE_MAX_CONCURRENT` | Max concurrent subagents | `3` |
+| `DELEGATE_MAX_ITERATIONS` | Max iterations per subagent | `20` |
+| `DELEGATE_MODEL` | Override model for subagents (optional) | `''` |
+
+**Tool usage:**
+- `delegate_task(goal, context)` — single task delegation
+- `delegate_task(tasks)` — batch parallel delegation (up to `DELEGATE_MAX_CONCURRENT`)
+
+**When to enable:** parallel comparison tasks, multi-step research that would flood parent context, isolated tests. Disabled by default due to cost and complexity.
+
+### Browser Automation (Browserless.io)
+
+Multi-backend browser tool. Primary backend is Browserless.io (cloud); supports API key rotation across multiple free-tier accounts to multiply quota, with automatic skipping of keys that hit 3+ consecutive failures. Tracks usage count and failure rate per key. Falls back to plain HTTP fetch when no key is configured. Playwright backend is reserved as a placeholder.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `BROWSERLESS_API_KEY` | Single API key | `''` |
+| `BROWSERLESS_API_KEYS` | Comma-separated multiple keys | `''` |
+| `BROWSERLESS_API_KEY_LIST` | JSON array of keys | `''` |
+| `BROWSERLESS_URL` | Custom Browserless service URL | `''` |
+
+**Tools exposed to AI:**
+- `browser_navigate` — fetch page content with JavaScript rendering
+- `browser_screenshot` — capture page screenshots (requires Browserless/Playwright)
+
+No Docker image changes required — uses cloud service by default.
+
+### User Profile & Memory
+
+Persistent per-user (or per-group) profile auto-injected into system prompts so the bot remembers preferences across sessions. Stored via the existing KV interface (SQLite in Docker, persists across restarts with volume mount).
+
+**Profile fields:**
+- `language`: `zh`, `en`, `auto`
+- `style`: `concise`, `detailed`, `balanced`
+- `timezone`: e.g., `Asia/Shanghai`
+- `notes`: free-form custom text
+- Preferred tools tracking (auto)
+- Interaction count tracking (auto)
+
+**Commands:**
+- `/profile` — view current profile
+- `/profile set <key> <value>` — update a setting (e.g. `/profile set language zh`)
+- `/profile clear` — clear all settings
+- `/profile delete` — delete profile
+
+**Group behavior:** controlled by existing `GROUP_CHAT_BOT_SHARE_MODE`.
+- `true`: entire group shares one profile
+- `false`: each member has an individual profile
+
+Storage key format: `user_profile:${chat_id}:${bot_id}[:${from_id}]`.
 
 ## 🔒 Security & Configuration Lock
 

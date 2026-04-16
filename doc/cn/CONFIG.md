@@ -842,6 +842,7 @@ GOOGLE_TTS_EXTRA_PARAMS='{
 | `/history` | 显示聊天历史 | `/history` |
 | `/model` | 显示/更改模型 | `/model` |
 | `/cron` | 管理定时AI任务 | `/cron add 09:00 每日早报` |
+| `/profile` | 查看/更新用户档案 | `/profile set language zh` |
 
 ### 定时任务 (Docker 部署)
 
@@ -1132,6 +1133,84 @@ MCP_local='{
 | `CRON_CHECK_TIME` | 清理计划 | `''` |
 | `SCHEDULE_GROUP_DELETE_TYPE` | 群组清理类型 | `['tip']` |
 | `SCHEDULE_PRIVATE_DELETE_TYPE` | 私聊清理类型 | `['tip']` |
+
+### 智能上下文压缩
+
+当对话接近模型上下文窗口上限时自动进行摘要。保护头部（系统提示 + 前 N 条消息）和尾部（最后 X 个 token），中间部分由 LLM 生成结构化摘要。摘要使用可用的最便宜模型。
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `ENABLE_CONTEXT_COMPRESSION` | 启用/禁用压缩 | `true` |
+| `CONTEXT_COMPRESSION_THRESHOLD` | 按模型上下文长度的触发比例 | `0.60` |
+| `CONTEXT_COMPRESSION_PROTECT_HEAD` | 受保护的头部消息数（系统提示之后） | `3` |
+| `CONTEXT_COMPRESSION_TAIL_BUDGET` | 受保护的尾部 token 预算 | `15000` |
+| `CONTEXT_COMPRESSION_SUMMARY_RATIO` | 摘要占压缩区间的 token 比例 | `0.20` |
+
+**摘要模型选择（从便宜到贵）：**
+- Google: `gemini-2.5-flash-lite`（$0.075/M 输入）
+- OpenAI: `gpt-4o-mini`（$0.15/M 输入）
+- xAI: `grok-4.1-fast`（$0.20/M 输入）
+- Anthropic: `claude-haiku-4-5`（$1.00/M 输入）
+
+多次压缩时会迭代更新摘要。压缩前会自动清理孤立的 tool call / tool result 配对。
+
+### 子代理委派（默认关闭）
+
+生成拥有独立对话历史的隔离子代理。适用于并行研究、多步骤独立工作流，或将数据量大的中间过程隔离在父上下文之外。子代理不能递归委派也不能发送 Telegram 消息；父代理只看到委派调用和最终摘要。
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `ENABLE_DELEGATE_AGENT` | 启用委派工具 | `false` |
+| `DELEGATE_MAX_CONCURRENT` | 最大并发子代理数 | `3` |
+| `DELEGATE_MAX_ITERATIONS` | 每个子代理最大迭代次数 | `20` |
+| `DELEGATE_MODEL` | 子代理使用的模型覆盖（可选） | `''` |
+
+**工具用法：**
+- `delegate_task(goal, context)` — 单任务委派
+- `delegate_task(tasks)` — 批量并行委派（受 `DELEGATE_MAX_CONCURRENT` 限制）
+
+**何时启用：** 并行对比任务、会淹没父上下文的多步研究、隔离测试。因成本和复杂度，默认关闭。
+
+### 浏览器自动化（Browserless.io）
+
+多后端浏览器工具。主后端为 Browserless.io（云端）；支持多 API Key 轮询以叠加多个免费账号额度，连续失败 3 次以上的 Key 会自动跳过。按 Key 追踪使用次数和失败率。未配置 Key 时降级为普通 HTTP 抓取。Playwright 后端作为预留占位。
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `BROWSERLESS_API_KEY` | 单个 API Key | `''` |
+| `BROWSERLESS_API_KEYS` | 逗号分隔的多个 Key | `''` |
+| `BROWSERLESS_API_KEY_LIST` | Key 的 JSON 数组 | `''` |
+| `BROWSERLESS_URL` | 自定义 Browserless 服务地址 | `''` |
+
+**暴露给 AI 的工具：**
+- `browser_navigate` — 抓取 JavaScript 渲染后的页面内容
+- `browser_screenshot` — 页面截图（需要 Browserless/Playwright）
+
+无需修改 Docker 镜像，默认使用云服务。
+
+### 用户档案与记忆
+
+持久化的每用户（或每群组）档案，自动注入系统提示，让机器人跨会话记住偏好。通过现有 KV 接口存储（Docker 下为 SQLite，挂载卷后可跨重启持久化）。
+
+**档案字段：**
+- `language`：`zh`、`en`、`auto`
+- `style`：`concise`、`detailed`、`balanced`
+- `timezone`：如 `Asia/Shanghai`
+- `notes`：自定义文本
+- 偏好工具追踪（自动）
+- 交互次数追踪（自动）
+
+**命令：**
+- `/profile` — 查看当前档案
+- `/profile set <key> <value>` — 更新设置（如 `/profile set language zh`）
+- `/profile clear` — 清空所有设置
+- `/profile delete` — 删除档案
+
+**群组行为：** 由现有的 `GROUP_CHAT_BOT_SHARE_MODE` 控制。
+- `true`：整个群组共享一份档案
+- `false`：每个成员拥有独立档案
+
+存储键格式：`user_profile:${chat_id}:${bot_id}[:${from_id}]`。
 
 ## 🔒 安全和配置锁定
 

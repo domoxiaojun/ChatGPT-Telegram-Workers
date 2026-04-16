@@ -50,7 +50,11 @@
 - **插件系统**: 可自定义插件，支持模板插值
 - **MCP支持**: 集成Model Context Protocol
 - **网页爬虫**: 基于模式的HTML提取，支持动态内容
+- **浏览器自动化**: 集成 Browserless.io，支持多 API Key 轮询、负载均衡与失败追踪（可叠加多个免费账号额度）；支持 JS 渲染页面抓取和截图
 - **工作流系统**: 通过@key触发器实现多步骤AI处理
+- **智能上下文压缩**: 达到模型上下文长度 60% 时自动触发；保护头部（系统提示 + 前 3 条消息）和尾部（最后 15K tokens）；中间部分由最便宜的模型（gemini-2.5-flash-lite、gpt-4o-mini 等）生成结构化摘要
+- **子代理委派**（可选开启）: 生成独立对话历史的隔离子代理，用于并行研究或多步骤独立工作流；默认最多 3 个并发，使用更便宜的模型，父代理只看到调用和最终摘要
+- **用户档案与记忆**: 持久化的用户档案（语言、沟通风格、时区、自定义备注），自动注入系统提示；群组中支持共享或独立模式
 
 **💬 对话增强**
 - **多语言支持**: 中文、英文、葡萄牙语等
@@ -88,6 +92,7 @@
   - `/perplexity` - Perplexity AI集成
   - `/block` / `/blocklist` - 用户屏蔽管理
   - `/redo` - 重试上一条消息
+  - `/profile` - 查看/更新用户档案（语言、风格、时区、备注）
 - **用户配置**: 个性化设置，支持多用户配置
 - **白名单/黑名单**: 精细的访问控制，支持用户级屏蔽
 - **消息定时删除**: 按消息类型自动清理，可配置TTL
@@ -201,6 +206,22 @@ src/
   - `MAX_STEPS`: 最大工具执行步数（默认：5）
   - `OPENAI_REASONING_EFFORT`: o1模型推理强度（low/medium/high）
   - `PARAMS_MODIFIER`: 按模型参数覆盖
+- **上下文压缩**（长对话自动摘要）:
+  - `ENABLE_CONTEXT_COMPRESSION`: 启用/禁用压缩（默认: `true`）
+  - `CONTEXT_COMPRESSION_THRESHOLD`: 按模型上下文长度的触发比例（默认: `0.60`）
+  - `CONTEXT_COMPRESSION_PROTECT_HEAD`: 受保护的头部消息数（默认: `3`）
+  - `CONTEXT_COMPRESSION_TAIL_BUDGET`: 受保护的尾部 token 预算（默认: `15000`）
+  - `CONTEXT_COMPRESSION_SUMMARY_RATIO`: 摘要 token 比例（默认: `0.20`）
+- **子代理委派**（并行的隔离子代理，默认关闭）:
+  - `ENABLE_DELEGATE_AGENT`: 启用委派（默认: `false`）
+  - `DELEGATE_MAX_CONCURRENT`: 最大并发子代理数（默认: `3`）
+  - `DELEGATE_MAX_ITERATIONS`: 每个子代理的最大迭代次数（默认: `20`）
+  - `DELEGATE_MODEL`: 子代理使用的模型覆盖（可选）
+- **浏览器自动化**（Browserless.io，支持 Key 轮询）:
+  - `BROWSERLESS_API_KEY`: 单个 API Key
+  - `BROWSERLESS_API_KEYS`: 逗号分隔的多个 Key（轮询 + 负载均衡）
+  - `BROWSERLESS_API_KEY_LIST`: Key 的 JSON 数组
+  - `BROWSERLESS_URL`: 自定义 Browserless 服务地址（可选）
 
 更多配置请参考 [配置文档](./doc/cn/CONFIG.md)
 
@@ -219,8 +240,10 @@ src/
 **🔧 实用工具**
 - **web** - 网页爬虫，支持基于模式的HTML提取
 - **duckduckgo** - DuckDuckGo网页搜索集成
+- **browser_navigate** / **browser_screenshot** - 通过 Browserless.io 的浏览器自动化（JS 渲染 + 截图），支持多 Key 轮询
 - **think** - 复杂任务的推理/头脑风暴
 - **command** - 从AI执行Telegram命令
+- **delegate_task** - 生成隔离的子代理用于并行研究 / 独立工作流（需要 `ENABLE_DELEGATE_AGENT=true`）
 
 **🎨 创意工具**
 - **image_gen** - 多提供商图像生成（DALL-E、Google、Vertex、xAI、Kling、Workers、**BFL/FLUX**）
