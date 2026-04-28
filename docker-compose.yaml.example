@@ -1,8 +1,7 @@
 services:
   chatgpt-telegram-workers:
     container_name: chatgpt-telegram-workers
-    build: .
-    image: szemeng76/chatgpt-telegram-workers:latest
+    image: domomido/chatgpt-telegram-workers:latest
     restart: unless-stopped  # Auto-restart on failure
     ports:
       - "8787:8787"
