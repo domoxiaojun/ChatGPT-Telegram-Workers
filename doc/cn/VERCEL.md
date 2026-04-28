@@ -114,7 +114,7 @@ TELEGRAM_AVAILABLE_TOKENS=bot_token_1,bot_token_2
 # AI 提供商密钥
 OPENAI_API_KEY=your_openai_key
 ANTHROPIC_API_KEY=your_anthropic_key
-GOOGLE_GENERATIVE_AI_API_KEY=your_gemini_key
+GOOGLE_API_KEY=your_gemini_key
 
 # 可选：其他配置
 NODE_ENV=production

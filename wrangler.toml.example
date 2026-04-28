@@ -1,195 +1,1571 @@
-# 这里的 name 改成你自己的workers 的名字
+# Cloudflare Workers 项目名称，部署前改成你自己的 Worker 名称。
+# 影响 Worker URL 和 wrangler 部署目标；只建议使用小写字母、数字、短横线。
 name = 'chatgpt-telegram-workers'
+
+# Cloudflare Workers 兼容日期；用于锁定 Workers runtime 行为。
+# 一般保持项目示例值即可，除非 Cloudflare 新特性要求升级。
 compatibility_date = '2024-09-23'
+
+# Worker 入口文件；源码部署保持 ./src/index.ts，构建后 dist 部署会由构建产物处理。
 main = './src/index.ts'
+
+# 是否启用 workers.dev 二级域名访问。
+# 生产环境如果使用自定义域名，可以保留 true 或按 Cloudflare 路由习惯改 false。
 workers_dev = true
+
+# nodejs_compat 让 Workers runtime 支持部分 Node.js API；本项目依赖它，建议不要删除。
 compatibility_flags = [ "nodejs_compat" ]
 
-# 这里的 id 为必填项 请填写你的 kv namespace id
-# preview_id 只在调试时使用，不需要请删除
-
+# KV 命名空间，binding 必须保持为 DATABASE
+# id 必填；preview_id 只用于 wrangler dev 预览环境，不需要可以删除
 kv_namespaces = [
   { binding = 'DATABASE', id = '', preview_id = '' }
 ]
 
-
 [vars]
 
-# 更多参数使用请查看README.md
-# 没有注释的参数为必填项
-# 写了参数的选项为该参数的默认值
-# 要使用前面有#的属性请去掉#号
-# 所有变量必须为字符串，多个参数的值之间用逗号隔开
+# ============================================================
+# 配置写法说明
+# ============================================================
+# Cloudflare Workers 的 [vars] 最终会以环境变量形式传入，建议全部写成字符串。
+# 布尔值写成 'true' / 'false'；数字写成 '10' / '0.6'；数组可写成 'a,b' 或 '["a","b"]'。
+# 对象必须写成 JSON 字符串，例如 '{"key":"value"}'。
+# 以 #KEY = 'value' 展示的行是“可选配置 + 当前代码默认值示例”：
+# - 保持注释：项目仍会使用源码里的默认值。
+# - 取消注释：用这里的值覆盖源码默认值。
+# - 写成空字符串 ''：不等于删除变量，通常表示“关闭 / 自动 / 不限制 / 不设置”，具体含义见每项注释。
+# - 真正必须填写的项目没有注释，例如 TELEGRAM_AVAILABLE_TOKENS、TELEGRAM_BOT_NAME、CHAT_WHITE_LIST、CHAT_GROUP_WHITE_LIST、OPENAI_API_KEY。
+# 下面列出了当前代码中可配置的变量；DEFINE_KEYS 是内部持久化标记，不建议手动配置。
+# 配置优先级大致为：代码默认值 < wrangler.toml [vars] < 用户通过 /set、/setenv、/setenvs 保存到 KV 的会话配置。
 
-## -- 通用 --
-##
-## 多语言支持
+# ============================================================
+# 快速导航
+# ============================================================
+# 00 最小可用配置：TELEGRAM_AVAILABLE_TOKENS、TELEGRAM_BOT_NAME、CHAT_WHITE_LIST、CHAT_GROUP_WHITE_LIST、OPENAI_API_KEY。
+# 01 基础运行：超时、日志、流式、安全模式。
+# 02 Telegram：消息格式、文件/图片读取、发送行为。
+# 03 权限：白名单、后台 token、用户可修改配置限制。
+# 04 群组：群聊白名单、共享上下文、群消息监听。
+# 05 历史记录：上下文长度、图片占位、KV 历史保存。
+# 06 命令交互：按钮、命令屏蔽、回调菜单、inline query。
+# 07 异步/定时：Telegraph、消息自动删除、QStash。
+# 08 Provider 选择：聊天/图片/ASR/TTS provider。
+# 09 工具调用：USE_TOOLS、MCP、插件工具（不包含各 LLM 原生能力）。
+# 10-20 各模型 Provider：OpenAI、OAI-Like、Azure、Google、Anthropic、xAI 等。
+# 21 高级参数：温度、token、上下文压缩、工作流、别名。
+
+# ============================================================
+# 00 最小可用配置
+# ============================================================
+# Cloudflare KV：上面的 kv_namespaces.id 必须填。
+# Telegram 私聊：TELEGRAM_AVAILABLE_TOKENS、TELEGRAM_BOT_NAME、CHAT_WHITE_LIST 必须按你的 Bot 和用户 ID 改。
+# Telegram 群聊：如果不用群聊，可以保留 CHAT_GROUP_WHITE_LIST 的示例值或注释掉。
+# OpenAI：OPENAI_API_KEY 必须改成真实 key；如果走 CLIProxyAPI/OAI 网关，还要改 OPENAI_API_BASE。
+# 图片生成：最简单是 AI_IMAGE_PROVIDER='openai' + OPENAI_IMAGE_MODEL='gpt-image-2'；普通聊天自动生图还要启用 USE_TOOLS='image_gen'。
+# Responses 内置生图：需要 OPENAI_ENABLE_IMAGE_GENERATION='true'。
+
+# ============================================================
+# 00A 常用配置模板
+# ============================================================
+# 下面是常见场景的最小组合。复制其中一组到你的 wrangler.toml，并按实际 key/base/model 修改。
+# 注意：这些都是注释示例，不会生效；真正启用要去掉行首 #。
+#
+# 先按这个顺序选：
+# 1. 你要用 OpenAI Responses / gpt-5.5 原生能力：AI_CHAT_PROVIDER='openai'。
+# 2. 你的网关只是 OpenAI-compatible Chat/Images：AI_CHAT_PROVIDER='oailike'。
+# 3. 你要所有 provider 都能用的项目工具：只把这些工具放进 USE_TOOLS。
+# 4. 你要厂商原生/server-side/relay 能力：使用对应 provider 的 *_ENABLE_*，不要放进 USE_TOOLS。
+
+# 场景 A：CLIProxyAPI / OAI 网关使用 OpenAI provider 跑 gpt-5.5。
+# 适合网关已经适配 OpenAI Responses，并且你想用 gpt-5.5 的 reasoning、web_search、GitHub 仓库读取等能力。
+# 不要把 web_search、github_repo_reader 写进 USE_TOOLS；它们是 OpenAI provider 专属开关。
+#AI_CHAT_PROVIDER = 'openai'
+#OPENAI_API_KEY = 'sk-your-proxy-key'
+#OPENAI_API_BASE = 'https://your-proxy.example.com/v1'
+#OPENAI_CHAT_MODEL = 'gpt-5.5'
+#OPENAI_RESPONSE_MODELS = '*'
+#OPENAI_PROVIDER_OPTIONS = '{"parallelToolCalls":true,"reasoningEffort":"medium","reasoningSummary":"auto"}'
+#OPENAI_ENABLE_WEB_SEARCH = 'true'
+#OPENAI_WEB_SEARCH_CONTEXT_SIZE = 'high'
+#OPENAI_ENABLE_GITHUB_REPO_READER = 'true'
+#GITHUB_TOKEN = ''
+#
+# 如果你遇到 Item with id 'msg_...' not found：
+# - 先更新到当前代码并 /clear 清理旧会话历史。
+# - 不要手动传 previousResponseId，除非 OPENAI_PROVIDER_OPTIONS.store=true 且上游真的保存 Responses。
+# - store=false/stateless 时，上游不会持久化 msg_/rs_/fc_ 等 item id；当前代码会在再次发送历史前清理这些 id。
+
+# 场景 B：普通聊天里自动调用项目图片工具。
+# 适合你在 Telegram 里说“生成一张图”时，让模型调用 image_gen；真正图片 provider 由 AI_IMAGE_PROVIDER 决定。
+#USE_TOOLS = 'image_gen'
+#AI_IMAGE_PROVIDER = 'openai'
+#OPENAI_IMAGE_MODEL = 'gpt-image-2'
+#OPENAI_IMAGE_SIZE = 'auto'
+#OPENAI_IMAGE_QUALITY = 'auto'
+
+# 场景 C：OpenAI Responses 原生 image_generation。
+# 适合让 gpt-5.5 自己决定是否调用 OpenAI server-side 图片工具；/img 命令和 image_gen 不依赖这个开关。
+# 如果你只是想让 /img 稳定出图，优先用场景 B；如果你想让模型在对话中自主选择 OpenAI 原生图片工具，再用场景 C。
+#AI_CHAT_PROVIDER = 'openai'
+#OPENAI_RESPONSE_MODELS = '*'
+#OPENAI_ENABLE_IMAGE_GENERATION = 'true'
+#OPENAI_IMAGE_MODEL = 'gpt-image-2'
+
+# 场景 D：OAI-Like / OpenAI-Compatible 网关。
+# 适合只实现 Chat Completions / Images 的兼容网关；它不等同 OpenAI Responses 完整适配。
+# OAI-like relay 只在网关明确支持 googleSearch/codeExecution/urlContext 转发时开启。
+#AI_CHAT_PROVIDER = 'oailike'
+#OAILIKE_API_KEY = 'sk-your-proxy-key'
+#OAILIKE_API_BASE = 'https://your-proxy.example.com/v1'
+#OAILIKE_CHAT_MODEL = 'gemini-3-pro-preview'
+#OAILIKE_ENABLE_GOOGLE_SEARCH = 'true'
+#OAILIKE_ENABLE_CODE_EXECUTION = 'false'
+#OAILIKE_ENABLE_URL_CONTEXT = 'false'
+
+# 场景 E：只用项目侧网页搜索和网页读取，不依赖模型厂商原生搜索。
+# 适合任意聊天 provider；duckduckgo 搜索，jina_reader 读正文。
+#USE_TOOLS = 'duckduckgo,jina_reader'
+#JINA_API_KEY = ''
+
+# 场景 F：OpenAI/gpt-5.5 最常用完整组合。
+# 适合你当前“Telegram + CLIProxyAPI + gpt-5.5 + 网页搜索 + GitHub 仓库读取 + 自动生图”的用法。
+#AI_CHAT_PROVIDER = 'openai'
+#AI_IMAGE_PROVIDER = 'openai'
+#OPENAI_API_KEY = 'sk-your-proxy-key'
+#OPENAI_API_BASE = 'https://your-proxy.example.com/v1'
+#OPENAI_CHAT_MODEL = 'gpt-5.5'
+#OPENAI_RESPONSE_MODELS = '*'
+#OPENAI_PROVIDER_OPTIONS = '{"parallelToolCalls":true,"reasoningEffort":"medium","reasoningSummary":"auto"}'
+#OPENAI_ENABLE_WEB_SEARCH = 'true'
+#OPENAI_WEB_SEARCH_EXTERNAL_ACCESS = 'true'
+#OPENAI_WEB_SEARCH_CONTEXT_SIZE = 'high'
+#OPENAI_ENABLE_GITHUB_REPO_READER = 'true'
+#USE_TOOLS = 'image_gen'
+#OPENAI_IMAGE_MODEL = 'gpt-image-2'
+#OPENAI_IMAGE_SIZE = 'auto'
+#OPENAI_IMAGE_QUALITY = 'auto'
+
+# ============================================================
+# 00B 工具和原生能力怎么选
+# ============================================================
+# USE_TOOLS 是“项目工具入口”，由本项目执行或转发，尽量保持 provider 无关。
+# 典型值：image_gen,duckduckgo,jina_reader,browser_navigate,browser_screenshot,google_veo,google_lyria,xai_video,delegate。
+#
+# OPENAI_ENABLE_* 是 OpenAI Responses 原生/server-side 能力，只在 AI_CHAT_PROVIDER=openai 且模型走 Responses 时生效。
+# 典型值：OPENAI_ENABLE_WEB_SEARCH、OPENAI_ENABLE_GITHUB_REPO_READER、OPENAI_ENABLE_CODE_INTERPRETER、
+#        OPENAI_ENABLE_FILE_SEARCH、OPENAI_ENABLE_IMAGE_GENERATION、OPENAI_ENABLE_MCP。
+#
+# OAILIKE_ENABLE_* 是 OpenAI-compatible 网关的 relay 能力，不保证每个网关都支持。
+# 典型值：OAILIKE_ENABLE_GOOGLE_SEARCH、OAILIKE_ENABLE_CODE_EXECUTION、OAILIKE_ENABLE_URL_CONTEXT。
+#
+# GOOGLE_ENABLE_*、ANTHROPIC_ENABLE_*、XAI_ENABLE_* 是对应 provider 的原生能力。
+# 这些能力也不要写入 USE_TOOLS，否则会变成普通项目工具名，不能触发厂商原生实现。
+#
+# 图片生成有两个入口：
+# - /img 命令或 USE_TOOLS='image_gen'：走 AI_IMAGE_PROVIDER，OpenAI 时使用 OPENAI_IMAGE_*。
+# - OPENAI_ENABLE_IMAGE_GENERATION='true'：走 OpenAI Responses 原生 image_generation，只在 OpenAI Responses 聊天里由模型决定调用。
+
+# ============================================================
+# 01 基础运行配置
+# ============================================================
+
+# 多语言：zh-cn / zh-tw / en / pt 等；影响命令提示、帮助文本和默认 SYSTEM_INIT_MESSAGE。
+# 注释掉时使用 zh-cn；改语言后不影响已经保存到 KV 的用户自定义 SYSTEM_INIT_MESSAGE。
 #LANGUAGE = 'zh-cn'
-## 检查更新的分支
+
+# 检查更新使用的 Git 分支名，仅 /version 命令用于对比线上版本。
+# 自建 fork 可改成自己的主分支；不关心更新检测可保持默认。
 #UPDATE_BRANCH = 'master'
-## Chat Complete API Timeout
-#CHAT_COMPLETE_API_TIMEOUT = 0
 
-## -- Telegram 相关 --
-##
-## Telegram API Domain
-#TELEGRAM_API_DOMAIN = 'https://api.telegram.org'
-## 允许访问的Telegram Token， 设置时以逗号分隔
-TELEGRAM_AVAILABLE_TOKENS = 'TOKEN1,TOKEN2'
-## 默认消息模式
-#DEFAULT_PARSE_MODE = 'Markdown'
+# 单次 Chat Completions / Responses 请求超时，单位秒。
+# 0 表示不设置单次请求超时，只受平台/上游限制；图片或深度推理较慢时不要设太小。
+#CHAT_COMPLETE_API_TIMEOUT = '0'
 
-## --  权限相关 --
-##
-## 允许所有人使用
-#I_AM_A_GENEROUS_PERSON = 'false'
-## 白名单
-CHAT_WHITE_LIST = 'USER_ID1,USER_ID2'
-## 用户配置
-#LOCK_USER_CONFIG_KEYS = 'OPENAI_API_BASE,GOOGLE_API_BASE,MISTRAL_API_BASE,COHERE_API_BASE,ANTHROPIC_API_BASE,AZURE_COMPLETIONS_API,AZURE_DALLE_API'
+# 整个聊天处理链路最大耗时，单位秒，包括模型请求、工具调用、消息发送等。
+# 本地/Docker 可以设大一些；Cloudflare Workers 仍受平台执行时长限制。
+#CHAT_TOTAL_DURATION_LIMIT = '1800'
 
-## -- 群组相关 --
-##
-## 允许访问的Telegram Token 对应的Bot Name， 设置时以逗号分隔
-TELEGRAM_BOT_NAME = 'BOT_NAME1,BOT_NAME2'
-## 群组白名单
-CHAT_GROUP_WHITE_LIST = 'GROUP_ID1,GROUP_ID2'
-## 群组机器人开关
-GROUP_CHAT_BOT_ENABLE = 'true'
-## 群组机器人共享模式, 开启后，一个群组只有一个会话和配置。关闭的话群组的每个人都有自己的会话上下文
-#GROUP_CHAT_BOT_SHARE_MODE = 'true'
+# 内置工具单次执行超时，单位秒。
+# 0 表示不限制；网页读取、Browserless、GitHub 仓库读取等工具卡住时可设置 30-120。
+#TOOL_TIMEOUT = '0'
 
-## -- 历史记录相关 --
-##
-## 为了避免4096字符限制，将消息删减
-#AUTO_TRIM_HISTORY = 'true'
-## 最大历史记录长度
-#MAX_HISTORY_LENGTH = 12
+# 日志级别：debug / info / warn / error。
+# 排障时用 debug；正常运行建议 info；日志过多时可改 warn。
+#LOG_LEVEL = 'info'
 
+# Perplexity Cookie；使用 /pplx 或相关插件时需要。
+# 不使用 Perplexity 可留空；Cookie 属于敏感信息，不建议提交到公开仓库。
+#PPLX_COOKIE = ''
 
-## -- 特性开关 --
-##
-## 隐藏部分命令按钮
-#HIDE_COMMAND_BUTTONS = []
-## 显示快捷回复按钮
-#SHOW_REPLY_BUTTON = false
-## 而外引用消息开关
-#EXTRA_MESSAGE_CONTEXT = 'false'
-
-## -- 模式开关 --
-##
-## 使用流模式
+# 是否使用流式响应。
+# true：Telegram 中边生成边编辑消息，体验更好；false：等完整回复后一次发送，更少编辑请求。
 #STREAM_MODE = 'true'
-## 安全模式
+
+# 安全模式；用于减少重复处理/并发竞态。
+# 普通 webhook 建议保持 true；如果你使用外部异步队列并确认不会重复，可按需关闭。
 #SAFE_MODE = 'true'
-## 调试模式
+
+# 调试模式；会输出更多排障日志和请求细节。
+# 生产环境不建议长期开启，可能增加日志量并暴露部分排障信息。
 #DEBUG_MODE = 'false'
-## 开发模式
+
+# 开发模式；仅本地调试时使用。
+# 开启后 /system 等输出会包含更多配置细节，生产环境保持 false。
 #DEV_MODE = 'false'
 
-## -- 通用配置 --
-##
-## AI提供商: auto, openai, azure, workers, gemini, mistral, cohere, anthropic, xai
-AI_CHAT_PROVIDER = 'auto'
-## AI图片提供商: auto, openai, azure, workers
-AI_IMAGE_PROVIDER = 'auto'
-## 全局默认初始化消息
+# ============================================================
+# 02 Telegram 配置
+# ============================================================
+
+# Telegram API 地址；默认官方 API。
+# 如果服务器访问 api.telegram.org 慢或不可达，可配置你自己的 Telegram Bot API 反代地址。
+#TELEGRAM_API_DOMAIN = 'https://api.telegram.org'
+
+# 允许接入的 Telegram Bot Token，多个 token 用逗号分隔。
+# 必填；请求路径里的 token 必须在这里，否则会被拒绝。
+TELEGRAM_AVAILABLE_TOKENS = 'TOKEN1,TOKEN2'
+
+# 每个 token 对应的 Bot 用户名，顺序必须和 TELEGRAM_AVAILABLE_TOKENS 一致。
+# 群聊 @bot 或识别自身消息时会用到；不要带 @。
+TELEGRAM_BOT_NAME = 'BOT_NAME1,BOT_NAME2'
+
+# Telegram 默认解析模式：MarkdownV2 / Markdown / HTML。
+# MarkdownV2 最严格但兼容 Telegram 格式转换；如果经常因为转义失败发不出去，可考虑 HTML。
+#DEFAULT_PARSE_MODE = 'MarkdownV2'
+
+# 流式编辑消息的最小间隔，单位毫秒。
+# 0 表示不额外限制；如果日志里出现 Telegram 429 或编辑过频，建议 800-2000。
+#TELEGRAM_MIN_STREAM_INTERVAL = '0'
+
+# 选择 Telegram 图片尺寸的偏移：0 最小，-1 最大，默认 -2 取次高清。
+# 取最大图更清晰但更耗流量/内存/token；图像理解一般 -2 已够用。
+#TELEGRAM_PHOTO_SIZE_OFFSET = '-2'
+
+# 图片传给模型的方式：url 或 base64。
+# url 更省 Worker 内存，适合大多数 provider；base64 适合上游无法访问 Telegram 文件 URL 的情况。
+#TELEGRAM_IMAGE_TRANSFER_MODE = 'url'
+
+# 支持的消息格式白名单：text,photo,voice,audio,image,video,document,sticker。
+# 注释掉时使用代码默认值 text,photo,voice,audio,image；如需支持视频/文档/贴纸，要显式加上。
+#SUPPORT_FORMAT = 'text,photo,voice,audio,image'
+
+# 是否把生成图片作为文件发送。
+# false：以 photo 形式发送，Telegram 会压缩但预览方便；true：以 document 形式发送，保留原图质量。
+#SEND_IMAGE_AS_FILE = 'false'
+
+# 音频转文字后附带文本的 Telegram 样式：spoiler,bold,italic,underline,strikethrough,code,pre；空表示不加样式。
+#AUDIO_TEXT_FORMAT = ''
+
+# 长消息超过该字符数时使用引用折叠；-1 表示禁用。
+# 用于减少超长回复刷屏；只影响展示，不影响模型内容。
+#ADD_QUOTE_LIMIT = '-1'
+
+# 启用引用折叠的聊天类型：group,supergroup,private。
+# 空表示不对任何类型启用；默认只对群聊/超级群生效。
+#ADD_QUOTE_SCOPE = 'group,supergroup'
+
+# 引用内容是否默认展开；false 时默认折叠。
+#QUOTE_EXPANDABLE = 'false'
+
+# 日志信息是否放在回复顶部。
+#LOG_POSITION_ON_TOP = 'true'
+
+# 是否关闭链接预览。
+# true 可避免网页预览占屏或暴露链接缩略图；需要展示网页卡片时保持 false。
+#DISABLE_WEB_PREVIEW = 'false'
+
+# ============================================================
+# 03 权限与访问控制
+# ============================================================
+
+# 是否允许所有人使用。
+# true：任何知道 bot 的人都能用；false：只允许 CHAT_WHITE_LIST / CHAT_GROUP_WHITE_LIST。
+# 生产环境建议 false，避免 token 消耗失控。
+#I_AM_A_GENEROUS_PERSON = 'false'
+
+# 私聊白名单，填写 Telegram user_id，多个用逗号分隔。
+# 必填示例项；如果 I_AM_A_GENEROUS_PERSON=false，未在列表中的私聊用户会被拒绝。
+CHAT_WHITE_LIST = 'USER_ID1,USER_ID2'
+
+# 管理后台/API/WebSocket 鉴权 token。
+# 部署了管理页面或日志 WebSocket 时必须设置强随机值；不使用后台可留空。
+#ADMIN_TOKEN = ''
+
+# 禁止用户通过 /setenv、/setenvs 覆盖的配置键。
+# 默认保护 API BASE、凭据和关键连接信息，避免普通用户把请求转发到恶意上游。
+#LOCK_USER_CONFIG_KEYS = 'OPENAI_API_BASE,GOOGLE_API_BASE,MISTRAL_API_BASE,COHERE_API_BASE,ANTHROPIC_API_BASE,VERTEX_CREDENTIALS,OAILIKE_API_BASE,XAI_API_BASE'
+
+# 允许 /set 命令临时放宽修改权限的键。
+# 只用于你信任群管理员临时切换某些参数的场景；空表示不放宽。
+#RELAX_AUTH_KEYS = ''
+
+# 用户级黑名单，填写 Telegram user_id，多个用逗号分隔。
+# 用于阻止特定用户；白名单/管理员策略仍按 auth 逻辑判断，生产建议优先用白名单。
+#BLOCKLIST = ''
+
+# ============================================================
+# 04 群组配置
+# ============================================================
+
+# 群组白名单，填写 Telegram group_id / supergroup_id，多个用逗号分隔。
+# 必填示例项；不用群聊可以留示例或注释掉，真正生产要填自己的群 ID。
+CHAT_GROUP_WHITE_LIST = 'GROUP_ID1,GROUP_ID2'
+
+# 是否启用群聊机器人。
+# false 时即使群在白名单里也不会响应群聊消息；私聊不受影响。
+GROUP_CHAT_BOT_ENABLE = 'true'
+
+# 群聊共享模式：true 表示一个群一个上下文；false 表示群内每个用户独立上下文。
+# true 更像群助手，能记住群内上下文；false 更保护个人会话隔离。
+#GROUP_CHAT_BOT_SHARE_MODE = 'true'
+
+# 群聊消息中是否给模型附带用户名，便于区分不同发言者。
+# 群内多人持续对话建议 true；如果担心暴露用户名可保持 false。
+#GROUP_INCLUDE_USERNAME = 'false'
+
+# 群组监听模式：缓存群内普通消息，被触发时补充为上下文。
+# true 会让 bot 理解被 @ 前的群聊内容，但会增加 KV 读写和隐私暴露面。
+#GROUP_MESSAGE_LISTEN_MODE = 'false'
+
+# 群组监听模式最多缓存的消息数量。
+# 数量越大，触发时上下文越完整，但更耗 token；20 通常够用。
+#GROUP_MESSAGE_CACHE_SIZE = '20'
+
+# 群组监听缓存 TTL，单位秒。
+# 超过时间的群消息不会再注入上下文；默认 3600 表示 1 小时。
+#GROUP_MESSAGE_CACHE_TTL = '3600'
+
+# 群组图片生成是否仅允许管理员/群主使用。
+# true 时普通群员不能调用 /img，也不能在普通聊天里触发 image_gen 项目工具或 OpenAI Responses 原生 image_generation；私聊和 CHAT_WHITE_LIST 用户不受影响。
+#GROUP_IMAGE_GEN_ADMIN_ONLY = 'false'
+
+# 群聊中回复机器人消息时，是否优先把被回复消息作为上下文。
+# 群里多人交叉聊天时建议开启；单纯 @bot 对话可保持 false。
+#ENABLE_REPLY_TO_MENTION = 'false'
+
+# 群聊触发前缀；设置后以该前缀开头的消息会触发机器人并移除前缀。
+# 例如设置 '!' 后，发送 '!总结一下' 才触发；空表示按项目默认触发规则。
+#CHAT_TRIGGER_PREFIX = ''
+
+# 群聊触发词映射，JSON 对象。key 是触发前缀，value 是替换成的前缀。
+# 发送以 key 开头的消息会触发机器人，并把 key 替换为 value 后继续处理。
+# 示例：{"domo":"","doom":""} 表示 domo/doom 都能唤醒；{"g4":"/gpt4"} 表示 g4 开头时转成 /gpt4。
+#CHAT_MESSAGE_TRIGGER = '{"domo":"","doom":""}'
+
+# ============================================================
+# 05 历史记录与消息存储
+# ============================================================
+
+# 是否自动裁剪过长历史。
+# true 会按 MAX_HISTORY_LENGTH 保留最近历史，避免上下文过长；一般建议保持 true。
+#AUTO_TRIM_HISTORY = 'true'
+
+# 每个会话保留的历史轮数。
+# 数值越大记忆越长但 token 成本越高；如果开启上下文压缩，可适当增大。
+#MAX_HISTORY_LENGTH = '10'
+
+# 历史里的图片占位文本。
+# 默认把历史中的图片替换为 [A IMAGE]，避免反复把旧图片传给模型；设为空字符串可不替换。
+#HISTORY_IMAGE_PLACEHOLDER = '[A IMAGE]'
+
+# KV 中最多保留的原始历史消息长度。
+# 小于等于 0 会禁用历史持久化；大于 MAX_HISTORY_LENGTH 可为 /redo、压缩等保留更多原始记录。
+#STORE_HISTORY_LENGTH = '64'
+
+# 是否保存媒体组 file_id，用于 Telegram 一次发送多图/多媒体时的聚合。
+# false：每条媒体消息独立处理；true：同一个 media_group_id 下的 file_id 会临时保存，便于合并分析。
+# 只做普通文字、单图识别或生图时保持 false 即可；经常让模型分析一组图片时可改 true。
+#STORE_MEDIA_MESSAGE = 'false'
+
+# 是否保存分块文本消息，用于多段文本聚合。
+# false：连续文本按独立消息处理；true：项目会临时缓存文本 chunk，适合长文本被拆成多条消息后合并。
+# 它和 STORE_MEDIA_MESSAGE 独立，不需要一起开启；普通聊天建议 false，避免误合并连续聊天。
+#STORE_TEXT_CHUNK_MESSAGE = 'false'
+
+# 文件大小限制；配合折叠/文件发送逻辑使用，-1 表示不限制。
+# 如果 Worker 内存或 Telegram 上传经常失败，可以设置字节上限。
+#FILE_SIZE_LIMIT = '-1'
+
+# 是否把 tool_call/tool_result 历史转成普通 user message 以兼容部分模型/网关。
+# true：兼容性更好，适合 CLIProxyAPI、OAI-like、多 provider 混用；false：保留更原生的结构化工具历史。
+#MESSAGE_COMPATIBLE = 'true'
+
+# 是否显示搜索来源。
+# true 会把 web search / grounding sources 附在回复后；如果嫌消息太长可关掉。
+#ENABLE_SEARCH_SOURCE = 'true'
+
+# 是否显示 reasoning/thinking 文本。
+# true 会把模型暴露的 reasoning 摘要/思考文本展示给用户；不想展示推理过程可改 false。
+#SHOW_THINKING_TEXT = 'true'
+
+# thinking 文本是否使用可折叠引用块。
+# true 更不占屏；false 会直接展开显示。
+#EXPANDABLE_THINKING = 'true'
+
+# ============================================================
+# 06 命令、按钮与交互
+# ============================================================
+
+# 隐藏命令按钮；填命令名如 /img,/tts。
+# 只影响 Telegram command button 展示，不禁止用户手动输入命令。
+#HIDE_COMMAND_BUTTONS = ''
+
+# 禁用命令；填命令名如 /img,/tts。
+# 被禁用命令不会执行；适合关闭 /img、/tts、/setenvs 等高成本或高风险功能。
+#BLOCK_COMMANDS = ''
+
+# 忽略命令；这些命令不会触发 AI 回复，适合和其他机器人共存。
+#IGNORE_COMMANDS = ''
+
+# 是否显示快捷回复按钮。
+# true 会给私聊用户展示 /new、/redo 等键盘按钮；喜欢干净聊天界面可保持 false。
+#SHOW_REPLY_BUTTON = 'false'
+
+# 是否把被引用消息额外加入上下文。
+# true 适合用户经常 reply 某条消息追问；会增加上下文长度。
+#EXTRA_MESSAGE_CONTEXT = 'false'
+
+# 是否启用 Telegram inline query，即在其他聊天框里输入 @你的机器人 时的 inline 模式。
+# 默认 false，避免群聊或其他输入框里误触；需要 inline 功能时显式改 true。
+#ENABLE_INLINE_QUERY = 'false'
+
+# 禁用 Agent；填 provider 名如 openai,google,xai。
+# 可用于隐藏某些 provider 或防止用户切换到未配置的 provider。
+#BLOCK_AGENTS = ''
+
+# 忽略指定前缀开头的文本消息。
+# 例如设置 '#' 后，'#备注' 不会触发 AI；空表示不按前缀忽略。
+#IGNORE_TEXT_PREFIX = ''
+
+# 多阶段处理时是否隐藏中间状态消息。
+# true 会减少“tool call start”等中间提示；排障时建议 false。
+#HIDE_MIDDLE_MESSAGE = 'false'
+
+# 是否显示工具调用信息。
+# true 会在 showinfo 中展示工具名、耗时、参数摘要；排查工具调用问题建议开启。
+#CALL_INFO = 'true'
+
+# Callback inline keyboard 行列数，例如 7x2。
+# 控制 /settings 或回调菜单每页布局；列数太大会导致 Telegram 按钮文字拥挤。
+#CALLBACK_QUERY_RC = '7x2'
+
+# Callback 菜单中允许展示的环境变量；空表示全部。
+# 用于限制管理菜单里能改哪些变量，减少误操作。
+#ENVS_VARIABLES = ''
+
+# Callback 菜单分类；空表示全部。
+# 可选：AI_CHAT_PROVIDER,AI_IMAGE_PROVIDER,AI_TTS_PROVIDER,AI_ASR_PROVIDER,USE_TOOLS,USE_MCP,CHAT_MODEL,IMAGE_MODEL,VISION_MODEL,TOOL_MODEL,ENVS,RERANK_AGENT。
+# CHAT_MODEL / IMAGE_MODEL / VISION_MODEL 是快捷入口，会按当前 provider 保存为 OPENAI_CHAT_MODEL、OAILIKE_IMAGE_MODEL 等真实变量。
+#CALLBACK_MENU = ''
+
+# inline query 发送间隔，单位毫秒。
+#INLINE_QUERY_SEND_INTERVAL = '2000'
+
+# inline query 是否显示模型/耗时等信息。
+#INLINE_QUERY_SHOW_INFO = 'false'
+
+# ============================================================
+# 07 Telegraph、定时删除与异步队列
+# ============================================================
+
+# 回复长度超过该值时转为 Telegraph 文章；-1 表示禁用。
+# Telegraph 适合超长文本，但会生成外链；对隐私敏感内容建议保持禁用。
+#TELEGRAPH_NUM_LIMIT = '-1'
+
+# Telegraph 生效的聊天类型。
+# 默认仅 group/supergroup；私聊如需长文外链可加入 private。
+#TELEGRAPH_SCOPE = 'group,supergroup'
+
+# Telegraph 作者链接；不设置时匿名。
+# 可填你的站点或 bot 链接；不影响正文内容。
+#TELEGRAPH_AUTHOR_URL = ''
+
+# 消息自动删除时间，单位分钟；-1 表示不自动删除。
+#EXPIRED_TIME = '-1'
+
+# 定时任务检查 cron 表达式，例如 */10 0-2,6-23 * * *。
+# 为空表示不启用定时扫描；启用后配合 /cron 命令管理任务。
+#CRON_CHECK_TIME = ''
+
+# 群聊自动删除类型：tip 表示提示消息，chat 表示聊天回复。
+#SCHEDULE_GROUP_DELETE_TYPE = 'tip'
+
+# 私聊自动删除类型：tip / command / chat。
+#SCHEDULE_PRIVATE_DELETE_TYPE = 'tip'
+
+# QStash API 地址。
+# 只有使用 QStash 异步队列时需要；普通 webhook 可以保持默认且不配置 token。
+#QSTASH_URL = 'https://qstash.upstash.io'
+
+# QStash token。
+# 启用 QStash 时必填；不启用异步队列可留空。
+#QSTASH_TOKEN = ''
+
+# QStash 回调发布地址，通常是你的 Telegram webhook 域名。
+# 必须是公网可访问 URL；本地调试不建议启用。
+#QSTASH_PUBLISH_URL = ''
+
+# 以该前缀触发 QStash 异步处理。
+#QSTASH_TRIGGER_PREFIX = ''
+
+# QStash 超时，例如 15m；免费账户通常最大 15m。
+#QSTASH_TIMEOUT = '15m'
+
+# ============================================================
+# 08 通用 AI Provider 选择
+# ============================================================
+
+# 聊天模型 provider：openai,anthropic,azure,workers,google,vertex,mistral,xai,oailike,cohere。
+# 决定普通文本聊天走哪个 Agent；具体模型由对应 *_CHAT_MODEL 决定。
+AI_CHAT_PROVIDER = 'openai'
+
+# 图片模型 provider：openai,azure,workers,oailike,vertex,kling,google,xai,bfl。
+# /img 命令和 USE_TOOLS='image_gen' 自动生图都会读取这个值。
+# 也就是说 image_gen 只是“图片工具入口”，真正走哪家由 AI_IMAGE_PROVIDER 决定：
+# - openai：OPENAI_IMAGE_MODEL，例如 gpt-image-2
+# - oailike：OAILIKE_IMAGE_MODEL，适合 CLIProxyAPI / OpenAI-like 图片接口
+# - google：GOOGLE_IMAGE_MODEL
+# - vertex：VERTEX_IMAGE_MODEL
+# - xai：XAI_IMAGE_MODEL
+# - bfl：BFL_IMAGE_MODEL
+# - kling：KLINGAI_IMAGE_COUNT / KLINGAI_IMAGE_RATIO 等 Kling 配置
+# - azure：AZURE_IMAGE_MODEL / AZURE_IMAGE_SIZE / AZURE_IMAGE_QUALITY / AZURE_IMAGE_STYLE
+# - workers：WORKERS_IMAGE_MODEL
+AI_IMAGE_PROVIDER = 'openai'
+
+# 语音识别 provider：openai,oailike。
+# 语音消息转文字时使用；具体模型由 OPENAI_STT_MODEL / OAILIKE_STT_MODEL 决定。
+#AI_ASR_PROVIDER = 'openai'
+
+# 语音合成 provider：openai,oailike,google,fish。
+# TEXT_OUTPUT=audio 或 /tts 时使用；具体模型由对应 TTS 配置决定。
+#AI_TTS_PROVIDER = 'openai'
+
+# 全局默认系统提示；不设置时使用语言包默认提示。
+# 会作为 system/developer 类提示传给模型；不要在这里放 API key 等敏感信息。
 #SYSTEM_INIT_MESSAGE = 'You are a useful assistant.'
 
-## -- Open AI 配置 --
-##
-# OpenAI API Key
+# 用户时区，用于 {{CURRENT_TIME}} 替换。
+# 影响系统提示中的当前时间；建议按部署用户所在地设置，如 Asia/Shanghai。
+#TIMEZONE = 'Asia/Shanghai'
+
+# ============================================================
+# 09 项目工具、MCP、插件工具
+# ============================================================
+# 这里仅配置项目内执行的通用工具，以及项目侧 MCP/插件工具。
+# 不同 LLM 的原生/server-side/relay 能力不要写进 USE_TOOLS：
+# - OpenAI Responses：在 10 OpenAI 配置里用 OPENAI_ENABLE_*。
+# - OAI-Like relay：在 11 OAI-Like 配置里用 OAILIKE_ENABLE_*。
+# - Google Gemini/Vertex：在 14 Google 配置里用 GOOGLE_ENABLE_*。
+# - Anthropic：在 16 Anthropic 配置里用 ANTHROPIC_ENABLE_*。
+# - xAI：在 17 xAI 配置里用 XAI_ENABLE_*。
+#
+# 项目工具可填入 USE_TOOLS 的名字：
+# - image_gen：生成/编辑图片。使用 AI_IMAGE_PROVIDER 和对应图片配置；OpenAI 时走 OPENAI_IMAGE_*。
+# - duckduckgo：DuckDuckGo 网页搜索，不需要 key。
+# - jina_reader：读取网页正文，需要 JINA_API_KEY。
+# - app_lookup：App Store 应用搜索，不需要 key。
+# - app_iap：查询 App Store 内购价格，不需要 key。
+# - currency：汇率查询，不需要 key。
+# - icloud_price：iCloud 各地区价格查询，不需要 key。
+# - nf_price：Netflix 各地区价格查询，不需要 key。
+# - qw_lookup / qw_weather：和风天气城市查询/实时天气，需要 PLUGIN_ENV_QWEATHER_TOKEN。
+# - xiaohongshu：小红书搜索；依赖第三方接口可用性。
+# - browser_navigate：抓取网页内容；Cloudflare Workers 上建议配 BROWSERLESS_API_KEY。
+# - browser_screenshot：网页截图接口；当前实现需要 Browserless/Playwright，fetch 回退不支持截图。
+# - google_veo：Google Veo 视频生成，需要 GOOGLE_API_KEY。
+# - google_lyria：Google Lyria 音乐生成，需要 GOOGLE_API_KEY。
+# - xai_video：xAI Grok Imagine 视频生成，需要 XAI_API_KEY。
+# - delegate：子代理委托工具，需要 ENABLE_DELEGATE_AGENT='true'。
+#
+# 常见组合：
+# - 自动生图：USE_TOOLS='image_gen'，实际图片 provider 由 AI_IMAGE_PROVIDER 决定。
+# - 搜索+读网页：USE_TOOLS='duckduckgo,jina_reader'
+# - 浏览网页：USE_TOOLS='browser_navigate'，并配置 BROWSERLESS_API_KEY。
+# - 图像+网页+搜索：USE_TOOLS='image_gen,duckduckgo,jina_reader,browser_navigate'
+# - Google 视频/音乐：USE_TOOLS='google_veo,google_lyria'，并配置 GOOGLE_API_KEY。
+# - OpenAI/gpt-5.5 网页搜索：OPENAI_ENABLE_WEB_SEARCH='true'，不要写进 USE_TOOLS。
+# - OpenAI/gpt-5.5 GitHub 仓库分析：OPENAI_ENABLE_GITHUB_REPO_READER='true'，不要写进 USE_TOOLS。
+
+# 启用项目工具列表；模型会在普通聊天中按需自动调用。
+# image_gen 不是 OpenAI 专属工具，不会固定走 gpt-5.5；它会按 AI_IMAGE_PROVIDER 分发到对应图片服务。
+#USE_TOOLS = 'image_gen'
+
+# 禁用指定项目工具；用于全局屏蔽某些工具。
+#BLOCK_TOOLS = ''
+
+# 工具调用使用的模型；格式 provider:model，例如 openai:gpt-4o-mini；空表示跟随当前聊天模型。
+#TOOL_MODEL = ''
+
+# 内置工具最大执行时间使用 TOOL_TIMEOUT，在 01 基础运行配置里设置。
+
+# Jina API Key；jina_reader / rerank / embedding 相关工具使用，多个 key 用逗号分隔。
+#JINA_API_KEY = ''
+
+# 和风天气 token；qw_lookup / qw_weather 通过插件环境变量读取。
+#PLUGIN_ENV_QWEATHER_TOKEN = ''
+
+# Browserless 单个 API Key；Cloudflare Workers 上 browser_navigate/browser_screenshot 建议配置。
+# 不填时只能使用有限的 fetch 回退能力，不能保证动态网页/截图可用。
+#BROWSERLESS_API_KEY = ''
+
+# Browserless 多个 API Key，逗号分隔；会自动轮询。优先级高于单个 BROWSERLESS_API_KEY。
+#BROWSERLESS_API_KEYS = ''
+
+# Browserless API Key JSON 数组；适合 key 内含特殊字符时使用。
+#BROWSERLESS_API_KEY_LIST = ''
+
+# Browserless 服务地址；自建 browserless 或第三方服务时修改。
+#BROWSERLESS_URL = 'https://chrome.browserless.io'
+
+# 子代理工具开关；启用后 delegate 工具才应该加入 USE_TOOLS。
+# false 时即使 USE_TOOLS 包含 delegate，也不应让模型委托子代理。
+#ENABLE_DELEGATE_AGENT = 'false'
+
+# 子代理最大并发数。
+#DELEGATE_MAX_CONCURRENT = '3'
+
+# 子代理最大迭代次数。
+#DELEGATE_MAX_ITERATIONS = '20'
+
+# 子代理固定模型；空表示自动选择。
+#DELEGATE_MODEL = ''
+
+# 启用的 MCP server 名称列表，对应下面 MCP_xxx 的后缀。
+#USE_MCP = ''
+
+# MCP 配置，后缀是 server 名称；type 支持 sse/http/stdio。
+#MCP_search = '{"type":"http","url":"https://example.com/mcp","headers":{"Authorization":"Bearer TOKEN"}}'
+
+# 插件工具：动态接入自定义函数工具，后缀就是工具名。
+#PLUGIN_FUNCTION_example = 'https://example.com/tool.json'
+
+# 插件工具环境变量：后缀是变量名，会传给外部工具。
+#PLUGIN_ENV_EXAMPLE_KEY = 'value'
+
+# 插件命令：动态接入 Telegram 命令，后缀是命令名。
+#PLUGIN_COMMAND_dns = 'https://raw.githubusercontent.com/TBXark/ChatGPT-Telegram-Workers/dev/plugins/dns.json'
+
+# 插件命令描述。
+#PLUGIN_DESCRIPTION_dns = 'DNS查询 /dns <类型> <域名>'
+
+# 插件命令作用域，多个用逗号分隔；空表示所有聊天。
+#PLUGIN_SCOPE_dns = 'private,group,supergroup'
+
+# 自定义命令，后缀是命令名；value 通常是 /setenvs JSON。
+#CUSTOM_COMMAND_openai = '/setenvs {"AI_CHAT_PROVIDER":"openai"}'
+
+# 自定义命令描述。
+#COMMAND_DESCRIPTION_openai = '切换到 OpenAI'
+
+# 自定义命令作用域，多个用逗号分隔。
+#COMMAND_SCOPE_openai = 'private,group,supergroup'
+
+# ============================================================
+# 10 OpenAI 配置
+# ============================================================
+
+# OpenAI API Key，多个 key 用逗号分隔用于轮询。
+# 必填；如果走 CLIProxyAPI/OAI 网关，这里填网关给你的 key。
 OPENAI_API_KEY = 'SK-1,SK-2'
-## OpenAI的模型名称
+
+# OpenAI 聊天模型。
+# 普通聊天默认模型；gpt-5.5 建议配合 OPENAI_RESPONSE_MODELS='*' 使用 Responses API。
 #OPENAI_CHAT_MODEL = 'gpt-4o-mini'
-## OpenAI API BASE ``
+
+# OpenAI API Base；CLIProxyAPI / OAI 兼容网关填对应 /v1 地址。
+# 注意必须是 API base，不是网页地址；通常以 /v1 结尾。
 #OPENAI_API_BASE = 'https://api.openai.com/v1'
-## OpenAI API Extra Params
+
+# OpenAI 额外请求参数，按模型前缀匹配；路径支持 camelCase 点路径。
+# 示例：{"gpt-5.5":{"reasoning.effort":"medium"}}
 #OPENAI_API_EXTRA_PARAMS = '{}'
 
-## -- DALLE 配置 --
-##
-## DALL-E的模型名称
-#DALL_E_MODEL = 'dall-e-2'
-## DALL-E图片尺寸
-#DALL_E_IMAGE_SIZE = '512x512'
-## DALL-E图片质量
-#DALL_E_IMAGE_QUALITY = 'standard'
-## DALL-E图片风格
-#DALL_E_IMAGE_STYLE = 'vivid'
+# OpenAI 语音转文字模型。
+# 仅 AI_ASR_PROVIDER=openai 时使用；不处理语音可保持默认。
+#OPENAI_STT_MODEL = 'whisper-1'
 
-## -- AZURE 配置 --
-##
-## Azure API Key
+# OpenAI 语音转文字额外参数；例如 {"language":"zh"}。
+#OPENAI_STT_EXTRA_PARAMS = '{}'
+
+# OpenAI 视觉模型。
+# 当聊天 provider 是 openai 且用户发送图片进行理解时使用；不是图片生成模型。
+#OPENAI_VISION_MODEL = 'gpt-4o-mini'
+
+# OpenAI TTS 模型。
+# 仅 AI_TTS_PROVIDER=openai 时使用；不同模型支持的 voice/prompt 可能不同。
+#OPENAI_TTS_MODEL = 'tts-1'
+
+# OpenAI TTS voice，例如 alloy,echo,fable,onyx,nova,shimmer。
+#OPENAI_TTS_VOICE = 'alloy'
+
+# OpenAI TTS 额外参数；例如 {"response_format":"mp3","speed":1.0}。
+#OPENAI_TTS_EXTRA_PARAMS = '{}'
+
+# OpenAI TTS prompt；部分新 TTS 模型支持。
+#OPENAI_TTS_PROMPT = ''
+
+# OpenAI embedding 模型。
+#OPENAI_EMBEDDING_MODEL = 'text-embedding-3-small'
+
+# 手动维护的 OpenAI 模型列表；ENABLE_INTELLIGENT_MODEL 或菜单展示会用到。
+# 空表示不手动维护，必要时从 OPENAI_MODELS_API 获取或使用代码默认。
+#OPENAI_MODELS = ''
+
+# OpenAI 模型列表 API 路径。
+# 相对 OPENAI_API_BASE 拼接；兼容网关模型列表路径不同时才需要改。
+#OPENAI_MODELS_API = '/models'
+
+# 使用 Responses API 的模型列表；'*' 表示全部 OpenAI 模型走 Responses。
+# gpt-5.5、工具调用、web_search、image_generation 等新能力建议走 Responses。
+#OPENAI_RESPONSE_MODELS = '*'
+
+# OpenAI providerOptions，适配 Vercel AI SDK。
+# 注释掉时默认值是 {"parallelToolCalls":true,"reasoningSummary":"auto"}。
+# 常用项：
+# - reasoningEffort：low / medium / high / xhigh，控制 gpt-5.5 等推理力度。
+# - reasoningSummary：auto / concise / detailed，控制 reasoning 摘要。
+# - parallelToolCalls：是否允许并行工具调用。
+# - store：是否让 OpenAI/网关保存 Responses 服务端状态；不写则交给 SDK/上游默认。
+# - previousResponseId：只建议和 store=true 配合；store=false 时不要手动复用它。
+# 如果设置 store=false，返回历史里不能再次带 msg_/rs_/fc_ 等服务端 item id；当前代码会在发送历史前清理这些 id。
+#OPENAI_PROVIDER_OPTIONS = '{"parallelToolCalls":true,"reasoningSummary":"auto"}'
+
+# Telegram 里可用 /think low|medium|high|xhigh 临时修改当前会话的 OPENAI_PROVIDER_OPTIONS.reasoningEffort；/think off 删除覆盖。
+# /think 只改当前用户/会话保存的配置，不会改 wrangler.toml；/think status 可查看当前覆盖值。
+
+# 启用 OpenAI Responses 网页搜索工具。
+# 这是 OpenAI 原生 server-side web_search，不需要 USE_TOOLS；需要模型/网关支持 Responses 工具。
+# 开启后日志 activeTools 会显示 web_search；Telegram 尾部的 web_search 耗时/结果展示来自 SDK 事件，可能只显示工具名和耗时。
+#OPENAI_ENABLE_WEB_SEARCH = 'false'
+
+# 网页搜索是否允许实时外部访问；false 时倾向缓存。
+# 如果上游网关不支持该参数，可通过 OPENAI_API_EXTRA_PARAMS/PARAMS_MODIFIER 调整。
+#OPENAI_WEB_SEARCH_EXTERNAL_ACCESS = 'true'
+
+# 网页搜索允许域名白名单，空表示不限制；设置后只允许搜索这些域名。
+# 多个域名用逗号分隔，例如 example.com,github.com。
+#OPENAI_WEB_SEARCH_ALLOWED_DOMAINS = ''
+
+# 网页搜索上下文大小：low / medium / high。
+# high 更适合研究/查资料，但延迟和 token 成本更高；日常问答 medium 即可。
+#OPENAI_WEB_SEARCH_CONTEXT_SIZE = 'medium'
+
+# 网页搜索用户位置，例如 Shanghai, China 或 latitude,longitude。
+# 当前 OpenAI 参数只使用近似城市/国家；经纬度会被忽略。
+#OPENAI_WEB_SEARCH_USER_LOCATION = ''
+
+# 启用 OpenAI/gpt-5.5 专属 GitHub 仓库读取函数工具；不是 USE_TOOLS。
+# 公开仓库不强制需要 GITHUB_TOKEN；私有仓库或高频使用建议设置下面的 GITHUB_TOKEN。
+# 触发方式：聊天里直接发 GitHub 仓库地址或要求“分析这个仓库”，模型会按需调用 github_repo_reader。
+#OPENAI_ENABLE_GITHUB_REPO_READER = 'false'
+
+# GitHub token；读取公开仓库不强制需要。
+# 不填：可读取公开仓库，但受 GitHub 匿名 API 限额影响。
+# 填写：提升 rate limit，也可读取 token 授权范围内的私有仓库。
+#GITHUB_TOKEN = ''
+
+# GitHub 仓库读取工具最多读取文件数量。
+#GITHUB_REPO_READER_MAX_FILES = '30'
+
+# GitHub 仓库读取工具单文件最大字节数，超过会跳过。
+#GITHUB_REPO_READER_MAX_FILE_SIZE = '30000'
+
+# GitHub 仓库读取工具返回给模型的总字符上限。
+#GITHUB_REPO_READER_MAX_TOTAL_CHARS = '120000'
+
+# GitHub 仓库读取工具请求超时，单位秒。
+#GITHUB_REPO_READER_TIMEOUT = '20'
+
+# 启用 OpenAI Code Interpreter。
+# 这是 OpenAI server-side Python/代码执行能力，不是本地服务器执行代码；需要上游支持。
+#OPENAI_ENABLE_CODE_INTERPRETER = 'false'
+
+# Code Interpreter 容器 ID；空表示由 OpenAI 自动管理。
+#OPENAI_CODE_INTERPRETER_CONTAINER = ''
+
+# 启用 OpenAI File Search。
+# 需要先在 OpenAI 创建 vector store，并在 OPENAI_FILE_SEARCH_VECTOR_STORES 填 id。
+#OPENAI_ENABLE_FILE_SEARCH = 'false'
+
+# File Search vector store id 列表，多个用逗号分隔。
+# 为空时即使 OPENAI_ENABLE_FILE_SEARCH=true 也不会实际挂载 file_search。
+#OPENAI_FILE_SEARCH_VECTOR_STORES = ''
+
+# File Search 最大返回结果数。
+#OPENAI_FILE_SEARCH_MAX_RESULTS = '10'
+
+# File Search 相关性阈值，0-1，越高越严格。
+#OPENAI_FILE_SEARCH_SCORE_THRESHOLD = '0'
+
+# 启用 OpenAI Responses 内置 image_generation 工具；普通 /img 不依赖此项。
+# 如果你主要用 /img 或 USE_TOOLS='image_gen'，通常保持 false；如果希望 gpt-5.5 原生决定调用 image_generation 才开启。
+# 开启后普通聊天可能由模型自己触发；是否触发取决于模型判断，不等同强制生图。
+#OPENAI_ENABLE_IMAGE_GENERATION = 'false'
+
+# OpenAI 图片模型；/img、image_gen 工具、Responses image_generation 都使用这个值。
+#OPENAI_IMAGE_MODEL = 'gpt-image-2'
+
+# OpenAI 图片数量。
+# /img 和 image_gen 会读取；Responses image_generation 工具通常也受模型/上游限制。
+#OPENAI_IMAGE_N = '1'
+
+# OpenAI 图片尺寸：auto,1024x1024,1024x1536,1536x1024。
+# 也可在 /img 或 image_gen 参数里传 ratio=16:9 / 3:4 / portrait / landscape，代码会映射到 OpenAI 支持尺寸。
+#OPENAI_IMAGE_SIZE = 'auto'
+
+# OpenAI 图片质量：auto,low,medium,high。
+#OPENAI_IMAGE_QUALITY = 'auto'
+
+# OpenAI 图片背景：auto,opaque,transparent。
+#OPENAI_IMAGE_BACKGROUND = 'auto'
+
+# OpenAI 图片输入保真度：low,high。
+#OPENAI_IMAGE_INPUT_FIDELITY = 'low'
+
+# OpenAI 图片审核强度：auto,low。
+#OPENAI_IMAGE_MODERATION = 'auto'
+
+# OpenAI 图片输出格式：png,jpeg,webp。
+# 透明背景通常使用 png/webp；jpeg 不支持透明。
+#OPENAI_IMAGE_OUTPUT_FORMAT = 'png'
+
+# OpenAI 图片压缩质量，0-100；仅 jpeg/webp 生效。
+#OPENAI_IMAGE_OUTPUT_COMPRESSION = '100'
+
+# Responses 流式部分图片数量，0-3。
+#OPENAI_IMAGE_PARTIAL_IMAGES = '0'
+
+# 透传给 /images/generations 的额外参数；CLIProxyAPI 上游扩展参数可放这里。
+# 示例：{"user":"telegram"}；如果上游不支持某个 OPENAI_IMAGE_* 参数，也可在网关侧处理或通过此项覆盖。
+#OPENAI_IMAGE_EXTRA_PARAMS = '{}'
+
+# 启用 OpenAI MCP server-side tool。
+# 适合把外部 MCP 服务作为 OpenAI Responses server-side tool；普通项目 MCP 请用 USE_MCP/MCP_xxx。
+#OPENAI_ENABLE_MCP = 'false'
+
+# MCP server 标签，启用 MCP 时必填。
+# 只用于 OpenAI 识别这个 MCP server，建议用简短英文名。
+#OPENAI_MCP_SERVER_LABEL = ''
+
+# MCP server URL；和 connector id 二选一。
+#OPENAI_MCP_SERVER_URL = ''
+
+# OpenAI 托管 connector id；和 server URL 二选一。
+#OPENAI_MCP_CONNECTOR_ID = ''
+
+# MCP server 描述。
+#OPENAI_MCP_SERVER_DESCRIPTION = ''
+
+# MCP 允许调用的工具名列表；空表示不限制。
+# 对不完全可信的 MCP 服务建议显式白名单。
+#OPENAI_MCP_ALLOWED_TOOLS = ''
+
+# MCP 是否只允许只读工具。
+#OPENAI_MCP_ALLOWED_TOOLS_READ_ONLY = 'false'
+
+# MCP OAuth Authorization token。
+#OPENAI_MCP_AUTHORIZATION = ''
+
+# MCP 自定义 HTTP headers，JSON 对象。
+#OPENAI_MCP_HEADERS = '{}'
+
+# MCP 工具审批策略：always / never。
+#OPENAI_MCP_REQUIRE_APPROVAL = 'never'
+
+# 需要审批的 MCP 工具名列表。
+#OPENAI_MCP_APPROVAL_TOOL_NAMES = ''
+
+# ============================================================
+# 11 OAI-Like / OpenAI-Compatible 配置
+# ============================================================
+
+# OpenAI 兼容 API Key，多个 key 用逗号分隔。
+# 仅 AI_CHAT_PROVIDER/AI_IMAGE_PROVIDER/AI_ASR_PROVIDER/AI_TTS_PROVIDER 选择 oailike 时使用。
+#OAILIKE_API_KEY = 'SK-1,SK-2'
+
+# OpenAI 兼容 API Base，例如 https://api.openai.com/v1 或 CLIProxyAPI /v1。
+# 适合只实现 Chat Completions / Images 等 OpenAI-compatible 接口的网关；不等同 OpenAI Responses 完整适配。
+#OAILIKE_API_BASE = 'https://api.openai.com/v1'
+
+# OAI-Like 聊天模型。
+# 仅 AI_CHAT_PROVIDER=oailike 时使用；模型名要按网关实际暴露名称填写。
+#OAILIKE_CHAT_MODEL = 'gpt-4o-mini'
+
+# OAI-Like 视觉模型。
+# 仅 oailike 处理图片理解时使用；网关不支持 vision 时不要选择图片输入。
+#OAILIKE_VISION_MODEL = 'gpt-4o-mini'
+
+# OAI-Like 图片模型；请求体使用 OpenAI /images/generations 风格。
+# CLIProxyAPI 图片接口支持 gpt-image-2 时可填 gpt-image-2；否则按上游支持模型改。
+#OAILIKE_IMAGE_MODEL = 'gpt-image-2'
+
+# OAI-Like 图片数量。
+#OAILIKE_IMAGE_N = '1'
+
+# OAI-Like 图片尺寸。
+# 常见 1024x1024；是否支持 auto/竖图/横图取决于网关和模型。
+#OAILIKE_IMAGE_SIZE = '1024x1024'
+
+# OAI-Like 图片质量。
+#OAILIKE_IMAGE_QUALITY = 'auto'
+
+# OAI-Like 图片额外参数，透传给 /images/generations。
+#OAILIKE_IMAGE_EXTRA_PARAMS = '{}'
+
+# OAI-Like embedding 模型。
+#OAILIKE_EMBEDDING_MODEL = 'text-embedding-3-small'
+
+# OAI-Like rerank 模型；RERANK_AGENT=oailikeV2 时使用。
+#OAILIKE_RERANK_MODEL = ''
+
+# OAI-Like 语音识别模型。
+#OAILIKE_STT_MODEL = 'FunAudioLLM/SenseVoiceSmall'
+
+# OAI-Like 语音识别额外参数。
+#OAILIKE_STT_EXTRA_PARAMS = '{}'
+
+# OAI-Like TTS 模型。
+#OAILIKE_TTS_MODEL = 'tts-1'
+
+# OAI-Like TTS voice。
+#OAILIKE_TTS_VOICE = 'alloy'
+
+# OAI-Like TTS 额外参数。
+#OAILIKE_TTS_EXTRA_PARAMS = '{}'
+
+# OAI-Like 聊天额外参数，按模型前缀匹配。
+# 适合给兼容网关透传 temperature、reasoning、top_p 等非统一参数。
+# 示例：{"deepseek-reasoner":{"reasoning_effort":"high"},"gpt-5.5":{"reasoning":{"effort":"medium"}}}
+#OAILIKE_API_EXTRA_PARAMS = '{}'
+
+# 手动维护的 OAI-Like 模型列表。
+#OAILIKE_MODELS = ''
+
+# OAI-Like 模型列表 API 路径。
+#OAILIKE_MODELS_API = '/models'
+
+# OAI-Like relay tools 映射，JSON 对象；默认 gemini 支持 googleSearch/codeExecution/urlContext。
+#OAILIKE_RELAY_TOOLS = '{"gemini":["googleSearch","codeExecution","urlContext"]}'
+
+# OAI-Like relay tools 不是 OpenAI Responses 原生工具，而是给“OpenAI-compatible 网关 + Gemini 等后端模型”转发用。
+# 只有网关明确支持这些 relay tools 时才开启；不要写进 USE_TOOLS。
+# 如果你用 OAI-like 接 gpt-5.5，一般只能获得兼容接口能力；Responses 原生 web_search/image_generation/GitHub reader 不会自动变成 OAI-like 能力。
+# 想最大兼容 gpt-5.5 的 Responses 能力，优先使用 AI_CHAT_PROVIDER='openai'，并配置 OPENAI_API_BASE 指向支持 Responses 的网关。
+
+# 启用 OAI-Like relay Google Search。
+# 适合 CLIProxyAPI 等网关把 OpenAI 兼容请求转发到 Gemini，并支持 googleSearch relay tool 的场景。
+# 如果网关不支持 relay，打开这个开关也不会让项目本地搜索；本地搜索请用 USE_TOOLS='duckduckgo,jina_reader'。
+#OAILIKE_ENABLE_GOOGLE_SEARCH = 'false'
+
+# 启用 OAI-Like relay Code Execution。
+# 由上游网关/后端模型执行，不是本项目本地执行代码。
+#OAILIKE_ENABLE_CODE_EXECUTION = 'false'
+
+# 启用 OAI-Like relay URL Context。
+# 由上游网关/后端模型读取 URL 上下文；不等同项目工具 browser_navigate。
+#OAILIKE_ENABLE_URL_CONTEXT = 'false'
+
+# OAI-Like providerOptions，透传给 SDK provider。
+# 和 OpenAI Responses 的 providerOptions 不是一回事；只在 SDK provider 支持时生效。
+#OAILIKE_PROVIDER_OPTIONS = '{}'
+
+# ============================================================
+# 12 Azure OpenAI 配置
+# ============================================================
+
+# Azure OpenAI API Key，多个 key 用逗号分隔。
+# 仅 AI_CHAT_PROVIDER/AI_IMAGE_PROVIDER 选择 azure 时使用。
 #AZURE_API_KEY = ''
-## Azure Completions API
-## https://RESOURCE_NAME.openai.azure.com/openai/deployments/MODEL_NAME/chat/completions?api-version=VERSION_NAME
-#AZURE_COMPLETIONS_API = ''
-## Azure DallE API
-## https://RESOURCE_NAME.openai.azure.com/openai/deployments/MODEL_NAME/images/generations?api-version=VERSION_NAME
-#AZURE_DALLE_API = ''
 
-## -- Workers 配置 --
-##
-## Cloudflare Account ID
+# Azure resource name，例如 https://RESOURCE.openai.azure.com 中的 RESOURCE。
+#AZURE_RESOURCE_NAME = ''
+
+# Azure API version。
+#AZURE_API_VERSION = '2024-06-01'
+
+# Azure chat deployment name。
+# Azure 这里通常填部署名 deployment，而不是公开模型名。
+#AZURE_CHAT_MODEL = ''
+
+# Azure vision deployment name。
+#AZURE_VISION_MODEL = ''
+
+# Azure image deployment name。
+#AZURE_IMAGE_MODEL = ''
+
+# Azure 图片尺寸。
+#AZURE_IMAGE_SIZE = '1024x1024'
+
+# Azure 图片质量。
+#AZURE_IMAGE_QUALITY = 'standard'
+
+# Azure 图片风格。
+#AZURE_IMAGE_STYLE = 'vivid'
+
+# 手动维护的 Azure 模型列表。
+#AZURE_MODELS = ''
+
+# Azure 模型列表 API。
+#AZURE_MODELS_API = ''
+
+# ============================================================
+# 13 Cloudflare Workers AI 配置
+# ============================================================
+
+# Cloudflare Account ID。
+# 仅 AI_CHAT_PROVIDER=workers 或 AI_IMAGE_PROVIDER=workers 时使用。
 #CLOUDFLARE_ACCOUNT_ID = ''
-## Cloudflare Token
+
+# Cloudflare API Token，需要 Workers AI 权限。
+# 不使用 Workers AI 可留空；建议最小权限 token。
 #CLOUDFLARE_TOKEN = ''
-## Text Generation Model
+
+# Workers AI 文本模型。
 #WORKERS_CHAT_MODEL = '@cf/mistral/mistral-7b-instruct-v0.1 '
-## Text-to-Image Model
+
+# Workers AI 图片模型。
 #WORKERS_IMAGE_MODEL = '@cf/stabilityai/stable-diffusion-xl-base-1.0'
 
-## -- Gemini 配置 --
-##
-## Google Gemini API Key
-#GOOGLE_API_KEY = ''
-## Google Gemini API
-#GOOGLE_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/'
-## Google Gemini Model
-#GOOGLE_CHAT_MODEL = 'gemini-pro'
+# 手动维护的 Workers AI 模型列表。
+#WORKERS_MODELS = ''
 
-## -- Mistral 配置 --
-##
-## mistral api key
+# Workers AI 模型列表 API。
+#WORKERS_MODELS_API = ''
+
+# ============================================================
+# 14 Google Gemini / AI Studio 配置
+# ============================================================
+
+# Google API Key，多个 key 用逗号分隔。
+# 仅 AI_CHAT_PROVIDER/AI_IMAGE_PROVIDER/AI_TTS_PROVIDER 选择 google，或使用 Google 工具时需要。
+#GOOGLE_API_KEY = ''
+
+# Google Gemini API Base；不要以 /models 结尾。
+#GOOGLE_API_BASE = 'https://generativelanguage.googleapis.com/v1beta'
+
+# Gemini 聊天模型。
+# 仅 AI_CHAT_PROVIDER=google 时使用；模型名要匹配 GOOGLE_API_BASE 暴露版本。
+#GOOGLE_CHAT_MODEL = 'gemini-2.5-flash'
+
+# Gemini 视觉模型。
+# 处理图片理解时使用；不是图片生成模型。
+#GOOGLE_VISION_MODEL = 'gemini-2.5-flash'
+
+# Gemini 图片模型。
+# 仅 AI_IMAGE_PROVIDER=google 或 image_gen agent=google 时使用。
+#GOOGLE_IMAGE_MODEL = 'gemini-3.1-flash-image-preview'
+
+# Google embedding 模型。
+#GOOGLE_EMBEDDING_MODEL = 'text-embedding-004'
+
+# Google 额外请求参数，按模型前缀匹配；支持 generationConfig.thinkingConfig 等路径。
+#GOOGLE_API_EXTRA_PARAMS = '{}'
+
+# 手动维护的 Google 模型列表。
+#GOOGLE_MODELS = ''
+
+# Google 模型列表 API 路径。
+#GOOGLE_MODELS_API = '/models'
+
+# 启用 Google Search grounding。
+# 这是 Google/Gemini 原生工具，不是项目 duckduckgo，也不需要写入 USE_TOOLS。
+#GOOGLE_ENABLE_GOOGLE_SEARCH = 'false'
+
+# 启用 Google Code Execution。
+# 由 Google/Gemini server-side 执行，不是本项目本地执行代码。
+#GOOGLE_ENABLE_CODE_EXECUTION = 'false'
+
+# 启用 Google URL Context。
+# 让 Gemini 读取 URL 上下文；不等同项目工具 browser_navigate。
+#GOOGLE_ENABLE_URL_CONTEXT = 'false'
+
+# 启用 Google Maps grounding。
+# 适合地点、路线、商家等地图相关问题；模型不支持时会自动跳过或切换 GOOGLE_MAPS_MODEL。
+#GOOGLE_ENABLE_GOOGLE_MAPS = 'false'
+
+# 启用 Google File Search。
+# 需要先配置 GOOGLE_FILE_SEARCH_STORES，否则不会实际挂载文件搜索。
+#GOOGLE_ENABLE_FILE_SEARCH = 'false'
+
+# 启用 Google Enterprise Web Search。
+# 需要账号/模型/接口支持；普通 Gemini 账号不一定可用。
+#GOOGLE_ENABLE_ENTERPRISE_WEB_SEARCH = 'false'
+
+# googleSearch 中是否启用网页搜索。
+# 只有 GOOGLE_ENABLE_GOOGLE_SEARCH=true 时才有意义。
+#GOOGLE_SEARCH_ENABLE_WEB_SEARCH = 'true'
+
+# googleSearch 中是否启用图片搜索。
+# 开启后 grounding 可能包含图片结果；并非图片生成。
+#GOOGLE_SEARCH_ENABLE_IMAGE_SEARCH = 'false'
+
+# Google 搜索时间范围过滤，ISO 8601 时间。
+# 例如 {"startTime":"2026-01-01T00:00:00Z","endTime":"2026-12-31T23:59:59Z"}；空对象表示不过滤。
+#GOOGLE_SEARCH_TIME_RANGE_FILTER = '{}'
+
+# Google File Search store 列表。
+# 只有 GOOGLE_ENABLE_FILE_SEARCH=true 时生效；空表示不挂载 store。
+#GOOGLE_FILE_SEARCH_STORES = ''
+
+# Google File Search topK。
+#GOOGLE_FILE_SEARCH_TOP_K = '10'
+
+# Google File Search metadata filter。
+# JSON 或过滤表达式由 Google SDK/接口决定；空表示不过滤 metadata。
+#GOOGLE_FILE_SEARCH_METADATA_FILTER = ''
+
+# Google Maps grounding 位置上下文，例如 {"latLng":{"latitude":31.2,"longitude":121.5}}。
+#GOOGLE_RETRIEVAL_CONFIG = '{}'
+
+# 启用 googleMaps 时自动切换的模型；空字符串表示不自动切换。
+#GOOGLE_MAPS_MODEL = 'gemini-3-flash-preview'
+
+# Google TTS 模型。
+#GOOGLE_TTS_MODEL = 'gemini-2.5-flash-preview-tts'
+
+# Gemini 图片比例：1:1,2:3,3:2,3:4,4:3,4:5,5:4,9:16,16:9,21:9,1:8,8:1,1:4,4:1。
+# 空表示交给模型/SDK 默认；只有 AI_IMAGE_PROVIDER=google 时使用。
+#GOOGLE_IMAGE_ASPECT_RATIO = ''
+
+# Gemini 图片分辨率：1K,2K,4K,512。
+# 空表示默认；高分辨率更慢、成本更高，并且要看模型是否支持。
+#GOOGLE_IMAGE_SIZE = ''
+
+# Gemini 图片生成是否启用 Google Search grounding。
+# 适合需要参考真实世界信息的生图；会增加联网依赖和延迟。
+#GOOGLE_IMAGE_ENABLE_GOOGLE_SEARCH = 'false'
+
+# Google TTS voice。
+#GOOGLE_TTS_VOICE = 'Zephyr'
+
+# Google TTS prompt。
+#GOOGLE_TTS_PROMPT = ''
+
+# Google TTS 额外参数；若配置 multi_speaker_voice_config，通常不要同时用 GOOGLE_TTS_VOICE。
+#GOOGLE_TTS_EXTRA_PARAMS = '{}'
+
+# Google providerOptions；默认关闭各类 safety block。
+# 可放 thinkingConfig、responseModalities、structuredOutputs 等 SDK 支持项。
+#GOOGLE_PROVIDER_OPTIONS = '{"safetySettings":[{"category":"HARM_CATEGORY_DANGEROUS_CONTENT","threshold":"BLOCK_NONE"},{"category":"HARM_CATEGORY_HARASSMENT","threshold":"BLOCK_NONE"},{"category":"HARM_CATEGORY_HATE_SPEECH","threshold":"BLOCK_NONE"},{"category":"HARM_CATEGORY_SEXUALLY_EXPLICIT","threshold":"BLOCK_NONE"},{"category":"HARM_CATEGORY_CIVIC_INTEGRITY","threshold":"BLOCK_NONE"}],"threshold":"OFF"}'
+
+# ============================================================
+# 15 Vertex AI 配置
+# ============================================================
+
+# Google Cloud Project ID。
+# 仅 AI_CHAT_PROVIDER/AI_IMAGE_PROVIDER=vertex 时使用。
+#VERTEX_PROJECT_ID = ''
+
+# Vertex 区域。
+# 必须与你启用模型的区域一致；Imagen/Gemini 支持区域可能不同。
+#VERTEX_LOCATION = 'us-central1'
+
+# Vertex service account 凭据 JSON，至少包含 client_email/private_key。
+#VERTEX_CREDENTIALS = '{}'
+
+# Vertex 聊天模型。
+#VERTEX_CHAT_MODEL = 'gemini-2.5-flash'
+
+# Vertex 视觉模型。
+#VERTEX_VISION_MODEL = 'gemini-2.5-flash'
+
+# Vertex 图片模型。
+#VERTEX_IMAGE_MODEL = 'imagen-3.0-fast-generate-001'
+
+# 手动维护的 Vertex 模型列表。
+#VERTEX_MODELS = ''
+
+# Vertex 模型列表 API。
+#VERTEX_MODELS_API = ''
+
+# ============================================================
+# 16 Anthropic 配置
+# ============================================================
+
+# Anthropic API Key，多个 key 用逗号分隔。
+# 仅 AI_CHAT_PROVIDER=anthropic 时使用。
+#ANTHROPIC_API_KEY = ''
+
+# Anthropic API Base。
+#ANTHROPIC_API_BASE = 'https://api.anthropic.com/v1'
+
+# Anthropic 聊天模型。
+#ANTHROPIC_CHAT_MODEL = 'claude-3-5-haiku-20241022'
+
+# Anthropic 视觉模型。
+#ANTHROPIC_VISION_MODEL = 'claude-3-5-haiku-20241022'
+
+# Anthropic 额外参数，按模型前缀匹配。
+# 可配置 thinking、temperature 等 Anthropic 原生参数；示例为 Claude 3.7 thinking。
+#ANTHROPIC_API_EXTRA_PARAMS = '{"claude-3-7-sonnet":{"temperature":1,"thinking":{"type":"enabled","budget_tokens":4096}}}'
+
+# 手动维护的 Anthropic 模型列表。
+#ANTHROPIC_MODELS = ''
+
+# Anthropic 模型列表 API。
+#ANTHROPIC_MODELS_API = '/models'
+
+# 是否启用 Anthropic prompt cache。
+# true 会尽量缓存 system/tools，降低重复对话成本；上游不支持时可能无效。
+#ANTHROPIC_ENABLE_CACHE_CONTROL = 'true'
+
+# 启用 Anthropic web fetch。
+# 抓取指定网页内容，适合用户给 URL 后读取页面；需要模型/账号支持。
+#ANTHROPIC_ENABLE_WEB_FETCH = 'false'
+
+# web fetch 最大调用次数。
+#ANTHROPIC_WEB_FETCH_MAX_USES = '5'
+
+# web fetch 允许域名；空表示不限制。
+#ANTHROPIC_WEB_FETCH_ALLOWED_DOMAINS = ''
+
+# web fetch 禁止域名；空表示不排除。
+#ANTHROPIC_WEB_FETCH_BLOCKED_DOMAINS = ''
+
+# web fetch 是否启用 citations。
+#ANTHROPIC_WEB_FETCH_ENABLE_CITATIONS = 'true'
+
+# web fetch 最大内容 tokens。
+#ANTHROPIC_WEB_FETCH_MAX_CONTENT_TOKENS = '4000'
+
+# 启用 Anthropic web search。
+# 搜索网页，不需要写入 USE_TOOLS；需要模型/账号支持。
+#ANTHROPIC_ENABLE_WEB_SEARCH = 'false'
+
+# web search 最大调用次数。
+#ANTHROPIC_WEB_SEARCH_MAX_USES = '5'
+
+# web search 允许域名；空表示不限制。
+#ANTHROPIC_WEB_SEARCH_ALLOWED_DOMAINS = ''
+
+# web search 禁止域名；空表示不排除。
+#ANTHROPIC_WEB_SEARCH_BLOCKED_DOMAINS = ''
+
+# web search 用户位置；空表示不传位置。
+#ANTHROPIC_WEB_SEARCH_USER_LOCATION = ''
+
+# 启用 Anthropic code execution。
+# Anthropic server-side 代码执行；不是在你的 Linux 服务器本地执行。
+#ANTHROPIC_ENABLE_CODE_EXECUTION = 'false'
+
+# 是否启用细粒度工具流。
+# true 可以更早显示工具调用进度；若上游/SDK 不稳定可改 false。
+#ANTHROPIC_ENABLE_TOOL_STREAMING = 'true'
+
+# 是否启用 Anthropic context management，自动清理历史工具调用。
+# true 可降低长对话工具历史导致的上下文膨胀；排查历史问题时可临时关闭。
+#ANTHROPIC_ENABLE_CONTEXT_MANAGEMENT = 'true'
+
+# context management 触发模式：auto / manual。
+#ANTHROPIC_CONTEXT_CLEAR_TRIGGER = 'auto'
+
+# 保留最近 N 次工具调用。
+#ANTHROPIC_CONTEXT_KEEP_RECENT = '5'
+
+# 至少清理 N 千 tokens。
+#ANTHROPIC_CONTEXT_CLEAR_AT_LEAST = '2'
+
+# 是否清理工具输入参数。
+#ANTHROPIC_CONTEXT_CLEAR_TOOL_INPUTS = 'false'
+
+# context management 排除工具列表。
+#ANTHROPIC_CONTEXT_EXCLUDE_TOOLS = ''
+
+# 是否清理 thinking 内容。
+#ANTHROPIC_ENABLE_THINKING_CLEANUP = 'false'
+
+# 保留最近 N 轮 thinking。
+#ANTHROPIC_THINKING_KEEP_RECENT = '3'
+
+# 结构化输出模式：outputFormat / tool / auto。
+# auto 让 SDK 自动选择；强 JSON/结构化任务可按模型能力调整。
+#ANTHROPIC_STRUCTURED_OUTPUT_MODE = 'auto'
+
+# Anthropic providerOptions。
+#ANTHROPIC_PROVIDER_OPTIONS = '{}'
+
+# ============================================================
+# 17 xAI / Grok 配置
+# ============================================================
+
+# xAI API Key，多个 key 用逗号分隔。
+# 仅 AI_CHAT_PROVIDER/AI_IMAGE_PROVIDER=xai 时使用。
+#XAI_API_KEY = ''
+
+# xAI API Base。
+#XAI_API_BASE = 'https://api.x.ai/v1'
+
+# xAI 聊天模型。
+# 仅 AI_CHAT_PROVIDER=xai 时使用；Responses 工具建议搭配 XAI_RESPONSE_MODELS。
+#XAI_CHAT_MODEL = 'grok-4-1-fast'
+
+# xAI 视觉模型。
+#XAI_VISION_MODEL = 'grok-2-vision'
+
+# xAI 图片模型。
+#XAI_IMAGE_MODEL = 'grok-imagine-image'
+
+# xAI 额外参数，按模型前缀匹配。
+#XAI_API_EXTRA_PARAMS = '{}'
+
+# 手动维护的 xAI 模型列表。
+#XAI_MODELS = ''
+
+# xAI 模型列表 API。
+#XAI_MODELS_API = '/models'
+
+# xAI providerOptions，例如 {"reasoningEffort":"high"}。
+# 透传给 xAI SDK provider；支持项取决于当前 @ai-sdk/xai 版本和上游模型。
+#XAI_PROVIDER_OPTIONS = '{}'
+
+# 使用 xAI Responses API 的模型列表；'*' 表示全部。
+# xAI 新工具能力一般走 Responses；如遇兼容问题可缩小到指定模型前缀。
+#XAI_RESPONSE_MODELS = '*'
+
+# 是否允许 xAI 服务端存储对话。
+# false 会尽量关闭服务端会话存储，隐私更好；但某些连续能力可能受影响。
+#XAI_STORE_CONVERSATION = 'true'
+
+# 启用 xAI web search。
+# 域名过滤为空也能正常搜索全网；只有设置 allowed/excluded 时才限制来源。
+#XAI_ENABLE_WEB_SEARCH = 'false'
+
+# 启用 X/Twitter search。
+# 搜索 X/Twitter 内容；handles 过滤为空表示不限制账号。
+#XAI_ENABLE_X_SEARCH = 'false'
+
+# 启用 xAI code execution。
+#XAI_ENABLE_CODE_EXECUTION = 'false'
+
+# 启用 xAI file search。
+#XAI_ENABLE_FILE_SEARCH = 'false'
+
+# xAI file search vector store / collection id 列表。
+#XAI_FILE_SEARCH_VECTOR_STORES = ''
+
+# xAI file search 最大结果数。
+#XAI_FILE_SEARCH_MAX_RESULTS = '10'
+
+# xAI web search 允许域名，最多 5 个；空表示不限制，仍可正常搜索全网。
+#XAI_WEB_SEARCH_ALLOWED_DOMAINS = ''
+
+# xAI web search 排除域名，最多 5 个；空表示不排除。
+#XAI_WEB_SEARCH_EXCLUDED_DOMAINS = ''
+
+# xAI web search 是否理解结果中的图片。
+#XAI_WEB_SEARCH_IMAGE_UNDERSTANDING = 'false'
+
+# xAI X search 允许 handles，最多 10 个；空表示不限制。
+#XAI_X_SEARCH_ALLOWED_HANDLES = ''
+
+# xAI X search 排除 handles，最多 10 个；空表示不排除。
+#XAI_X_SEARCH_EXCLUDED_HANDLES = ''
+
+# xAI X search 是否理解图片。
+#XAI_X_SEARCH_IMAGE_UNDERSTANDING = 'false'
+
+# xAI X search 是否理解视频。
+#XAI_X_SEARCH_VIDEO_UNDERSTANDING = 'false'
+
+# ============================================================
+# 18 Mistral 配置
+# ============================================================
+
+# Mistral API Key，多个 key 用逗号分隔。
+# 仅 AI_CHAT_PROVIDER=mistral 时使用。
 #MISTRAL_API_KEY = ''
-## mistral api base
+
+# Mistral API Base。
 #MISTRAL_API_BASE = 'https://api.mistral.ai/v1'
-## mistral api model
+
+# Mistral 聊天模型。
 #MISTRAL_CHAT_MODEL = 'mistral-tiny'
 
-## -- Cohere 配置 --
-##
-## cohere api key
+# 手动维护的 Mistral 模型列表。
+#MISTRAL_MODELS = ''
+
+# Mistral 模型列表 API。
+#MISTRAL_MODELS_API = '/models'
+
+# ============================================================
+# 19 Cohere 配置
+# ============================================================
+
+# Cohere API Key，多个 key 用逗号分隔。
+# 仅 AI_CHAT_PROVIDER=cohere 或 RERANK_AGENT 选择 cohere 相关能力时使用。
 #COHERE_API_KEY = ''
-## cohere api base
+
+# Cohere API Base。
 #COHERE_API_BASE = 'https://api.cohere.com/v1'
-## cohere api model
+
+# Cohere 聊天模型。
 #COHERE_CHAT_MODEL = 'command-r-plus'
 
-## -- Anthropic 配置 --
-##
-## Anthropic api key
-#ANTHROPIC_API_KEY = ''
-## Anthropic api base
-#ANTHROPIC_API_BASE = 'https://api.anthropic.com/v1'
-## Anthropic api model
-#ANTHROPIC_CHAT_MODEL = 'claude-3-haiku-20240307'
+# 手动维护的 Cohere 模型列表。
+#COHERE_MODELS = ''
 
-CUSTOM_COMMAND_azure= '/setenvs {"AI_CHAT_PROVIDER": "azure"}'
-COMMAND_DESCRIPTION_azure = 'Switch to Azure AI provider'
+# Cohere 模型列表 API。
+#COHERE_MODELS_API = '/models'
 
-CUSTOM_COMMAND_workers = '/setenvs {"AI_CHAT_PROVIDER": "workers"}'
-COMMAND_DESCRIPTION_workers = 'Switch to Workers AI provider'
+# ============================================================
+# 20 Fish Audio 配置
+# ============================================================
 
-CUSTOM_COMMAND_openai = '/setenvs {"AI_CHAT_PROVIDER": "openai"}'
-COMMAND_DESCRIPTION_openai = 'Switch to OpenAI AI provider'
+# Fish API Key，多个 key 用逗号分隔。
+# 仅 AI_TTS_PROVIDER=fish 时使用。
+#FISH_API_KEY = ''
 
-CUSTOM_COMMAND_cn2en = '/setenvs {"SYSTEM_INIT_MESSAGE": "You are a translator. Please translate everything I say below into English."}'
-COMMAND_DESCRIPTION_cn2en = 'Switch to Chinese to English translation mode'
+# Fish API Base。
+#FISH_API_BASE = 'https://api.fish.audio/v1'
 
-PLUGIN_COMMAND_dns = "https://raw.githubusercontent.com/TBXark/ChatGPT-Telegram-Workers/dev/plugins/dns.json"
-PLUGIN_DESCRIPTION_dns = "DNS查询 /dns <类型> <域名>"
+# Fish voice/reference id；不填时使用模型默认。
+# 可填 Fish 声音 id，也可使用 FISH_REFERENCE_IDS 中映射的名称。
+#FISH_TTS_VOICE = ''
 
-PLUGIN_COMMAND_dicten = "https://raw.githubusercontent.com/TBXark/ChatGPT-Telegram-Workers/dev/plugins/dicten.json"
-PLUGIN_DESCRIPTION_dicten = "英文字典 /dicten <单词>"
+# Fish TTS 模型。
+#FISH_TTS_MODEL = 'speech-1.6'
+
+# Fish TTS 额外参数。
+#FISH_TTS_EXTRA_PARAMS = '{}'
+
+# Fish 内置 reference id 映射；JSON 对象，会与内置默认值合并。
+#FISH_REFERENCE_IDS = '{"丁真":"54a5170264694bfc8e9ad98df7bd89c3"}'
+
+# ============================================================
+# 21 Black Forest Labs 配置
+# ============================================================
+
+# Black Forest Labs API Key，多个 key 用逗号分隔。
+# 仅 AI_IMAGE_PROVIDER=bfl 或 image_gen agent=bfl 时使用。
+#BFL_API_KEY = ''
+
+# Black Forest Labs API Base。
+#BFL_API_BASE = 'https://api.bfl.ai/v1'
+
+# BFL 图片模型；常用 flux-2-pro,flux-2-max,flux-2-flex,flux-2-klein-4b,flux-2-klein-9b,flux-kontext-pro,flux-kontext-max,flux-pro-1.1-ultra,flux-pro-1.0-fill。
+#BFL_IMAGE_MODEL = 'flux-2-klein-9b'
+
+# ============================================================
+# 22 KlingAI 图片配置
+# ============================================================
+
+# KlingAI Cookie，多个 cookie 用逗号分隔。
+# 仅 AI_IMAGE_PROVIDER=kling 或 /kling 命令使用；Cookie 失效后需要重新获取。
+#KLINGAI_COOKIE = ''
+
+# KlingAI 生成图片数量。
+# 实际上限由 Kling 页面/API 决定；数量越多越慢。
+#KLINGAI_IMAGE_COUNT = '1'
+
+# KlingAI 图片比例。
+# 常见 1:1、16:9、9:16；具体支持取决于 Kling 接口。
+#KLINGAI_IMAGE_RATIO = '1:1'
+
+# ============================================================
+# 23 模型参数、别名、输出与工作流
+# ============================================================
+
+# /set 命令短参数映射。
+# 左侧是命令短参数，右侧是实际配置键；改错会导致 /set 无法找到键。
+# CHAT_MODEL / IMAGE_MODEL / VISION_MODEL 是快捷入口，不建议写进 wrangler 作为全局环境变量；
+# 在 /set、/setenv、/setenvs、后台 admin 中使用时会按当前 provider 自动解析到真实模型变量。
+#MAPPING_KEY = '-p:SYSTEM_INIT_MESSAGE|-n:MAX_HISTORY_LENGTH|-a:AI_CHAT_PROVIDER|-ai:AI_IMAGE_PROVIDER|-m:CHAT_MODEL|-v:VISION_MODEL|-t:OPENAI_TTS_MODEL|-ex:OPENAI_API_EXTRA_PARAMS|-mk:MAPPING_KEY|-mv:MAPPING_VALUE|-tm:TOOL_MODEL|-tool:USE_TOOLS|-im:IMAGE_MODEL|-th:TEXT_HANDLE_TYPE|-to:TEXT_OUTPUT|-ah:AUDIO_HANDLE_TYPE|-ao:AUDIO_OUTPUT|-act:AUDIO_CONTAINS_TEXT|-as:AI_ASR_PROVIDER|-at:AI_TTS_PROVIDER|-ra:RERANK_AGENT|-ew:ENABLE_WORKFLOW|-tp:CHAT_TEMPERATURE'
+
+# 模型/常用值别名映射；例如 g55:gpt-5.5|g4m:gpt-4o-mini。
+# 配合 ENABLE_ALIAS 和 /set 使用，方便在 Telegram 中输入短别名。
+#MAPPING_VALUE = ''
+
+# 是否启用 MAPPING_VALUE 里的模型别名。
+#ENABLE_ALIAS = 'false'
+
+# 是否显示模型、耗时、token、工具等信息。
+#ENABLE_SHOWINFO = 'false'
+
+# 显示哪些信息：model,model_time,token,tool,tool_time,first_chunk_time。
+# ENABLE_SHOWINFO=true 时才会展示；tool/tool_time 需要工具调用实际发生。
+#SHOW_PARTS = 'model,model_time,token,tool,tool_time'
+
+# 提示词模板覆盖，JSON 对象；会与内置 PROMPT 合并。
+#PROMPT = '{}'
+
+# 聊天温度；空表示 SDK/模型默认。
+# 推理模型或部分新模型可能不支持 temperature；必要时用 PARAMS_MODIFIER 删除。
+#CHAT_TEMPERATURE = ''
+
+# 工具调用温度；空表示 SDK/模型默认。
+# 只影响工具选择/工具模型阶段；大多数场景保持空即可。
+#FUNCTION_CALL_TEMPERATURE = ''
+
+# 最大输出 token；空表示 SDK/模型默认。
+#MAX_TOKENS = ''
+
+# 单次生成最大步骤数，工具调用/续写会消耗步骤。
+# web_search、image_gen、repo reader 等自动工具调用都可能占用 step；工具多时可提高到 8-12。
+#MAX_STEPS = '5'
+
+# 单次生成失败最大重试次数。
+#MAX_RETRIES = '0'
+
+# 是否启用 continue steps 生成长文本。
+#CONTINUE_STEP = 'false'
+
+# Rerank provider：jina,openai,oailikeV1,oailikeV2,google。
+# 影响检索/网页等场景排序；没有相关功能时可保持默认。
+#RERANK_AGENT = 'google'
+
+# Jina rerank 模型。
+#JINA_RERANK_MODEL = 'jina-colbert-v2'
+
+# 是否启用智能模型匹配。
+# 会尝试从 provider 模型列表中选择模型；依赖 *_MODELS 或 *_MODELS_API，可增加复杂度。
+#ENABLE_INTELLIGENT_MODEL = 'false'
+
+# 文本输入处理方式：text 走普通聊天，tts 转语音，chat 走音频预览聊天。
+#TEXT_HANDLE_TYPE = 'text'
+
+# 文本回复输出方式：text / audio。
+#TEXT_OUTPUT = 'text'
+
+# 音频输入处理方式：stt 转文字，audio 传音频，chat 走音频预览聊天。
+#AUDIO_HANDLE_TYPE = 'stt'
+
+# 音频回复输出方式：text / audio。
+#AUDIO_OUTPUT = 'text'
+
+# 发送语音时是否附带文本。
+#AUDIO_CONTAINS_TEXT = 'true'
+
+# 音频理解默认提示词。
+#AUDIO_PROMPT = 'Please listen to the audio file. Identify and understand the question being asked in the audio. Then, provide a detailed explanation and answer to this question. Ensure your answer is helpful and explains the solution or information clearly.'
+
+# 覆盖消息 role，例如 {"o1-mini,o1-preview":"system:user"}。
+#COVER_MESSAGE_ROLE = '{}'
+
+# 消息文本替换表，JSON 对象。
+#MESSAGE_REPLACER = '{}'
+
+# 参数修改器；格式 model1,model2:-temperature|+max_tokens=1000。
+# 用于按模型前缀增删请求参数，适合适配不同网关/模型限制。
+#PARAMS_MODIFIER = 'o1-mini,o3-mini,gpt-4o-mini-search-preview,gpt-4o-search-preview:-temperature'
+
+# 是否启用智能上下文压缩。
+#ENABLE_CONTEXT_COMPRESSION = 'true'
+
+# 上下文压缩触发阈值，0-1；例如 0.60 表示达到上下文窗口 60% 时压缩。
+#CONTEXT_COMPRESSION_THRESHOLD = '0.60'
+
+# 压缩时保护开头消息数量。
+#CONTEXT_COMPRESSION_PROTECT_HEAD = '3'
+
+# 压缩时保留尾部 token 预算。
+#CONTEXT_COMPRESSION_TAIL_BUDGET = '15000'
+
+# 摘要目标比例，0-1。
+#CONTEXT_COMPRESSION_SUMMARY_RATIO = '0.20'
+
+# 工作流配置；@key 触发，{{result}} 是上一步结果，{{question}} 是用户原始输入。
+#WORKFLOW = '{"think":[{"agent":"oailike","model":"deepseek-reasoner","temperature":0.3,"max_tokens":1024,"next":"思考内容: {{result}}\n\n基于以上思考回答问题: {{question}}"}]}'
+
+# 是否启用 WORKFLOW。
+#ENABLE_WORKFLOW = 'false'

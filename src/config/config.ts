@@ -45,9 +45,6 @@ export class EnvironmentConfig {
         'MISTRAL_API_BASE',
         'COHERE_API_BASE',
         'ANTHROPIC_API_BASE',
-        'AZURE_COMPLETIONS_API',
-        'AZURE_DALLE_API',
-        'GOOGLE_API_BASE',
         'VERTEX_CREDENTIALS',
         'OAILIKE_API_BASE',
         'XAI_API_BASE',
@@ -71,6 +68,8 @@ export class EnvironmentConfig {
     GROUP_MESSAGE_CACHE_SIZE = 20;
     // 群组消息缓存过期时间：缓存消息的生存时间，单位：秒（默认1小时）
     GROUP_MESSAGE_CACHE_TTL = 3600;
+    // 群组中是否仅允许管理员/群主使用图片生成入口，包括 /img、image_gen 工具和 OpenAI image_generation 原生工具
+    GROUP_IMAGE_GEN_ADMIN_ONLY = false;
 
     // -- 历史记录相关 --
     //
@@ -89,6 +88,8 @@ export class EnvironmentConfig {
     IGNORE_COMMANDS: string[] = [];
     // 显示快捷回复按钮
     SHOW_REPLY_BUTTON = false;
+    // 是否处理 Telegram inline query。默认关闭，避免群聊 @bot 时误触 inline 模式
+    ENABLE_INLINE_QUERY = false;
     // 额外引用消息开关
     EXTRA_MESSAGE_CONTEXT = false;
     // 禁用内置工具
@@ -111,25 +112,13 @@ export class EnvironmentConfig {
     IGNORE_TEXT_PREFIX = '';
     // When multiple processes, whether to hide intermediate step information
     HIDE_MIDDLE_MESSAGE = false;
-    /**
-     * Replace words, and will force trigger bot { ':n': '/new', ':g3': '/gpt3', ':g4': '/gpt4'}
-     * @deprecated, use CHAT_TRIGGER_SUFFIX and COMMAND_TRIGGERS instead
-     */
-    CHAT_MESSAGE_TRIGGER = {};
+    // Group chat trigger map. Key is the trigger prefix, value is the replacement prefix.
+    // Example: { "domo": "", "g4": "/gpt4" }
+    CHAT_MESSAGE_TRIGGER: Record<string, string> = {};
     // Chat trigger prefix, it will trigger group message and be deleted
     CHAT_TRIGGER_PREFIX = '';
-    /**
-     * Ask AI to call function times
-     * @deprecated
-     */
-    FUNC_LOOP_TIMES = 1;
     // Show call info
     CALL_INFO = true;
-    /**
-     * func call Maximum number of concurrent calls after each successful hit
-     * @deprecated
-     */
-    CON_EXEC_FUN_NUM = 1;
     // When the length reaches the set value, the group will send a telegraph article. If less than 0, it will not be sent
     TELEGRAPH_NUM_LIMIT = -1;
     // Telegraph scope
@@ -147,16 +136,6 @@ export class EnvironmentConfig {
     // Schedule private delete type command dialog:command and chat dialog:chat
     SCHEDULE_PRIVATE_DELETE_TYPE = ['tip'];
 
-    /**
-     * All complete api timeout
-     * @deprecated
-     */
-    ALL_COMPLETE_API_TIMEOUT = 180;
-    /**
-     * Function call timeout
-     * @deprecated
-     */
-    FUNC_TIMEOUT = 15;
     // Send pictures via files format
     SEND_IMAGE_AS_FILE: boolean = false;
     // Perplexity cookie
@@ -248,7 +227,7 @@ export class EnvironmentConfig {
     // otherwise, only the set variables will be shown.
     ENVS_VARIABLES = [];
     // callback menu, if it is empty, all options will be displayed.
-    // options: 'AI_CHAT_PROVIDER', 'AI_IMAGE_PROVIDER', 'AI_TTS_PROVIDER', 'AI_ASR_PROVIDER', 'USE_TOOLS', 'USE_MCP', 'USE_OAILIKE_RELAY_TOOLS', 'CHAT_MODEL', 'IMAGE_MODEL', 'VISION_MODEL', 'TOOL_MODEL', 'ENVS', 'RERANK_AGENT'
+    // options: 'AI_CHAT_PROVIDER', 'AI_IMAGE_PROVIDER', 'AI_TTS_PROVIDER', 'AI_ASR_PROVIDER', 'USE_TOOLS', 'USE_MCP', 'CHAT_MODEL', 'IMAGE_MODEL', 'VISION_MODEL', 'TOOL_MODEL', 'ENVS', 'RERANK_AGENT'
     CALLBACK_MENU = [];
 
     // Whether to transform  tool_call/tool_result message to user message
@@ -268,13 +247,13 @@ export class EnvironmentConfig {
 
 // -- 通用配置 --
 export class AgentShareConfig {
-    // AI提供商: openai, anthropic, azure, workers, google, vertex, mistral, xai, oailike
+    // AI提供商: openai, anthropic, azure, workers, google, vertex, mistral, xai, oailike, cohere
     AI_CHAT_PROVIDER = 'openai';
-    // AI图片提供商: openai, azure, workers
+    // AI图片提供商: openai, azure, workers, oailike, vertex, kling, google, xai, bfl
     AI_IMAGE_PROVIDER = 'openai';
     // AI ASR 提供商: openai, oailike
     AI_ASR_PROVIDER = 'openai';
-    // AI TTS 提供商: openai, oailike
+    // AI TTS 提供商: openai, oailike, google, fish
     AI_TTS_PROVIDER = 'openai';
     // 全局默认初始化消息
     SYSTEM_INIT_MESSAGE: string | null = null;
@@ -295,6 +274,8 @@ export class OpenAIConfig {
     OPENAI_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
     // OpenAI STT Model
     OPENAI_STT_MODEL = 'whisper-1';
+    // OpenAI STT Extra Params
+    OPENAI_STT_EXTRA_PARAMS: Record<string, any> = {};
     // OpenAI Vision Model
     OPENAI_VISION_MODEL = 'gpt-4o-mini';
     // OpenAI TTS Model
@@ -303,19 +284,7 @@ export class OpenAIConfig {
     OPENAI_TTS_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
 
     OPENAI_TTS_VOICE = 'alloy';
-    /**
-     * OpenAI need transform model
-     * @deprecated
-     */
-    OPENAI_NEED_TRANSFORM_MODEL: string[] = ['o1-mini-all', 'o1-mini-preview-all'];
     OPENAI_EMBEDDING_MODEL = 'text-embedding-3-small';
-
-    /**
-     * OpenAI Reasoning Effort, only for starts with 'o1'
-     * reasoning_effort: 'low', 'medium', 'high'
-     * @deprecated use OPENAI_API_EXTRA_PARAMS instead
-     */
-    OPENAI_REASONING_EFFORT: 'low' | 'medium' | 'high' | undefined = undefined;
     OPENAI_MODELS = [];
     OPENAI_MODELS_API = '/models';
     OPENAI_TTS_PROMPT = '';
@@ -329,26 +298,56 @@ export class OpenAIConfig {
         // previousResponseId: '',
         // store: false,
         // user: 'user1',
-        // reasoningEffort: 'medium', // 'low' | 'medium' | 'high', default is 'medium'
+        // reasoningEffort: 'medium', // 'low' | 'medium' | 'high' | 'xhigh', default is 'medium'
         // strictJsonSchema: true,
         // instructions: '',
         reasoningSummary: 'auto', // auto, concise, or detailed
         // serviceTier: 'auto',
         // include: ['reasoning.encrypted_content'],
     };
-
-    // OpenAI Server-Side Tools (Responses API only)
-    // 可用工具列表：webSearch, codeInterpreter, fileSearch, imageGeneration, mcp
-    OPENAI_BUILDIN = ['webSearch', 'codeInterpreter', 'fileSearch', 'imageGeneration', 'mcp'];
-    // 启用的工具列表（为保持向后兼容，也支持使用 OPENAI_ENABLE_* 开关）
-    USE_OPENAI_BUILDIN: string[] = [];
-
     // Web Search - 网页搜索工具
     OPENAI_ENABLE_WEB_SEARCH = false;
     OPENAI_WEB_SEARCH_EXTERNAL_ACCESS = true;  // true=实时抓取，false=使用缓存
     OPENAI_WEB_SEARCH_ALLOWED_DOMAINS: string[] = [];  // 允许的域名列表
     OPENAI_WEB_SEARCH_CONTEXT_SIZE: 'low' | 'medium' | 'high' = 'medium';  // 搜索上下文大小
     OPENAI_WEB_SEARCH_USER_LOCATION = '';  // 用户位置，格式: "City, Country" 或 "latitude,longitude"
+    // always=每次请求都暴露搜索工具；intent=仅当前消息包含搜索意图；prefix=仅当前消息匹配前缀
+    OPENAI_WEB_SEARCH_TRIGGER_MODE: 'always' | 'intent' | 'current' | 'prefix' = 'intent';
+    OPENAI_WEB_SEARCH_TRIGGER_PREFIXES: string[] = ['搜:', '搜索:', '查:', 'x搜', 'X搜'];
+    OPENAI_WEB_SEARCH_TRIGGER_KEYWORDS: string[] = [
+        '搜',
+        '搜索',
+        '查一下',
+        '查下',
+        '帮我查',
+        '联网',
+        '网上',
+        '实时',
+        '最新',
+        '今天',
+        '新闻',
+        '来源',
+        '出处',
+        '引用',
+        '资料',
+        'x/twitter',
+        'twitter',
+        'x.com',
+        '推特',
+        'web search',
+        'search the web',
+        'browse',
+        'internet',
+        'latest',
+        'current',
+        'today',
+        'news',
+        'source',
+        'citation',
+    ];
+
+    // GitHub repository reader - OpenAI Responses 专属函数工具，不放入 USE_TOOLS
+    OPENAI_ENABLE_GITHUB_REPO_READER = false;
 
     // Code Interpreter - Python 代码执行工具
     OPENAI_ENABLE_CODE_INTERPRETER = false;
@@ -360,16 +359,19 @@ export class OpenAIConfig {
     OPENAI_FILE_SEARCH_MAX_RESULTS = 10;  // 最大返回结果数
     OPENAI_FILE_SEARCH_SCORE_THRESHOLD = 0.0;  // 相关性阈值（0-1），越高越严格
 
-    // Image Generation - 图片生成工具 (GPT-5.1+)
+    // Image Generation - 图片生成工具（Responses API server-side tool）
     OPENAI_ENABLE_IMAGE_GENERATION = false;
     OPENAI_IMAGE_BACKGROUND: 'auto' | 'opaque' | 'transparent' = 'auto';  // 背景类型
     OPENAI_IMAGE_INPUT_FIDELITY: 'low' | 'high' = 'low';  // 输入保真度
-    OPENAI_IMAGE_MODEL = 'gpt-image-1';  // 图片生成模型
+    OPENAI_IMAGE_MODEL = 'gpt-image-2';  // 图片生成模型；若上游未暴露 gpt-image-2，可降级为 gpt-image-1.5
+    OPENAI_IMAGE_N = 1;  // 生成图片数量
     OPENAI_IMAGE_OUTPUT_COMPRESSION = 100;  // 输出压缩等级 (0-100)
     OPENAI_IMAGE_OUTPUT_FORMAT: 'png' | 'jpeg' | 'webp' = 'png';  // 输出格式
     OPENAI_IMAGE_PARTIAL_IMAGES = 0;  // 流式模式下生成的部分图片数量 (0-3)
     OPENAI_IMAGE_QUALITY: 'auto' | 'low' | 'medium' | 'high' = 'auto';  // 图片质量
     OPENAI_IMAGE_SIZE: 'auto' | '1024x1024' | '1024x1536' | '1536x1024' = 'auto';  // 图片尺寸
+    OPENAI_IMAGE_MODERATION: 'auto' | 'low' = 'auto';  // 图片审核强度
+    OPENAI_IMAGE_EXTRA_PARAMS: Record<string, any> = {};  // 透传给 /images/generations 的额外参数
 
     // MCP - Model Context Protocol
     OPENAI_ENABLE_MCP = false;
@@ -385,28 +387,18 @@ export class OpenAIConfig {
     OPENAI_MCP_APPROVAL_TOOL_NAMES: string[] = [];  // 需要审批的工具名称（当requireApproval非always时）
 }
 
-// -- DALLE 配置 --
-export class DalleAIConfig {
-    // DALL-E的模型名称
-    DALL_E_MODEL = 'dall-e-3';
-    // DALL-E图片尺寸
-    DALL_E_IMAGE_SIZE = '1024x1024';
-    // DALL-E图片质量
-    DALL_E_IMAGE_QUALITY = 'standard';
-    // DALL-E图片风格
-    DALL_E_IMAGE_STYLE = 'vivid';
-}
-
 // -- AZURE 配置 --
 export class AzureConfig {
     // Azure API Key (supports multiple keys separated by comma for rotation)
     AZURE_API_KEY: string[] = [];
-    // Azure Completions API
-    // https://RESOURCE_NAME.openai.azure.com/openai/deployments/MODEL_NAME/chat/completions?api-version=VERSION_NAME
-    AZURE_COMPLETIONS_API: string | null = null;
-    // Azure DallE API
-    // https://RESOURCE_NAME.openai.azure.com/openai/deployments/MODEL_NAME/images/generations?api-version=VERSION_NAME
-    AZURE_DALLE_API: string | null = null;
+    AZURE_RESOURCE_NAME: string | null = null;
+    AZURE_API_VERSION = '2024-06-01';
+    AZURE_CHAT_MODEL = '';
+    AZURE_VISION_MODEL = '';
+    AZURE_IMAGE_MODEL = '';
+    AZURE_IMAGE_SIZE = '1024x1024';
+    AZURE_IMAGE_QUALITY = 'standard';
+    AZURE_IMAGE_STYLE = 'vivid';
     AZURE_MODELS = [];
     AZURE_MODELS_API = '';
 }
@@ -455,8 +447,12 @@ export class GeminiConfig {
     GOOGLE_API_EXTRA_PARAMS: Record<string, Record<string, any>> = {};
     GOOGLE_MODELS = [];
     GOOGLE_MODELS_API = '/models';
-    GOOGLE_BUILDIN = ['googleSearch', 'codeExecution', 'urlContext', 'googleMaps', 'fileSearch', 'enterpriseWebSearch'];
-    USE_GOOGLE_BUILDIN: string[] = [];
+    GOOGLE_ENABLE_GOOGLE_SEARCH = false;
+    GOOGLE_ENABLE_CODE_EXECUTION = false;
+    GOOGLE_ENABLE_URL_CONTEXT = false;
+    GOOGLE_ENABLE_GOOGLE_MAPS = false;
+    GOOGLE_ENABLE_FILE_SEARCH = false;
+    GOOGLE_ENABLE_ENTERPRISE_WEB_SEARCH = false;
 
     // Google Search configuration
     // Enable web search (default: true when googleSearch is enabled)
@@ -593,12 +589,6 @@ export class AnthropicConfig {
     // 当启用时，system message和tools会自动标记为可缓存
     ANTHROPIC_ENABLE_CACHE_CONTROL = true;
 
-    // Anthropic Server-Side Tools - Anthropic原生工具支持
-    // 可用工具列表：webFetch, webSearch, codeExecution
-    ANTHROPIC_BUILDIN = ['webFetch', 'webSearch', 'codeExecution'];
-    // 启用的工具列表（为保持向后兼容，也支持使用ANTHROPIC_ENABLE_*开关）
-    USE_ANTHROPIC_BUILDIN: string[] = [];
-
     // Web Fetch - 获取网页内容并支持citations
     ANTHROPIC_ENABLE_WEB_FETCH = false;
     ANTHROPIC_WEB_FETCH_MAX_USES = 5;
@@ -661,17 +651,25 @@ export class OpenAILikeConfig {
     // oailike api model
     OAILIKE_CHAT_MODEL = 'gpt-4o-mini';
     // oailike image model
-    OAILIKE_IMAGE_MODEL = 'dall-e-3';
+    OAILIKE_IMAGE_MODEL = 'gpt-image-2';
     // oailike vision model
     OAILIKE_VISION_MODEL = 'gpt-4o-mini';
+    // oailike image quantity
+    OAILIKE_IMAGE_N = 1;
     // oailike image size
     OAILIKE_IMAGE_SIZE = '1024x1024';
+    // oailike image quality
+    OAILIKE_IMAGE_QUALITY = 'auto';
+    // oailike image extra params for /images/generations
+    OAILIKE_IMAGE_EXTRA_PARAMS: Record<string, any> = {};
     // oailike embedding model
     OAILIKE_EMBEDDING_MODEL = 'text-embedding-3-small';
     // oailike rerank model
     OAILIKE_RERANK_MODEL = '';
     // oailike asr model
     OAILIKE_STT_MODEL = 'FunAudioLLM/SenseVoiceSmall';
+    // oailike asr extra params
+    OAILIKE_STT_EXTRA_PARAMS: Record<string, any> = {};
     // oailike tts model
     OAILIKE_TTS_MODEL = 'tts-1';
     // oailike tts extra params
@@ -688,8 +686,9 @@ export class OpenAILikeConfig {
         gemini: ['googleSearch', 'codeExecution', 'urlContext'],
     };
 
-    // use oailike relay tools, support 'googleSearch, codeExecution, urlContext'
-    USE_OAILIKE_RELAY_TOOLS: string[] = [];
+    OAILIKE_ENABLE_GOOGLE_SEARCH = false;
+    OAILIKE_ENABLE_CODE_EXECUTION = false;
+    OAILIKE_ENABLE_URL_CONTEXT = false;
     // OAILIKE Provider Options
     OAILIKE_PROVIDER_OPTIONS = {};
 }
@@ -705,11 +704,6 @@ export class VertexConfig {
     VERTEX_CHAT_MODEL = 'gemini-2.5-flash';
     // Vertex Vision Model
     VERTEX_VISION_MODEL = 'gemini-2.5-flash';
-    /**
-     * @deprecated
-     * when use search grounding, do not use other tools at the same time, otherwise errors occur.
-     */
-    SEARCH_GROUNDING = false;
     // Vertex Image Model
     VERTEX_IMAGE_MODEL = 'imagen-3.0-fast-generate-001';
     VERTEX_MODELS = [];
@@ -746,12 +740,6 @@ export class XAIConfig {
     // Disable xAI server-side conversation history storage (for privacy)
     // When false, xAI will not store the conversation on their servers
     XAI_STORE_CONVERSATION = true;
-
-    // ===== Responses API Server-Side Tools =====
-    // 可用工具列表：webSearch, xSearch, codeExecution, fileSearch
-    XAI_BUILDIN = ['webSearch', 'xSearch', 'codeExecution', 'fileSearch'];
-    // 启用的工具列表（为保持向后兼容，也支持使用XAI_ENABLE_*开关）
-    USE_XAI_BUILDIN: string[] = [];
 
     // Enable web search tool (allows Grok to search the web and browse pages)
     XAI_ENABLE_WEB_SEARCH = false;
@@ -816,7 +804,7 @@ export class DefineKeys {
 }
 
 export class ExtraUserConfig {
-    MAPPING_KEY = '-p:SYSTEM_INIT_MESSAGE|-n:MAX_HISTORY_LENGTH|-a:AI_CHAT_PROVIDER|-ai:AI_IMAGE_PROVIDER|-m:CHAT_MODEL|-md:CURRENT_MODE|-v:VISION_MODEL|-t:OPENAI_TTS_MODEL|-ex:OPENAI_API_EXTRA_PARAMS|-mk:MAPPING_KEY|-mv:MAPPING_VALUE|-tm:TOOL_MODEL|-tool:USE_TOOLS|-im:IMAGE_MODEL|-th:TEXT_HANDLE_TYPE|-to:TEXT_OUTPUT|-ah:AUDIO_HANDLE_TYPE|-ao:AUDIO_OUTPUT|-act:AUDIO_CONTAINS_TEXT|-as:AI_ASR_PROVIDER|-at:AI_TTS_PROVIDER|-ra:RERANK_AGENT|-ew:ENABLE_WORKFLOW|-tp:CHAT_TEMPERATURE';
+    MAPPING_KEY = '-p:SYSTEM_INIT_MESSAGE|-n:MAX_HISTORY_LENGTH|-a:AI_CHAT_PROVIDER|-ai:AI_IMAGE_PROVIDER|-m:CHAT_MODEL|-v:VISION_MODEL|-t:OPENAI_TTS_MODEL|-ex:OPENAI_API_EXTRA_PARAMS|-mk:MAPPING_KEY|-mv:MAPPING_VALUE|-tm:TOOL_MODEL|-tool:USE_TOOLS|-im:IMAGE_MODEL|-th:TEXT_HANDLE_TYPE|-to:TEXT_OUTPUT|-ah:AUDIO_HANDLE_TYPE|-ao:AUDIO_OUTPUT|-act:AUDIO_CONTAINS_TEXT|-as:AI_ASR_PROVIDER|-at:AI_TTS_PROVIDER|-ra:RERANK_AGENT|-ew:ENABLE_WORKFLOW|-tp:CHAT_TEMPERATURE';
     // /set command mapping value, separated by |, : separates multiple relationships
     MAPPING_VALUE = '';
     // MAPPING_VALUE = "cson:claude-3-5-sonnet-20240620|haiku:claude-3-haiku-20240307|g4m:gpt-4o-mini|g4:gpt-4o|rp+:command-r-plus";
@@ -824,11 +812,21 @@ export class ExtraUserConfig {
     ENABLE_SHOWINFO = false;
     // enable Show info, which parts to show, support model, model_time, token, tool, tool_time, first_chunk_time
     SHOW_PARTS = ['model', 'model_time', 'token', 'tool', 'tool_time'];
-    // Function to use, currently has duckduckgo, jina_reader, icloud_price, nf_price, iap_price, currency
+    // Function to use, currently has duckduckgo, jina_reader, image_gen, icloud_price, nf_price, iap_price, currency
     //
     USE_TOOLS: string[] = [];
     USE_MCP: string[] = [];
     JINA_API_KEY: string[] = [];
+    // GitHub token for OpenAI GitHub repo reader. Optional for public repos, recommended to avoid rate limits.
+    GITHUB_TOKEN: string[] = [];
+    // OpenAI GitHub repo reader max number of files to include.
+    GITHUB_REPO_READER_MAX_FILES = 30;
+    // OpenAI GitHub repo reader max file size in bytes.
+    GITHUB_REPO_READER_MAX_FILE_SIZE = 30_000;
+    // OpenAI GitHub repo reader max total characters returned to the model.
+    GITHUB_REPO_READER_MAX_TOTAL_CHARS = 120_000;
+    // OpenAI GitHub repo reader request timeout in seconds.
+    GITHUB_REPO_READER_TIMEOUT = 20;
     // if starts with '{agent}:' prefix, the specified agent corresponds to the chat model,
     // otherwise use the current agent and the specified model.
     // Keep empty to use the current agent chat model as function call model.
@@ -868,13 +866,6 @@ export class ExtraUserConfig {
     AUDIO_OUTPUT: 'audio' | 'text' = 'text';
     // Audio contains text
     AUDIO_CONTAINS_TEXT = true;
-    // Drop openai params, the key is the model name,
-    // separated by commas, and the value is the parameters to be dropped, separated by commas.
-    // example: DROPS_OPENAI_PARAMS = { 'o1-mini,o1-preview': 'max_tokens,temperature,stream' };
-    /**
-     * @deprecated Use PARAMS_MODIFIER instead
-     */
-    DROPS_OPENAI_PARAMS: Record<string, string> = {};
     // Cover message role, the key is the model name, separated by commas, and the value is overridden_role:new_role.
     // example: COVER_MESSAGE_ROLE = { 'o1-mini,o1-preview': 'system:user' };
     COVER_MESSAGE_ROLE: Record<string, string> = {};

@@ -77,12 +77,12 @@ TELEGRAM_BOT_NAME = "@your_bot"
 # AI 提供商配置
 OPENAI_API_KEY = "sk-..."
 ANTHROPIC_API_KEY = "sk-ant-..."
-GOOGLE_GENERATIVE_AI_API_KEY = "..."
+GOOGLE_API_KEY = "..."
 
 # 系统配置
 SYSTEM_INIT_MESSAGE = "你是一个有用的助手"
-AI_PROVIDER = "openai"  # 新增：默认 AI 提供商
-ENABLE_FUNCTION_CALLING = "true"  # 新增：函数调用支持
+AI_CHAT_PROVIDER = "openai"  # 默认聊天提供商
+USE_TOOLS = "duckduckgo,jina_reader"  # 可选：启用本地工具
 ```
 
 #### 2.2 配置文件迁移
@@ -167,12 +167,12 @@ const roles = {
 **新的 Dockerfile 结构**：
 ```dockerfile
 # 多阶段构建
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm install --omit=dev
 
-FROM node:20-alpine AS runtime
+FROM node:24-alpine AS runtime
 WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY . .

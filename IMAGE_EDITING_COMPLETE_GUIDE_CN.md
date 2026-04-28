@@ -12,7 +12,7 @@
 |-------|------|------|------|----------|--------|------------|
 | **Google** | ✅ | ✅ | ❌ | 隐式 | 4K分辨率、Google Search | 快速编辑、实时数据可视化 |
 | **Vertex** | ✅ | ✅ | ✅ | 6种显式 | - | 专业编辑、精确控制 |
-| **OpenAI** | ✅ | ✅ | ✅ | 隐式 | - | 平衡性能、DALL-E 3生成 |
+| **OpenAI** | ✅ | ✅ | ✅ | 隐式 | - | 平衡性能、GPT Image 生成 |
 | **xAI** | ✅ | ✅ | ❌ | 隐式 | 视频生成、图生视频、视频编辑 | 图片编辑、视频创作 |
 | **BFL (FLUX)** | ✅ | ✅ | ✅ | 隐式 | 多参考图（最多10张）、inpainting | 高质量生成、风格迁移、多参考图编辑 |
 
@@ -279,32 +279,32 @@ VERTEX_CREDENTIALS={"client_email":"...","private_key":"..."}
 
 ---
 
-## 3. OpenAI/DALL-E
+## 3. OpenAI Images
 
 ### 配置
 ```env
 OPENAI_API_KEY=your-api-key
-DALL_E_MODEL=dall-e-2  # 或 dall-e-3, gpt-image-1
+OPENAI_IMAGE_MODEL=gpt-image-2
+OPENAI_IMAGE_SIZE=auto        # auto, 1024x1024, 1024x1536, 1536x1024
+OPENAI_IMAGE_QUALITY=auto     # auto, low, medium, high
+OPENAI_IMAGE_BACKGROUND=auto  # auto, opaque, transparent
 ```
 
-### 智能模型选择
+### 现代图片参数
 
-代码会**自动调整**：
-- dall-e-3 编辑时 → 自动降级到 dall-e-2
-- 其他模型 → 按配置使用
+OpenAI 图片生成统一使用 `OPENAI_IMAGE_MODEL`。旧图片模型配置不再读取，也不会自动降级。
 
 ### 支持的模型
 
 | 模型 | 编辑 | 生成 | 每次最多 | 推荐 |
 |------|------|------|----------|------|
-| dall-e-2 | ✅ | ✅ | 10张 | ✅ 平衡 |
-| dall-e-3 | ❌→✅ | ✅ | 1张 | 高质量生成 |
-| gpt-image-1 | ✅ | ✅ | 10张 | ✅ 快速 |
-| gpt-image-1-mini | ✅ | ✅ | 10张 | ✅ 最快 |
+| gpt-image-2 | ✅ | ✅ | 由上游决定 | ✅ 推荐 |
+| gpt-image-1.5 | ✅ | ✅ | 由上游决定 | 兼容上游未开放 gpt-image-2 时使用 |
+| chatgpt-image-latest | ✅ | ✅ | 由上游决定 | OpenAI 官方别名 |
 
 ### 特点
 - ✅ 支持遮罩（inpainting）
-- ✅ 自动模型降级（dall-e-3→dall-e-2）
+- ✅ 支持尺寸、质量、背景、输出格式、压缩、审核强度配置
 - ✅ 双实现（编辑用AI SDK，生成用原API）
 
 ---
@@ -672,7 +672,7 @@ BFL_IMAGE_MODEL=flux-2-klein-9b  # 默认，速度最快（亚秒级）
 - ✅ 背景替换/扩展
 
 **OpenAI - 平衡选择**
-- ✅ DALL-E 3 高质量生成
+- ✅ OpenAI Images 高质量生成
 - ✅ 支持遮罩编辑
 - ✅ 快速响应
 - ⚠️ 编辑功能中等
@@ -724,7 +724,9 @@ VERTEX_IMAGE_MODEL=imagen-3.0-capability-001
 **高质量生成+编辑：**
 ```env
 AI_IMAGE_PROVIDER=openai
-DALL_E_MODEL=dall-e-2  # 或 gpt-image-1
+OPENAI_IMAGE_MODEL=gpt-image-2
+OPENAI_IMAGE_SIZE=auto
+OPENAI_IMAGE_QUALITY=high
 ```
 
 **实验性/风格转换：**
@@ -763,9 +765,9 @@ BFL_IMAGE_MODEL=flux-pro-1.0-fill
 **解决：** 代码已自动处理，强制使用 imagen-3.0-capability-001
 
 ### OpenAI 编辑失败
-**问题：** dall-e-3 编辑报错
-**原因：** dall-e-3 不支持编辑
-**解决：** 代码已自动降级到 dall-e-2
+**问题：** OpenAI 图片编辑报错
+**原因：** 当前上游模型或代理未开放图片编辑端点
+**解决：** 确认 `OPENAI_IMAGE_MODEL` 支持编辑，或切换到上游实际支持的图片模型
 
 ### Google 遮罩不工作
 **问题：** mask 参数无效
@@ -808,13 +810,12 @@ const defaultEditMode = mask
     : 'EDIT_MODE_CONTROLLED_EDITING';    // 无 mask：通用编辑
 ```
 
-### OpenAI 自动降级
+### OpenAI 图片参数
 ```typescript
 // src/agent/openai.ts
 const isEditMode = (referenceImages && referenceImages.length > 0) || mask;
-const actualModel = isEditMode
-    ? (modelId === 'dall-e-3' ? 'dall-e-2' : modelId)
-    : modelId;
+const modelId = extraParams?.model || context.OPENAI_IMAGE_MODEL;
+const actualSize = resolveOpenAIImageSize(context, extraParams || {});
 ```
 
 ### Telegram 命令支持

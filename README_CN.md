@@ -35,7 +35,7 @@
   - **OpenAI**: webSearch、codeInterpreter、fileSearch、imageGeneration、MCP
 - **函数调用**: 内置多种工具函数，支持通过环境变量添加自定义函数
 - **图像与视频生成**:
-  - 图像：DALL-E、Google Imagen、Kling AI、Vertex AI、Workers AI、xAI、**Black Forest Labs (FLUX.2)**
+  - 图像：OpenAI Images、Google Imagen、Kling AI、Vertex AI、Workers AI、xAI、**Black Forest Labs (FLUX.2)**
   - 视频：Google Veo 3.1 Fast（8秒带音频视频）
 - **音乐生成**:
   - Google Lyria 3 Clip（30秒短片段）
@@ -176,10 +176,12 @@ src/
 
 **高级配置：**
 - **服务端工具**:
-  - `USE_GOOGLE_BUILDIN`: 启用Google工具（googleSearch、urlContext、codeExecution、googleMaps）
-  - `USE_XAI_BUILDIN`: 启用xAI工具（webSearch、xSearch、codeExecution）
-  - `ANTHROPIC_WEB_FETCH_URLS`: 配置Anthropic webFetch的域名
-  - `OPENAI_MCP_SERVERS`: OpenAI MCP服务器配置
+  - `OPENAI_ENABLE_WEB_SEARCH` / `OPENAI_ENABLE_IMAGE_GENERATION` / `OPENAI_ENABLE_GITHUB_REPO_READER`: OpenAI Responses 原生能力
+  - `GOOGLE_ENABLE_GOOGLE_SEARCH` / `GOOGLE_ENABLE_CODE_EXECUTION` / `GOOGLE_ENABLE_URL_CONTEXT`: Google Gemini 原生能力
+  - `ANTHROPIC_ENABLE_WEB_FETCH` / `ANTHROPIC_ENABLE_WEB_SEARCH` / `ANTHROPIC_ENABLE_CODE_EXECUTION`: Anthropic 原生能力
+  - `XAI_ENABLE_WEB_SEARCH` / `XAI_ENABLE_X_SEARCH` / `XAI_ENABLE_CODE_EXECUTION`: xAI Responses 原生能力
+  - `OAILIKE_ENABLE_GOOGLE_SEARCH` / `OAILIKE_ENABLE_CODE_EXECUTION` / `OAILIKE_ENABLE_URL_CONTEXT`: OAI-like 网关 relay 能力
+  - 这些 provider 原生能力不要写进 `USE_TOOLS`；`USE_TOOLS` 只放项目工具，如 `image_gen`、`duckduckgo`、`browser_navigate`
 - **工作流与自动化**:
   - `WORKFLOW`: 多步骤AI工作流定义，支持@key触发器
   - `ENABLE_WORKFLOW`: 启用/禁用工作流处理
@@ -196,6 +198,7 @@ src/
   - `GROUP_MESSAGE_CACHE_SIZE`: 缓存的群组消息数量（默认: 20条）
   - `GROUP_MESSAGE_CACHE_TTL`: 缓存过期时间，单位秒（默认: 3600，即1小时）
   - `CHAT_TRIGGER_PREFIX`: 群组消息触发前缀（如: `/bot`，留空则使用@mention或回复触发）
+  - `CHAT_MESSAGE_TRIGGER`: 多个群组触发词映射（如: `{"domo":"","doom":""}`）
 - **音频与语音**:
   - `FISH_TTS_VOICE`: Fish Audio TTS语音参考ID
   - `GOOGLE_TTS_EXTRA_PARAMS`: 多说话人语音配置
@@ -204,7 +207,7 @@ src/
   - `CHAT_TEMPERATURE`: 模型温度（0-2）
   - `FUNCTION_CALL_TEMPERATURE`: 工具调用独立温度
   - `MAX_STEPS`: 最大工具执行步数（默认：5）
-  - `OPENAI_REASONING_EFFORT`: o1模型推理强度（low/medium/high）
+  - `OPENAI_PROVIDER_OPTIONS`: provider 选项，包括 OpenAI reasoning effort
   - `PARAMS_MODIFIER`: 按模型参数覆盖
 - **上下文压缩**（长对话自动摘要）:
   - `ENABLE_CONTEXT_COMPRESSION`: 启用/禁用压缩（默认: `true`）
@@ -246,7 +249,7 @@ src/
 - **delegate_task** - 生成隔离的子代理用于并行研究 / 独立工作流（需要 `ENABLE_DELEGATE_AGENT=true`）
 
 **🎨 创意工具**
-- **image_gen** - 多提供商图像生成（DALL-E、Google、Vertex、xAI、Kling、Workers、**BFL/FLUX**）
+- **image_gen** - 多提供商图像生成（OpenAI Images、Google、Vertex、xAI、Kling、Workers、**BFL/FLUX**）
 - **google_veo** - Google Veo 3.1视频生成（8秒视频+音频）
 - **kling** - KlingAI图像/视频生成，支持编辑
 
@@ -256,7 +259,6 @@ src/
 
 **⚙️ 系统工具**
 - **scheduletask** - 消息自动删除调度
-- **google_buildin** - 动态切换Google Gemini内置工具
 
 所有工具定义在 `src/tools/internal/`，可通过环境变量扩展。
 

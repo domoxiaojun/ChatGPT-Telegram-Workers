@@ -5,7 +5,7 @@
  * - 多 Key 轮换（Round-Robin by lastUsed）
  * - 失败自动冷却（指数退避）
  * - 限流感知
- * - 向后兼容单 Key
+ * - 支持单 Key 和多 Key
  */
 
 export interface KeyState {

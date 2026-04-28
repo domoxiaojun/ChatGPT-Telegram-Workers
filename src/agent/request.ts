@@ -163,19 +163,59 @@ export async function streamHandler(stream: AsyncIterable<any>, contentExtractor
             }
         }
     } catch (e) {
+        const error = normalizeStreamError(e);
         if (messageInfo.content === '') {
-            throw e;
+            throw error;
         }
-        console.error((e as Error).message, (e as Error).stack);
+        console.error(error.message, error.stack);
         let content: string | undefined;
         if (e instanceof TypeValidationError) {
             content = (e.value as any)?.choices?.[0]?.delta?.content;
         }
-        messageInfo.content += (content ?? `\n\n\`\`\`Error\n${(e as Error).message}\n\`\`\``);
+        messageInfo.content += (content ?? `\n\n\`\`\`Error\n${error.message}\n\`\`\``);
         messageInfo.occured_error = true;
     }
 
     return messageInfo.content;
+}
+
+function normalizeStreamError(error: any): Error {
+    if (error instanceof Error) {
+        return error;
+    }
+
+    const message = formatStreamError(error);
+    const normalized = new Error(message);
+    if (error && typeof error === 'object' && typeof error.type === 'string') {
+        normalized.name = error.type;
+    }
+    return normalized;
+}
+
+function formatStreamError(error: any): string {
+    if (!error) {
+        return 'Stream error';
+    }
+    if (typeof error === 'string') {
+        return error;
+    }
+
+    const code = typeof error.code === 'string' && error.code.trim() ? `${error.code}: ` : '';
+    if (typeof error.message === 'string' && error.message.trim()) {
+        return `${code}${error.message}`;
+    }
+    if (typeof error.error === 'string' && error.error.trim()) {
+        return `${code}${error.error}`;
+    }
+    if (typeof error.error?.message === 'string' && error.error.message.trim()) {
+        return `${code}${error.error.message}`;
+    }
+
+    try {
+        return JSON.stringify(error);
+    } catch {
+        return String(error);
+    }
 }
 
 // Clean xAI internal render tags from model output (e.g. [grok:render ...><argument ...>)
@@ -400,7 +440,7 @@ function thinkingExtractor(messageInfo: MessageInfo) {
                 }
                 return '';
             case 'error':
-                throw data.error;
+                throw normalizeStreamError(data.error);
             default:
                 return '';
         }
@@ -437,29 +477,12 @@ async function combineParams({ context, middleware, model, messages, activeTools
         ...context.OPENAI_PROVIDER_OPTIONS,
     };
 
-    // OpenAI Responses API (GPT-5/o1/o3/o4 series) requires stronger system prompts
-    // Enhance system message with explicit instructions for better compliance
-    if (model.provider === 'openai.responses') {
-        const systemMessage = messages.find(m => m.role === 'system');
-        if (systemMessage && typeof systemMessage.content === 'string') {
-            // Strengthen system prompt with explicit directives
-            const originalPrompt = systemMessage.content;
-            systemMessage.content = `CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE RULES STRICTLY:
-
-${originalPrompt}
-
-IMPORTANT REMINDERS:
-- Follow the above instructions precisely without deviation
-- Do not override these instructions with your own assumptions
-- Maintain consistency with the specified behavior throughout the conversation`;
-        }
-    }
-
     const providerOptions = {
         openai: openaiOptions,
         anthropic: anthropicOptions,
         google: context.GOOGLE_PROVIDER_OPTIONS,
         xai: xaiOptions,
+        oailike: context.OAILIKE_PROVIDER_OPTIONS,
         'oailike.chat': context.OAILIKE_PROVIDER_OPTIONS,
     };
 

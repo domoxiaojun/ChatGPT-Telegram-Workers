@@ -1,3 +1,4 @@
+import type * as Telegram from 'telegram-bot-api-types';
 import type { Message } from 'telegram-bot-api-types';
 import type { WorkerContext } from '../../config/types';
 import type { UnionData } from '../utils/tg_utils';
@@ -56,6 +57,8 @@ class Lock {
 }
 
 export class HandleMediaGroupMessage {
+    static processingMediaGroups = new Set<string>();
+
     static handle = async (message: Message, context: WorkerContext): Promise<Response | null> => {
         const storeMediaMessageKey = context.SHARE_CONTEXT?.storeMediaMessageKey;
         if (!storeMediaMessageKey) {
@@ -63,65 +66,130 @@ export class HandleMediaGroupMessage {
         }
         const msgInfo = context.MIDDLE_CONTEXT.messageInfo;
         if (message.media_group_id && ['photo', 'image'].includes(msgInfo.type) && Array.isArray(msgInfo.id)) {
-            // Store media group file id first
+            const mediaGroupId = message.media_group_id;
+            const hasPrompt = !!(message.caption || message.text)?.trim();
+
             await this.storeMediaMessage(`${storeMediaMessageKey}:lock`, storeMediaMessageKey, msgInfo);
-
-            // If message has caption, it's the one with text, wait a bit for more images
-            if (message.caption || message.text) {
-                // Wait 3 seconds for potentially delayed images
-                await new Promise(resolve => setTimeout(resolve, 3000));
-
-                const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
-                const fileIds = data[message.media_group_id];
-                if (fileIds && fileIds.length > 0) {
-                    context.MIDDLE_CONTEXT.messageInfo.id = fileIds;
-                    const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
-
-                    // Send notification about how many images were collected
-                    if (fileIds.length === 1) {
-                        sender.sendRichText(`<pre><code class="language-tip">Processing 1 image... (Additional images may arrive separately due to Telegram delays)</code></pre>`, 'HTML', 'tip');
-                    } else {
-                        sender.sendRichText(`<pre><code class="language-tip">Processing ${fileIds.length} images from media group...</code></pre>`, 'HTML', 'tip');
-                    }
-
-                    log.info(`[MEDIA GROUP] Processing ${fileIds.length} images with caption after 3s wait`);
-                    return null; // Continue to process
-                }
+            if (hasPrompt) {
+                await this.markMediaGroupPrompt(storeMediaMessageKey, mediaGroupId);
             }
 
-            // No caption - wait a bit to see if more images arrive
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            // Check how many images we have now
-            const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
-            const fileIds = data[message.media_group_id];
-
-            // Check if more images were added after this one
-            const currentImageIndex = fileIds?.indexOf(msgInfo.id![0]) ?? -1;
-            const isLastImage = currentImageIndex === (fileIds?.length ?? 0) - 1;
-
-            if (isLastImage && fileIds && fileIds.length > 0) {
-                // This is the last image, process all of them
-                context.MIDDLE_CONTEXT.messageInfo.id = fileIds;
-                const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
-                sender.sendRichText(`<pre><code class="language-tip">Processing ${fileIds.length} image${fileIds.length > 1 ? 's' : ''} from media group...</code></pre>`, 'HTML', 'tip');
-                log.info(`[MEDIA GROUP] Processing ${fileIds.length} images (last image in group)`);
-                return null; // Continue to process
+            const fileIds = await this.waitStableMediaGroup(storeMediaMessageKey, mediaGroupId, hasPrompt);
+            if (!fileIds.length) {
+                log.info(`[MEDIA GROUP] No images found after wait, group_id: ${mediaGroupId}`);
+                return new Response('ok');
             }
 
-            // Not the last image, skip processing
-            log.info(`[MEDIA GROUP] Skipping image ${currentImageIndex + 1}/${fileIds?.length}, waiting for more`);
-            return new Response('ok');
+            if (!hasPrompt && await this.hasMediaGroupPrompt(storeMediaMessageKey, mediaGroupId)) {
+                log.info(`[MEDIA GROUP] Skipping image-only update because caption update will process group_id: ${mediaGroupId}`);
+                return new Response('ok');
+            }
+
+            if (!await this.reserveMediaGroupProcessing(storeMediaMessageKey, mediaGroupId)) {
+                log.info(`[MEDIA GROUP] Skipping duplicate processing, group_id: ${mediaGroupId}`);
+                return new Response('ok');
+            }
+
+            context.MIDDLE_CONTEXT.messageInfo.id = fileIds;
+            await this.sendProcessingTip(
+                message,
+                context,
+                `Processing ${fileIds.length} image${fileIds.length > 1 ? 's' : ''} from media group...`,
+            );
+            log.info(`[MEDIA GROUP] Processing ${fileIds.length} images, group_id: ${mediaGroupId}, hasPrompt: ${hasPrompt}`);
+            return null;
         } else if (message.reply_to_message?.media_group_id) {
             const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
             const fileIds = data[message.reply_to_message.media_group_id];
             if (fileIds) {
                 context.MIDDLE_CONTEXT.messageInfo.id = fileIds;
-                const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
-                sender.sendRichText(`<pre><code class="language-tip">Has received ${fileIds.length} images, processing...</code></pre>`, 'HTML', 'tip');
+                await this.sendProcessingTip(message, context, `Has received ${fileIds.length} images, processing...`);
             }
         }
         return null;
+    };
+
+    static sendProcessingTip = async (message: Message, context: WorkerContext, tip: string): Promise<number | null> => {
+        try {
+            const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
+            const resp = await sender.sendRichText(`<pre><code class="language-tip">${tip}</code></pre>`, 'HTML', 'tip');
+            if (!resp.ok) {
+                log.warn(`[MEDIA GROUP] Failed to send processing tip: ${resp.status}`);
+                return null;
+            }
+            const data = await resp.clone().json() as Telegram.ResponseWithMessage;
+            const messageId = data.result?.message_id ?? null;
+            context.MIDDLE_CONTEXT.processingMessageId = messageId;
+            if (messageId) {
+                log.info(`[MEDIA GROUP] Processing tip message id: ${messageId}`);
+            }
+            return messageId;
+        } catch (e) {
+            log.error(`[MEDIA GROUP] Failed to send processing tip: ${(e as Error).message}`);
+            return null;
+        }
+    };
+
+    static waitStableMediaGroup = async (storeMediaMessageKey: string, mediaGroupId: string, hasPrompt: boolean): Promise<string[]> => {
+        const pollIntervalMs = 300;
+        const stableWaitMs = hasPrompt ? 1200 : 2200;
+        const maxWaitMs = 6000;
+        const start = Date.now();
+        let stableSince = Date.now();
+        let lastSignature = '';
+        let latestFileIds: string[] = [];
+
+        while (Date.now() - start < maxWaitMs) {
+            latestFileIds = await this.getMediaGroupFileIds(storeMediaMessageKey, mediaGroupId);
+            const signature = latestFileIds.join(',');
+            if (signature && signature === lastSignature && Date.now() - stableSince >= stableWaitMs) {
+                return latestFileIds;
+            }
+            if (signature !== lastSignature) {
+                lastSignature = signature;
+                stableSince = Date.now();
+            }
+            await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+        }
+
+        return latestFileIds.length ? latestFileIds : this.getMediaGroupFileIds(storeMediaMessageKey, mediaGroupId);
+    };
+
+    static getMediaGroupFileIds = async (storeMediaMessageKey: string, mediaGroupId: string): Promise<string[]> => {
+        const data: Record<string, string[]> = JSON.parse(await ENV.DATABASE.get(storeMediaMessageKey) || '{}');
+        return data[mediaGroupId] || [];
+    };
+
+    static markMediaGroupPrompt = async (storeMediaMessageKey: string, mediaGroupId: string): Promise<void> => {
+        await ENV.DATABASE.put(`${storeMediaMessageKey}:prompt:${mediaGroupId}`, '1', { expirationTtl: 60 });
+    };
+
+    static hasMediaGroupPrompt = async (storeMediaMessageKey: string, mediaGroupId: string): Promise<boolean> => {
+        return !!(await ENV.DATABASE.get(`${storeMediaMessageKey}:prompt:${mediaGroupId}`));
+    };
+
+    static reserveMediaGroupProcessing = async (storeMediaMessageKey: string, mediaGroupId: string): Promise<boolean> => {
+        const processingKey = `${storeMediaMessageKey}:processing:${mediaGroupId}`;
+        if (this.processingMediaGroups.has(processingKey)) {
+            return false;
+        }
+        this.processingMediaGroups.add(processingKey);
+        try {
+            if (await ENV.DATABASE.get(processingKey)) {
+                this.processingMediaGroups.delete(processingKey);
+                return false;
+            }
+            const reserved = await ENV.DATABASE.put(processingKey, '1', { expirationTtl: 120, condition: 'NX' });
+            if (reserved === false) {
+                this.processingMediaGroups.delete(processingKey);
+                return false;
+            }
+            setTimeout(() => this.processingMediaGroups.delete(processingKey), 120_000);
+            return true;
+        } catch (e) {
+            this.processingMediaGroups.delete(processingKey);
+            throw e;
+        }
     };
 
     static storeMediaMessage = async (lockKey: string, storeMediaMessageKey: string, msgInfo: UnionData) => {

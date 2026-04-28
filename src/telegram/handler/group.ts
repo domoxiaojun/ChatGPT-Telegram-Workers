@@ -212,23 +212,23 @@ function checkMention(content: string, entities: Telegram.MessageEntity[], botNa
  * @returns {boolean} 如果找到触发词，返回 true；否则 false
  */
 export function CheckTrigger(message: Telegram.Message): boolean {
-    // 旧的触发逻辑
-    const oldTrigger = ENV.CHAT_MESSAGE_TRIGGER;
-    if (Object.keys(oldTrigger).length > 0) {
-        const triggered = Object.entries(oldTrigger).find(([key, _value]) => message.text?.startsWith(key));
-        if (triggered) {
-            message.text && (message.text = triggered[1] + message.text.substring(triggered[0].length));
-            message.caption && (message.caption = triggered[1] + message.caption.substring(triggered[0].length));
-            return true;
-        } else {
-            return false;
-        }
-    }
-
     const textBefore = message.text || message.caption || '';
-    const text = textBefore.replace(new RegExp(`^${ENV.CHAT_TRIGGER_PREFIX}`), '');
-    message.text = text;
-    return text !== textBefore;
+    const trigger = Object
+        .entries(ENV.CHAT_MESSAGE_TRIGGER)
+        .sort(([a], [b]) => b.length - a.length)
+        .find(([prefix]) => textBefore.startsWith(prefix));
+    const prefix = trigger?.[0] || ENV.CHAT_TRIGGER_PREFIX;
+    if (!prefix || !textBefore.startsWith(prefix)) return false;
+
+    const text = trigger
+        ? `${trigger[1]}${textBefore.slice(prefix.length)}`
+        : textBefore.slice(prefix.length).trimStart();
+    if (message.text) {
+        message.text = text;
+    } else if (message.caption) {
+        message.caption = text;
+    }
+    return true;
 }
 
 export class GroupMention implements MessageHandler {

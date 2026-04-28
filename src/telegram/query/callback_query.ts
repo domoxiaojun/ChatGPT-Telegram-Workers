@@ -109,7 +109,6 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
         const type = Array.isArray(oldValue) ? 'array' : typeof oldValue;
         switch (type) {
             case 'string':
-            case 'boolean':
             case 'undefined':
                 if (oldValue === newValue) {
                     return;
@@ -117,6 +116,14 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
                     context.USER_CONFIG[configKey] = newValue;
                 }
                 break;
+            case 'boolean': {
+                const boolValue = newValue === 'true';
+                if (oldValue === boolValue) {
+                    return;
+                }
+                context.USER_CONFIG[configKey] = boolValue;
+                break;
+            }
             case 'array':
                 if (oldValue.includes(newValue)) {
                     oldValue.splice(oldValue.indexOf(newValue), 1);
@@ -156,11 +163,12 @@ class HandlerCallbackQuery implements CallbackQueryHandler<CallbackQueryContext>
 
     private constructInlineList({ path, data, label, key, config, callbackData, pageIndex, pageNum, col, callback }: { path: number[]; data: (string | InlineItem)[]; label?: string; key?: string; config: AgentUserConfig; callbackData: number | string; pageIndex: number; pageNum: number; col: number; callback?: (...args: any[]) => Promise<string[]> }): Telegram.InlineKeyboardButton[][] {
         const isSelected = (item: string | InlineItem, index: number) => {
+            const currentValue = key ? config[key] : undefined;
             // 单选
-            if ((key && callbackData === index && !Array.isArray(config[key]))
-                || (key && config[key] === item)
+            if ((key && callbackData === index && !Array.isArray(currentValue))
+                || (key && String(currentValue) === item)
             // 多选
-                || (key && (Array.isArray(config[key]) && (config[key].includes(item))))) {
+                || (key && (Array.isArray(currentValue) && (currentValue.includes(item))))) {
                 return '✅';
             }
             return '';

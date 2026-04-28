@@ -51,19 +51,20 @@ export class OpenAILikeImage extends OpenAILikeBase implements ImageAgent {
         return ctx.OAILIKE_IMAGE_MODEL;
     };
 
-    request = withLogger(async (prompt: string, context: AgentUserConfig): Promise<ImageResult> => {
+    request = withLogger(async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
         const url = `${context.OAILIKE_API_BASE}/images/generations`;
         const header = {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${this.apikey(context)}`,
         };
+        const n = extraParams?.n ?? extraParams?.quantity ?? context.OAILIKE_IMAGE_N;
         const body: any = {
             prompt,
-            image_size: context.OAILIKE_IMAGE_SIZE,
             model: context.OAILIKE_IMAGE_MODEL,
-            // num_inference_steps: 10,
-            batch_size: 4,
-            ...context.OAILIKE_API_EXTRA_PARAMS,
+            n,
+            size: extraParams?.size ?? context.OAILIKE_IMAGE_SIZE,
+            quality: extraParams?.quality ?? context.OAILIKE_IMAGE_QUALITY,
+            ...context.OAILIKE_IMAGE_EXTRA_PARAMS,
         };
         return requestText2Image(url, header, body, this.render);
     });
@@ -88,8 +89,8 @@ export class OpenAILikeASR extends OpenAILikeBase implements ASRAgent {
         formData.append('file', audio, 'audio.mp3');
         formData.append('model', context.OAILIKE_STT_MODEL);
         if (context.OAILIKE_STT_EXTRA_PARAMS) {
-            Object.entries(context.OAILIKE_STT_EXTRA_PARAMS as string).forEach(([k, v]) => {
-                formData.append(k, v);
+            Object.entries(context.OAILIKE_STT_EXTRA_PARAMS).forEach(([k, v]) => {
+                formData.append(k, String(v));
             });
         }
         formData.append('response_format', 'json');

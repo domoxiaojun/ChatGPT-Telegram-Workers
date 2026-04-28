@@ -77,12 +77,12 @@ TELEGRAM_BOT_NAME = "@your_bot"
 # AI Provider Configuration
 OPENAI_API_KEY = "sk-..."
 ANTHROPIC_API_KEY = "sk-ant-..."
-GOOGLE_GENERATIVE_AI_API_KEY = "..."
+GOOGLE_API_KEY = "..."
 
 # System Configuration
 SYSTEM_INIT_MESSAGE = "You are a helpful assistant"
-AI_PROVIDER = "openai"  # New: Default AI provider
-ENABLE_FUNCTION_CALLING = "true"  # New: Function calling support
+AI_CHAT_PROVIDER = "openai"  # Default chat provider
+USE_TOOLS = "duckduckgo,jina_reader"  # Optional: enable local tools
 ```
 
 #### 2.2 Configuration File Migration
@@ -167,12 +167,12 @@ const roles = {
 **New Dockerfile structure**:
 ```dockerfile
 # Multi-stage build
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm install --omit=dev
 
-FROM node:20-alpine AS runtime
+FROM node:24-alpine AS runtime
 WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY . .

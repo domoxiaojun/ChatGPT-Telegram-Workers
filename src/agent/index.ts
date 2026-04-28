@@ -10,7 +10,7 @@ import { Google, GoogleImage, GoogleTTS } from './google';
 import { BlackForestLabsImage } from './blackforestlabs';
 import { KlingAI } from './kling';
 import { Mistral } from './mistralai';
-import { Dalle, OpenAI, OpenAIASR, OpenAIFM, OpenAITTS } from './openai';
+import { OpenAI, OpenAIASR, OpenAIFM, OpenAIImage, OpenAITTS } from './openai';
 import { OpenAILike, OpenAILikeASR, OpenAILikeImage, OpenAILikeTTS } from './openailike';
 import { Vertex, VertexImage } from './vertex';
 import { WorkersChat, WorkersImage } from './workersai';
@@ -44,7 +44,7 @@ export function loadChatLLM(context: AgentUserConfig): ChatAgent {
 
 export const IMAGE_AGENTS: ImageAgent[] = [
     new AzureImageAI(),
-    new Dalle(),
+    new OpenAIImage(),
     new WorkersImage(),
     new OpenAILikeImage(),
     new VertexImage(),
@@ -111,8 +111,31 @@ export function loadTTSLLM(context: AgentUserConfig) {
 export async function customInfo(config: AgentUserConfig): Promise<string> {
     const prompt = config.SYSTEM_INIT_MESSAGE || '';
     const tools = await getTools();
+    const nativeCapabilities = [
+        config.OPENAI_ENABLE_WEB_SEARCH && 'openai:webSearch',
+        config.OPENAI_ENABLE_GITHUB_REPO_READER && 'openai:githubRepoReader',
+        config.OPENAI_ENABLE_CODE_INTERPRETER && 'openai:codeInterpreter',
+        config.OPENAI_ENABLE_FILE_SEARCH && 'openai:fileSearch',
+        config.OPENAI_ENABLE_IMAGE_GENERATION && 'openai:imageGeneration',
+        config.OPENAI_ENABLE_MCP && 'openai:mcp',
+        config.GOOGLE_ENABLE_GOOGLE_SEARCH && 'google:googleSearch',
+        config.GOOGLE_ENABLE_CODE_EXECUTION && 'google:codeExecution',
+        config.GOOGLE_ENABLE_URL_CONTEXT && 'google:urlContext',
+        config.GOOGLE_ENABLE_GOOGLE_MAPS && 'google:googleMaps',
+        config.GOOGLE_ENABLE_FILE_SEARCH && 'google:fileSearch',
+        config.GOOGLE_ENABLE_ENTERPRISE_WEB_SEARCH && 'google:enterpriseWebSearch',
+        config.ANTHROPIC_ENABLE_WEB_FETCH && 'anthropic:webFetch',
+        config.ANTHROPIC_ENABLE_WEB_SEARCH && 'anthropic:webSearch',
+        config.ANTHROPIC_ENABLE_CODE_EXECUTION && 'anthropic:codeExecution',
+        config.XAI_ENABLE_WEB_SEARCH && 'xai:webSearch',
+        config.XAI_ENABLE_X_SEARCH && 'xai:xSearch',
+        config.XAI_ENABLE_CODE_EXECUTION && 'xai:codeExecution',
+        config.XAI_ENABLE_FILE_SEARCH && 'xai:fileSearch',
+        config.OAILIKE_ENABLE_GOOGLE_SEARCH && 'oailike:googleSearch',
+        config.OAILIKE_ENABLE_CODE_EXECUTION && 'oailike:codeExecution',
+        config.OAILIKE_ENABLE_URL_CONTEXT && 'oailike:urlContext',
+    ].filter(Boolean).join(',');
     const other_info = {
-        mode: config.CURRENT_MODE,
         prompt: prompt.length > 50 ? `${prompt.slice(0, 50)}...` : prompt,
         USE_TOOLS: config.USE_TOOLS.join(','),
         SUPPORT_PLUGINS: Object.keys({ ...ENV.PLUGINS_FUNCTION, ...tools }).join('|'),
@@ -122,7 +145,6 @@ export async function customInfo(config: AgentUserConfig): Promise<string> {
         SEND_IMAGE_AS_FILE: ENV.SEND_IMAGE_AS_FILE,
         SUPPORT_PROMPT_ROLE: Object.keys(config.PROMPT).join('|'),
         DISABLE_WEB_PREVIEW: ENV.DISABLE_WEB_PREVIEW,
-        GOOGLE_SEARCH_GROUNDING: config.SEARCH_GROUNDING,
         TEXT_OUTPUT: config.TEXT_OUTPUT,
         TEXT_HANDLE_TYPE: config.TEXT_HANDLE_TYPE,
         AUDIO_OUTPUT: config.AUDIO_OUTPUT,
@@ -131,7 +153,7 @@ export async function customInfo(config: AgentUserConfig): Promise<string> {
         ENABLE_ALIAS: config.ENABLE_ALIAS,
         PARAMS_MODIFIER: config.PARAMS_MODIFIER.join('|'),
         MESSAGE_REPLACER: Object.keys(config.MESSAGE_REPLACER).join('|'),
-        USED_RELAY_TOOLS: config.USE_OAILIKE_RELAY_TOOLS.join(','),
+        NATIVE_CAPABILITIES: nativeCapabilities,
     };
     return JSON.stringify(other_info, null, 2).split('\n').map(line => `\`${line}\``).join('\n');
 }

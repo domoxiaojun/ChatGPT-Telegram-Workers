@@ -35,7 +35,7 @@ This is a significantly refactored ChatGPT Telegram bot project that supports mu
   - **OpenAI**: webSearch, codeInterpreter, fileSearch, imageGeneration, MCP
 - **Function Calling**: Built-in tool functions with support for custom functions via environment variables
 - **Image & Video Generation**:
-  - Images: DALL-E, Google Imagen, Kling AI, Vertex AI, Workers AI, xAI, **Black Forest Labs (FLUX.2)**
+  - Images: OpenAI Images, Google Imagen, Kling AI, Vertex AI, Workers AI, xAI, **Black Forest Labs (FLUX.2)**
   - Videos: Google Veo 3.1 Fast (8-second videos with audio)
 - **Music Generation**:
   - Google Lyria 3 Clip (30-second clips)
@@ -176,10 +176,13 @@ Key configuration options:
 
 **Advanced Configuration:**
 - **Server-Side Tools**:
-  - `USE_GOOGLE_BUILDIN`: Enable Google tools (googleSearch, urlContext, codeExecution, googleMaps)
-  - `USE_XAI_BUILDIN`: Enable xAI tools (webSearch, xSearch, codeExecution)
-  - `ANTHROPIC_WEB_FETCH_URLS`: Configure domains for Anthropic webFetch
-  - `OPENAI_MCP_SERVERS`: OpenAI MCP server configuration
+  - `OPENAI_ENABLE_WEB_SEARCH` / `OPENAI_ENABLE_IMAGE_GENERATION` / `OPENAI_ENABLE_GITHUB_REPO_READER`: OpenAI Responses native capabilities
+  - `OPENAI_WEB_SEARCH_TRIGGER_MODE`: OpenAI web search trigger policy, `intent` by default so chat history will not enable search by itself; use `always` to restore the old always-available behavior or `prefix` to require `OPENAI_WEB_SEARCH_TRIGGER_PREFIXES`
+  - `GOOGLE_ENABLE_GOOGLE_SEARCH` / `GOOGLE_ENABLE_CODE_EXECUTION` / `GOOGLE_ENABLE_URL_CONTEXT`: Google Gemini native capabilities
+  - `ANTHROPIC_ENABLE_WEB_FETCH` / `ANTHROPIC_ENABLE_WEB_SEARCH` / `ANTHROPIC_ENABLE_CODE_EXECUTION`: Anthropic native capabilities
+  - `XAI_ENABLE_WEB_SEARCH` / `XAI_ENABLE_X_SEARCH` / `XAI_ENABLE_CODE_EXECUTION`: xAI Responses native capabilities
+  - `OAILIKE_ENABLE_GOOGLE_SEARCH` / `OAILIKE_ENABLE_CODE_EXECUTION` / `OAILIKE_ENABLE_URL_CONTEXT`: OAI-like gateway relay capabilities
+  - Do not put provider-native capabilities in `USE_TOOLS`; `USE_TOOLS` is only for project tools such as `image_gen`, `duckduckgo`, and `browser_navigate`
 - **Workflow & Automation**:
   - `WORKFLOW`: Multi-step AI workflow definitions with @key triggers
   - `ENABLE_WORKFLOW`: Enable/disable workflow processing
@@ -196,6 +199,7 @@ Key configuration options:
   - `GROUP_MESSAGE_CACHE_SIZE`: Number of cached group messages (default: 20)
   - `GROUP_MESSAGE_CACHE_TTL`: Cache expiration time in seconds (default: 3600, 1 hour)
   - `CHAT_TRIGGER_PREFIX`: Group message trigger prefix (e.g., `/bot`, leave empty to use @mention or reply only)
+  - `CHAT_MESSAGE_TRIGGER`: Multiple group trigger mappings (e.g., `{"domo":"","doom":""}`)
 - **Audio & Voice**:
   - `FISH_TTS_VOICE`: Fish Audio TTS voice reference ID
   - `GOOGLE_TTS_EXTRA_PARAMS`: Multi-speaker voice configuration
@@ -204,7 +208,7 @@ Key configuration options:
   - `CHAT_TEMPERATURE`: Model temperature (0-2)
   - `FUNCTION_CALL_TEMPERATURE`: Separate temperature for tool calls
   - `MAX_STEPS`: Maximum tool execution steps (default: 5)
-  - `OPENAI_REASONING_EFFORT`: Effort level for o1 models (low/medium/high)
+  - `OPENAI_PROVIDER_OPTIONS`: Provider options, including OpenAI reasoning effort
   - `PARAMS_MODIFIER`: Per-model parameter overrides
 - **Context Compression** (auto-summarize long conversations):
   - `ENABLE_CONTEXT_COMPRESSION`: Enable/disable compression (default: `true`)
@@ -246,7 +250,7 @@ The bot comes with a rich set of built-in tools that can be called by AI models:
 - **delegate_task** - Spawn isolated subagents for parallel research / independent workflows (requires `ENABLE_DELEGATE_AGENT=true`)
 
 **🎨 Creative Tools**
-- **image_gen** - Multi-provider image generation (DALL-E, Google, Vertex, xAI, Kling, Workers, **BFL/FLUX**)
+- **image_gen** - Multi-provider image generation (OpenAI Images, Google, Vertex, xAI, Kling, Workers, **BFL/FLUX**)
 - **google_veo** - Google Veo 3.1 video generation (8-second videos with audio)
 - **kling** - KlingAI image/video generation with editing support
 
@@ -256,7 +260,6 @@ The bot comes with a rich set of built-in tools that can be called by AI models:
 
 **⚙️ System Tools**
 - **scheduletask** - Automatic message deletion scheduling
-- **google_buildin** - Toggle Google Gemini built-in tools dynamically
 
 All tools are defined in `src/tools/internal/` and can be extended via environment variables.
 

@@ -16,8 +16,6 @@ export default {
             required: ['thought'],
         },
     },
-    send_type: 'message',
-
     func: async ({ thought }: { thought: string }): Promise<ToolResult> => {
         log.info(`tool thought start: ${thought}`);
         return { content: [{ type: 'text', text: 'Thought has been logged' }] };

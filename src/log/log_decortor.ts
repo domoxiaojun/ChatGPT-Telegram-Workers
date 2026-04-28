@@ -119,9 +119,21 @@ export function getLog(context: AgentUserConfig, { onlyModel = false, isParagrap
         // tool
         if (log.functions.length > 0 && show.tool) {
             logStr += '\n';
-            logStr += log.functions.map(({ name, args, error, time }) => {
-                const argsStr = args ? JSON.stringify(args) : '[]';
-                return `${name}: ${argsStr.substring(0, 80)} ${time}s ${error ? `\n[ERROR: ${error}]` : ''}`;
+            logStr += log.functions.map(({ name, args, error, time, result_preview }) => {
+                const details = [];
+                if (args !== undefined) {
+                    details.push(JSON.stringify(args).substring(0, 80));
+                }
+                if (result_preview !== undefined) {
+                    details.push(`=> ${JSON.stringify(result_preview).substring(0, 80)}`);
+                }
+                if (show.tool_time && time !== undefined) {
+                    details.push(`${time}s`);
+                }
+                if (error) {
+                    details.push(`[ERROR: ${error}]`);
+                }
+                return details.length > 0 ? `${name}: ${details.join(' ')}` : name;
             }).join('\n');
         }
 
@@ -156,7 +168,7 @@ export function clearLog(context: AgentUserConfig) {
 
 export interface LogStruct {
     model: string;
-    functions: { name: string; args: any; error?: string; time: number }[];
+    functions: { name: string; args?: any; result_preview?: any; error?: string; time?: number | string }[];
     tokens?: { prompt: number; completion: number; reasoning?: number; cached?: number };
     start_time: number;
     end_time?: number;

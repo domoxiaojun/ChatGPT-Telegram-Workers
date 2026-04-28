@@ -1,5 +1,6 @@
 import type { RouterRequest } from '../utils/router';
 import { ENV } from '../config/env';
+import { resolveUserConfigKeyAlias } from '../config/merger';
 import { getStats } from '../utils/stats';
 import { logManager } from './log-manager';
 
@@ -147,16 +148,14 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
                                 <option value="AI_IMAGE_PROVIDER">AI_IMAGE_PROVIDER</option>
                                 <option value="AI_ASR_PROVIDER">AI_ASR_PROVIDER</option>
                                 <option value="AI_TTS_PROVIDER">AI_TTS_PROVIDER</option>
-                                <option value="SYSTEM_INIT_MESSAGE">SYSTEM_INIT_MESSAGE</option>
-                                <option value="MAX_HISTORY_LENGTH">MAX_HISTORY_LENGTH</option>
                                 <option value="CHAT_MODEL">CHAT_MODEL</option>
                                 <option value="VISION_MODEL">VISION_MODEL</option>
                                 <option value="IMAGE_MODEL">IMAGE_MODEL</option>
-                                <option value="CURRENT_MODE">CURRENT_MODE</option>
+                                <option value="SYSTEM_INIT_MESSAGE">SYSTEM_INIT_MESSAGE</option>
+                                <option value="MAX_HISTORY_LENGTH">MAX_HISTORY_LENGTH</option>
                                 <option value="TIMEZONE">TIMEZONE</option>
                                 <option value="LANGUAGE">LANGUAGE</option>
                                 <option value="AUTO_TRIM_HISTORY">AUTO_TRIM_HISTORY</option>
-                                <option value="ENABLE_FILE">ENABLE_FILE</option>
                                 <option value="SUPPORT_FORMAT">SUPPORT_FORMAT</option>
                                 <option value="ENABLE_SHOWINFO">ENABLE_SHOWINFO</option>
                                 <option value="SHOW_PARTS">SHOW_PARTS</option>
@@ -172,6 +171,7 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
                                 <option value="SHOW_REPLY_BUTTON">SHOW_REPLY_BUTTON</option>
                                 <option value="EXTRA_MESSAGE_CONTEXT">EXTRA_MESSAGE_CONTEXT</option>
                                 <option value="ENABLE_REPLY_TO_MENTION">ENABLE_REPLY_TO_MENTION</option>
+                                <option value="CHAT_MESSAGE_TRIGGER">CHAT_MESSAGE_TRIGGER</option>
                                 <option value="CHAT_TRIGGER_PREFIX">CHAT_TRIGGER_PREFIX</option>
                                 <option value="IGNORE_TEXT_PREFIX">IGNORE_TEXT_PREFIX</option>
                                 <option value="HIDE_MIDDLE_MESSAGE">HIDE_MIDDLE_MESSAGE</option>
@@ -213,9 +213,31 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
                                 <option value="OPENAI_API_BASE">OPENAI_API_BASE</option>
                                 <option value="OPENAI_API_EXTRA_PARAMS">OPENAI_API_EXTRA_PARAMS</option>
                                 <option value="OPENAI_EMBEDDING_MODEL">OPENAI_EMBEDDING_MODEL</option>
-                                <option value="OPENAI_REASONING_EFFORT">OPENAI_REASONING_EFFORT</option>
-                                <option value="USE_OPENAI_BUILDIN">USE_OPENAI_BUILDIN</option>
+                                <option value="OPENAI_PROVIDER_OPTIONS">OPENAI_PROVIDER_OPTIONS</option>
+                                <option value="OPENAI_ENABLE_WEB_SEARCH">OPENAI_ENABLE_WEB_SEARCH</option>
+                                <option value="OPENAI_WEB_SEARCH_EXTERNAL_ACCESS">OPENAI_WEB_SEARCH_EXTERNAL_ACCESS</option>
+                                <option value="OPENAI_WEB_SEARCH_ALLOWED_DOMAINS">OPENAI_WEB_SEARCH_ALLOWED_DOMAINS</option>
+                                <option value="OPENAI_WEB_SEARCH_CONTEXT_SIZE">OPENAI_WEB_SEARCH_CONTEXT_SIZE</option>
+                                <option value="OPENAI_WEB_SEARCH_USER_LOCATION">OPENAI_WEB_SEARCH_USER_LOCATION</option>
+                                <option value="OPENAI_WEB_SEARCH_TRIGGER_MODE">OPENAI_WEB_SEARCH_TRIGGER_MODE</option>
+                                <option value="OPENAI_WEB_SEARCH_TRIGGER_PREFIXES">OPENAI_WEB_SEARCH_TRIGGER_PREFIXES</option>
+                                <option value="OPENAI_WEB_SEARCH_TRIGGER_KEYWORDS">OPENAI_WEB_SEARCH_TRIGGER_KEYWORDS</option>
+                                <option value="OPENAI_ENABLE_GITHUB_REPO_READER">OPENAI_ENABLE_GITHUB_REPO_READER</option>
+                                <option value="OPENAI_ENABLE_CODE_INTERPRETER">OPENAI_ENABLE_CODE_INTERPRETER</option>
+                                <option value="OPENAI_ENABLE_FILE_SEARCH">OPENAI_ENABLE_FILE_SEARCH</option>
+                                <option value="OPENAI_ENABLE_IMAGE_GENERATION">OPENAI_ENABLE_IMAGE_GENERATION</option>
+                                <option value="OPENAI_ENABLE_MCP">OPENAI_ENABLE_MCP</option>
                                 <option value="OPENAI_IMAGE_MODEL">OPENAI_IMAGE_MODEL</option>
+                                <option value="OPENAI_IMAGE_N">OPENAI_IMAGE_N</option>
+                                <option value="OPENAI_IMAGE_SIZE">OPENAI_IMAGE_SIZE</option>
+                                <option value="OPENAI_IMAGE_QUALITY">OPENAI_IMAGE_QUALITY</option>
+                                <option value="OPENAI_IMAGE_BACKGROUND">OPENAI_IMAGE_BACKGROUND</option>
+                                <option value="OPENAI_IMAGE_MODERATION">OPENAI_IMAGE_MODERATION</option>
+                                <option value="OPENAI_IMAGE_OUTPUT_FORMAT">OPENAI_IMAGE_OUTPUT_FORMAT</option>
+                                <option value="OPENAI_IMAGE_OUTPUT_COMPRESSION">OPENAI_IMAGE_OUTPUT_COMPRESSION</option>
+                                <option value="OPENAI_IMAGE_INPUT_FIDELITY">OPENAI_IMAGE_INPUT_FIDELITY</option>
+                                <option value="OPENAI_IMAGE_PARTIAL_IMAGES">OPENAI_IMAGE_PARTIAL_IMAGES</option>
+                                <option value="OPENAI_IMAGE_EXTRA_PARAMS">OPENAI_IMAGE_EXTRA_PARAMS</option>
                             </optgroup>
                             <optgroup label="Google/Gemini">
                                 <option value="GOOGLE_CHAT_MODEL">GOOGLE_CHAT_MODEL</option>
@@ -228,7 +250,12 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
                                 <option value="GOOGLE_API_BASE">GOOGLE_API_BASE</option>
                                 <option value="GOOGLE_API_EXTRA_PARAMS">GOOGLE_API_EXTRA_PARAMS</option>
                                 <option value="GOOGLE_EMBEDDING_MODEL">GOOGLE_EMBEDDING_MODEL</option>
-                                <option value="USE_GOOGLE_BUILDIN">USE_GOOGLE_BUILDIN</option>
+                                <option value="GOOGLE_ENABLE_GOOGLE_SEARCH">GOOGLE_ENABLE_GOOGLE_SEARCH</option>
+                                <option value="GOOGLE_ENABLE_CODE_EXECUTION">GOOGLE_ENABLE_CODE_EXECUTION</option>
+                                <option value="GOOGLE_ENABLE_URL_CONTEXT">GOOGLE_ENABLE_URL_CONTEXT</option>
+                                <option value="GOOGLE_ENABLE_GOOGLE_MAPS">GOOGLE_ENABLE_GOOGLE_MAPS</option>
+                                <option value="GOOGLE_ENABLE_FILE_SEARCH">GOOGLE_ENABLE_FILE_SEARCH</option>
+                                <option value="GOOGLE_ENABLE_ENTERPRISE_WEB_SEARCH">GOOGLE_ENABLE_ENTERPRISE_WEB_SEARCH</option>
                                 <option value="GOOGLE_MAPS_MODEL">GOOGLE_MAPS_MODEL</option>
                             </optgroup>
                             <optgroup label="Anthropic">
@@ -236,7 +263,9 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
                                 <option value="ANTHROPIC_VISION_MODEL">ANTHROPIC_VISION_MODEL</option>
                                 <option value="ANTHROPIC_API_BASE">ANTHROPIC_API_BASE</option>
                                 <option value="ANTHROPIC_API_EXTRA_PARAMS">ANTHROPIC_API_EXTRA_PARAMS</option>
-                                <option value="USE_ANTHROPIC_BUILDIN">USE_ANTHROPIC_BUILDIN</option>
+                                <option value="ANTHROPIC_ENABLE_WEB_FETCH">ANTHROPIC_ENABLE_WEB_FETCH</option>
+                                <option value="ANTHROPIC_ENABLE_WEB_SEARCH">ANTHROPIC_ENABLE_WEB_SEARCH</option>
+                                <option value="ANTHROPIC_ENABLE_CODE_EXECUTION">ANTHROPIC_ENABLE_CODE_EXECUTION</option>
                             </optgroup>
                             <optgroup label="XAI (Grok)">
                                 <option value="XAI_CHAT_MODEL">XAI_CHAT_MODEL</option>
@@ -244,7 +273,10 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
                                 <option value="XAI_IMAGE_MODEL">XAI_IMAGE_MODEL</option>
                                 <option value="XAI_API_BASE">XAI_API_BASE</option>
                                 <option value="XAI_API_EXTRA_PARAMS">XAI_API_EXTRA_PARAMS</option>
-                                <option value="USE_XAI_BUILDIN">USE_XAI_BUILDIN</option>
+                                <option value="XAI_ENABLE_WEB_SEARCH">XAI_ENABLE_WEB_SEARCH</option>
+                                <option value="XAI_ENABLE_X_SEARCH">XAI_ENABLE_X_SEARCH</option>
+                                <option value="XAI_ENABLE_CODE_EXECUTION">XAI_ENABLE_CODE_EXECUTION</option>
+                                <option value="XAI_ENABLE_FILE_SEARCH">XAI_ENABLE_FILE_SEARCH</option>
                             </optgroup>
                             <optgroup label="Cohere">
                                 <option value="COHERE_CHAT_MODEL">COHERE_CHAT_MODEL</option>
@@ -255,10 +287,14 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
                                 <option value="MISTRAL_API_BASE">MISTRAL_API_BASE</option>
                             </optgroup>
                             <optgroup label="Azure">
+                                <option value="AZURE_RESOURCE_NAME">AZURE_RESOURCE_NAME</option>
+                                <option value="AZURE_API_VERSION">AZURE_API_VERSION</option>
                                 <option value="AZURE_CHAT_MODEL">AZURE_CHAT_MODEL</option>
+                                <option value="AZURE_VISION_MODEL">AZURE_VISION_MODEL</option>
                                 <option value="AZURE_IMAGE_MODEL">AZURE_IMAGE_MODEL</option>
-                                <option value="AZURE_COMPLETIONS_API">AZURE_COMPLETIONS_API</option>
-                                <option value="AZURE_DALLE_API">AZURE_DALLE_API</option>
+                                <option value="AZURE_IMAGE_SIZE">AZURE_IMAGE_SIZE</option>
+                                <option value="AZURE_IMAGE_QUALITY">AZURE_IMAGE_QUALITY</option>
+                                <option value="AZURE_IMAGE_STYLE">AZURE_IMAGE_STYLE</option>
                             </optgroup>
                             <optgroup label="Fish Audio">
                                 <option value="FISH_TTS_VOICE">FISH_TTS_VOICE</option>
@@ -276,8 +312,13 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
                                 <option value="OAILIKE_TTS_MODEL">OAILIKE_TTS_MODEL</option>
                                 <option value="OAILIKE_TTS_VOICE">OAILIKE_TTS_VOICE</option>
                                 <option value="OAILIKE_TTS_EXTRA_PARAMS">OAILIKE_TTS_EXTRA_PARAMS</option>
+                                <option value="OAILIKE_IMAGE_N">OAILIKE_IMAGE_N</option>
                                 <option value="OAILIKE_IMAGE_SIZE">OAILIKE_IMAGE_SIZE</option>
-                                <option value="USE_OAILIKE_RELAY_TOOLS">USE_OAILIKE_RELAY_TOOLS</option>
+                                <option value="OAILIKE_IMAGE_QUALITY">OAILIKE_IMAGE_QUALITY</option>
+                                <option value="OAILIKE_IMAGE_EXTRA_PARAMS">OAILIKE_IMAGE_EXTRA_PARAMS</option>
+                                <option value="OAILIKE_ENABLE_GOOGLE_SEARCH">OAILIKE_ENABLE_GOOGLE_SEARCH</option>
+                                <option value="OAILIKE_ENABLE_CODE_EXECUTION">OAILIKE_ENABLE_CODE_EXECUTION</option>
+                                <option value="OAILIKE_ENABLE_URL_CONTEXT">OAILIKE_ENABLE_URL_CONTEXT</option>
                             </optgroup>
                             <optgroup label="Vertex AI">
                                 <option value="VERTEX_CHAT_MODEL">VERTEX_CHAT_MODEL</option>
@@ -285,12 +326,6 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
                                 <option value="VERTEX_IMAGE_MODEL">VERTEX_IMAGE_MODEL</option>
                                 <option value="VERTEX_PROJECT_ID">VERTEX_PROJECT_ID</option>
                                 <option value="VERTEX_LOCATION">VERTEX_LOCATION</option>
-                            </optgroup>
-                            <optgroup label="DALL-E">
-                                <option value="DALL_E_MODEL">DALL_E_MODEL</option>
-                                <option value="DALL_E_IMAGE_SIZE">DALL_E_IMAGE_SIZE</option>
-                                <option value="DALL_E_IMAGE_QUALITY">DALL_E_IMAGE_QUALITY</option>
-                                <option value="DALL_E_IMAGE_STYLE">DALL_E_IMAGE_STYLE</option>
                             </optgroup>
                             <optgroup label="Workers AI">
                                 <option value="WORKERS_CHAT_MODEL">WORKERS_CHAT_MODEL</option>
@@ -300,7 +335,11 @@ export async function adminDashboard(request: RouterRequest): Promise<Response> 
                                 <option value="USE_TOOLS">USE_TOOLS</option>
                                 <option value="USE_MCP">USE_MCP</option>
                                 <option value="TOOL_MODEL">TOOL_MODEL</option>
-                                <option value="FUNCTION_REPLY_ASAP">FUNCTION_REPLY_ASAP</option>
+                                <option value="GITHUB_TOKEN">GITHUB_TOKEN</option>
+                                <option value="GITHUB_REPO_READER_MAX_FILES">GITHUB_REPO_READER_MAX_FILES</option>
+                                <option value="GITHUB_REPO_READER_MAX_FILE_SIZE">GITHUB_REPO_READER_MAX_FILE_SIZE</option>
+                                <option value="GITHUB_REPO_READER_MAX_TOTAL_CHARS">GITHUB_REPO_READER_MAX_TOTAL_CHARS</option>
+                                <option value="GITHUB_REPO_READER_TIMEOUT">GITHUB_REPO_READER_TIMEOUT</option>
                             </optgroup>
                             <optgroup label="Model Parameters">
                                 <option value="CHAT_TEMPERATURE">CHAT_TEMPERATURE</option>
@@ -900,6 +939,12 @@ export async function apiUpdateUserConfig(request: RouterRequest): Promise<Respo
                 headers: { 'Content-Type': 'application/json' },
             });
         }
+        if (!config || typeof config !== 'object') {
+            return new Response(JSON.stringify({ error: 'Missing config' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' },
+            });
+        }
 
         const configKey = `user_config:${chatId}`;
 
@@ -907,8 +952,30 @@ export async function apiUpdateUserConfig(request: RouterRequest): Promise<Respo
         const existingConfigStr = await ENV.DATABASE.get(configKey);
         const existingConfig = existingConfigStr ? JSON.parse(existingConfigStr) : {};
 
-        // Merge with new config
-        const updatedConfig = { ...existingConfig, ...config };
+        const effectiveConfig = { ...ENV.USER_CONFIG, ...existingConfig, ...config };
+        const defineKeys = new Set<string>(Array.isArray(existingConfig.DEFINE_KEYS) ? existingConfig.DEFINE_KEYS : []);
+        const updatedConfig = { ...existingConfig };
+
+        for (const [rawKey, value] of Object.entries(config)) {
+            if (rawKey === 'DEFINE_KEYS') {
+                continue;
+            }
+            const key = resolveUserConfigKeyAlias(rawKey, effectiveConfig);
+            if (!(key in ENV.USER_CONFIG)) {
+                return new Response(JSON.stringify({ error: `Key ${key} not found` }), {
+                    status: 400,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+            }
+            if (rawKey !== key) {
+                delete updatedConfig[rawKey];
+                defineKeys.delete(rawKey);
+            }
+            updatedConfig[key] = value;
+            effectiveConfig[key] = value;
+            defineKeys.add(key);
+        }
+        updatedConfig.DEFINE_KEYS = Array.from(defineKeys);
 
         // Save to database
         await ENV.DATABASE.put(configKey, JSON.stringify(updatedConfig));
@@ -956,9 +1023,14 @@ export async function apiDeleteUserConfigKey(request: RouterRequest): Promise<Re
         }
 
         const existingConfig = JSON.parse(existingConfigStr);
+        const resolvedKey = resolveUserConfigKeyAlias(key, { ...ENV.USER_CONFIG, ...existingConfig });
 
         // Delete the specified key
         delete existingConfig[key];
+        delete existingConfig[resolvedKey];
+        if (Array.isArray(existingConfig.DEFINE_KEYS)) {
+            existingConfig.DEFINE_KEYS = existingConfig.DEFINE_KEYS.filter((item: string) => item !== key && item !== resolvedKey);
+        }
 
         // Save updated config back to database
         await ENV.DATABASE.put(configKey, JSON.stringify(existingConfig));

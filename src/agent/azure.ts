@@ -53,10 +53,10 @@ export class AzureImageAI implements ImageAgent {
     };
 
     readonly request = withLogger(async (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>): Promise<ImageResult> => {
-        const url = `https://${context.AZURE_RESOURCE_NAME}.openai.azure.com/openai/deployments/${context.AZURE_IMAGE_MODEL}/chat/completions?${context.AZURE_API_VERSION}`;
+        const url = `https://${context.AZURE_RESOURCE_NAME}.openai.azure.com/openai/deployments/${context.AZURE_IMAGE_MODEL}/images/generations?api-version=${context.AZURE_API_VERSION}`;
         const apiKey = selectKey('azure', context.AZURE_API_KEY);
         if (!url || !apiKey) {
-            throw new Error('Azure DALL-E API is not set');
+            throw new Error('Azure image API is not set');
         }
         const header = {
             'Content-Type': 'application/json',
@@ -66,9 +66,9 @@ export class AzureImageAI implements ImageAgent {
         const body = {
             prompt,
             n,
-            size: size || context.DALL_E_IMAGE_SIZE,
-            style: style || context.DALL_E_IMAGE_STYLE,
-            quality: quality || context.DALL_E_IMAGE_QUALITY,
+            size: size || context.AZURE_IMAGE_SIZE,
+            style: style || context.AZURE_IMAGE_STYLE,
+            quality: quality || context.AZURE_IMAGE_QUALITY,
         };
         const validSize = ['1792x1024', '1024x1024', '1024x1792'];
         if (!validSize.includes(body.size)) {

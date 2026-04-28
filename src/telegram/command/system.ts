@@ -12,8 +12,8 @@ import { ASR_AGENTS, CHAT_AGENTS, customInfo, IMAGE_AGENTS, loadASRLLM, loadChat
 import { loadHistory } from '../../agent/chat';
 import { KlingAI } from '../../agent/kling';
 import { updateModels } from '../../agent/models';
-import { ENV, ENV_KEY_MAPPER } from '../../config/env';
-import { ConfigMerger } from '../../config/merger';
+import { ENV } from '../../config/env';
+import { ConfigMerger, resolveUserConfigKeyAlias } from '../../config/merger';
 import { getLogSingleton, log } from '../../log';
 import { updateMcp } from '../../mcp';
 import { getTools } from '../../tools';
@@ -88,23 +88,75 @@ function tokenizeSubcommand(subcommand: string): { flags: { flag: string; value:
     return { flags, remainingText: text.trim() };
 }
 
+function parseImageFlags(flags: { flag: string; value: string | undefined }[]): Record<string, any> {
+    const params: Record<string, any> = {};
+    const keyMap: Record<string, string> = {
+        n: 'quantity',
+        count: 'quantity',
+        size: 'size',
+        s: 'size',
+        ratio: 'radio',
+        radio: 'radio',
+        r: 'radio',
+        quality: 'quality',
+        q: 'quality',
+        background: 'background',
+        bg: 'background',
+        format: 'outputFormat',
+        outputFormat: 'outputFormat',
+        compression: 'outputCompression',
+        outputCompression: 'outputCompression',
+        fidelity: 'inputFidelity',
+        inputFidelity: 'inputFidelity',
+        moderation: 'moderation',
+    };
+    for (const { flag, value } of flags) {
+        const key = keyMap[flag];
+        if (!key || value === undefined || value === '') {
+            continue;
+        }
+        params[key] = ['quantity', 'outputCompression'].includes(key) ? Number.parseInt(value, 10) : value;
+    }
+    return params;
+}
+
+const THINK_EFFORTS = ['low', 'medium', 'high', 'xhigh'] as const;
+
+function thinkUsage(current: string | undefined): string {
+    return [
+        'Usage: /think low|medium|high|xhigh|off|status',
+        `Current OpenAI reasoning effort: ${current || 'default'}`,
+    ].join('\n');
+}
+
 export class ImgCommandHandler implements CommandHandler {
     command = '/img';
     scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
+    needAuth = (chatType: string) => {
+        if (ENV.GROUP_IMAGE_GEN_ADMIN_ONLY && ['group', 'supergroup'].includes(chatType)) {
+            return ['administrator', 'creator'];
+        }
+        return null;
+    };
+
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
         if (subcommand === '') {
             return sender.sendPlainText(ENV.I18N.command.help.img);
         }
         try {
+            const { flags, remainingText } = tokenizeSubcommand(subcommand);
+            if (!remainingText) {
+                return sender.sendPlainText(ENV.I18N.command.help.img);
+            }
             const agent = loadImageGen(context.USER_CONFIG);
-            const extraParams: Record<string, any> = {};
+            const extraParams: Record<string, any> = parseImageFlags(flags);
             // 支持图片编辑的 agents：google, vertex, openai, xai, bfl
             if (['google', 'vertex', 'openai', 'xai', 'bfl'].includes(agent.name) && ['image', 'photo'].includes(context.MIDDLE_CONTEXT.messageInfo?.type) && (context.MIDDLE_CONTEXT.messageInfo?.id?.length || 0) > 0) {
                 extraParams.referenceImages = await getTelegramFile(context.MIDDLE_CONTEXT.messageInfo.id!, context.SHARE_CONTEXT.botToken, ENV.TELEGRAM_IMAGE_TRANSFER_MODE as any);
             }
             await sender.sendPlainText('Please wait a moment...');
             sendAction(context.SHARE_CONTEXT.botToken, message.chat.id, 'upload_photo');
-            const img = await agent.request(subcommand, context.USER_CONFIG, extraParams);
+            const img = await agent.request(remainingText, context.USER_CONFIG, extraParams);
             log.info(`img has been generated: ${JSON.stringify(img.url || img.message)} prompt: ${img.text}`);
             if ((img.raw || img.url)?.length === 0) {
                 return sender.sendPlainText(`${img.text || 'ERROR: No image found'}`);
@@ -201,9 +253,8 @@ export class SetEnvCommandHandler extends RenewConfig {
         if (kv === -1) {
             return sender.sendPlainText(ENV.I18N.command.help.setenv);
         }
-        let key = subcommand.slice(0, kv);
+        let key = resolveUserConfigKeyAlias(subcommand.slice(0, kv), context.USER_CONFIG);
         const value = subcommand.slice(kv + 1);
-        key = ENV_KEY_MAPPER[key] || key;
         if (ENV.LOCK_USER_CONFIG_KEYS.includes(key)) {
             return sender.sendPlainText(`Key ${key} is locked`);
         }
@@ -227,9 +278,10 @@ export class SetEnvsCommandHandler extends RenewConfig {
         try {
             const values = JSON.parse(subcommand);
             const configKeys = Object.keys(context.USER_CONFIG);
+            const effectiveConfig = { ...context.USER_CONFIG, ...values };
             for (const ent of Object.entries(values)) {
-                let [key, value] = ent;
-                key = ENV_KEY_MAPPER[key] || key;
+                const [rawKey, value] = ent;
+                const key = resolveUserConfigKeyAlias(rawKey, effectiveConfig);
                 if (ENV.LOCK_USER_CONFIG_KEYS.includes(key)) {
                     return sender.sendPlainText(`Key ${key} is locked`);
                 }
@@ -237,6 +289,7 @@ export class SetEnvsCommandHandler extends RenewConfig {
                     return sender.sendPlainText(`Key ${key} not found`);
                 }
                 this.store({ [key]: value }, context, false);
+                effectiveConfig[key] = value;
                 log.info('Update user config: ', key, context.USER_CONFIG[key]);
             }
             this.store({}, context);
@@ -251,13 +304,17 @@ export class DelEnvCommandHandler extends RenewConfig {
     command = '/delenv';
     handle = async (message: Telegram.Message, subcommand: string, context: WorkerContext, sender: MessageSender): Promise<Response> => {
         // const sender = MessageSender.from(context.SHARE_CONTEXT.botToken, message);
-        if (ENV.LOCK_USER_CONFIG_KEYS.includes(subcommand)) {
-            const msg = `Key ${subcommand} is locked`;
+        const key = resolveUserConfigKeyAlias(subcommand, context.USER_CONFIG);
+        if (ENV.LOCK_USER_CONFIG_KEYS.includes(key)) {
+            const msg = `Key ${key} is locked`;
             return sender.sendPlainText(msg);
         }
         try {
-            context.USER_CONFIG[subcommand] = null;
-            context.USER_CONFIG.DEFINE_KEYS = context.USER_CONFIG.DEFINE_KEYS.filter(key => key !== subcommand);
+            if (!Object.keys(context.USER_CONFIG).includes(key)) {
+                return sender.sendPlainText(`Key ${key} not found`);
+            }
+            context.USER_CONFIG[key] = null;
+            context.USER_CONFIG.DEFINE_KEYS = context.USER_CONFIG.DEFINE_KEYS.filter(item => item !== key);
             this.store({}, context);
             return sender.sendPlainText('Delete user config success');
         } catch (e) {
@@ -338,8 +395,6 @@ export class SystemCommandHandler implements CommandHandler {
             shareCtx.botToken = '******';
             context.USER_CONFIG.OPENAI_API_KEY = ['******'];
             context.USER_CONFIG.AZURE_API_KEY = ['******'];
-            context.USER_CONFIG.AZURE_COMPLETIONS_API = '******';
-            context.USER_CONFIG.AZURE_DALLE_API = '******';
             context.USER_CONFIG.CLOUDFLARE_ACCOUNT_ID = '******';
             context.USER_CONFIG.CLOUDFLARE_TOKEN = '******';
             context.USER_CONFIG.GOOGLE_API_KEY = ['******'];
@@ -349,6 +404,7 @@ export class SystemCommandHandler implements CommandHandler {
             context.USER_CONFIG.OAILIKE_API_KEY = ['******'];
             context.USER_CONFIG.XAI_API_KEY = ['******'];
             context.USER_CONFIG.FISH_API_KEY = ['******'];
+            context.USER_CONFIG.GITHUB_TOKEN = ['******'];
             const config = ConfigMerger.trim(context.USER_CONFIG, ENV.LOCK_USER_CONFIG_KEYS);
             msg = `${msg}\n`;
             msg += `USER_CONFIG: ${JSON.stringify(config, null, 2)}\n`;
@@ -509,25 +565,16 @@ export class SetCommandHandler extends RenewConfig implements CommandHandler {
             throw new Error(`Mapping Key ${flag} not found`);
         }
 
-        if (ENV.LOCK_USER_CONFIG_KEYS.includes(key) && sender) {
-            return sender.sendPlainText(`Key ${key} is locked`);
-        }
-
         switch (key) {
-            // 兼容旧版命令
-            case 'AI_PROVIDER':
-                key = 'AI_CHAT_PROVIDER';
-                break;
             case 'SYSTEM_INIT_MESSAGE':
                 mappedValue = value && (context.USER_CONFIG.PROMPT[value] || value);
                 break;
             case 'CHAT_MODEL':
             case 'VISION_MODEL':
+            case 'IMAGE_MODEL':
             case 'STT_MODEL':
             case 'TTS_MODEL':
-                key = context.USER_CONFIG.AI_CHAT_PROVIDER
-                    ? `${context.USER_CONFIG.AI_CHAT_PROVIDER.toUpperCase()}_${key}`
-                    : key;
+                key = resolveUserConfigKeyAlias(key, context.USER_CONFIG);
                 break;
             case 'USE_TOOLS':
                 if (value === 'on') {
@@ -539,6 +586,10 @@ export class SetCommandHandler extends RenewConfig implements CommandHandler {
                 break;
             default:
                 break;
+        }
+
+        if (ENV.LOCK_USER_CONFIG_KEYS.includes(key) && sender) {
+            return sender.sendPlainText(`Key ${key} is locked`);
         }
 
         if (!(key in context.USER_CONFIG)) {
@@ -561,6 +612,41 @@ export class SetCommandHandler extends RenewConfig implements CommandHandler {
             await authChecker(this, message, context);
         }
     }
+}
+
+export class ThinkCommandHandler extends RenewConfig implements CommandHandler {
+    command = '/think';
+    scopes: ScopeType[] = ['all_private_chats', 'all_chat_administrators'];
+    needAuth = COMMAND_AUTH_CHECKER.shareModeGroup;
+
+    handle = async (
+        message: Telegram.Message,
+        subcommand: string,
+        context: WorkerContext,
+        sender: MessageSender,
+    ): Promise<Response> => {
+        const providerOptions: Record<string, any> = { ...(context.USER_CONFIG.OPENAI_PROVIDER_OPTIONS || {}) };
+        const current = providerOptions.reasoningEffort as string | undefined;
+        const action = subcommand.trim().toLowerCase().split(/\s+/)[0] || 'status';
+
+        if (['status', 'show'].includes(action)) {
+            return sender.sendPlainText(thinkUsage(current));
+        }
+
+        if (['off', 'default', 'reset'].includes(action)) {
+            delete providerOptions.reasoningEffort;
+            await this.store({ OPENAI_PROVIDER_OPTIONS: providerOptions }, context);
+            return sender.sendPlainText('OpenAI reasoning effort reset to default');
+        }
+
+        if (!THINK_EFFORTS.includes(action as any)) {
+            return sender.sendPlainText(thinkUsage(current));
+        }
+
+        providerOptions.reasoningEffort = action;
+        await this.store({ OPENAI_PROVIDER_OPTIONS: providerOptions }, context);
+        return sender.sendPlainText(`OpenAI reasoning effort set to ${action}`);
+    };
 }
 
 export class PerplexityCommandHandler implements CommandHandler {
@@ -664,7 +750,7 @@ export class InlineCommandHandler implements CommandHandler {
         const allASRAgents = ASR_AGENTS.map(agent => agent.name);
         const allRerankAgents = ['jina', 'openai', 'oailikeV1', 'oailikeV2', 'google'];
         const chatAgent = context.AI_CHAT_PROVIDER;
-        console.log(`[DEBUG] chatAgent=${chatAgent}, GOOGLE_BUILDIN=${context.GOOGLE_BUILDIN?.length}, ANTHROPIC_BUILDIN=${context.ANTHROPIC_BUILDIN?.length}, XAI_BUILDIN=${context.XAI_BUILDIN?.length}`);
+        console.log(`[DEBUG] chatAgent=${chatAgent}`);
         const configKeyHandler = (type: string) => {
             if (type === 'Tool') {
                 return 'TOOL_MODEL';
@@ -678,6 +764,12 @@ export class InlineCommandHandler implements CommandHandler {
                 })
             : ENV.ENVS_VARIABLES;
         const tools = await getTools();
+        const nativeToggle = (label: string, config_key: string): InlineItem => ({
+            label,
+            config_key,
+            type: 'radio',
+            value: ['true', 'false'],
+        });
         const inlines: InlineItem[] = [
             {
                 label: 'Chat Agent',
@@ -786,47 +878,48 @@ export class InlineCommandHandler implements CommandHandler {
             //     }),
             // },
         ];
-        // 添加 provider-specific tools
-        // 只在对应的 provider 激活时才添加到菜单
+        // Provider-native capabilities are exposed as independent toggles, not USE_TOOLS entries.
         if (chatAgent === 'gemini' || chatAgent === 'google' || chatAgent === 'vertex') {
-            inlines.push({
-                label: 'Google Tools',
-                config_key: 'USE_GOOGLE_BUILDIN',
-                type: 'checkbox',
-                value: context.GOOGLE_BUILDIN,
-            });
+            inlines.push(
+                nativeToggle('Google Search', 'GOOGLE_ENABLE_GOOGLE_SEARCH'),
+                nativeToggle('Google Code Execution', 'GOOGLE_ENABLE_CODE_EXECUTION'),
+                nativeToggle('Google URL Context', 'GOOGLE_ENABLE_URL_CONTEXT'),
+                nativeToggle('Google Maps', 'GOOGLE_ENABLE_GOOGLE_MAPS'),
+                nativeToggle('Google File Search', 'GOOGLE_ENABLE_FILE_SEARCH'),
+                nativeToggle('Google Enterprise Search', 'GOOGLE_ENABLE_ENTERPRISE_WEB_SEARCH'),
+            );
         }
         if (chatAgent === 'anthropic') {
-            inlines.push({
-                label: 'Anthropic Tools',
-                config_key: 'USE_ANTHROPIC_BUILDIN',
-                type: 'checkbox',
-                value: context.ANTHROPIC_BUILDIN,
-            });
+            inlines.push(
+                nativeToggle('Anthropic Web Fetch', 'ANTHROPIC_ENABLE_WEB_FETCH'),
+                nativeToggle('Anthropic Web Search', 'ANTHROPIC_ENABLE_WEB_SEARCH'),
+                nativeToggle('Anthropic Code Execution', 'ANTHROPIC_ENABLE_CODE_EXECUTION'),
+            );
         }
         if (chatAgent === 'xai') {
-            inlines.push({
-                label: 'xAI Tools',
-                config_key: 'USE_XAI_BUILDIN',
-                type: 'checkbox',
-                value: context.XAI_BUILDIN,
-            });
+            inlines.push(
+                nativeToggle('xAI Web Search', 'XAI_ENABLE_WEB_SEARCH'),
+                nativeToggle('xAI X Search', 'XAI_ENABLE_X_SEARCH'),
+                nativeToggle('xAI Code Execution', 'XAI_ENABLE_CODE_EXECUTION'),
+                nativeToggle('xAI File Search', 'XAI_ENABLE_FILE_SEARCH'),
+            );
         }
         if (chatAgent === 'openai') {
-            inlines.push({
-                label: 'OpenAI Tools',
-                config_key: 'USE_OPENAI_BUILDIN',
-                type: 'checkbox',
-                value: context.OPENAI_BUILDIN,
-            });
+            inlines.push(
+                nativeToggle('OpenAI Web Search', 'OPENAI_ENABLE_WEB_SEARCH'),
+                nativeToggle('OpenAI GitHub Reader', 'OPENAI_ENABLE_GITHUB_REPO_READER'),
+                nativeToggle('OpenAI Code Interpreter', 'OPENAI_ENABLE_CODE_INTERPRETER'),
+                nativeToggle('OpenAI File Search', 'OPENAI_ENABLE_FILE_SEARCH'),
+                nativeToggle('OpenAI Image Generation', 'OPENAI_ENABLE_IMAGE_GENERATION'),
+                nativeToggle('OpenAI MCP', 'OPENAI_ENABLE_MCP'),
+            );
         }
         if (chatAgent === 'oailike') {
-            inlines.push({
-                label: 'Oailike Tools',
-                config_key: 'USE_OAILIKE_RELAY_TOOLS',
-                type: 'checkbox',
-                value: Object.values(context.OAILIKE_RELAY_TOOLS).flat(),
-            });
+            inlines.push(
+                nativeToggle('OAI-like Google Search', 'OAILIKE_ENABLE_GOOGLE_SEARCH'),
+                nativeToggle('OAI-like Code Execution', 'OAILIKE_ENABLE_CODE_EXECUTION'),
+                nativeToggle('OAI-like URL Context', 'OAILIKE_ENABLE_URL_CONTEXT'),
+            );
         }
         console.log(`[DEBUG] Before return, inlines.length=${inlines.length}, labels=${inlines.map(i => i.label).join(', ')}`);
         const result = (ENV.CALLBACK_MENU.length === 0 ? inlines.sort((a, b) => a.label.localeCompare(b.label)) : ENV.CALLBACK_MENU.map(key => inlines.find(inline => inline.config_key.endsWith(key))).filter(Boolean) as InlineItem[]);

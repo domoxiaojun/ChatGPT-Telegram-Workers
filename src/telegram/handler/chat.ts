@@ -18,6 +18,7 @@ import { escape, SEGMENTATION_MARK } from '../utils/md2tgmd';
 import { validateMarkdownV2, markdownToHTML, stripFormatting } from '../utils/render_fallback';
 import { MessageSender, sendAction, TelegraphSender } from '../utils/send';
 import { getTelegramFile, isTelegramChatTypeGroup, waitUntil } from '../utils/tg_utils';
+import { loadChatRoleWithContext } from '../command/auth';
 import { formatGroupCacheAsContext, loadGroupMessageCache } from './group';
 
 /**
@@ -48,11 +49,48 @@ function getUserIdentifier(user?: Telegram.User): string | null {
     return `${identifier} (ID:${user.id})`;
 }
 
+function getErrorMessage(error: any): string {
+    if (!error) {
+        return 'Unknown error';
+    }
+    if (typeof error === 'string') {
+        return error;
+    }
+    if (typeof error.message === 'string' && error.message.trim()) {
+        return error.message;
+    }
+    if (typeof error.error === 'string' && error.error.trim()) {
+        return error.error;
+    }
+    if (typeof error.error?.message === 'string' && error.error.message.trim()) {
+        return error.error.message;
+    }
+    try {
+        return JSON.stringify(error);
+    } catch {
+        return String(error);
+    }
+}
+
+function reuseProcessingMessage(sender: MessageSender, context?: WorkerContext): boolean {
+    const processingMessageId = context?.MIDDLE_CONTEXT.processingMessageId;
+    if (!processingMessageId) {
+        return false;
+    }
+    sender.context.sentMessageIds = [processingMessageId];
+    sender.context.message_id = processingMessageId;
+    log.info(`[MESSAGE] Reuse processing message id: ${processingMessageId}`);
+    return true;
+}
+
 async function messageInitialize(sender: MessageSender, context?: WorkerContext, message?: Telegram.Message): Promise<ChatStreamTextHandler> {
     setTimeout(() => sendAction(sender.api.token, sender.context.chat_id, 'typing'), 0);
     log.info(`send init message`);
+    const reusedProcessingMessage = reuseProcessingMessage(sender, context);
     const streamSender = OnStreamHander(sender, context, message?.text || message?.caption || '');
-    streamSender.send('...');
+    if (!reusedProcessingMessage) {
+        streamSender.send('...');
+    }
     return streamSender;
 }
 
@@ -76,7 +114,8 @@ export async function chatWithLLM(
         }
         return streamSender.end!(answer.content);
     } catch (e) {
-        log.error((e as Error).message, (e as Error).stack);
+        const errorMessage = getErrorMessage(e);
+        log.error(errorMessage, (e as Error).stack);
         if (APICallError.isInstance(e)) {
             log.error(e.responseBody);
         }
@@ -84,7 +123,7 @@ export async function chatWithLLM(
         if ((e as Error).name === 'AbortError') {
             errMsg += 'Chat with LLM timeout';
         } else {
-            errMsg += (e as Error).message;
+            errMsg += errorMessage;
             if (e instanceof APICallError && e.responseBody && errMsg === '') {
                 log.error(`error detail: ${e.responseBody}`);
                 errMsg += `\n\n${e.responseBody}`;
@@ -108,6 +147,7 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
         try {
             log.info(`message type: ${context.MIDDLE_CONTEXT.messageInfo.type}`);
             await this.initializeHistory(context, message);
+            await this.applyGroupImageGenerationPolicy(context, message);
 
             // 处理原始消息
             const params = await this.processOriginalMessage(message, context);
@@ -117,11 +157,12 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
         } catch (e) {
             streamSender.clearHeartbeat!();
             const sender = streamSender.sender as MessageSender;
-            log.error((e as Error).stack);
-            if ((e as Error).message.includes('524')) {
+            const errorMessage = getErrorMessage(e);
+            log.error(errorMessage, (e as Error).stack);
+            if (errorMessage.includes('524')) {
                 return sender.sendRichText(`\`\`\`Error\nMaybe occur 524 error, see logs for more details.\n\`\`\``, undefined, 'tip');
             }
-            const errMsg = (e as Error).message.replaceAll(context.SHARE_CONTEXT.botToken, '[REDACTED]').substring(0, 2048);
+            const errMsg = errorMessage.replaceAll(context.SHARE_CONTEXT.botToken, '[REDACTED]').substring(0, 2048);
             return sender.sendRichText(`\`\`\`Error\n${errMsg}\n\`\`\``, undefined, 'tip');
         }
     };
@@ -153,6 +194,23 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
         }
     }
 
+    private async applyGroupImageGenerationPolicy(context: WorkerContext, message: Telegram.Message): Promise<void> {
+        if (!ENV.GROUP_IMAGE_GEN_ADMIN_ONLY || !isTelegramChatTypeGroup(message.chat.type)) {
+            return;
+        }
+        if (ENV.CHAT_WHITE_LIST.includes(message.from?.id?.toString() ?? '')) {
+            return;
+        }
+        const role = await loadChatRoleWithContext(message, context);
+        if (role === 'administrator' || role === 'creator') {
+            return;
+        }
+
+        context.USER_CONFIG.USE_TOOLS = context.USER_CONFIG.USE_TOOLS.filter((tool: string) => tool !== 'image_gen');
+        context.USER_CONFIG.OPENAI_ENABLE_IMAGE_GENERATION = false;
+        log.info(`[GROUP IMAGE] Disabled image generation for non-admin user ${message.from?.id ?? 'unknown'} in chat ${message.chat.id}`);
+    }
+
     private async processOriginalMessage(
         message: Telegram.Message,
         context: WorkerContext,
@@ -161,9 +219,8 @@ export class ChatHandler implements MessageHandler<WorkerContext> {
         let messageText = message.text || message.caption || '';
 
         // Get user identifier for group chats
-        // Skip if GROUP_MESSAGE_LISTEN_MODE is active (user info already in cache context)
         let userPrefix = '';
-        if (ENV.GROUP_INCLUDE_USERNAME && !ENV.GROUP_MESSAGE_LISTEN_MODE && isTelegramChatTypeGroup(message.chat.type)) {
+        if (ENV.GROUP_INCLUDE_USERNAME && isTelegramChatTypeGroup(message.chat.type)) {
             const userIdentifier = getUserIdentifier(message.from);
             if (userIdentifier) {
                 userPrefix = `${userIdentifier}: `;
@@ -266,6 +323,7 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
         send: null as ((text: string, type?: 'chat' | 'error' | 'heartbeat') => Promise<any>) | null,
         end: null as ((text: string, needLog?: boolean, type?: 'chat' | 'error' | 'heartbeat') => Promise<any>) | null,
         sender,
+        visibleToolResultSent: false,
         clearHeartbeat: () => {
             heartbeatId && clearInterval(heartbeatId);
         },
@@ -361,6 +419,10 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
             log.info(`Need await: ${(nextEnableTime || 0) - Date.now()}ms`);
             await waitUntil(nextEnableTime! + 10);
         }
+        if (isMessageSender && type === 'chat' && streamSender.visibleToolResultSent && isToolResultPlaceholderFinalText(text)) {
+            await deleteStreamMessages(sender as MessageSender);
+            return new Response('ok');
+        }
         if (type === 'error') {
             // Add separator to prevent blockquote from interfering with code block
             // Use a zero-width space or explicit separator to break blockquote context
@@ -438,6 +500,30 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
     };
 
     return streamSender as unknown as ChatStreamTextHandler;
+}
+
+function isToolResultPlaceholderFinalText(text: string): boolean {
+    const normalized = text
+        .replace(new RegExp(SEGMENTATION_MARK, 'g'), '')
+        .replace(/["'“”‘’`]/g, '')
+        .trim()
+        .toLowerCase();
+    return normalized === ''
+        || normalized === 'image has been sent to user already.'
+        || normalized === 'data has been sent to user already.'
+        || normalized === 'images have been sent to user already.'
+        || normalized === 'result has been sent to user already.';
+}
+
+async function deleteStreamMessages(sender: MessageSender): Promise<void> {
+    const messageIds = [...new Set([sender.context.message_id, ...sender.context.sentMessageIds].filter(Boolean) as number[])];
+    sender.context.message_id = null;
+    sender.context.sentMessageIds = [];
+    await Promise.all(messageIds.map(message_id =>
+        sender.api.deleteMessage({ chat_id: sender.context.chat_id, message_id }).catch((e: Error) => {
+            log.warn(`[MESSAGE] Failed to delete intermediate message ${message_id}: ${e.message}`);
+        }),
+    ));
 }
 
 async function sendTelegraph(sendContext: {

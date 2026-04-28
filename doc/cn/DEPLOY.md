@@ -233,7 +233,7 @@ OPENAI_API_KEY = "sk-openai-key"
 ANTHROPIC_API_KEY = "sk-ant-key"
 GOOGLE_API_KEY = "google-key"
 
-# 用户可以用 /setenv AI_CHAT_PROVIDER=claude 切换
+# 用户可以用 /setenv AI_CHAT_PROVIDER=anthropic 切换
 ```
 
 ### 安全配置

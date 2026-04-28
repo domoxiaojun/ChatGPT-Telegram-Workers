@@ -2,7 +2,7 @@ name: Deploy to Cloudflare Workers
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "domo" ]
   workflow_dispatch:
 
 jobs:

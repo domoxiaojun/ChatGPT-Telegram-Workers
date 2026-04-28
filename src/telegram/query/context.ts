@@ -77,7 +77,8 @@ export class ChosenInlineWorkerContext {
         }
         try {
             const userConfig: AgentUserConfig = JSON.parse(await ENV.DATABASE.get(userConfigKey));
-            ConfigMerger.merge(USER_CONFIG, ConfigMerger.trim(userConfig, ENV.LOCK_USER_CONFIG_KEYS) || {});
+            const trimmedUserConfig = ConfigMerger.trim(userConfig, ENV.LOCK_USER_CONFIG_KEYS) || {};
+            ConfigMerger.merge(USER_CONFIG, trimmedUserConfig);
             USER_CONFIG.ENABLE_SHOWINFO = ENV.INLINE_QUERY_SHOW_INFO;
             // 过于频繁的请求不会被Telegram接受
             ENV.TELEGRAM_MIN_STREAM_INTERVAL = ENV.INLINE_QUERY_SEND_INTERVAL;

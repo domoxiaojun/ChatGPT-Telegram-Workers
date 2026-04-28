@@ -1,6 +1,7 @@
 import type * as Telegram from 'telegram-bot-api-types';
 import type { MessageHandler } from './types';
 import { WorkerContextBase } from '../../config/context';
+import { ENV } from '../../config/env';
 import { log } from '../../log/logger';
 import { handleCallbackQuery, handleChosenInlineQuery, handleInlineQuery } from '../query';
 import { ChatHandler } from './chat';
@@ -29,10 +30,18 @@ function loadMessage(body: Telegram.Update, isForwarding: boolean) {
         case !!body.message:
             return (token: string) => handleMessage(token, body.message!, isForwarding);
         case !!body.inline_query:
+            if (!ENV.ENABLE_INLINE_QUERY) {
+                log.info('Ignore inline query');
+                return () => new Response('Inline query disabled', { status: 200 });
+            }
             return (token: string) => handleInlineQuery(token, body.inline_query!);
         case !!body.callback_query:
             return (token: string) => handleCallbackQuery(token, body.callback_query!);
         case !!body.chosen_inline_result:
+            if (!ENV.ENABLE_INLINE_QUERY) {
+                log.info('Ignore chosen inline result');
+                return () => new Response('Inline query disabled', { status: 200 });
+            }
             return (token: string) => handleChosenInlineQuery(token, body.chosen_inline_result!);
         case !!body.edited_message:
             log.info('Ignore edited message');

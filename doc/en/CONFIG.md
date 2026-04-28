@@ -245,14 +245,22 @@ AI: Based on your conversation about the nice weather, I recommend these activit
 | `OPENAI_API_BASE` | API base URL | `https://api.openai.com/v1` |
 | `OPENAI_API_EXTRA_PARAMS` | Extra parameters | `{}` |
 
-### DALL-E (Image Generation)
+### OpenAI Images
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `DALL_E_MODEL` | Model name | `dall-e-2` |
-| `DALL_E_IMAGE_SIZE` | Image size | `512x512` |
-| `DALL_E_IMAGE_QUALITY` | Image quality | `standard` |
-| `DALL_E_IMAGE_STYLE` | Image style | `vivid` |
+| `OPENAI_IMAGE_MODEL` | OpenAI image model used by `/img`, the built-in `image_gen` tool, and the Responses `image_generation` tool | `gpt-image-2` |
+| `OPENAI_IMAGE_N` | Number of images | `1` |
+| `OPENAI_IMAGE_SIZE` | Image size/resolution | `auto` |
+| `OPENAI_IMAGE_QUALITY` | Image quality | `auto` |
+| `OPENAI_IMAGE_BACKGROUND` | Image background | `auto` |
+| `OPENAI_IMAGE_INPUT_FIDELITY` | Edit input fidelity | `low` |
+| `OPENAI_IMAGE_MODERATION` | Image moderation level | `auto` |
+| `OPENAI_IMAGE_OUTPUT_FORMAT` | Output format | `png` |
+| `OPENAI_IMAGE_OUTPUT_COMPRESSION` | Output compression | `100` |
+| `OPENAI_IMAGE_EXTRA_PARAMS` | Extra params passed to `/images/generations` | `{}` |
+
+If your OpenAI-compatible upstream has not exposed `gpt-image-2`, configure `gpt-image-1.5` instead.
 
 ### Azure OpenAI
 
@@ -260,8 +268,13 @@ AI: Based on your conversation about the nice weather, I recommend these activit
 |----------|-------------|--------|
 | `AZURE_API_KEY` | Azure API key | String |
 | `AZURE_RESOURCE_NAME` | Resource name | From Azure portal |
-| `AZURE_CHAT_MODEL` | Deployment name | Your deployment |
 | `AZURE_API_VERSION` | API version | `2024-06-01` |
+| `AZURE_CHAT_MODEL` | Chat deployment name | Your deployment |
+| `AZURE_VISION_MODEL` | Vision deployment name | Your deployment |
+| `AZURE_IMAGE_MODEL` | Image deployment name | Your deployment |
+| `AZURE_IMAGE_SIZE` | Image size | `1024x1024` |
+| `AZURE_IMAGE_QUALITY` | Image quality | `standard` |
+| `AZURE_IMAGE_STYLE` | Image style | `vivid` |
 
 ### Anthropic Claude
 
@@ -276,7 +289,7 @@ AI: Based on your conversation about the nice weather, I recommend these activit
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `GOOGLE_API_KEY` | API key | `null` |
-| `GOOGLE_API_BASE` | Base URL | `https://generativelanguage.googleapis.com/v1beta/models/` |
+| `GOOGLE_API_BASE` | Base URL | `https://generativelanguage.googleapis.com/v1beta` |
 | `GOOGLE_CHAT_MODEL` | Model name | `gemini-pro` |
 
 ### Google Vertex AI
@@ -327,9 +340,12 @@ AI: Based on your conversation about the nice weather, I recommend these activit
 | `OAILIKE_API_KEY` | API key | `null` |
 | `OAILIKE_API_BASE` | Base URL | `https://api.openai.com/v1` |
 | `OAILIKE_CHAT_MODEL` | Chat model | `gpt-4o-mini` |
-| `OAILIKE_IMAGE_MODEL` | Image model | `dall-e-3` |
+| `OAILIKE_IMAGE_MODEL` | Image model | `gpt-image-2` |
 | `OAILIKE_VISION_MODEL` | Vision model | `gpt-4o-mini` |
+| `OAILIKE_IMAGE_N` | Number of images | `1` |
 | `OAILIKE_IMAGE_SIZE` | Image size | `1024x1024` |
+| `OAILIKE_IMAGE_QUALITY` | Image quality | `auto` |
+| `OAILIKE_IMAGE_EXTRA_PARAMS` | Extra params passed to `/images/generations` | `{}` |
 | `OAILIKE_EMBEDDING_MODEL` | Embedding model | `text-embedding-3-small` |
 | `OAILIKE_RERANK_MODEL` | Rerank model | `''` |
 | `OAILIKE_STT_MODEL` | Speech-to-text model | `FunAudioLLM/SenseVoiceSmall` |
@@ -342,9 +358,12 @@ AI: Based on your conversation about the nice weather, I recommend these activit
 
 **OpenAI-like Relay Tools**:
 ```bash
-# Use other provider's tools through OpenAI-like interface
+# OAI-like relay tools are not USE_TOOLS and are not OpenAI Responses native tools.
+# Enable them only when the gateway explicitly supports relaying OpenAI-compatible requests to Gemini-like backend tools.
 OAILIKE_RELAY_TOOLS='{"gemini": ["googleSearch", "codeExecution", "urlContext"]}'
-USE_OAILIKE_RELAY_TOOLS='["googleSearch"]'
+OAILIKE_ENABLE_GOOGLE_SEARCH=true
+OAILIKE_ENABLE_CODE_EXECUTION=false
+OAILIKE_ENABLE_URL_CONTEXT=false
 ```
 
 ## 🛠️ AI Native Tools Configuration
@@ -357,8 +376,6 @@ OpenAI Responses API provides server-side tools (available only when using Respo
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `OPENAI_BUILDIN` | Available tools list | `['webSearch', 'codeInterpreter', 'fileSearch', 'imageGeneration', 'mcp']` |
-| `USE_OPENAI_BUILDIN` | Enabled tools | `[]` |
 | `OPENAI_RESPONSE_MODELS` | Models using Response API | `['*']` |
 | `OPENAI_PROVIDER_OPTIONS` | Provider options | See below |
 
@@ -371,13 +388,15 @@ OPENAI_PROVIDER_OPTIONS = {
   // previousResponseId: '',      // Previous response ID
   // store: false,                // Whether to store
   // user: 'user1',               // User identifier
-  // reasoningEffort: 'medium',   // Reasoning effort level
+  // reasoningEffort: 'medium',   // Reasoning effort level: low, medium, high, xhigh
   // strictJsonSchema: true,      // Strict JSON schema
   // instructions: '',            // Instructions
   // serviceTier: 'auto',         // Service tier
   // include: ['reasoning.encrypted_content'],
 }
 ```
+
+Use `/think high`, `/think xhigh`, or `/think off` in Telegram to adjust the current chat's `OPENAI_PROVIDER_OPTIONS.reasoningEffort`.
 
 #### Web Search - Web Search Tool
 
@@ -399,6 +418,19 @@ OPENAI_WEB_SEARCH_CONTEXT_SIZE='high'
 OPENAI_WEB_SEARCH_USER_LOCATION='Beijing, China'
 OPENAI_WEB_SEARCH_ALLOWED_DOMAINS='["wikipedia.org", "github.com"]'
 ```
+
+#### GitHub Repository Reader - OpenAI Responses Only
+
+This is not a `USE_TOOLS` item. Enable it with `OPENAI_ENABLE_GITHUB_REPO_READER` when using OpenAI Responses models such as `gpt-5.5`.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OPENAI_ENABLE_GITHUB_REPO_READER` | Enable GitHub repository reading function tool | `false` |
+| `GITHUB_TOKEN` | Optional GitHub token for higher rate limits or private repos | `[]` |
+| `GITHUB_REPO_READER_MAX_FILES` | Maximum files to include | `30` |
+| `GITHUB_REPO_READER_MAX_FILE_SIZE` | Maximum single file size in bytes | `30000` |
+| `GITHUB_REPO_READER_MAX_TOTAL_CHARS` | Maximum returned characters | `120000` |
+| `GITHUB_REPO_READER_TIMEOUT` | Request timeout in seconds | `20` |
 
 #### Code Interpreter - Python Code Execution Tool
 
@@ -424,19 +456,24 @@ OPENAI_FILE_SEARCH_MAX_RESULTS=20
 OPENAI_FILE_SEARCH_SCORE_THRESHOLD=0.5
 ```
 
-#### Image Generation - Image Generation Tool (GPT-5.1+)
+#### Image Generation - Image Generation Tool
 
 | Variable | Description | Default | Options |
 |----------|-------------|---------|---------|
 | `OPENAI_ENABLE_IMAGE_GENERATION` | Enable image generation | `false` | - |
 | `OPENAI_IMAGE_BACKGROUND` | Background type | `auto` | `auto`, `opaque`, `transparent` |
 | `OPENAI_IMAGE_INPUT_FIDELITY` | Input fidelity | `low` | `low`, `high` |
-| `OPENAI_IMAGE_MODEL` | Image generation model | `gpt-image-1` | - |
+| `OPENAI_IMAGE_MODEL` | Image generation model | `gpt-image-2` | - |
+| `OPENAI_IMAGE_N` | Number of images | `1` | - |
+| `OPENAI_IMAGE_MODERATION` | Moderation level | `auto` | `auto`, `low` |
 | `OPENAI_IMAGE_OUTPUT_COMPRESSION` | Output compression (0-100) | `100` | - |
 | `OPENAI_IMAGE_OUTPUT_FORMAT` | Output format | `png` | `png`, `jpeg`, `webp` |
 | `OPENAI_IMAGE_PARTIAL_IMAGES` | Partial images count (0-3) | `0` | - |
 | `OPENAI_IMAGE_QUALITY` | Image quality | `auto` | `auto`, `low`, `medium`, `high` |
 | `OPENAI_IMAGE_SIZE` | Image size | `auto` | `auto`, `1024x1024`, `1024x1536`, `1536x1024` |
+| `OPENAI_IMAGE_EXTRA_PARAMS` | Extra params passed to `/images/generations` | `{}` | - |
+
+For CLIProxyAPI, confirm that the upstream exposes `gpt-image-2`; otherwise use `gpt-image-1.5` or the model your upstream actually supports.
 
 #### MCP - Model Context Protocol
 
@@ -464,8 +501,6 @@ Anthropic provides powerful server-side tools including web fetch, search, and c
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `ANTHROPIC_BUILDIN` | Available tools list | `['webFetch', 'webSearch', 'codeExecution']` |
-| `USE_ANTHROPIC_BUILDIN` | Enabled tools | `[]` |
 | `ANTHROPIC_ENABLE_CACHE_CONTROL` | Enable prompt caching | `true` |
 | `ANTHROPIC_PROVIDER_OPTIONS` | Provider options | See below |
 
@@ -558,8 +593,12 @@ Google Gemini provides various built-in tools.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `GOOGLE_BUILDIN` | Available tools list | `['googleSearch', 'codeExecution', 'urlContext', 'googleMaps', 'fileSearch', 'enterpriseWebSearch']` |
-| `USE_GOOGLE_BUILDIN` | Enabled tools | `[]` |
+| `GOOGLE_ENABLE_GOOGLE_SEARCH` | Enable Google Search grounding | `false` |
+| `GOOGLE_ENABLE_CODE_EXECUTION` | Enable Google Code Execution | `false` |
+| `GOOGLE_ENABLE_URL_CONTEXT` | Enable Google URL Context | `false` |
+| `GOOGLE_ENABLE_GOOGLE_MAPS` | Enable Google Maps grounding | `false` |
+| `GOOGLE_ENABLE_FILE_SEARCH` | Enable Google File Search | `false` |
+| `GOOGLE_ENABLE_ENTERPRISE_WEB_SEARCH` | Enable Google Enterprise Web Search | `false` |
 | `GOOGLE_PROVIDER_OPTIONS` | Provider options | See below |
 
 **Tool Compatibility**:
@@ -655,8 +694,6 @@ xAI Grok provides web search, X search, and code execution tools.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `XAI_BUILDIN` | Available tools list | `['webSearch', 'xSearch', 'codeExecution']` |
-| `USE_XAI_BUILDIN` | Enabled tools | `[]` |
 | `XAI_PROVIDER_OPTIONS` | Provider options | `{}` |
 
 **Provider Options**:
@@ -779,7 +816,7 @@ Users can modify these settings via Telegram commands. Use `/setenv KEY=VALUE` t
 |----------|-------------|---------|
 | `AI_CHAT_PROVIDER` | Current AI provider | `openai` |
 | `SYSTEM_INIT_MESSAGE` | System prompt | Auto-selected by language |
-| `CHAT_MODEL` | Model override | Provider default |
+| `*_CHAT_MODEL` | Provider chat model, for example `OPENAI_CHAT_MODEL` | Provider default |
 | `MAX_HISTORY_LENGTH` | History length | `10` |
 | `CHAT_TEMPERATURE` | Response creativity | `undefined` |
 | `MAX_TOKENS` | Max response length | `undefined` |
@@ -818,7 +855,7 @@ Users can modify these settings via Telegram commands. Use `/setenv KEY=VALUE` t
 
 Default `MAPPING_KEY`:
 ```
--p:SYSTEM_INIT_MESSAGE|-n:MAX_HISTORY_LENGTH|-a:AI_CHAT_PROVIDER|-ai:AI_IMAGE_PROVIDER|-m:CHAT_MODEL|-md:CURRENT_MODE|-v:VISION_MODEL|-t:OPENAI_TTS_MODEL|-ex:OPENAI_API_EXTRA_PARAMS|-mk:MAPPING_KEY|-mv:MAPPING_VALUE|-tm:TOOL_MODEL|-tool:USE_TOOLS|-oli:IMAGE_MODEL|-th:TEXT_HANDLE_TYPE|-to:TEXT_OUTPUT|-ah:AUDIO_HANDLE_TYPE|-ao:AUDIO_OUTPUT|-act:AUDIO_CONTAINS_TEXT|-as:AI_ASR_PROVIDER|-at:AI_TTS_PROVIDER|-ra:RERANK_AGENT|-ew:ENABLE_WORKFLOW|-tp:CHAT_TEMPERATURE
+-p:SYSTEM_INIT_MESSAGE|-n:MAX_HISTORY_LENGTH|-a:AI_CHAT_PROVIDER|-ai:AI_IMAGE_PROVIDER|-m:CHAT_MODEL|-v:VISION_MODEL|-t:OPENAI_TTS_MODEL|-ex:OPENAI_API_EXTRA_PARAMS|-mk:MAPPING_KEY|-mv:MAPPING_VALUE|-tm:TOOL_MODEL|-tool:USE_TOOLS|-im:IMAGE_MODEL|-th:TEXT_HANDLE_TYPE|-to:TEXT_OUTPUT|-ah:AUDIO_HANDLE_TYPE|-ao:AUDIO_OUTPUT|-act:AUDIO_CONTAINS_TEXT|-as:AI_ASR_PROVIDER|-at:AI_TTS_PROVIDER|-ra:RERANK_AGENT|-ew:ENABLE_WORKFLOW|-tp:CHAT_TEMPERATURE
 ```
 
 ## 📋 Commands
@@ -832,12 +869,12 @@ Default `MAPPING_KEY`:
 | `/start` | Get user ID and start | `/start` |
 | `/img` | Generate image | `/img A beautiful sunset` |
 | `/version` | Check version | `/version` |
-| `/setenv` | Set configuration | `/setenv AI_CHAT_PROVIDER=claude` |
-| `/setenvs` | Batch set config | `/setenvs {"CHAT_MODEL": "gpt-4"}` |
+| `/setenv` | Set configuration | `/setenv AI_CHAT_PROVIDER=anthropic` |
+| `/setenvs` | Batch set config | `/setenvs {"CHAT_MODEL": "gpt-5.5"}` |
 | `/delenv` | Delete configuration | `/delenv CHAT_MODEL` |
 | `/system` | Show system info | `/system` |
 | `/redo` | Regenerate response | `/redo` or `/redo Modified prompt` |
-| `/set` | Quick settings | `/set -a claude` |
+| `/set` | Quick settings | `/set -a anthropic` |
 | `/settings` | Show current settings | `/settings` |
 | `/history` | Show chat history | `/history` |
 | `/model` | Show/change model | `/model` |
@@ -935,7 +972,6 @@ QSTASH_TIMEOUT='15m'
 | `TELEGRAM_PHOTO_SIZE_OFFSET` | Photo size offset | `-2` |
 | `TELEGRAM_IMAGE_TRANSFER_MODE` | Image transfer mode | `url` |
 | `SEND_IMAGE_AS_FILE` | Send images as files | `false` |
-| `ENABLE_FILE` | Enable file reading (deprecated) | `true` |
 | `SUPPORT_FORMAT` | Supported file formats | `['text', 'photo', 'voice', 'audio', 'image']` |
 | `FILE_SIZE_LIMIT` | File size limit (when folding enabled) | `-1` |
 
@@ -1022,13 +1058,15 @@ Please listen to the audio file. Identify and understand the question being aske
 - `AI_ASR_PROVIDER`
 - `USE_TOOLS`
 - `USE_MCP`
-- `USE_OAILIKE_RELAY_TOOLS`
+- Provider-native toggles such as `OPENAI_ENABLE_WEB_SEARCH`, `GOOGLE_ENABLE_GOOGLE_SEARCH`, `OAILIKE_ENABLE_GOOGLE_SEARCH`
 - `CHAT_MODEL`
 - `IMAGE_MODEL`
 - `VISION_MODEL`
 - `TOOL_MODEL`
 - `ENVS`
 - `RERANK_AGENT`
+
+`CHAT_MODEL`, `IMAGE_MODEL`, and `VISION_MODEL` are shortcut entries. When set through `/set`, `/setenv`, `/setenvs`, or the admin dashboard, they are saved to the current provider's real key, such as `OPENAI_CHAT_MODEL`, `OAILIKE_IMAGE_MODEL`, or `GOOGLE_VISION_MODEL`.
 
 Example:
 ```bash
@@ -1042,7 +1080,7 @@ Configure tools for enhanced AI capabilities:
 
 ```bash
 # Enable built-in tools
-USE_TOOLS='["web_search", "image_generation", "weather"]'
+USE_TOOLS='["duckduckgo", "image_gen"]'
 
 # External API keys for tools
 PLUGIN_ENV_JINA_API_KEY='your_jina_key'
@@ -1108,6 +1146,7 @@ MCP_local='{
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `CHAT_TRIGGER_PREFIX` | Trigger word for bot | `''` |
+| `CHAT_MESSAGE_TRIGGER` | Multiple trigger mapping, for example `{"domo":"","doom":""}` | `{}` |
 | `IGNORE_TEXT_PREFIX` | Prefixes to ignore | `[]` |
 | `TELEGRAM_MIN_STREAM_INTERVAL` | Stream delay (ms) | `0` |
 | `ADD_QUOTE_LIMIT` | Auto-quote threshold | `-1` |
@@ -1219,7 +1258,7 @@ Storage key format: `user_profile:${chat_id}:${bot_id}[:${from_id}]`.
 To prevent token leakage, certain keys are locked by default:
 
 ```bash
-LOCK_USER_CONFIG_KEYS='OPENAI_API_BASE,GOOGLE_API_BASE,MISTRAL_API_BASE,COHERE_API_BASE,ANTHROPIC_API_BASE,AZURE_COMPLETIONS_API,AZURE_DALLE_API'
+LOCK_USER_CONFIG_KEYS='OPENAI_API_BASE,GOOGLE_API_BASE,MISTRAL_API_BASE,COHERE_API_BASE,ANTHROPIC_API_BASE,VERTEX_CREDENTIALS,OAILIKE_API_BASE,XAI_API_BASE'
 ```
 
 If you encounter "Key XXX is locked" errors, remove the key from this list to unlock it.
@@ -1282,13 +1321,13 @@ OPENAI_API_KEY='sk-openai-key'
 ANTHROPIC_API_KEY='sk-ant-key'
 GOOGLE_API_KEY='google-key'
 
-# User can switch with /setenv AI_CHAT_PROVIDER=claude
+# User can switch with /setenv AI_CHAT_PROVIDER=anthropic
 ```
 
 ### Advanced Features
 ```bash
 # Enable tools and MCP
-USE_TOOLS='["web_search", "image_generation"]'
+USE_TOOLS='["duckduckgo", "image_gen"]'
 USE_MCP='["weather_server"]'
 ENABLE_INTELLIGENT_MODEL=true
 

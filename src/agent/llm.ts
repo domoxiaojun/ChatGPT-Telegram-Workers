@@ -246,12 +246,16 @@ interface MockParams {
 
 function mockParams({ modelId, config, provider, options }: MockParams) {
     const extraParams = (config[`${provider.toUpperCase()}_API_EXTRA_PARAMS` as keyof AgentUserConfig] as Record<string, Record<string, any>>) || {};
-    const { PARAMS_MODIFIER: modifier, OAILIKE_RELAY_TOOLS: relayTools, USE_OAILIKE_RELAY_TOOLS: relayToolsList, GOOGLE_BUILDIN, USE_GOOGLE_BUILDIN, SEARCH_GROUNDING, GOOGLE_RETRIEVAL_CONFIG } = config;
+    const { PARAMS_MODIFIER: modifier, OAILIKE_RELAY_TOOLS: relayTools, GOOGLE_RETRIEVAL_CONFIG } = config;
 
     if (provider === 'oailike') {
         const relayKey = Object.keys(relayTools).find(key => modelId.includes(key));
-        if (relayKey && relayToolsList.length > 0) {
-            options.tools = relayTools[relayKey].filter(t => relayToolsList.includes(t)).map(t => ({
+        const enabledRelayTools = new Set<string>();
+        if (config.OAILIKE_ENABLE_GOOGLE_SEARCH) enabledRelayTools.add('googleSearch');
+        if (config.OAILIKE_ENABLE_CODE_EXECUTION) enabledRelayTools.add('codeExecution');
+        if (config.OAILIKE_ENABLE_URL_CONTEXT) enabledRelayTools.add('urlContext');
+        if (relayKey && enabledRelayTools.size > 0) {
+            options.tools = relayTools[relayKey].filter(t => enabledRelayTools.has(t)).map(t => ({
                 type: 'function',
                 function: { name: t },
             }));

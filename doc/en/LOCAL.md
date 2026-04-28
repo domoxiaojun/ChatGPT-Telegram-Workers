@@ -97,7 +97,7 @@ GROUP_CHAT_BOT_ENABLE = "true"
 CHAT_GROUP_WHITE_LIST = "group_id1,group_id2"
 
 # Advanced Features
-USE_TOOLS = '["web_search", "image_generation"]'
+USE_TOOLS = '["duckduckgo", "image_gen"]'
 ENABLE_INTELLIGENT_MODEL = "false"
 MAX_HISTORY_LENGTH = "10"
 

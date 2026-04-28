@@ -245,14 +245,22 @@ AI: 根据你们的对话，今天天气不错，我推荐以下活动：
 | `OPENAI_API_BASE` | API基础URL | `https://api.openai.com/v1` |
 | `OPENAI_API_EXTRA_PARAMS` | 额外参数 | `{}` |
 
-### DALL-E (图像生成)
+### OpenAI 图片生成
 
 | 变量 | 描述 | 默认值 |
 |------|------|--------|
-| `DALL_E_MODEL` | 模型名称 | `dall-e-2` |
-| `DALL_E_IMAGE_SIZE` | 图像尺寸 | `512x512` |
-| `DALL_E_IMAGE_QUALITY` | 图像质量 | `standard` |
-| `DALL_E_IMAGE_STYLE` | 图像风格 | `vivid` |
+| `OPENAI_IMAGE_MODEL` | OpenAI 图片模型，供 `/img`、项目内置 `image_gen` 工具、Responses 内置 `image_generation` 工具使用 | `gpt-image-2` |
+| `OPENAI_IMAGE_N` | 生成图片数量 | `1` |
+| `OPENAI_IMAGE_SIZE` | OpenAI 图片尺寸/分辨率 | `auto` |
+| `OPENAI_IMAGE_QUALITY` | OpenAI 图片质量 | `auto` |
+| `OPENAI_IMAGE_BACKGROUND` | OpenAI 图片背景 | `auto` |
+| `OPENAI_IMAGE_INPUT_FIDELITY` | 编辑输入保真度 | `low` |
+| `OPENAI_IMAGE_MODERATION` | 图片审核强度 | `auto` |
+| `OPENAI_IMAGE_OUTPUT_FORMAT` | OpenAI 图片输出格式 | `png` |
+| `OPENAI_IMAGE_OUTPUT_COMPRESSION` | 输出压缩等级 | `100` |
+| `OPENAI_IMAGE_EXTRA_PARAMS` | 透传给 `/images/generations` 的额外参数 | `{}` |
+
+如上游兼容服务尚未暴露 `gpt-image-2`，可降级配置为 `gpt-image-1.5` 或上游实际支持的模型。
 
 ### Azure OpenAI
 
@@ -260,8 +268,13 @@ AI: 根据你们的对话，今天天气不错，我推荐以下活动：
 |------|------|------|
 | `AZURE_API_KEY` | Azure API密钥 | String |
 | `AZURE_RESOURCE_NAME` | 资源名称 | 从Azure门户获取 |
-| `AZURE_CHAT_MODEL` | 部署名称 | 你的部署 |
 | `AZURE_API_VERSION` | API版本 | `2024-06-01` |
+| `AZURE_CHAT_MODEL` | 聊天部署名称 | 你的部署 |
+| `AZURE_VISION_MODEL` | 视觉部署名称 | 你的部署 |
+| `AZURE_IMAGE_MODEL` | 图片部署名称 | 你的部署 |
+| `AZURE_IMAGE_SIZE` | 图片尺寸 | `1024x1024` |
+| `AZURE_IMAGE_QUALITY` | 图片质量 | `standard` |
+| `AZURE_IMAGE_STYLE` | 图片风格 | `vivid` |
 
 ### Anthropic Claude
 
@@ -276,7 +289,7 @@ AI: 根据你们的对话，今天天气不错，我推荐以下活动：
 | 变量 | 描述 | 默认值 |
 |------|------|--------|
 | `GOOGLE_API_KEY` | API密钥 | `null` |
-| `GOOGLE_API_BASE` | 基础URL | `https://generativelanguage.googleapis.com/v1beta/models/` |
+| `GOOGLE_API_BASE` | 基础URL | `https://generativelanguage.googleapis.com/v1beta` |
 | `GOOGLE_CHAT_MODEL` | 模型名称 | `gemini-pro` |
 
 ### Google Vertex AI
@@ -327,9 +340,12 @@ AI: 根据你们的对话，今天天气不错，我推荐以下活动：
 | `OAILIKE_API_KEY` | API密钥 | `null` |
 | `OAILIKE_API_BASE` | 基础URL | `https://api.openai.com/v1` |
 | `OAILIKE_CHAT_MODEL` | 聊天模型 | `gpt-4o-mini` |
-| `OAILIKE_IMAGE_MODEL` | 图像模型 | `dall-e-3` |
+| `OAILIKE_IMAGE_MODEL` | 图像模型 | `gpt-image-2` |
 | `OAILIKE_VISION_MODEL` | 视觉模型 | `gpt-4o-mini` |
+| `OAILIKE_IMAGE_N` | 图像数量 | `1` |
 | `OAILIKE_IMAGE_SIZE` | 图像尺寸 | `1024x1024` |
+| `OAILIKE_IMAGE_QUALITY` | 图像质量 | `auto` |
+| `OAILIKE_IMAGE_EXTRA_PARAMS` | 透传给 `/images/generations` 的额外参数 | `{}` |
 | `OAILIKE_EMBEDDING_MODEL` | 嵌入模型 | `text-embedding-3-small` |
 | `OAILIKE_RERANK_MODEL` | 重排序模型 | `''` |
 | `OAILIKE_STT_MODEL` | 语音识别模型 | `FunAudioLLM/SenseVoiceSmall` |
@@ -342,9 +358,12 @@ AI: 根据你们的对话，今天天气不错，我推荐以下活动：
 
 **OpenAI-like 中继工具**：
 ```bash
-# 通过 OpenAI-like 接口使用其他提供商的工具
+# OAI-like relay tools 不是 USE_TOOLS，也不是 OpenAI Responses 原生工具。
+# 只有网关明确支持把 OpenAI-compatible 请求转发到 Gemini 等后端工具时才开启。
 OAILIKE_RELAY_TOOLS='{"gemini": ["googleSearch", "codeExecution", "urlContext"]}'
-USE_OAILIKE_RELAY_TOOLS='["googleSearch"]'
+OAILIKE_ENABLE_GOOGLE_SEARCH=true
+OAILIKE_ENABLE_CODE_EXECUTION=false
+OAILIKE_ENABLE_URL_CONTEXT=false
 ```
 
 ## 🛠️ AI原生工具配置
@@ -357,8 +376,6 @@ OpenAI Responses API 提供服务器端工具（仅在使用 Responses API 时�
 
 | 变量 | 描述 | 默认值 |
 |------|------|--------|
-| `OPENAI_BUILDIN` | 可用工具列表 | `['webSearch', 'codeInterpreter', 'fileSearch', 'imageGeneration', 'mcp']` |
-| `USE_OPENAI_BUILDIN` | 启用的工具 | `[]` |
 | `OPENAI_RESPONSE_MODELS` | 使用 Response API 的模型 | `['*']` |
 | `OPENAI_PROVIDER_OPTIONS` | 提供商选项 | 见下方 |
 
@@ -371,13 +388,15 @@ OPENAI_PROVIDER_OPTIONS = {
   // previousResponseId: '',      // 上一个响应ID
   // store: false,                // 是否存储
   // user: 'user1',               // 用户标识
-  // reasoningEffort: 'medium',   // 推理努力程度
+  // reasoningEffort: 'medium',   // 推理努力程度: low, medium, high, xhigh
   // strictJsonSchema: true,      // 严格JSON模式
   // instructions: '',            // 指令
   // serviceTier: 'auto',         // 服务等级
   // include: ['reasoning.encrypted_content'],
 }
 ```
+
+可在 Telegram 中使用 `/think high`、`/think xhigh` 或 `/think off` 调整当前会话的 `OPENAI_PROVIDER_OPTIONS.reasoningEffort`。
 
 #### Web Search - 网页搜索工具
 
@@ -399,6 +418,19 @@ OPENAI_WEB_SEARCH_CONTEXT_SIZE='high'
 OPENAI_WEB_SEARCH_USER_LOCATION='Beijing, China'
 OPENAI_WEB_SEARCH_ALLOWED_DOMAINS='["wikipedia.org", "github.com"]'
 ```
+
+#### GitHub 仓库读取 - 仅 OpenAI Responses
+
+这不是 `USE_TOOLS` 项。使用 `gpt-5.5` 等 OpenAI Responses 模型时，通过 `OPENAI_ENABLE_GITHUB_REPO_READER` 启用。
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `OPENAI_ENABLE_GITHUB_REPO_READER` | 启用 GitHub 仓库读取函数工具 | `false` |
+| `GITHUB_TOKEN` | 可选 GitHub token，用于提高限额或读取授权私有仓库 | `[]` |
+| `GITHUB_REPO_READER_MAX_FILES` | 最多读取文件数 | `30` |
+| `GITHUB_REPO_READER_MAX_FILE_SIZE` | 单文件最大字节数 | `30000` |
+| `GITHUB_REPO_READER_MAX_TOTAL_CHARS` | 返回给模型的总字符上限 | `120000` |
+| `GITHUB_REPO_READER_TIMEOUT` | 请求超时，单位秒 | `20` |
 
 #### Code Interpreter - Python代码执行工具
 
@@ -424,19 +456,24 @@ OPENAI_FILE_SEARCH_MAX_RESULTS=20
 OPENAI_FILE_SEARCH_SCORE_THRESHOLD=0.5
 ```
 
-#### Image Generation - 图片生成工具 (GPT-5.1+)
+#### Image Generation - 图片生成工具
 
 | 变量 | 描述 | 默认值 | 选项 |
 |------|------|--------|------|
 | `OPENAI_ENABLE_IMAGE_GENERATION` | 启用图片生成 | `false` | - |
 | `OPENAI_IMAGE_BACKGROUND` | 背景类型 | `auto` | `auto`, `opaque`, `transparent` |
 | `OPENAI_IMAGE_INPUT_FIDELITY` | 输入保真度 | `low` | `low`, `high` |
-| `OPENAI_IMAGE_MODEL` | 图片生成模型 | `gpt-image-1` | - |
+| `OPENAI_IMAGE_MODEL` | 图片生成模型 | `gpt-image-2` | - |
+| `OPENAI_IMAGE_N` | 生成图片数量 | `1` | - |
+| `OPENAI_IMAGE_MODERATION` | 审核强度 | `auto` | `auto`, `low` |
 | `OPENAI_IMAGE_OUTPUT_COMPRESSION` | 输出压缩等级(0-100) | `100` | - |
 | `OPENAI_IMAGE_OUTPUT_FORMAT` | 输出格式 | `png` | `png`, `jpeg`, `webp` |
 | `OPENAI_IMAGE_PARTIAL_IMAGES` | 部分图片数量(0-3) | `0` | - |
 | `OPENAI_IMAGE_QUALITY` | 图片质量 | `auto` | `auto`, `low`, `medium`, `high` |
 | `OPENAI_IMAGE_SIZE` | 图片尺寸 | `auto` | `auto`, `1024x1024`, `1024x1536`, `1536x1024` |
+| `OPENAI_IMAGE_EXTRA_PARAMS` | 透传给 `/images/generations` 的额外参数 | `{}` | - |
+
+使用 CLIProxyAPI 的 OpenAI 图片代理时，需要确认上游已暴露 `gpt-image-2`；否则请改用 `gpt-image-1.5` 或上游实际支持的模型。
 
 #### MCP - Model Context Protocol
 
@@ -464,8 +501,6 @@ Anthropic 提供强大的服务器端工具，包括网页抓取、搜索和代�
 
 | 变量 | 描述 | 默认值 |
 |------|------|--------|
-| `ANTHROPIC_BUILDIN` | 可用工具列表 | `['webFetch', 'webSearch', 'codeExecution']` |
-| `USE_ANTHROPIC_BUILDIN` | 启用的工具 | `[]` |
 | `ANTHROPIC_ENABLE_CACHE_CONTROL` | 启用prompt缓存 | `true` |
 | `ANTHROPIC_PROVIDER_OPTIONS` | 提供商选项 | 见下方 |
 
@@ -558,8 +593,12 @@ Google Gemini 提供多种内置工具。
 
 | 变量 | 描述 | 默认值 |
 |------|------|--------|
-| `GOOGLE_BUILDIN` | 可用工具列表 | `['googleSearch', 'codeExecution', 'urlContext', 'googleMaps', 'fileSearch', 'enterpriseWebSearch']` |
-| `USE_GOOGLE_BUILDIN` | 启用的工具 | `[]` |
+| `GOOGLE_ENABLE_GOOGLE_SEARCH` | 启用 Google Search grounding | `false` |
+| `GOOGLE_ENABLE_CODE_EXECUTION` | 启用 Google Code Execution | `false` |
+| `GOOGLE_ENABLE_URL_CONTEXT` | 启用 Google URL Context | `false` |
+| `GOOGLE_ENABLE_GOOGLE_MAPS` | 启用 Google Maps grounding | `false` |
+| `GOOGLE_ENABLE_FILE_SEARCH` | 启用 Google File Search | `false` |
+| `GOOGLE_ENABLE_ENTERPRISE_WEB_SEARCH` | 启用 Google Enterprise Web Search | `false` |
 | `GOOGLE_PROVIDER_OPTIONS` | 提供商选项 | 见下方 |
 
 **工具兼容性**:
@@ -655,8 +694,6 @@ xAI Grok 提供网页搜索、X搜索和代码执行工具。
 
 | 变量 | 描述 | 默认值 |
 |------|------|--------|
-| `XAI_BUILDIN` | 可用工具列表 | `['webSearch', 'xSearch', 'codeExecution']` |
-| `USE_XAI_BUILDIN` | 启用的工具 | `[]` |
 | `XAI_PROVIDER_OPTIONS` | 提供商选项 | `{}` |
 
 **Provider Options**:
@@ -779,7 +816,7 @@ GOOGLE_TTS_EXTRA_PARAMS='{
 |------|------|--------|
 | `AI_CHAT_PROVIDER` | 当前AI提供商 | `openai` |
 | `SYSTEM_INIT_MESSAGE` | 系统提示 | 根据语言自动选择 |
-| `CHAT_MODEL` | 模型覆盖 | 提供商默认 |
+| `*_CHAT_MODEL` | 各 provider 的聊天模型，例如 `OPENAI_CHAT_MODEL` | 提供商默认 |
 | `MAX_HISTORY_LENGTH` | 历史长度 | `10` |
 | `CHAT_TEMPERATURE` | 响应创造性 | `undefined` |
 | `MAX_TOKENS` | 最大响应长度 | `undefined` |
@@ -818,7 +855,7 @@ GOOGLE_TTS_EXTRA_PARAMS='{
 
 默认`MAPPING_KEY`：
 ```
--p:SYSTEM_INIT_MESSAGE|-n:MAX_HISTORY_LENGTH|-a:AI_CHAT_PROVIDER|-ai:AI_IMAGE_PROVIDER|-m:CHAT_MODEL|-md:CURRENT_MODE|-v:VISION_MODEL|-t:OPENAI_TTS_MODEL|-ex:OPENAI_API_EXTRA_PARAMS|-mk:MAPPING_KEY|-mv:MAPPING_VALUE|-tm:TOOL_MODEL|-tool:USE_TOOLS|-oli:IMAGE_MODEL|-th:TEXT_HANDLE_TYPE|-to:TEXT_OUTPUT|-ah:AUDIO_HANDLE_TYPE|-ao:AUDIO_OUTPUT|-act:AUDIO_CONTAINS_TEXT|-as:AI_ASR_PROVIDER|-at:AI_TTS_PROVIDER|-ra:RERANK_AGENT|-ew:ENABLE_WORKFLOW|-tp:CHAT_TEMPERATURE
+-p:SYSTEM_INIT_MESSAGE|-n:MAX_HISTORY_LENGTH|-a:AI_CHAT_PROVIDER|-ai:AI_IMAGE_PROVIDER|-m:CHAT_MODEL|-v:VISION_MODEL|-t:OPENAI_TTS_MODEL|-ex:OPENAI_API_EXTRA_PARAMS|-mk:MAPPING_KEY|-mv:MAPPING_VALUE|-tm:TOOL_MODEL|-tool:USE_TOOLS|-im:IMAGE_MODEL|-th:TEXT_HANDLE_TYPE|-to:TEXT_OUTPUT|-ah:AUDIO_HANDLE_TYPE|-ao:AUDIO_OUTPUT|-act:AUDIO_CONTAINS_TEXT|-as:AI_ASR_PROVIDER|-at:AI_TTS_PROVIDER|-ra:RERANK_AGENT|-ew:ENABLE_WORKFLOW|-tp:CHAT_TEMPERATURE
 ```
 
 ## 📋 命令
@@ -832,12 +869,12 @@ GOOGLE_TTS_EXTRA_PARAMS='{
 | `/start` | 获取用户ID并开始 | `/start` |
 | `/img` | 生成图像 | `/img 美丽的日落` |
 | `/version` | 检查版本 | `/version` |
-| `/setenv` | 设置配置 | `/setenv AI_CHAT_PROVIDER=claude` |
-| `/setenvs` | 批量设置配置 | `/setenvs {"CHAT_MODEL": "gpt-4"}` |
+| `/setenv` | 设置配置 | `/setenv AI_CHAT_PROVIDER=anthropic` |
+| `/setenvs` | 批量设置配置 | `/setenvs {"CHAT_MODEL": "gpt-5.5"}` |
 | `/delenv` | 删除配置 | `/delenv CHAT_MODEL` |
 | `/system` | 显示系统信息 | `/system` |
 | `/redo` | 重新生成响应 | `/redo` 或 `/redo 修改的提示` |
-| `/set` | 快速设置 | `/set -a claude` |
+| `/set` | 快速设置 | `/set -a anthropic` |
 | `/settings` | 显示当前设置 | `/settings` |
 | `/history` | 显示聊天历史 | `/history` |
 | `/model` | 显示/更改模型 | `/model` |
@@ -935,7 +972,6 @@ QSTASH_TIMEOUT='15m'
 | `TELEGRAM_PHOTO_SIZE_OFFSET` | 图片尺寸偏移 | `-2` |
 | `TELEGRAM_IMAGE_TRANSFER_MODE` | 图片传递方式 | `url` |
 | `SEND_IMAGE_AS_FILE` | 以文件形式发送图片 | `false` |
-| `ENABLE_FILE` | 启用文件读取（已弃用） | `true` |
 | `SUPPORT_FORMAT` | 支持的文件格式 | `['text', 'photo', 'voice', 'audio', 'image']` |
 | `FILE_SIZE_LIMIT` | 文件大小限制（启用折叠时生效） | `-1` |
 
@@ -1022,13 +1058,15 @@ Please listen to the audio file. Identify and understand the question being aske
 - `AI_ASR_PROVIDER`
 - `USE_TOOLS`
 - `USE_MCP`
-- `USE_OAILIKE_RELAY_TOOLS`
+- Provider 原生能力开关，例如 `OPENAI_ENABLE_WEB_SEARCH`、`GOOGLE_ENABLE_GOOGLE_SEARCH`、`OAILIKE_ENABLE_GOOGLE_SEARCH`
 - `CHAT_MODEL`
 - `IMAGE_MODEL`
 - `VISION_MODEL`
 - `TOOL_MODEL`
 - `ENVS`
 - `RERANK_AGENT`
+
+`CHAT_MODEL`、`IMAGE_MODEL`、`VISION_MODEL` 是快捷入口；通过 `/set`、`/setenv`、`/setenvs` 或后台 admin 设置时，会按当前 provider 自动保存为真实变量，例如 `OPENAI_CHAT_MODEL`、`OAILIKE_IMAGE_MODEL`、`GOOGLE_VISION_MODEL`。
 
 示例：
 ```bash
@@ -1042,7 +1080,7 @@ ENVS_VARIABLES='["OPENAI_API_KEY", "ANTHROPIC_API_KEY"]'
 
 ```bash
 # 启用内置工具
-USE_TOOLS='["web_search", "image_generation", "weather"]'
+USE_TOOLS='["duckduckgo", "image_gen"]'
 
 # 工具的外部API密钥
 PLUGIN_ENV_JINA_API_KEY='your_jina_key'
@@ -1108,6 +1146,7 @@ MCP_local='{
 | 变量 | 描述 | 默认值 |
 |------|------|--------|
 | `CHAT_TRIGGER_PREFIX` | 机器人触发词 | `''` |
+| `CHAT_MESSAGE_TRIGGER` | 多触发词映射，例如 `{"domo":"","doom":""}` | `{}` |
 | `IGNORE_TEXT_PREFIX` | 忽略的前缀 | `[]` |
 | `TELEGRAM_MIN_STREAM_INTERVAL` | 流延迟(毫秒) | `0` |
 | `ADD_QUOTE_LIMIT` | 自动引用阈值 | `-1` |
@@ -1219,7 +1258,7 @@ MCP_local='{
 为防止令牌泄露，某些键默认被锁定：
 
 ```bash
-LOCK_USER_CONFIG_KEYS='OPENAI_API_BASE,GOOGLE_API_BASE,MISTRAL_API_BASE,COHERE_API_BASE,ANTHROPIC_API_BASE,AZURE_COMPLETIONS_API,AZURE_DALLE_API'
+LOCK_USER_CONFIG_KEYS='OPENAI_API_BASE,GOOGLE_API_BASE,MISTRAL_API_BASE,COHERE_API_BASE,ANTHROPIC_API_BASE,VERTEX_CREDENTIALS,OAILIKE_API_BASE,XAI_API_BASE'
 ```
 
 如果遇到"Key XXX is locked"错误，请从此列表中删除该键以解锁。
@@ -1282,13 +1321,13 @@ OPENAI_API_KEY='sk-openai-key'
 ANTHROPIC_API_KEY='sk-ant-key'
 GOOGLE_API_KEY='google-key'
 
-# 用户可以用 /setenv AI_CHAT_PROVIDER=claude 切换
+# 用户可以用 /setenv AI_CHAT_PROVIDER=anthropic 切换
 ```
 
 ### 高级功能
 ```bash
 # 启用工具和MCP
-USE_TOOLS='["web_search", "image_generation"]'
+USE_TOOLS='["duckduckgo", "image_gen"]'
 USE_MCP='["weather_server"]'
 ENABLE_INTELLIGENT_MODEL=true
 

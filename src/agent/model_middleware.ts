@@ -10,12 +10,15 @@ import type { ToolResult } from '../tools/types';
 import type { ChatStreamTextHandler } from './types';
 import {
     extractReasoningMiddleware,
+    jsonSchema,
+    tool as aiTool,
     wrapLanguageModel,
 } from 'ai';
 import { ENV } from '../config/env';
 import { getLogSingleton, log } from '../log';
 import { SEGMENTATION_MARK } from '../telegram/utils/md2tgmd';
 import { getTools, sendToolResult, validTools } from '../tools';
+import githubRepoReader from '../tools/internal/github_repo_reader';
 import { createLlmModel } from './llm';
 
 type Writeable<T> = { -readonly [P in keyof T as P extends 'modelId' ? P : never]: T[P] };
@@ -25,6 +28,118 @@ export interface MessageInfo {
     occured_error?: boolean;
 };
 
+const PROVIDER_ONLY_TOOLS = new Set([
+    'google_search',
+    'url_context',
+    'code_execution',
+    'google_maps',
+    'file_search',
+    'enterprise_web_search',
+    'vertex_rag_store',
+    'web_search',
+    'web_fetch',
+    'x_search',
+    'code_interpreter',
+    'image_generation',
+    'mcp',
+]);
+
+function shouldUseToolModel(activeTools: string[]): boolean {
+    return activeTools.length > 0 && activeTools.every(name => !PROVIDER_ONLY_TOOLS.has(name));
+}
+
+function getMessageTextContent(content: unknown): string {
+    if (typeof content === 'string') {
+        return content;
+    }
+    if (!Array.isArray(content)) {
+        return '';
+    }
+
+    return content
+        .map((part: any) => {
+            if (!part || typeof part !== 'object') {
+                return '';
+            }
+            if (typeof part.text === 'string') {
+                return part.text;
+            }
+            if (typeof part.content === 'string') {
+                return part.content;
+            }
+            return '';
+        })
+        .filter(Boolean)
+        .join('\n');
+}
+
+function normalizeTriggerValue(value: unknown): string {
+    return String(value ?? '')
+        .trim()
+        .replace(/^['"]|['"]$/g, '')
+        .trim()
+        .toLowerCase();
+}
+
+function getOpenAIWebSearchTriggerText(text: string): string {
+    const quoteIndex = text.search(/\n\s*>/);
+    const withoutReplyQuote = quoteIndex >= 0 ? text.slice(0, quoteIndex) : text;
+
+    return withoutReplyQuote
+        .split('\n')
+        .filter(line => !line.trimStart().startsWith('[Group Chat Context]'))
+        .join('\n')
+        .trim();
+}
+
+function shouldEnableOpenAIWebSearch(context: AgentUserConfig, currentUserText: string): boolean {
+    if (!context.OPENAI_ENABLE_WEB_SEARCH) {
+        return false;
+    }
+
+    const mode = normalizeTriggerValue(context.OPENAI_WEB_SEARCH_TRIGGER_MODE || 'intent');
+    if (mode === 'always') {
+        log.info('[warpLLMParams] OpenAI web_search enabled by trigger mode: always');
+        return true;
+    }
+
+    const triggerText = getOpenAIWebSearchTriggerText(currentUserText);
+    const text = triggerText.toLowerCase();
+    if (!text) {
+        return false;
+    }
+
+    const negativeTriggers = ['不要搜索', '不用搜索', '别搜索', '无需搜索', '不要搜', '不用搜', '别搜', '不要联网', '不用联网'];
+    if (negativeTriggers.some(trigger => text.includes(trigger))) {
+        return false;
+    }
+
+    const prefixes = context.OPENAI_WEB_SEARCH_TRIGGER_PREFIXES || [];
+    const matchedPrefix = prefixes.find((prefix) => {
+        const normalized = normalizeTriggerValue(prefix);
+        return normalized && text.startsWith(normalized);
+    });
+    if (matchedPrefix) {
+        log.info(`[warpLLMParams] OpenAI web_search enabled by trigger prefix: ${matchedPrefix}`);
+        return true;
+    }
+
+    if (mode === 'prefix') {
+        return false;
+    }
+
+    const keywords = context.OPENAI_WEB_SEARCH_TRIGGER_KEYWORDS || [];
+    const matchedKeyword = keywords.find((keyword) => {
+        const normalized = normalizeTriggerValue(keyword);
+        return normalized && text.includes(normalized);
+    });
+    if (matchedKeyword) {
+        log.info(`[warpLLMParams] OpenAI web_search enabled by trigger keyword: ${matchedKeyword}`);
+        return true;
+    }
+    return false;
+}
+
 export async function AIMiddleware({ config, activeTools, onStream, toolChoice, messageInfo, chatModel }: { config: AgentUserConfig; activeTools: string[]; onStream: ChatStreamTextHandler | null; toolChoice: ToolChoice[] | []; messageInfo: MessageInfo; chatModel: string }): Promise<Record<string, ((...args: any[]) => any)>> {
     let step = 0;
     let rawSystemPrompt: string | undefined;
@@ -33,6 +148,20 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
     let hasRecordFirstChunkTime = false;
     let record: LogStruct;
     let currentModel: LLMModel;
+    const toolStartTimes = new Map<string, number>();
+    const sentVisibleToolResultIds = new Set<string>();
+    const sendToolStartTip = (toolName: string) => {
+        if (ENV.HIDE_MIDDLE_MESSAGE) {
+            return;
+        }
+        const sender = onStream?.sender as any;
+        const hasEditableMessage = !!sender?.context?.inline_message_id
+            || (Array.isArray(sender?.context?.sentMessageIds) && sender.context.sentMessageIds.length > 0);
+        if (!hasEditableMessage) {
+            return;
+        }
+        onStream?.send(`${messageInfo.content.trimEnd()}\n\n` + `tool call start: \`${toolName}\``);
+    };
     // chunk内容修改导致收集的message一并修改，暂恢复原think处理逻辑
     // const thinkingTag = '>`Thinking\\.\\.\\.`';
     // let thinkingStart = false;
@@ -71,8 +200,8 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
     return {
         prepareStepPre: (middleware: any) => async ({ model, stepNumber, steps }: { model: LLMModel; stepNumber: number; steps: StepResult<any, any>[] }) => {
             currentModel = model;
-            if (activeTools.length > 0) {
-                let targetModel = config.TOOL_MODEL;
+            if (shouldUseToolModel(activeTools)) {
+                const targetModel = config.TOOL_MODEL || chatModel;
 
                 currentModel = wrapLanguageModel({
                     model: await createLlmModel(targetModel, config) as any,
@@ -115,7 +244,7 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
             if (params.prompt.at(-1)?.role === 'tool') {
                 log.info(`detect last message is tool result, handle tool result`);
                 const toolResults = params.prompt.at(-1)?.content as unknown as ToolResultPart[];
-                await handleToolResult({ tools, toolResults, onStream, config });
+                await handleToolResult({ tools, toolResults, onStream, config, sentVisibleToolResultIds });
                 log.debug(`last tool result: ${JSON.stringify(toolResults, null, 2)}`);
             }
             if (!rawSystemPrompt) {
@@ -134,7 +263,9 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
             }
             // chunkWrapper(chunk);
             if (chunk.type === 'tool-call') {
-                onStream?.send(`${messageInfo.content.trimEnd()}\n\n` + `tool call start: \`${chunk.toolName}\``);
+                const toolCallId = (chunk as any).toolCallId || chunk.toolName;
+                toolStartTimes.set(toolCallId, Date.now());
+                sendToolStartTip(chunk.toolName);
                 log.info(`start tool: ${chunk.toolName}`);
             }
         },
@@ -159,12 +290,12 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
                     log.warn(`Deduplicated ${toolResults.length - uniqueResults.length} duplicate tool calls`);
                 }
 
-                await handleToolResult({ tools, toolResults: uniqueResults as any, onStream, config });
+                await handleToolResult({ tools, toolResults: uniqueResults as any, onStream, config, sentVisibleToolResultIds });
             }
 
             // record tool call detail4
             if (toolResults.length > 0) {
-                const func_logs = toolResults.map(({ toolName, input, output }: { toolName: string; input: any; output: any }) => {
+                const func_logs = toolResults.map(({ toolCallId, toolName, input, output }: { toolCallId?: string; toolName: string; input: any; output: any }) => {
                     // Handle different output formats
                     // Provider tools (Anthropic/Google/xAI/OpenAI) may have different output structures
                     const hasContent = output && typeof output === 'object' && 'content' in output;
@@ -195,12 +326,15 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
                         }
                     }
 
+                    const startedAt = toolStartTimes.get(toolCallId || toolName);
+                    const time = output?.time ?? (startedAt ? ((Date.now() - startedAt) / 1e3).toFixed(1) : undefined);
+
                     return {
                         name: toolName,
                         ...(hasInput && { args: inputValues }),
                         ...(resultPreview && { result_preview: resultPreview }),
                         ...(hasError && { error: 'Tool execution error' }),
-                        ...(output?.time && { time: output.time }),
+                        ...(time && { time }),
                     };
                 });
 
@@ -277,14 +411,19 @@ function warpMessages(params: LanguageModelV4CallOptions, allTools: Record<strin
         // 插入工具prompt
         // 注意：不要在 system prompt 中提到 Google/Anthropic 等 provider 工具
         // 因为这会导致模型错误地将服务端工具当作客户端工具来调用
-        const googleProviderTools = ['google_search', 'url_context', 'code_execution', 'google_maps', 'file_search', 'enterprise_web_search', 'vertex_rag_store'];
-        const clientSideTools = activeTools.filter(name => !googleProviderTools.includes(name));
+        const directToolPrompts: Record<string, any> = {
+            [githubRepoReader.schema.name]: githubRepoReader,
+        };
+        const clientSideTools = activeTools.filter(name => !PROVIDER_ONLY_TOOLS.has(name));
 
         if (clientSideTools.length > 0) {
             systemContent += `\nYou can consider using the following tools:\n${clientSideTools.map(name =>
-                `### ${name}\n- desc: ${allTools[name]?.schema?.description || ''} \n${allTools[name]?.prompt || ''}`,
+                `### ${name}\n- desc: ${(allTools[name] || directToolPrompts[name])?.schema?.description || ''} \n${(allTools[name] || directToolPrompts[name])?.prompt || ''}`,
             ).join('\n\n')}`
-            + `\n\n${clientSideTools.map(name => allTools[name]?.prompt && `## For tool \`${name}\`, you should follow these rules:\n - ${allTools[name]?.prompt}`)
+            + `\n\n${clientSideTools.map((name) => {
+                const prompt = (allTools[name] || directToolPrompts[name])?.prompt;
+                return prompt && `## For tool \`${name}\`, you should follow these rules:\n - ${prompt}`;
+            })
                 .join('\n')}`;
         }
         return systemContent ?? 'You are a helpful assistant';
@@ -366,8 +505,8 @@ function warpMessages(params: LanguageModelV4CallOptions, allTools: Record<strin
         }
         systemMessage && params.prompt.unshift(systemMessage);
     }
-    // 处理response api异常情况
-    isResponseApi && (params.prompt = handleResponseApiMessage(messages));
+    // 处理 Responses API stateless 历史。不要把 store=false 下不可复用的服务端 item id 发回上游。
+    isResponseApi && (params.prompt = handleResponseApiMessage(params.prompt as LanguageModelV4Prompt));
 }
 
 function warpModel(model: LLMModel, config: AgentUserConfig, activeTools: string[], toolChoice: ToolChoice, chatModel: string) {
@@ -383,7 +522,7 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
     const allTools = await getTools();
     const userMessage = messages.findLast(m => m.role === 'user')!;
     // support text message and text part
-    const userText = Array.isArray(userMessage.content) ? userMessage.content.find(c => c.type === 'text')?.text ?? '' : userMessage.content;
+    const userText = getMessageTextContent(userMessage.content);
     let { tools = {}, activeToolAlias = [] } = await validTools(context);
 
     let activeTools = activeToolAlias.map((t: string) => allTools[t]?.schema?.name || t) || [];
@@ -396,8 +535,16 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
         // Check if this is Gemini 3 model (supports tool combination)
         const isGemini3 = model.modelId.startsWith('gemini-3');
 
-        // Add configured Google built-in tools
-        for (const toolName of context.USE_GOOGLE_BUILDIN) {
+        const googleNativeTools = [
+            context.GOOGLE_ENABLE_GOOGLE_SEARCH && 'googleSearch',
+            context.GOOGLE_ENABLE_CODE_EXECUTION && 'codeExecution',
+            context.GOOGLE_ENABLE_URL_CONTEXT && 'urlContext',
+            context.GOOGLE_ENABLE_GOOGLE_MAPS && 'googleMaps',
+            context.GOOGLE_ENABLE_FILE_SEARCH && 'fileSearch',
+            context.GOOGLE_ENABLE_ENTERPRISE_WEB_SEARCH && 'enterpriseWebSearch',
+        ].filter(Boolean) as string[];
+
+        for (const toolName of googleNativeTools) {
             switch (toolName) {
                 case 'googleSearch': {
                     // Build Google Search configuration with new features
@@ -527,8 +674,7 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
         }
         const { webSearch, xSearch, codeExecution, xaiTools } = await import('@ai-sdk/xai');
 
-        // 支持数组配置或布尔开关（向后兼容）
-        if (context.USE_XAI_BUILDIN.includes('webSearch') || context.XAI_ENABLE_WEB_SEARCH) {
+        if (context.XAI_ENABLE_WEB_SEARCH) {
             const webSearchConfig: any = {};
             if (context.XAI_WEB_SEARCH_ALLOWED_DOMAINS.length > 0) {
                 webSearchConfig.allowedDomains = context.XAI_WEB_SEARCH_ALLOWED_DOMAINS.slice(0, 5);
@@ -543,8 +689,7 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
             activeTools.push('web_search');
         }
 
-        // 支持数组配置或布尔开关（向后兼容）
-        if (context.USE_XAI_BUILDIN.includes('xSearch') || context.XAI_ENABLE_X_SEARCH) {
+        if (context.XAI_ENABLE_X_SEARCH) {
             const xSearchConfig: any = {};
             if (context.XAI_X_SEARCH_ALLOWED_HANDLES.length > 0) {
                 xSearchConfig.allowedXHandles = context.XAI_X_SEARCH_ALLOWED_HANDLES.slice(0, 10);
@@ -562,18 +707,16 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
             activeTools.push('x_search');
         }
 
-        // 支持数组配置或布尔开关（向后兼容）
-        if (context.USE_XAI_BUILDIN.includes('codeExecution') || context.XAI_ENABLE_CODE_EXECUTION) {
+        if (context.XAI_ENABLE_CODE_EXECUTION) {
             tools.code_execution = codeExecution();
             activeTools.push('code_execution');
         }
 
         // File Search - 文件向量搜索（需要预先在 xAI 创建 collections）
-        // 支持数组配置或布尔开关（向后兼容）
-        if (context.USE_XAI_BUILDIN.includes('fileSearch') || context.XAI_ENABLE_FILE_SEARCH) {
+        if (context.XAI_ENABLE_FILE_SEARCH) {
             if (context.XAI_FILE_SEARCH_VECTOR_STORES.length > 0) {
                 // 动态检测 fileSearch 是否可用（@ai-sdk/xai 3.0.40+）
-                // 使用 as any 绕过类型检查，因为旧版本的类型定义没有 fileSearch
+                // 当前类型定义未覆盖 fileSearch，运行时按函数存在性判断。
                 const fileSearchFn = (xaiTools as any)?.fileSearch;
                 if (typeof fileSearchFn === 'function') {
                     const fileSearchConfig: any = {
@@ -601,8 +744,7 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
         const { anthropicTools } = await import('@ai-sdk/anthropic/internal');
 
         // Web Fetch tool - 获取网页内容
-        // 支持数组配置或布尔开关（向后兼容）
-        if (context.USE_ANTHROPIC_BUILDIN.includes('webFetch') || context.ANTHROPIC_ENABLE_WEB_FETCH) {
+        if (context.ANTHROPIC_ENABLE_WEB_FETCH) {
             const webFetchConfig: any = {
                 maxUses: context.ANTHROPIC_WEB_FETCH_MAX_USES,
             };
@@ -623,8 +765,7 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
         }
 
         // Web Search tool - 网页搜索
-        // 支持数组配置或布尔开关（向后兼容）
-        if (context.USE_ANTHROPIC_BUILDIN.includes('webSearch') || context.ANTHROPIC_ENABLE_WEB_SEARCH) {
+        if (context.ANTHROPIC_ENABLE_WEB_SEARCH) {
             const webSearchConfig: any = {
                 maxUses: context.ANTHROPIC_WEB_SEARCH_MAX_USES,
             };
@@ -642,9 +783,8 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
         }
 
         // Code Execution tool - 代码执行（Python + Bash）
-        // 支持数组配置或布尔开关（向后兼容）
         // 动态找最新版本：取所有 codeExecution_YYYYMMDD 中日期最大的
-        if (context.USE_ANTHROPIC_BUILDIN.includes('codeExecution') || context.ANTHROPIC_ENABLE_CODE_EXECUTION) {
+        if (context.ANTHROPIC_ENABLE_CODE_EXECUTION) {
             const codeExecKey = Object.keys(anthropicTools)
                 .filter(k => /^codeExecution_\d{8}$/.test(k))
                 .sort()
@@ -667,8 +807,7 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
         const openaiTools = openai.tools;
 
         // Web Search tool - 网页搜索
-        // 支持数组配置或布尔开关（向后兼容）
-        if (context.USE_OPENAI_BUILDIN.includes('webSearch') || context.OPENAI_ENABLE_WEB_SEARCH) {
+        if (shouldEnableOpenAIWebSearch(context, userText)) {
             const webSearchConfig: any = {
                 externalWebAccess: context.OPENAI_WEB_SEARCH_EXTERNAL_ACCESS,
                 searchContextSize: context.OPENAI_WEB_SEARCH_CONTEXT_SIZE,
@@ -701,11 +840,26 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
 
             tools.web_search = openaiTools.webSearch(webSearchConfig);
             activeTools.push('web_search');
+        } else if (context.OPENAI_ENABLE_WEB_SEARCH) {
+            log.info(`[warpLLMParams] OpenAI web_search skipped by trigger mode: ${context.OPENAI_WEB_SEARCH_TRIGGER_MODE || 'intent'}`);
+        }
+
+        // GitHub repository reader - OpenAI Responses 专属函数工具，不通过 USE_TOOLS 启用
+        if (context.OPENAI_ENABLE_GITHUB_REPO_READER) {
+            tools.github_repo_reader = aiTool({
+                description: githubRepoReader.schema.description,
+                inputSchema: jsonSchema(githubRepoReader.schema.parameters as any),
+                execute: async (args: any) => {
+                    const startTime = Date.now();
+                    const result = await githubRepoReader.func!(args, {}, context);
+                    return { ...result, time: ((Date.now() - startTime) / 1e3).toFixed(1) };
+                },
+            });
+            activeTools.push(githubRepoReader.schema.name);
         }
 
         // Code Interpreter tool - Python 代码执行
-        // 支持数组配置或布尔开关（向后兼容）
-        if (context.USE_OPENAI_BUILDIN.includes('codeInterpreter') || context.OPENAI_ENABLE_CODE_INTERPRETER) {
+        if (context.OPENAI_ENABLE_CODE_INTERPRETER) {
             const config = context.OPENAI_CODE_INTERPRETER_CONTAINER
                 ? { container: context.OPENAI_CODE_INTERPRETER_CONTAINER }
                 : {};
@@ -714,8 +868,7 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
         }
 
         // File Search tool - 文件向量搜索
-        // 支持数组配置或布尔开关（向后兼容）
-        if (context.USE_OPENAI_BUILDIN.includes('fileSearch') || context.OPENAI_ENABLE_FILE_SEARCH) {
+        if (context.OPENAI_ENABLE_FILE_SEARCH) {
             if (context.OPENAI_FILE_SEARCH_VECTOR_STORES.length > 0) {
                 const fileSearchConfig: any = {
                     vectorStoreIds: context.OPENAI_FILE_SEARCH_VECTOR_STORES,
@@ -734,12 +887,12 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
         }
 
         // Image Generation tool - 图片生成 (GPT-5.1+)
-        // 支持数组配置或布尔开关（向后兼容）
-        if (context.USE_OPENAI_BUILDIN.includes('imageGeneration') || context.OPENAI_ENABLE_IMAGE_GENERATION) {
+        if (context.OPENAI_ENABLE_IMAGE_GENERATION) {
             const imageGenConfig: any = {
                 background: context.OPENAI_IMAGE_BACKGROUND,
                 inputFidelity: context.OPENAI_IMAGE_INPUT_FIDELITY,
                 model: context.OPENAI_IMAGE_MODEL,
+                moderation: context.OPENAI_IMAGE_MODERATION === 'auto' ? 'auto' : undefined,
                 outputCompression: context.OPENAI_IMAGE_OUTPUT_COMPRESSION,
                 outputFormat: context.OPENAI_IMAGE_OUTPUT_FORMAT,
                 partialImages: context.OPENAI_IMAGE_PARTIAL_IMAGES,
@@ -747,13 +900,12 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
                 size: context.OPENAI_IMAGE_SIZE,
             };
 
-            tools.image_generation = openaiTools.imageGeneration(imageGenConfig);
+            tools.image_generation = openaiTools.imageGeneration(Object.fromEntries(Object.entries(imageGenConfig).filter(([, value]) => value !== undefined)));
             activeTools.push('image_generation');
         }
 
         // MCP tool - Model Context Protocol
-        // 支持数组配置或布尔开关（向后兼容）
-        if (context.USE_OPENAI_BUILDIN.includes('mcp') || context.OPENAI_ENABLE_MCP) {
+        if (context.OPENAI_ENABLE_MCP) {
             // MCP 需要 serverLabel 和 (serverUrl 或 connectorId)
             if (context.OPENAI_MCP_SERVER_LABEL && (context.OPENAI_MCP_SERVER_URL || context.OPENAI_MCP_CONNECTOR_ID)) {
                 const mcpConfig: any = {
@@ -810,14 +962,14 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
             }
         }
 
-        if (context.OPENAI_ENABLE_WEB_SEARCH || context.OPENAI_ENABLE_CODE_INTERPRETER || context.OPENAI_ENABLE_FILE_SEARCH || context.OPENAI_ENABLE_IMAGE_GENERATION || context.OPENAI_ENABLE_MCP || context.USE_OPENAI_BUILDIN.length > 0) {
-            log.info(`[warpLLMParams] OpenAI server-side tools enabled: ${activeTools.filter(t => ['web_search', 'code_interpreter', 'file_search', 'image_generation', 'mcp'].includes(t)).join(', ')}`);
+        if (context.OPENAI_ENABLE_WEB_SEARCH || context.OPENAI_ENABLE_GITHUB_REPO_READER || context.OPENAI_ENABLE_CODE_INTERPRETER || context.OPENAI_ENABLE_FILE_SEARCH || context.OPENAI_ENABLE_IMAGE_GENERATION || context.OPENAI_ENABLE_MCP) {
+            log.info(`[warpLLMParams] OpenAI tools enabled: ${activeTools.filter(t => ['web_search', 'github_repo_reader', 'code_interpreter', 'file_search', 'image_generation', 'mcp'].includes(t)).join(', ')}`);
         }
     }
 
     // If using xAI Responses API built-in tools, clear custom tools (keep xAI tools)
     // This prevents conflicts as xAI Responses API doesn't support mixing provider tools with custom tools
-    const hasXaiTools = context.USE_XAI_BUILDIN.length > 0 || context.XAI_ENABLE_WEB_SEARCH || context.XAI_ENABLE_X_SEARCH || context.XAI_ENABLE_CODE_EXECUTION || context.XAI_ENABLE_FILE_SEARCH;
+    const hasXaiTools = context.XAI_ENABLE_WEB_SEARCH || context.XAI_ENABLE_X_SEARCH || context.XAI_ENABLE_CODE_EXECUTION || context.XAI_ENABLE_FILE_SEARCH;
     if (model.provider === 'xai.responses' && hasXaiTools) {
         // Clear only custom tools from validTools, keep xAI server-side tools
         const xaiToolKeys = Object.keys(tools).filter(k =>
@@ -834,7 +986,13 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
     }
 
     // Gemini 3 supports combining Google built-in tools with custom function calling
-    const hasGoogleTools = model.provider.startsWith('google') && (context.SEARCH_GROUNDING || context.USE_GOOGLE_BUILDIN.length > 0);
+    const hasGoogleNativeTools = context.GOOGLE_ENABLE_GOOGLE_SEARCH
+        || context.GOOGLE_ENABLE_CODE_EXECUTION
+        || context.GOOGLE_ENABLE_URL_CONTEXT
+        || context.GOOGLE_ENABLE_GOOGLE_MAPS
+        || context.GOOGLE_ENABLE_FILE_SEARCH
+        || context.GOOGLE_ENABLE_ENTERPRISE_WEB_SEARCH;
+    const hasGoogleTools = (model.provider.startsWith('google') || model.provider.startsWith('vertex')) && hasGoogleNativeTools;
 
     // If using Google built-in tools on non-Gemini-3 models, clear custom tools (keep Google tools only)
     // Note: isGemini3 is defined earlier in the Google tools section
@@ -854,12 +1012,8 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
         // only use first system message and last user message
         // params.messages = [params.messages.find(p => p.role === 'system')!, params.messages.findLast(p => p.role === 'user')!];
     }
-    // Gemini 3 can use both Google tools and custom tools together - no clearing needed
-    // For Gemini 3, tools object already contains both Google tools and custom tools merged above
-    // only gemini-2 support google_buildin
-    if (!model.modelId.startsWith('gemini-2')) {
-        activeTools = activeTools.filter(t => t !== 'google_buildin');
-    }
+    // Gemini 3 can use both Google tools and custom tools together.
+    // For Gemini 3, tools object already contains both Google tools and custom tools merged above.
 
     let toolChoice;
     if (activeToolAlias.length > 0 && userText) {
@@ -999,10 +1153,12 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
             }
             return content;
         }
+        case 'openai.chat':
+        case 'openai.responses':
         case 'xai.chat':
         case 'xai.responses':
         {
-            // Handle xAI sources from both stream mode and non-stream mode
+            // Handle OpenAI/xAI sources from both stream mode and non-stream mode
             let sources: Array<{ url: string; title: string }> = [];
 
             // Stream mode: sources collected via 'source' events
@@ -1057,7 +1213,7 @@ export function metaDataExtractor(metadata: any, provider: string, content: stri
     }
 }
 
-async function handleToolResult({ tools, toolResults, onStream, config }: { tools: Record<string, any>; toolResults: ToolResultPart[]; onStream: ChatStreamTextHandler | null; config: AgentUserConfig }) {
+async function handleToolResult({ tools, toolResults, onStream, config, sentVisibleToolResultIds }: { tools: Record<string, any>; toolResults: ToolResultPart[]; onStream: ChatStreamTextHandler | null; config: AgentUserConfig; sentVisibleToolResultIds?: Set<string> }) {
     // Custom tools with send_type === 'message'
     const message_tool = Object.values(tools).filter(({ send_type }) => send_type === 'message').map(({ schema: { name } }) => name);
 
@@ -1065,28 +1221,26 @@ async function handleToolResult({ tools, toolResults, onStream, config }: { tool
     const provider_message_tools = ['image_generation', 'code_execution', 'code_interpreter', 'mcp'];
 
     const need_send_result: ToolResult[] = [];
-    for (const { output, toolName } of toolResults) {
+    const sentResults: ToolResultPart[] = [];
+    const sentResultIds: string[] = [];
+    for (const [index, result] of toolResults.entries()) {
+        const { output, toolName } = result;
         const shouldSend = message_tool.includes(toolName) || provider_message_tools.includes(toolName);
+        if (!shouldSend) {
+            continue;
+        }
 
-        if (shouldSend) {
-            // Handle different output formats
-            // Standard format (Anthropic/Google/xAI): output.value.content
-            if ('value' in output && (output as any).value?.content) {
-                need_send_result.push({ content: (output as any).value.content });
-            }
-            // OpenAI image_generation format: output.result (base64 string)
-            else if ('result' in output && typeof (output as any).result === 'string') {
-                // Convert base64 string to image content part
-                need_send_result.push({
-                    content: [{
-                        type: 'image',
-                        text: '',
-                        data_type: 'base64',
-                        data: (output as any).result, // base64 string
-                        mimeType: 'image/png',
-                    }],
-                });
-            }
+        const resultId = getVisibleToolResultId(result, index);
+        if (sentVisibleToolResultIds?.has(resultId)) {
+            replaceVisibleToolOutput(output, toolName);
+            continue;
+        }
+
+        const visibleResult = extractVisibleToolResult(output, toolName);
+        if (visibleResult) {
+            need_send_result.push(visibleResult);
+            sentResults.push(result);
+            sentResultIds.push(resultId);
         }
     }
     if (need_send_result.length > 0) {
@@ -1094,26 +1248,62 @@ async function handleToolResult({ tools, toolResults, onStream, config }: { tool
         const tool_names = toolResults.map(i => i.toolName).filter(name => message_tool.includes(name) || provider_message_tools.includes(name));
         log.info(`start send tool result: ${tool_names.join(', ')}`);
         // TODO: 非流式模式下，无法直接发送工具结果
-        sender && await sendToolResult(need_send_result, sender, config);
+        if (!sender) {
+            return;
+        }
+        await sendToolResult(need_send_result, sender, config);
+        onStream.visibleToolResultSent = true;
+        onStream.clearHeartbeat?.();
+        sentResultIds.forEach(resultId => sentVisibleToolResultIds?.add(resultId));
         // Unable to modify the response message anymore due to:
         // https://github.com/vercel/ai/blob/42fcd32dd81e5071a864943dbdcd4be69a8cae8c/packages/ai/core/generate-text/generate-text.ts#L488
-        toolResults.forEach(({ toolName, output }) => {
-            const shouldModify = message_tool.includes(toolName) || provider_message_tools.includes(toolName);
+        sentResults.forEach(({ output, toolName }) => replaceVisibleToolOutput(output, toolName));
+    }
+}
 
-            // Check if output has 'value' property and contains error
-            const hasError = output.type !== 'execution-denied' && 'value' in output
-                && ((output.value as any)?.content ?? []).some((i: any) => i.type === 'error');
-            if (shouldModify && !hasError) {
-                // Only modify if output supports 'value' property
-                if (output.type !== 'execution-denied' && 'value' in output) {
-                    (output as any).value = { content: [{ type: 'text', text: 'Data has been sent to user already.' }] };
-                }
-                // For OpenAI result format, replace with placeholder
-                else if ('result' in output) {
-                    (output as any).result = 'Image has been sent to user already.';
-                }
-            }
-        });
+function getVisibleToolResultId(result: ToolResultPart, index: number): string {
+    return `${(result as any).toolCallId || `${result.toolName}:${index}`}:${result.toolName}`;
+}
+
+function extractVisibleToolResult(output: any, toolName: string): ToolResult | null {
+    if (!output || output.type === 'execution-denied') {
+        return null;
+    }
+    if ('value' in output && output.value?.content) {
+        return { content: output.value.content };
+    }
+    if ('result' in output && typeof output.result === 'string' && output.result.trim()) {
+        if (toolName !== 'image_generation') {
+            return { content: [{ type: 'text', text: output.result }] };
+        }
+        return {
+            content: [{
+                type: 'image',
+                text: '',
+                data_type: 'base64',
+                data: output.result,
+                mimeType: 'image/png',
+            }],
+        };
+    }
+    return null;
+}
+
+function replaceVisibleToolOutput(output: any, toolName: string) {
+    if (!output || output.type === 'execution-denied') {
+        return;
+    }
+    const hasError = 'value' in output
+        && ((output.value as any)?.content ?? []).some((i: any) => i.type === 'error' || i.is_error);
+    if (hasError) {
+        return;
+    }
+    if ('value' in output) {
+        output.value = { content: [{ type: 'text', text: 'Data has been sent to user already.' }] };
+    } else if ('result' in output) {
+        output.result = toolName === 'image_generation'
+            ? 'Image has been sent to user already.'
+            : 'Data has been sent to user already.';
     }
 }
 
@@ -1121,7 +1311,8 @@ function handleResponseApiMessage(messages: LanguageModelV4Prompt) {
     // Issue: When the message contains inference messages, tool calls and tool results do not contain ref_id.
     // https://github.com/vercel/ai/issues/7099
     // temporary fix: remove reasoning text
-    for (const [i, message] of messages.entries()) {
+    const sanitizedMessages = sanitizeOpenAIResponsePrompt(messages);
+    for (const message of sanitizedMessages) {
         if (message.role === 'assistant' && Array.isArray(message.content)) {
             // 移除所有reasoning text
             message.content = message.content.filter(i => i.type !== 'reasoning');
@@ -1138,5 +1329,74 @@ function handleResponseApiMessage(messages: LanguageModelV4Prompt) {
         //     }
         // }
     }
-    return messages;
+    return sanitizedMessages.filter((message: any) => {
+        if (message.role !== 'assistant' || !Array.isArray(message.content)) {
+            return true;
+        }
+        return message.content.length > 0;
+    });
+}
+
+export function sanitizeOpenAIResponsePrompt(messages: LanguageModelV4Prompt): LanguageModelV4Prompt {
+    return sanitizeOpenAIResponseValue(messages) as LanguageModelV4Prompt;
+}
+
+const OPENAI_RESPONSE_REFERENCE_KEYS = new Set(['id', 'item_id', 'itemId']);
+
+function sanitizeOpenAIResponseValue(value: any): any {
+    if (Array.isArray(value)) {
+        return value
+            .map(item => sanitizeOpenAIResponseValue(item))
+            .filter(item => item !== undefined);
+    }
+
+    if (!isPlainObject(value)) {
+        return value;
+    }
+
+    if (isOpenAIResponseItemReference(value)) {
+        return undefined;
+    }
+
+    const sanitized: Record<string, any> = {};
+    for (const [key, childValue] of Object.entries(value)) {
+        if (shouldDropOpenAIResponseReferenceProperty(key, childValue)) {
+            continue;
+        }
+
+        const nextValue = sanitizeOpenAIResponseValue(childValue);
+        if (nextValue === undefined) {
+            continue;
+        }
+        if ((key === 'providerOptions' || key === 'openai') && isEmptyPlainObject(nextValue)) {
+            continue;
+        }
+        sanitized[key] = nextValue;
+    }
+
+    return sanitized;
+}
+
+function isOpenAIResponseItemReference(value: Record<string, any>): boolean {
+    return value.type === 'item_reference' && isOpenAIResponseItemId(value.id);
+}
+
+function shouldDropOpenAIResponseReferenceProperty(key: string, value: unknown): boolean {
+    return OPENAI_RESPONSE_REFERENCE_KEYS.has(key) && isOpenAIResponseItemId(value);
+}
+
+function isOpenAIResponseItemId(value: unknown): boolean {
+    return typeof value === 'string' && /^(msg|rs|fc|ws|fs|ci|ig|mcp|item)_[A-Za-z0-9]/.test(value);
+}
+
+function isEmptyPlainObject(value: unknown): boolean {
+    return isPlainObject(value) && Object.keys(value).length === 0;
+}
+
+function isPlainObject(value: unknown): value is Record<string, any> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return false;
+    }
+    const prototype = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
 }

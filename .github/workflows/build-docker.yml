@@ -5,6 +5,7 @@ on:
     branches:
       - refactor
       - dev
+      - domo
     paths:
       - 'src/**'
       - 'scripts/**'

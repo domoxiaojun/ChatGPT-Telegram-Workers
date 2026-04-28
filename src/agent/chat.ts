@@ -174,8 +174,10 @@ export async function requestCompletionsFromLLM(params: LLMChatRequestParams | n
         log.warn('[USER_PROFILE] Failed to load user profile:', error);
     }
 
+    const extraSystemPrompts = [userProfilePrompt].filter(Boolean).join('\n\n');
+
     const llmParams: LLMChatParams = {
-        messages: injectSystemMessage(messages, context.USER_CONFIG.SYSTEM_INIT_MESSAGE, context.USER_CONFIG.TIMEZONE, userProfilePrompt),
+        messages: injectSystemMessage(messages, context.USER_CONFIG.SYSTEM_INIT_MESSAGE, context.USER_CONFIG.TIMEZONE, extraSystemPrompts),
         cache: [],
     };
     const answer = await workflow(agent, llmParams, context.USER_CONFIG, onStream);

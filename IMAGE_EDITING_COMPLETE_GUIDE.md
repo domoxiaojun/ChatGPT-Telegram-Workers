@@ -12,7 +12,7 @@
 |-------|-----------|---------|------|-----------|-------------|---------------------|
 | **Google** | ✅ | ✅ | ❌ | Implicit | 4K resolution, Google Search | Quick editing, real-time data visualization |
 | **Vertex** | ✅ | ✅ | ✅ | 6 explicit modes | - | Professional editing, precise control |
-| **OpenAI** | ✅ | ✅ | ✅ | Implicit | - | Balanced performance, DALL-E 3 generation |
+| **OpenAI** | ✅ | ✅ | ✅ | Implicit | - | Balanced performance, GPT Image generation |
 | **xAI** | ✅ | ✅ | ❌ | Implicit | Video generation, I2V, video editing | Image editing, video creation |
 | **BFL (FLUX)** | ✅ | ✅ | ✅ | Implicit | Multi-reference (up to 10 images), inpainting | High-quality generation, style transfer, multi-ref editing |
 
@@ -279,32 +279,32 @@ Mask is a black and white image:
 
 ---
 
-## 3. OpenAI/DALL-E
+## 3. OpenAI Images
 
 ### Configuration
 ```env
 OPENAI_API_KEY=your-api-key
-DALL_E_MODEL=dall-e-2  # or dall-e-3, gpt-image-1
+OPENAI_IMAGE_MODEL=gpt-image-2
+OPENAI_IMAGE_SIZE=auto        # auto, 1024x1024, 1024x1536, 1536x1024
+OPENAI_IMAGE_QUALITY=auto     # auto, low, medium, high
+OPENAI_IMAGE_BACKGROUND=auto  # auto, opaque, transparent
 ```
 
-### Smart Model Selection
+### Modern Image Parameters
 
-The code **automatically adjusts**:
-- dall-e-3 editing → Auto-downgrades to dall-e-2
-- Other models → Uses as configured
+OpenAI image generation now uses `OPENAI_IMAGE_MODEL` only. Legacy image model configuration is not read and no model downgrade is performed.
 
 ### Supported Models
 
 | Model | Editing | Generation | Max Per Request | Recommended |
 |-------|---------|-----------|----------------|------------|
-| dall-e-2 | ✅ | ✅ | 10 images | ✅ Balanced |
-| dall-e-3 | ❌→✅ | ✅ | 1 image | High-quality generation |
-| gpt-image-1 | ✅ | ✅ | 10 images | ✅ Fast |
-| gpt-image-1-mini | ✅ | ✅ | 10 images | ✅ Fastest |
+| gpt-image-2 | ✅ | ✅ | Upstream-defined | ✅ Recommended |
+| gpt-image-1.5 | ✅ | ✅ | Upstream-defined | Use when the upstream has not exposed gpt-image-2 |
+| chatgpt-image-latest | ✅ | ✅ | Upstream-defined | OpenAI official alias |
 
 ### Features
 - ✅ Mask support (inpainting)
-- ✅ Automatic model downgrade (dall-e-3→dall-e-2)
+- ✅ Supports size, quality, background, output format, compression, and moderation settings
 - ✅ Dual implementation (editing uses AI SDK, generation uses native API)
 
 ---
@@ -717,7 +717,7 @@ Mask convention (same as Vertex):
 - ✅ Background replacement/extension
 
 **OpenAI - Balanced Choice**
-- ✅ DALL-E 3 high-quality generation
+- ✅ OpenAI Images high-quality generation
 - ✅ Mask editing support
 - ✅ Fast response
 - ⚠️ Medium editing capabilities
@@ -769,7 +769,9 @@ VERTEX_IMAGE_MODEL=imagen-3.0-capability-001
 **High-Quality Generation + Editing:**
 ```env
 AI_IMAGE_PROVIDER=openai
-DALL_E_MODEL=dall-e-2  # or gpt-image-1
+OPENAI_IMAGE_MODEL=gpt-image-2
+OPENAI_IMAGE_SIZE=auto
+OPENAI_IMAGE_QUALITY=high
 ```
 
 **Experimental/Style Transfer:**
@@ -808,9 +810,9 @@ Call `xai_video` tool via LLM, supports text-to-video, image-to-video, and video
 **Solution:** Code automatically handles this, forces imagen-3.0-capability-001
 
 ### OpenAI Editing Failure
-**Issue:** dall-e-3 editing error
-**Cause:** dall-e-3 doesn't support editing
-**Solution:** Code automatically downgrades to dall-e-2
+**Issue:** OpenAI image editing error
+**Cause:** The current upstream model or proxy does not expose the image editing endpoint
+**Solution:** Confirm that `OPENAI_IMAGE_MODEL` supports editing, or switch to the image model your upstream actually supports
 
 ### Google Mask Not Working
 **Issue:** mask parameter has no effect
@@ -844,13 +846,12 @@ const defaultEditMode = mask
     : 'EDIT_MODE_CONTROLLED_EDITING';    // Without mask: general editing
 ```
 
-### OpenAI Auto-Downgrade
+### OpenAI Image Parameters
 ```typescript
 // src/agent/openai.ts
 const isEditMode = (referenceImages && referenceImages.length > 0) || mask;
-const actualModel = isEditMode
-    ? (modelId === 'dall-e-3' ? 'dall-e-2' : modelId)
-    : modelId;
+const modelId = extraParams?.model || context.OPENAI_IMAGE_MODEL;
+const actualSize = resolveOpenAIImageSize(context, extraParams || {});
 ```
 
 ### Telegram Command Support

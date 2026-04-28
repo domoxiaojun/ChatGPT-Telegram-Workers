@@ -1,5 +1,31 @@
 import type { AgentUserConfig } from './env';
 
+function providerModelKey(provider: unknown, suffix: string, fallback: string): string {
+    if (typeof provider !== 'string' || provider.trim() === '') {
+        return fallback;
+    }
+    const prefix = provider.trim().toUpperCase().replace(/-/g, '_');
+    return `${prefix}_${suffix}`;
+}
+
+export function resolveUserConfigKeyAlias(key: string, config: Record<string, any>): string {
+    const normalizedKey = key.trim();
+    switch (normalizedKey) {
+        case 'CHAT_MODEL':
+            return providerModelKey(config.AI_CHAT_PROVIDER, 'CHAT_MODEL', normalizedKey);
+        case 'VISION_MODEL':
+            return providerModelKey(config.AI_CHAT_PROVIDER, 'VISION_MODEL', normalizedKey);
+        case 'IMAGE_MODEL':
+            return providerModelKey(config.AI_IMAGE_PROVIDER, 'IMAGE_MODEL', normalizedKey);
+        case 'STT_MODEL':
+            return providerModelKey(config.AI_ASR_PROVIDER, 'STT_MODEL', normalizedKey);
+        case 'TTS_MODEL':
+            return providerModelKey(config.AI_TTS_PROVIDER === 'openai-fm' ? 'openai' : config.AI_TTS_PROVIDER, 'TTS_MODEL', normalizedKey);
+        default:
+            return normalizedKey;
+    }
+}
+
 export class ConfigMerger {
     static parseArray(raw: string): string[] {
         raw = raw.trim();
@@ -55,8 +81,8 @@ export class ConfigMerger {
             }
             switch (t) {
                 case 'number': {
-                    const parsed = Number.parseInt(source[key], 10);
-                    target[key] = Number.isNaN(parsed) ? target[key] : parsed;
+                    const parsed = Number(source[key]);
+                    target[key] = source[key].trim() === '' || Number.isNaN(parsed) ? target[key] : parsed;
                     break;
                 }
                 case 'boolean':

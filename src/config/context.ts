@@ -106,6 +106,7 @@ export class MiddleContext {
     messageInfo: UnionData = { type: 'text' };
     history: HistoryItem[] = [];
     sender: MessageSender | null = null;
+    processingMessageId: number | null = null;
 }
 
 export class WorkerContextBase {
@@ -133,11 +134,8 @@ export class WorkerContext implements WorkerContextBase {
         const USER_CONFIG = { ...ENV.USER_CONFIG };
         try {
             const userConfig: AgentUserConfig = JSON.parse(await ENV.DATABASE.get(SHARE_CONTEXT.configStoreKey)) || {};
-            //  兼容旧的AI_PROVIDER
-            if (userConfig.AI_PROVIDER) {
-                USER_CONFIG.AI_CHAT_PROVIDER = userConfig.AI_PROVIDER;
-            }
-            ConfigMerger.merge(USER_CONFIG, ConfigMerger.trim(userConfig, ENV.LOCK_USER_CONFIG_KEYS) || {});
+            const trimmedUserConfig = ConfigMerger.trim(userConfig, ENV.LOCK_USER_CONFIG_KEYS) || {};
+            ConfigMerger.merge(USER_CONFIG, trimmedUserConfig);
         } catch (e) {
             console.warn(e);
         }

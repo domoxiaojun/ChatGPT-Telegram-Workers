@@ -29,6 +29,7 @@ import {
     SetEnvsCommandHandler,
     StartCommandHandler,
     SystemCommandHandler,
+    ThinkCommandHandler,
     TTSCommandHandler,
     VersionCommandHandler,
 } from './system';
@@ -48,6 +49,7 @@ const SYSTEM_COMMANDS: CommandHandler[] = [
     new SystemCommandHandler(),
     new HelpCommandHandler(),
     new SetCommandHandler(),
+    new ThinkCommandHandler(),
     new PerplexityCommandHandler(),
     new InlineCommandHandler(),
     new KlingAICommandHandler(),

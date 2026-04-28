@@ -15,7 +15,7 @@ export default {
                 agent: {
                     type: 'string',
                     description: 'The image agent to use. Default is "default".',
-                    enum: ['default', 'dalle', 'openai', 'workers', 'azure', 'vertex', 'oailike', 'kling', 'google', 'xai', 'bfl'],
+                    enum: ['default', 'openai', 'workers', 'azure', 'vertex', 'oailike', 'kling', 'google', 'xai', 'bfl'],
                     default: 'default',
                 },
                 prompts: {
@@ -30,21 +30,58 @@ export default {
                 },
                 size: {
                     type: 'string',
-                    enum: ['1024x1024', '1792x1024', '1024x1792'],
-                    description: 'The size of the images to generate. Default is "1024x1024".',
-                    default: '1024x1024',
+                    enum: ['auto', '1024x1024', '1024x1536', '1536x1024', '1792x1024', '1024x1792'],
+                    description: 'The size of the images to generate. OpenAI GPT Image prefers auto, 1024x1024, 1024x1536, or 1536x1024. Default is "auto".',
+                    default: 'auto',
                 },
                 radio: {
                     type: 'string',
-                    description: 'The raido of the images to generate. Default is "16:9".',
-                    enum: ['1:1', '16:9', '9:16'],
-                    default: '16:9',
+                    description: 'The aspect ratio of the images to generate. Used when size is "auto". Default is "auto".',
+                    enum: ['auto', '1:1', '16:9', '9:16'],
+                    default: 'auto',
                 },
                 style: {
                     type: 'string',
-                    description: 'The style of the images to generate. Default is "vivid".',
+                    description: 'The style of the images to generate when the selected provider supports it.',
                     enum: ['vivid', 'natural'],
                     default: 'vivid',
+                },
+                quality: {
+                    type: 'string',
+                    description: 'Image quality. OpenAI GPT Image supports auto, low, medium, and high.',
+                    enum: ['auto', 'low', 'medium', 'high', 'standard', 'hd'],
+                    default: 'auto',
+                },
+                background: {
+                    type: 'string',
+                    description: 'Background type for OpenAI GPT Image.',
+                    enum: ['auto', 'opaque', 'transparent'],
+                    default: 'auto',
+                },
+                outputFormat: {
+                    type: 'string',
+                    description: 'Output format for OpenAI GPT Image.',
+                    enum: ['png', 'jpeg', 'webp'],
+                    default: 'png',
+                },
+                outputCompression: {
+                    type: 'integer',
+                    minimum: 0,
+                    maximum: 100,
+                    description: 'Output compression for OpenAI GPT Image when using jpeg or webp.',
+                    default: 100,
+                },
+                inputFidelity: {
+                    type: 'string',
+                    description: 'Input fidelity for OpenAI image editing.',
+                    enum: ['low', 'high'],
+                    default: 'low',
+                },
+                moderation: {
+                    type: 'string',
+                    description: 'Moderation level for OpenAI GPT Image.',
+                    enum: ['auto', 'low'],
+                    default: 'auto',
                 },
                 referenceImages: {
                     type: 'array',
@@ -103,9 +140,15 @@ export default {
         agent: agent_name = 'default',
         prompts,
         quantity = 1,
-        size = '1024x1024',
-        radio = '16:9',
+        size = 'auto',
+        radio = 'auto',
         style = 'vivid',
+        quality = 'auto',
+        background = 'auto',
+        outputFormat = 'png',
+        outputCompression = 100,
+        inputFidelity = 'low',
+        moderation = 'auto',
         referenceImages,
         mask,
         editMode,
@@ -120,6 +163,12 @@ export default {
         size: string;
         radio: string;
         style: string;
+        quality: string;
+        background: string;
+        outputFormat: string;
+        outputCompression: number;
+        inputFidelity: string;
+        moderation: string;
         referenceImages?: string[];
         mask?: string;
         editMode?: string;
@@ -131,14 +180,11 @@ export default {
         if (!config) {
             return { content: [{ type: 'text', text: 'Missing config' }] };
         }
-        if (agent_name === 'dalle') {
-            agent_name = 'openai';
-        }
         if (agent_name === 'default') {
             agent_name = config.AI_IMAGE_PROVIDER;
         }
         log.info(`tool image_gen request start: agent: ${agent_name}`);
-        log.info(`params: ${JSON.stringify({ agent: agent_name, prompts, quantity, size, radio, style, referenceImages, mask, editMode, maskMode, maskDilation, negativePrompt, baseSteps })}`);
+        log.info(`params: ${JSON.stringify({ agent: agent_name, prompts, quantity, size, radio, style, quality, background, outputFormat, outputCompression, inputFidelity, moderation, referenceImages, mask, editMode, maskMode, maskDilation, negativePrompt, baseSteps })}`);
         const agent = IMAGE_AGENTS.find(a => a.name === agent_name);
         if (!agent?.enable(config)) {
             return { content: [{ type: 'text', text: `Image agent ${agent_name} is not available`, is_error: true }] };
@@ -150,6 +196,12 @@ export default {
                     size,
                     radio,
                     style,
+                    quality,
+                    background,
+                    outputFormat,
+                    outputCompression,
+                    inputFidelity,
+                    moderation,
                     referenceImages,
                     mask,
                     editMode,
