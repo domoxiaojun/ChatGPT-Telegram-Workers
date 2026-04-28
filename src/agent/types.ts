@@ -2,6 +2,7 @@ import type { AssistantModelMessage, ModelMessage, ToolModelMessage, UserModelMe
 import type { AgentUserConfig } from '../config/env';
 import type { MessageSender } from '../telegram/utils/send';
 import type { UnionData } from '../telegram/utils/tg_utils';
+import type { ToolResult } from '../tools/types';
 
 export interface OpenAIFuncCallData {
     // index: number;
@@ -49,6 +50,8 @@ export interface ChatStreamTextHandler {
     end?: (text: string, needLog?: boolean, type?: 'chat' | 'error' | 'heartbeat') => Promise<any>;
     clearHeartbeat?: () => void;
     visibleToolResultSent?: boolean;
+    pendingVisibleToolResults?: ToolResult[];
+    flushPendingVisibleToolResults?: (caption?: string) => Promise<any>;
 }
 
 export type ImageAgentRequest = (prompt: string, context: AgentUserConfig, extraParams?: Record<string, any>) => Promise<ImageResult>;

@@ -306,13 +306,13 @@ export class OpenAIConfig {
         // include: ['reasoning.encrypted_content'],
     };
     // Web Search - 网页搜索工具
-    OPENAI_ENABLE_WEB_SEARCH = false;
+    OPENAI_ENABLE_WEB_SEARCH = true;
     OPENAI_WEB_SEARCH_EXTERNAL_ACCESS = true;  // true=实时抓取，false=使用缓存
     OPENAI_WEB_SEARCH_ALLOWED_DOMAINS: string[] = [];  // 允许的域名列表
     OPENAI_WEB_SEARCH_CONTEXT_SIZE: 'low' | 'medium' | 'high' = 'medium';  // 搜索上下文大小
     OPENAI_WEB_SEARCH_USER_LOCATION = '';  // 用户位置，格式: "City, Country" 或 "latitude,longitude"
-    // always=每次请求都暴露搜索工具；intent=仅当前消息包含搜索意图；prefix=仅当前消息匹配前缀
-    OPENAI_WEB_SEARCH_TRIGGER_MODE: 'always' | 'intent' | 'current' | 'prefix' = 'intent';
+    // model=每次请求都暴露搜索工具，交给主模型决定是否调用；intent=脚本仅按当前消息搜索意图暴露工具；prefix=仅当前消息匹配前缀
+    OPENAI_WEB_SEARCH_TRIGGER_MODE: 'model' | 'intent' | 'current' | 'prefix' = 'model';
     OPENAI_WEB_SEARCH_TRIGGER_PREFIXES: string[] = ['搜:', '搜索:', '查:', 'x搜', 'X搜'];
     OPENAI_WEB_SEARCH_TRIGGER_KEYWORDS: string[] = [
         '搜',
@@ -320,6 +320,7 @@ export class OpenAIConfig {
         '查一下',
         '查下',
         '帮我查',
+        '天气',
         '联网',
         '网上',
         '实时',
@@ -330,6 +331,10 @@ export class OpenAIConfig {
         '出处',
         '引用',
         '资料',
+        'url',
+        '网址',
+        '链接',
+        '网页',
         'x/twitter',
         'twitter',
         'x.com',
@@ -341,6 +346,7 @@ export class OpenAIConfig {
         'latest',
         'current',
         'today',
+        'weather',
         'news',
         'source',
         'citation',

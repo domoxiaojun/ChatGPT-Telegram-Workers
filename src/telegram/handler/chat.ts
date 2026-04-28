@@ -324,6 +324,8 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
         end: null as ((text: string, needLog?: boolean, type?: 'chat' | 'error' | 'heartbeat') => Promise<any>) | null,
         sender,
         visibleToolResultSent: false,
+        pendingVisibleToolResults: [],
+        flushPendingVisibleToolResults: undefined as ChatStreamTextHandler['flushPendingVisibleToolResults'],
         clearHeartbeat: () => {
             heartbeatId && clearInterval(heartbeatId);
         },
@@ -419,9 +421,19 @@ export function OnStreamHander(sender: MessageSender | ChosenInlineSender, conte
             log.info(`Need await: ${(nextEnableTime || 0) - Date.now()}ms`);
             await waitUntil(nextEnableTime! + 10);
         }
-        if (isMessageSender && type === 'chat' && streamSender.visibleToolResultSent && isToolResultPlaceholderFinalText(text)) {
+        if (isMessageSender && type === 'chat' && (streamSender.pendingVisibleToolResults?.length || 0) > 0) {
             await deleteStreamMessages(sender as MessageSender);
-            return new Response('ok');
+            const caption = getPendingVisibleToolResultCaption(text);
+            const pendingResp = await streamSender.flushPendingVisibleToolResults?.(caption);
+            if (shouldSuppressFinalTextAfterPendingToolResult(text, caption)) {
+                return pendingResp || new Response('ok');
+            }
+        }
+        if (isMessageSender && type === 'chat' && streamSender.visibleToolResultSent) {
+            await deleteStreamMessages(sender as MessageSender);
+            if (isToolResultPlaceholderFinalText(text) || isVisibleToolResultConfirmationText(text)) {
+                return new Response('ok');
+            }
         }
         if (type === 'error') {
             // Add separator to prevent blockquote from interfering with code block
@@ -513,6 +525,45 @@ function isToolResultPlaceholderFinalText(text: string): boolean {
         || normalized === 'data has been sent to user already.'
         || normalized === 'images have been sent to user already.'
         || normalized === 'result has been sent to user already.';
+}
+
+function isVisibleToolResultConfirmationText(text: string): boolean {
+    const normalized = normalizeVisibleToolResultFinalText(text);
+
+    if (!normalized || normalized.length > 160) {
+        return false;
+    }
+
+    return /(image|photo|picture|generated|sent|here is|here's|done|已生成|生成好|生成了|发出来|发好了|发你|图片|图像|照片|头像|成品|搞定|好了|来咯)/i.test(normalized);
+}
+
+function getPendingVisibleToolResultCaption(text: string): string | undefined {
+    const normalized = normalizeVisibleToolResultFinalText(text);
+    if (!normalized || normalized.length > 800) {
+        return undefined;
+    }
+    if (isToolResultPlaceholderFinalText(normalized) || isVisibleToolResultConfirmationText(normalized)) {
+        return undefined;
+    }
+    return text
+        .replace(new RegExp(SEGMENTATION_MARK, 'g'), '')
+        .trim();
+}
+
+function shouldSuppressFinalTextAfterPendingToolResult(text: string, caption?: string): boolean {
+    const normalized = normalizeVisibleToolResultFinalText(text);
+    return !normalized
+        || Boolean(caption)
+        || isToolResultPlaceholderFinalText(normalized)
+        || isVisibleToolResultConfirmationText(normalized);
+}
+
+function normalizeVisibleToolResultFinalText(text: string): string {
+    return text
+        .replace(new RegExp(SEGMENTATION_MARK, 'g'), '')
+        .replace(/[*_~`>#\[\]()]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
 }
 
 async function deleteStreamMessages(sender: MessageSender): Promise<void> {

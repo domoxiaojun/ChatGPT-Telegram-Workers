@@ -81,43 +81,73 @@ function normalizeTriggerValue(value: unknown): string {
         .toLowerCase();
 }
 
-function getOpenAIWebSearchTriggerText(text: string): string {
-    const quoteIndex = text.search(/\n\s*>/);
-    const withoutReplyQuote = quoteIndex >= 0 ? text.slice(0, quoteIndex) : text;
-
-    return withoutReplyQuote
+function stripGroupContextLines(text: string): string {
+    return text
         .split('\n')
-        .filter(line => !line.trimStart().startsWith('[Group Chat Context]'))
+        .filter((line) => {
+            const trimmed = line.trimStart();
+            return !trimmed.startsWith('[Group Chat Context]')
+                && !trimmed.startsWith('=== Recent Group Messages ===')
+                && !trimmed.startsWith('=== End of Recent Messages ===');
+        })
         .join('\n')
         .trim();
 }
 
-function shouldEnableOpenAIWebSearch(context: AgentUserConfig, currentUserText: string): boolean {
+function getOpenAIWebSearchTriggerParts(text: string): { promptText: string; referenceText: string } {
+    const cleanedText = stripGroupContextLines(text);
+    const quoteIndex = cleanedText.search(/\n\s*>/);
+    if (quoteIndex < 0) {
+        return { promptText: cleanedText.trim(), referenceText: '' };
+    }
+
+    return {
+        promptText: cleanedText.slice(0, quoteIndex).trim(),
+        referenceText: cleanedText
+            .slice(quoteIndex)
+            .split('\n')
+            .map(line => line.replace(/^\s*>\s?/, ''))
+            .join('\n')
+            .trim(),
+    };
+}
+
+function hasUrl(text: string): boolean {
+    return /(?:https?:\/\/|www\.)[^\s<>"')]+/i.test(text);
+}
+
+function hasReferencedUrlIntent(text: string): boolean {
+    return /(url|网址|链接|网页|网站|页面|正文|文章|报道|帖子|推文|tweet|打开|读取|读一下|看一下|看下|看看|总结|概括|分析|讲什么|说什么|怎么回事)/i.test(text);
+}
+
+export function shouldEnableOpenAIWebSearch(context: AgentUserConfig, currentUserText: string): boolean {
     if (!context.OPENAI_ENABLE_WEB_SEARCH) {
         return false;
     }
 
-    const mode = normalizeTriggerValue(context.OPENAI_WEB_SEARCH_TRIGGER_MODE || 'intent');
-    if (mode === 'always') {
-        log.info('[warpLLMParams] OpenAI web_search enabled by trigger mode: always');
+    const mode = normalizeTriggerValue(context.OPENAI_WEB_SEARCH_TRIGGER_MODE || 'model');
+    if (mode === 'model') {
+        log.info('[warpLLMParams] OpenAI web_search enabled by trigger mode: model');
         return true;
     }
 
-    const triggerText = getOpenAIWebSearchTriggerText(currentUserText);
-    const text = triggerText.toLowerCase();
-    if (!text) {
+    const { promptText, referenceText } = getOpenAIWebSearchTriggerParts(currentUserText);
+    const promptLower = promptText.toLowerCase();
+    const referenceLower = referenceText.toLowerCase();
+    const combinedLower = [promptLower, referenceLower].filter(Boolean).join('\n');
+    if (!combinedLower) {
         return false;
     }
 
     const negativeTriggers = ['不要搜索', '不用搜索', '别搜索', '无需搜索', '不要搜', '不用搜', '别搜', '不要联网', '不用联网'];
-    if (negativeTriggers.some(trigger => text.includes(trigger))) {
+    if (negativeTriggers.some(trigger => promptLower.includes(trigger))) {
         return false;
     }
 
     const prefixes = context.OPENAI_WEB_SEARCH_TRIGGER_PREFIXES || [];
     const matchedPrefix = prefixes.find((prefix) => {
         const normalized = normalizeTriggerValue(prefix);
-        return normalized && text.startsWith(normalized);
+        return normalized && promptLower.startsWith(normalized);
     });
     if (matchedPrefix) {
         log.info(`[warpLLMParams] OpenAI web_search enabled by trigger prefix: ${matchedPrefix}`);
@@ -128,10 +158,20 @@ function shouldEnableOpenAIWebSearch(context: AgentUserConfig, currentUserText: 
         return false;
     }
 
+    if (hasUrl(promptText)) {
+        log.info('[warpLLMParams] OpenAI web_search enabled by URL in current message');
+        return true;
+    }
+
+    if (hasUrl(referenceText) && hasReferencedUrlIntent(promptText)) {
+        log.info('[warpLLMParams] OpenAI web_search enabled by URL in replied/quoted message');
+        return true;
+    }
+
     const keywords = context.OPENAI_WEB_SEARCH_TRIGGER_KEYWORDS || [];
     const matchedKeyword = keywords.find((keyword) => {
         const normalized = normalizeTriggerValue(keyword);
-        return normalized && text.includes(normalized);
+        return normalized && promptLower.includes(normalized);
     });
     if (matchedKeyword) {
         log.info(`[warpLLMParams] OpenAI web_search enabled by trigger keyword: ${matchedKeyword}`);
@@ -150,6 +190,25 @@ export async function AIMiddleware({ config, activeTools, onStream, toolChoice, 
     let currentModel: LLMModel;
     const toolStartTimes = new Map<string, number>();
     const sentVisibleToolResultIds = new Set<string>();
+    if (onStream && !onStream.flushPendingVisibleToolResults) {
+        onStream.pendingVisibleToolResults = [];
+        onStream.flushPendingVisibleToolResults = async (caption?: string) => {
+            const pendingResults = onStream.pendingVisibleToolResults || [];
+            if (pendingResults.length === 0) {
+                return new Response('ok');
+            }
+            const sender = onStream.sender;
+            if (!sender) {
+                return new Response('ok');
+            }
+            onStream.pendingVisibleToolResults = [];
+            const results = caption ? withFirstImageCaption(pendingResults, caption) : pendingResults;
+            await sendToolResult(results, sender, config);
+            onStream.visibleToolResultSent = true;
+            onStream.clearHeartbeat?.();
+            return new Response('ok');
+        };
+    }
     const sendToolStartTip = (toolName: string) => {
         if (ENV.HIDE_MIDDLE_MESSAGE) {
             return;
@@ -841,7 +900,7 @@ export async function warpLLMParams({ messages, model, cache }: { messages: Mode
             tools.web_search = openaiTools.webSearch(webSearchConfig);
             activeTools.push('web_search');
         } else if (context.OPENAI_ENABLE_WEB_SEARCH) {
-            log.info(`[warpLLMParams] OpenAI web_search skipped by trigger mode: ${context.OPENAI_WEB_SEARCH_TRIGGER_MODE || 'intent'}`);
+            log.info(`[warpLLMParams] OpenAI web_search skipped by trigger mode: ${context.OPENAI_WEB_SEARCH_TRIGGER_MODE || 'model'}`);
         }
 
         // GitHub repository reader - OpenAI Responses 专属函数工具，不通过 USE_TOOLS 启用
@@ -1251,6 +1310,17 @@ async function handleToolResult({ tools, toolResults, onStream, config, sentVisi
         if (!sender) {
             return;
         }
+        if (isImageOnlyToolResults(need_send_result) && onStream?.flushPendingVisibleToolResults) {
+            onStream.pendingVisibleToolResults = [
+                ...(onStream.pendingVisibleToolResults || []),
+                ...need_send_result,
+            ];
+            onStream.visibleToolResultSent = true;
+            onStream.clearHeartbeat?.();
+            sentResultIds.forEach(resultId => sentVisibleToolResultIds?.add(resultId));
+            sentResults.forEach(({ output, toolName }) => replaceVisibleToolOutput(output, toolName));
+            return;
+        }
         await sendToolResult(need_send_result, sender, config);
         onStream.visibleToolResultSent = true;
         onStream.clearHeartbeat?.();
@@ -1259,6 +1329,24 @@ async function handleToolResult({ tools, toolResults, onStream, config, sentVisi
         // https://github.com/vercel/ai/blob/42fcd32dd81e5071a864943dbdcd4be69a8cae8c/packages/ai/core/generate-text/generate-text.ts#L488
         sentResults.forEach(({ output, toolName }) => replaceVisibleToolOutput(output, toolName));
     }
+}
+
+function isImageOnlyToolResults(results: ToolResult[]): boolean {
+    const content = results.flatMap(result => result.content);
+    return content.length > 0 && content.every(item => item.type === 'image');
+}
+
+function withFirstImageCaption(results: ToolResult[], caption: string): ToolResult[] {
+    let captionApplied = false;
+    return results.map(result => ({
+        content: result.content.map((item) => {
+            if (!captionApplied && item.type === 'image') {
+                captionApplied = true;
+                return { ...item, text: caption };
+            }
+            return item;
+        }) as ToolResult['content'],
+    }));
 }
 
 function getVisibleToolResultId(result: ToolResultPart, index: number): string {

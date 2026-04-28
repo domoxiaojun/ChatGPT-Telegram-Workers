@@ -177,7 +177,7 @@ Key configuration options:
 **Advanced Configuration:**
 - **Server-Side Tools**:
   - `OPENAI_ENABLE_WEB_SEARCH` / `OPENAI_ENABLE_IMAGE_GENERATION` / `OPENAI_ENABLE_GITHUB_REPO_READER`: OpenAI Responses native capabilities
-  - `OPENAI_WEB_SEARCH_TRIGGER_MODE`: OpenAI web search trigger policy, `intent` by default so chat history will not enable search by itself; use `always` to restore the old always-available behavior or `prefix` to require `OPENAI_WEB_SEARCH_TRIGGER_PREFIXES`
+  - `OPENAI_WEB_SEARCH_TRIGGER_MODE`: OpenAI web search trigger policy, `model` by default so web search is exposed on each request and the main model decides whether to call it; use `intent` to expose search only for current-message search intent, or `prefix` to require `OPENAI_WEB_SEARCH_TRIGGER_PREFIXES`
   - `GOOGLE_ENABLE_GOOGLE_SEARCH` / `GOOGLE_ENABLE_CODE_EXECUTION` / `GOOGLE_ENABLE_URL_CONTEXT`: Google Gemini native capabilities
   - `ANTHROPIC_ENABLE_WEB_FETCH` / `ANTHROPIC_ENABLE_WEB_SEARCH` / `ANTHROPIC_ENABLE_CODE_EXECUTION`: Anthropic native capabilities
   - `XAI_ENABLE_WEB_SEARCH` / `XAI_ENABLE_X_SEARCH` / `XAI_ENABLE_CODE_EXECUTION`: xAI Responses native capabilities
