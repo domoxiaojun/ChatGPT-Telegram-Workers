@@ -7,6 +7,7 @@ on:
       - dev
       - domo
     paths:
+      - '.github/workflows/build-docker.yml'
       - 'src/**'
       - 'scripts/**'
       - 'package.json'
@@ -95,7 +96,8 @@ jobs:
 
       - name: Create and push manifest
         run: |
-          COMMIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "latest")
+          COMMIT_SHA="${GITHUB_SHA:-latest}"
+          COMMIT_SHA="${COMMIT_SHA:0:7}"
           docker buildx imagetools create \
             --tag ${{ secrets.DOCKER_USERNAME }}/chatgpt-telegram-workers:latest \
             --tag ${{ secrets.DOCKER_USERNAME }}/chatgpt-telegram-workers:${COMMIT_SHA} \
